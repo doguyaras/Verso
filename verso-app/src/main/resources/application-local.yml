@@ -1,5 +1,19 @@
 # Local profile only (IDE run against the local compose infrastructure). Plain-text logs stay readable here;
 # every other environment logs ECS JSON (config/verso.yml). No real secrets in this file (reference 15.2).
+#
+# The database is the compose postgres published on 127.0.0.1 by deploy/compose.local.yaml. Passwords are the files
+# that scripts/dev-secrets.sh wrote to secrets/ (config tree; repository root or verso-app as working directory).
+spring:
+  config:
+    import:
+      - "optional:configtree:secrets/"
+      - "optional:configtree:../secrets/"
+  datasource:
+    url: jdbc:postgresql://localhost:5432/verso
+    username: svc_document
+  flyway:
+    url: jdbc:postgresql://localhost:5432/verso
+    user: svc_document_migrate
 management:
   endpoint:
     health:

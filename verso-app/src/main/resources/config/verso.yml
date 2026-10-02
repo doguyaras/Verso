@@ -1,6 +1,38 @@
 # Verso service config (reference 15.1): every environment imports this file. Deploy-specific values come from
 # environment placeholders declared in deploy/prod.env.example; secrets from /run/secrets. Keys mirrored in
 # application-local.yml are checked by ConfigDriftTest (which also scans comments, so no placeholder syntax here).
+
+# PostgreSQL 18 + pgvector (ADR-0002, ADR-0009). Two roles per module schema (reference 10.1): the application runs
+# as svc_document (DML only, no DDL); Flyway runs as svc_document_migrate, the owner of the "document" schema.
+# Passwords come from compose secrets through the config tree; no fallback, a missing secret stops the start.
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: svc_document
+    password: ${SECRET_DB_DOCUMENT_PASSWORD}
+    # A connection is taken at the first SQL statement, not when a transaction opens (Boot 4.1, reference 10.5).
+    connection-fetch: lazy
+    hikari:
+      pool-name: verso-db
+      # (cores x 2) + disks, small on purpose: fewer connections are faster (HikariCP pool sizing, reference 10.5).
+      maximum-pool-size: 10
+      # Middleboxes drop long idle connections; keepalive renews them before that (reference 10.5).
+      keepalive-time: 120000
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    user: svc_document_migrate
+    password: ${SECRET_DB_DOCUMENT_MIGRATE_PASSWORD}
+    # One folder per module schema: a second schema later gets its own Flyway configuration and folder.
+    locations: classpath:db/migration/document
+    schemas: document
+    default-schema: document
+    # The schema is infrastructure (deploy/postgres/initdb/20-database.sh), never created by a migration.
+    create-schemas: false
+    clean-disabled: true
+    # Off on purpose: it removes the check that stops migrations on a wrong, non-empty database (reference 10.2).
+    baseline-on-migrate: false
 ---
 # Structured (JSON) logs outside the local profile (reference 8.1): Loki/OTLP read fields, not regexes.
 spring:

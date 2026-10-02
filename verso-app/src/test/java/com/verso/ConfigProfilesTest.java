@@ -1,6 +1,7 @@
 package com.verso;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
@@ -33,6 +34,35 @@ class ConfigProfilesTest {
             assertThat(context.getEnvironment().getProperty("logging.structured.format.console")).isNull();
             assertThat(context.getEnvironment().getProperty("management.endpoint.health.show-details"))
                     .isEqualTo("always");
+        }
+    }
+
+    /**
+     * The local profile points the IDE run at the compose PostgreSQL published by deploy/compose.local.yaml, with the
+     * same two roles as production; the deploy profile keeps the placeholders that compose fills in.
+     */
+    @Test
+    void database_whenLocalProfile_isLocalhostWithTheProductionRoles() {
+        try (ConfigurableApplicationContext context = start("local")) {
+            Environment env = context.getEnvironment();
+            assertThat(env.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://localhost:5432/verso");
+            assertThat(env.getProperty("spring.datasource.username")).isEqualTo("svc_document");
+            assertThat(env.getProperty("spring.flyway.url")).isEqualTo("jdbc:postgresql://localhost:5432/verso");
+            assertThat(env.getProperty("spring.flyway.user")).isEqualTo("svc_document_migrate");
+            assertThat(env.getProperty("spring.flyway.locations")).isEqualTo("classpath:db/migration/document");
+            assertThat(env.getProperty("spring.flyway.baseline-on-migrate")).isEqualTo("false");
+            assertThat(env.getProperty("spring.flyway.clean-disabled")).isEqualTo("true");
+        }
+    }
+
+    @Test
+    void database_whenDeployProfile_comesFromEnvironmentPlaceholders() {
+        try (ConfigurableApplicationContext context = start("prod")) {
+            Environment env = context.getEnvironment();
+            assertThatThrownBy(() -> env.getProperty("spring.datasource.url"))
+                    .hasMessageContaining("DB_HOST");
+            assertThat(env.getProperty("spring.datasource.username")).isEqualTo("svc_document");
+            assertThat(env.getProperty("spring.flyway.user")).isEqualTo("svc_document_migrate");
         }
     }
 
