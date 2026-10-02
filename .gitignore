@@ -1,0 +1,17 @@
+# Build
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Env and secrets (reference 15.3)
+.env
+.env.*
+!.env.example
+secrets/*
+!secrets/README.md
+
+# Claude Code review stamp (reference 19.4)
+.claude/.last-review-check
