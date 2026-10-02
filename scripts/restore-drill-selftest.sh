@@ -6,8 +6,8 @@
 #
 # 1. Data: a probe table with a vector column (migration role) and rows written by the application role.
 # 2. Backup, then the drill must pass and report exactly those rows.
-# 3. Tampered copies must each fail: changed row count in the manifest, flipped byte in the encrypted dump, missing
-#    checksum file.
+# 3. Each of these must fail: changed row count in the manifest, changed privilege fingerprint, a restore that really
+#    loses its grants (pg_restore --no-privileges, review D1), flipped byte in the encrypted dump, missing checksum.
 # The probe table and every self-test file are removed at the end, pass or fail.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,27 +16,36 @@ ROWS=250
 PROBE=document.restore_selftest_probe
 failures=0
 
-as_role() { # as_role <role> <secret> <sql>
+# as_role <role> <secret> <sql>: over the network interface (host "postgres"), so pg_hba asks for the password;
+# 127.0.0.1 inside the container is trusted by the image and would accept any password (phase 2 security review).
+as_role() {
   docker compose exec -T postgres bash -c \
-    "PGPASSWORD=\"\$(cat /run/secrets/$2)\" psql -h 127.0.0.1 -U $1 -d verso -X -q -t -A -v ON_ERROR_STOP=1 -c \"$3\""
+    "PGPASSWORD=\"\$(cat /run/secrets/$2)\" psql -h postgres -U $1 -d verso -X -q -t -A -v ON_ERROR_STOP=1 -c \"$3\""
 }
-in_backups() { docker compose run --rm --no-deps -T --entrypoint bash backup -c "$1"; }
+in_backups() { docker compose run --rm --no-deps -T --entrypoint bash backup -c "$1" 2>/dev/null; }
 
 cleanup() {
   as_role svc_document_migrate SECRET_DB_DOCUMENT_MIGRATE_PASSWORD "DROP TABLE IF EXISTS $PROBE" >/dev/null 2>&1 || true
-  in_backups 'rm -f /backups/verso-selftest-* /backups/verso-zz-selftest-*' >/dev/null 2>&1 || true
+  in_backups 'rm -f /backups/verso-selftest-*' >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
-expect() { # expect pass|fail <label> <BACKUP_FILE> [pattern]
-  local want=$1 label=$2 file=$3 pattern=${4:-} out rc=0
-  out=$(BACKUP_FILE="$file" bash scripts/restore-drill.sh 2>&1) || rc=$?
-  if [ "$want" = pass ] && [ $rc -eq 0 ] && { [ -z "$pattern" ] || grep -q "$pattern" <<<"$out"; }; then
+# copy_backup <name>: the good backup under another name, checksum rewritten for the copy.
+copy_backup() {
+  in_backups "cd /backups && cp verso-selftest-good.dump.gpg verso-selftest-$1.dump.gpg \
+    && cp verso-selftest-good.manifest verso-selftest-$1.manifest && cp verso-selftest-good.acl verso-selftest-$1.acl \
+    && sha256sum verso-selftest-$1.dump.gpg > verso-selftest-$1.dump.gpg.sha256"
+}
+
+expect() { # expect pass|fail <label> <BACKUP_FILE> <pattern> [RESTORE_OPTIONS]
+  local want=$1 label=$2 file=$3 pattern=$4 options=${5:-} out rc=0
+  out=$(BACKUP_FILE="$file" RESTORE_OPTIONS="$options" bash scripts/restore-drill.sh 2>&1) || rc=$?
+  if [ "$want" = pass ] && [ $rc -eq 0 ] && grep -q "$pattern" <<<"$out"; then
     echo "ok    $label"
-  elif [ "$want" = fail ] && [ $rc -ne 0 ] && { [ -z "$pattern" ] || grep -q "$pattern" <<<"$out"; }; then
-    echo "ok    $label (drill failed as it must: $(grep -o 'FAILED: [^$]*' <<<"$out" | head -1))"
+  elif [ "$want" = fail ] && [ $rc -ne 0 ] && grep -q "$pattern" <<<"$out"; then
+    echo "ok    $label (drill failed as it must: $(grep -o 'FAILED: .*' <<<"$out" | head -1))"
   else
-    echo "WRONG $label (exit $rc)"; grep -E 'restore-check|restore-drill|ERROR' <<<"$out" | tail -5 | sed 's/^/      /'
+    echo "WRONG $label (exit $rc)"; grep -E 'restore-check|restore-drill|ERROR' <<<"$out" | tail -6 | sed 's/^/      /'
     failures=$((failures + 1))
   fi
 }
@@ -53,25 +62,27 @@ name=$(sed -E 's/.*file=([^ ]+).*/\1/' <<<"$line")
 base="${name%.dump.gpg}"
 echo "ok    backup $name"
 
-# The newest backup holds the probe rows: the drill restores them exactly.
 in_backups "cd /backups && cp $name verso-selftest-good.dump.gpg && cp $base.manifest verso-selftest-good.manifest \
-  && sha256sum verso-selftest-good.dump.gpg > verso-selftest-good.dump.gpg.sha256"
-expect pass "drill restores $ROWS probe rows" verso-selftest-good.dump.gpg "rows=$ROWS"
+  && cp $base.acl verso-selftest-good.acl && sha256sum verso-selftest-good.dump.gpg > verso-selftest-good.dump.gpg.sha256"
+expect pass "drill restores $ROWS probe rows, privileges and grants" verso-selftest-good.dump.gpg \
+  "rows=$ROWS .*app_readable_tables=1"
 
-# Manifest says one row more than the snapshot had.
-in_backups "cd /backups && cp verso-selftest-good.dump.gpg verso-selftest-count.dump.gpg \
-  && sed -E 's/^(document\.restore_selftest_probe)\|$ROWS$/\1|$((ROWS + 1))/' verso-selftest-good.manifest > verso-selftest-count.manifest \
-  && sha256sum verso-selftest-count.dump.gpg > verso-selftest-count.dump.gpg.sha256"
-expect fail "changed row count is detected" verso-selftest-count.dump.gpg "row counts"
+copy_backup count
+in_backups "cd /backups && sed -i -E 's/^(document\.restore_selftest_probe)\|$ROWS$/\1|$((ROWS + 1))/' verso-selftest-count.manifest"
+expect fail "changed row count is detected" verso-selftest-count.dump.gpg "FAILED: row counts"
 
-# One byte of the encrypted file flipped after the checksum was written.
-in_backups "cd /backups && cp verso-selftest-good.dump.gpg verso-selftest-byte.dump.gpg && cp verso-selftest-good.manifest verso-selftest-byte.manifest \
-  && sha256sum verso-selftest-byte.dump.gpg > verso-selftest-byte.dump.gpg.sha256 \
-  && printf 'X' | dd of=verso-selftest-byte.dump.gpg bs=1 seek=200 count=1 conv=notrunc status=none"
-expect fail "corrupted encrypted file is detected" verso-selftest-byte.dump.gpg "checksum"
+copy_backup acl
+in_backups "cd /backups && sed -i -E 's/svc_document=arwd/svc_document=r/' verso-selftest-acl.acl"
+expect fail "changed privilege fingerprint is detected" verso-selftest-acl.dump.gpg "FAILED: privileges"
 
-# Checksum file missing.
-in_backups "cd /backups && cp verso-selftest-good.dump.gpg verso-selftest-nosum.dump.gpg && cp verso-selftest-good.manifest verso-selftest-nosum.manifest"
-expect fail "missing checksum is detected" verso-selftest-nosum.dump.gpg "checksum or manifest missing"
+expect fail "restore that loses its grants is detected" verso-selftest-good.dump.gpg "FAILED: privileges" --no-privileges
+
+copy_backup byte
+in_backups "cd /backups && printf 'X' | dd of=verso-selftest-byte.dump.gpg bs=1 seek=200 count=1 conv=notrunc status=none"
+expect fail "corrupted encrypted file is detected" verso-selftest-byte.dump.gpg "FAILED: checksum mismatch"
+
+copy_backup nosum
+in_backups "cd /backups && rm verso-selftest-nosum.dump.gpg.sha256"
+expect fail "missing checksum is detected" verso-selftest-nosum.dump.gpg "FAILED: checksum, manifest or acl missing"
 
 if [ $failures -eq 0 ]; then echo "restore-drill-selftest: OK"; else echo "restore-drill-selftest: $failures WRONG"; exit 1; fi

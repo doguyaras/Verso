@@ -16,4 +16,27 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 
 Dosya adı Spring'de aynı adlı property olur (config tree). Bu yüzden `config/verso.yml` `${SECRET_DB_DOCUMENT_PASSWORD}` yazar ve fallback kullanmaz.
 
-**Rotasyon:** dosyayı değiştir → ilgili rolün parolasını `ALTER ROLE ... PASSWORD` ile güncelle → servisi yeniden başlat. Postgres init script'leri yalnız ilk kurulumda (boş veri volume'ünde) çalışır; sonradan parola değiştirmek bu script'leri yeniden çalıştırmaz. Prosedür: `docs/adr/0009-veri-altyapisi.md`.
+## Rotasyon
+
+Postgres init script'leri yalnız ilk kurulumda (boş veri volume'ünde) çalışır. Dosyayı değiştirmek, var olan rolün parolasını değiştirmez. Prosedür yalnız burada yazılıdır.
+
+**Veritabanı parolaları** (`SECRET_DB_*`):
+
+1. Yeni değeri dosyaya yaz (eski dosyanın yedeğini al).
+2. Parolayı, logda ve istatistikte iz bırakmadan değiştir. Düz bir `ALTER ROLE ... PASSWORD '...'` komutu, metni `pg_stat_statements`'e ve PGDATA'ya yazar; başarısız olursa da sunucu loguna düşer (faz 2 güvenlik review S3).
+
+   Değer host'taki dosyadan stdin ile gider; komut satırına düşmez. Container'daki `/run/secrets` bind mount'u, dosya yeni inode ile değiştirildiyse eski değeri gösterebilir; o yüzden kullanılmaz.
+
+   ```bash
+   { echo "SET pg_stat_statements.track_utility = off; SET log_min_error_statement = panic;"; printf "\\\\set pw '%s'\n" "$(cat secrets/SECRET_DB_DOCUMENT_PASSWORD)"; echo "ALTER ROLE svc_document PASSWORD :'pw';"; } | docker compose exec -T postgres psql -X -q -v ON_ERROR_STOP=1 -U postgres -d verso
+   ```
+
+3. Rolü kullanan servisi yeniden başlat: `docker compose up -d --force-recreate verso-app` (migration rolü için `migrate`; backup rolü için `backup`). Backup servisi parolayı yalnız açılışta okur.
+
+**Yedek şifreleme anahtarı** (`SECRET_BACKUP_ENCRYPTION_KEY`): eski yedekler eski anahtarla şifrelidir. Restore provası yalnız güncel anahtarı kullandığından, anahtarı değiştirmek eski yedekleri okunamaz yapar (ortam review E10).
+
+1. Eski anahtarı `secrets/` dışında, erişimi kısıtlı bir yerde sakla. Eski yedekler saklama süresi (`BACKUP_RETENTION_DAYS`) boyunca yalnız onunla açılır.
+2. Yeni anahtarı yaz, `backup` servisini yeniden başlat, `docker compose run --rm backup once` ile yeni bir yedek al ve `bash scripts/restore-drill.sh` ile doğrula.
+3. Saklama süresi dolunca eski anahtarı imha et.
+
+**Superuser parolası:** yalnız ilk kurulumda ve restore provasında kullanılır. Rotasyonu aynı psql kalıbıyla `ALTER ROLE postgres` olarak yapılır.

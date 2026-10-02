@@ -315,6 +315,19 @@ backup compose.yaml; sub compose.yaml 's/(x-postgres-image: &postgres-image \S+)
 backup compose.yaml; sub compose.yaml 's/pgvector\/pgvector:0\.8\.7-pg18-trixie/pgvector\/pgvector:0.8.6-pg18-trixie/' \
   && expect_red "M73 tests and compose on different PostgreSQL images" verso-app ImageVersionsTest postgresImage_whenUsedByTestsAndCompose_isTheSame; restore compose.yaml
 
+# ---------- phase 2 review fixes ----------
+backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/\nALTER SYSTEM SET log_error_verbosity = \x27terse\x27;//' \
+  && expect_red "M74 constraint DETAIL (row content) in server log" verso-app $DRT constraintViolation_whenRowCarriesDocumentText_neverReachesTheServerLog; restore $INIT/05-settings.sh
+AFTERERR=services/document/document-core/src/main/resources/db/migration/document/afterMigrateError.sql
+backup $AFTERERR; sub $AFTERERR 's/^REVOKE ALL ON [^\n]*\n//m' \
+  && expect_red "M75 history left writable after a failed migrate" services/document/document-core MigrationConventionsTest callbacks_whenPresent_revokeTheHistoryTableFromTheApplicationRole; restore $AFTERERR
+backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n    ports:)/    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n    ports:/' \
+  && expect_red "M76 application container gets the migration password" verso-app ComposeConfigTest migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService; restore compose.yaml
+backup .dockerignore; sub .dockerignore 's/\n\*\*\/\.env\n/\n/' \
+  && expect_red "M77 nested .env files enter the build context" verso-app ComposeConfigTest dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth; restore .dockerignore
+backup compose.yaml; sub compose.yaml 's/(  postgres:\n    image: \*postgres-image\n)/$1    ports:\n      - "5432:5432"\n/' \
+  && expect_red "M78 database published on the host" verso-app ComposeConfigTest ports_whenComposed_publishOnlyTheApiOnLoopback; restore compose.yaml
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.

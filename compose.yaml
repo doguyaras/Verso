@@ -1,10 +1,11 @@
-# Verso on one host (reference 18.2, ADR-0009). From a fresh clone:
+# Verso on one host (reference 18.2, ADR-0009). From a fresh clone (repository root):
 #
-#   bash scripts/dev-secrets.sh && docker compose up -d --build
+#   bash scripts/dev-secrets.sh && docker compose up -d --build --wait
 #
 # Non-secret settings: .env (template: .env.example). Secrets: secrets/ files mounted under /run/secrets (reference
 # 15.3), never environment variables. Only the API is published, and only on 127.0.0.1; PostgreSQL and the actuator
-# port stay inside the compose network.
+# port stay inside the compose network. The project name is fixed: a second checkout on the same host shares the
+# containers and volumes unless COMPOSE_PROJECT_NAME is set.
 name: verso
 
 x-hardening: &hardening
@@ -14,7 +15,6 @@ x-hardening: &hardening
 
 x-java-service-defaults: &java-service-defaults
   <<: *hardening
-  restart: always
   # server.shutdown=graceful with 25s per phase (application.yml) + margin before SIGKILL.
   stop_grace_period: 35s
   mem_limit: ${VERSO_MEM_LIMIT:-1536m}
@@ -25,12 +25,24 @@ x-java-service-defaults: &java-service-defaults
   tmpfs:
     - /tmp:size=256m
 
+# Database coordinates inside the compose network; every non-secret placeholder of config/verso.yml must be set here
+# for both Java services (ComposeConfigTest).
+x-db-env: &db-env
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: verso
+
 x-postgres-image: &postgres-image pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
 
 services:
   postgres:
     image: *postgres-image
     restart: always
+    # Not read_only/cap_drop: the official entrypoint needs root to prepare PGDATA before dropping to postgres.
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: ${POSTGRES_MEM_LIMIT:-1g}
+    pids_limit: 512
     environment:
       POSTGRES_DB: verso
       POSTGRES_USER: postgres
@@ -53,23 +65,44 @@ services:
       retries: 20
       start_period: 30s
 
+  # One-shot migration with the application image (ADR-0009, review S4): only this container holds the migration
+  # role's password. It runs Flyway without a web server and without the application DataSource, then exits.
+  migrate:
+    <<: *java-service-defaults
+    image: verso:${VERSO_IMAGE_TAG:-local}
+    # Built by verso-app (same image); never pulled.
+    pull_policy: never
+    restart: "no"
+    mem_limit: 512m
+    command:
+      - --spring.main.web-application-type=none
+      - --spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+    environment:
+      <<: *db-env
+    secrets:
+      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   verso-app:
     <<: *java-service-defaults
     build: .
     image: verso:${VERSO_IMAGE_TAG:-local}
+    restart: always
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: verso
+      <<: *db-env
+      # Migrations ran in "migrate": the long-running application cannot run DDL or rewrite the Flyway history.
+      SPRING_FLYWAY_ENABLED: "false"
     secrets:
       - SECRET_DB_DOCUMENT_PASSWORD
-      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
     ports:
       - "127.0.0.1:${VERSO_HTTP_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\":\"UP\"' <&3"]
       interval: 15s
@@ -78,11 +111,15 @@ services:
       start_period: 60s
 
   # Encrypted logical backups on a schedule (ADR-0009): pg_dump as verso_backup (pg_read_all_data), gpg AES256,
-  # SHA-256 sum and a row-count manifest taken in the same snapshot. RPO = BACKUP_INTERVAL_SECONDS.
+  # SHA-256 sum, row-count manifest and privilege fingerprint taken in the same snapshot. RPO = BACKUP_INTERVAL_SECONDS.
   backup:
     <<: *hardening
     image: *postgres-image
     restart: always
+    # tini as PID 1: "docker compose stop" ends the loop with SIGTERM instead of SIGKILL (review E9).
+    init: true
+    mem_limit: 512m
+    pids_limit: 128
     entrypoint: ["bash", "/opt/verso/backup.sh"]
     command: ["loop"]
     environment:
@@ -99,6 +136,14 @@ services:
       - backups:/backups
     tmpfs:
       - /tmp:size=64m
+    # Healthy only while the last successful backup is younger than two intervals (+10 min): a failing backup is
+    # visible in "docker compose ps", not only in the logs (review E7).
+    healthcheck:
+      test: ["CMD", "bash", "-c", "f=/backups/last-success; [ -s $$f ] && [ $$(( $$(date +%s) - $$(date -d \"$$(cat $$f)\" +%s) )) -lt $$(( $${BACKUP_INTERVAL_SECONDS} * 2 + 600 )) ]"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,6 +153,7 @@ services:
   restore-db:
     profiles: ["drill"]
     image: *postgres-image
+    security_opt: ["no-new-privileges:true"]
     environment:
       POSTGRES_DB: verso
       POSTGRES_USER: postgres
@@ -138,6 +184,8 @@ services:
       PGDATABASE: verso
       BACKUP_DIR: /backups
       BACKUP_FILE: ${BACKUP_FILE:-}
+      # Self-test hook only (restore-check.sh accepts nothing but --no-privileges).
+      RESTORE_OPTIONS: ${RESTORE_OPTIONS:-}
     secrets:
       - SECRET_POSTGRES_SUPERUSER_PASSWORD
       - SECRET_DB_DOCUMENT_PASSWORD
@@ -154,13 +202,18 @@ services:
   # Flyway validate against the restored database: the history must match the migrations of this checkout.
   restore-flyway:
     profiles: ["drill"]
+    <<: *hardening
     image: flyway/flyway:12.4.0@sha256:5be18367a9b3979a9f37234c371b80da457a448fb9577bd94d4bf24d923fafac
     # The password goes through FLYWAY_PASSWORD, never the argument list.
     entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_DOCUMENT_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_document_migrate -schemas=document -defaultSchema=document -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true validate"]
+    environment:
+      REDGATE_DISABLE_TELEMETRY: "true"
     secrets:
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
     volumes:
       - ./services/document/document-core/src/main/resources/db/migration/document:/flyway/migrations:ro
+    tmpfs:
+      - /tmp:size=64m
     depends_on:
       restore-db:
         condition: service_healthy

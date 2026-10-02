@@ -36,3 +36,9 @@ for name in "${NAMES[@]}"; do
 done
 for name in "${NAMES[@]}"; do chmod 644 "$DIR/$name" 2>/dev/null || true; done
 echo "dev-secrets: $created created, $(( ${#NAMES[@]} - created )) kept ($DIR)"
+# New secrets do not reach an existing database: the init scripts ran once, with the old values (review E3).
+if [ "$created" -gt 0 ] && command -v docker >/dev/null 2>&1    && docker volume inspect "${COMPOSE_PROJECT_NAME:-verso}_pgdata" >/dev/null 2>&1; then
+  echo "dev-secrets: WARNING volume ${COMPOSE_PROJECT_NAME:-verso}_pgdata already exists; its roles keep the old passwords." >&2
+  echo "dev-secrets: either restore the old secret files, or recreate the database: docker compose down -v" >&2
+  echo "dev-secrets: (down -v also deletes the backups volume; copy the backups first)" >&2
+fi

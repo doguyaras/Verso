@@ -11,5 +11,8 @@ ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
 ALTER SYSTEM SET log_parameter_max_length = 0;
 ALTER SYSTEM SET log_parameter_max_length_on_error = 0;
 ALTER SYSTEM SET log_statement = 'none';
+-- A failing constraint logs DETAIL with the whole row ("Failing row contains (...)", "Key (title)=(...)"): document
+-- text and file names. terse keeps the error and the statement with $n placeholders only (phase 2 security S1).
+ALTER SYSTEM SET log_error_verbosity = 'terse';
 ALTER SYSTEM SET password_encryption = 'scram-sha-256';
 EOSQL

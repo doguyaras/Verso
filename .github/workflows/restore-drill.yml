@@ -15,7 +15,13 @@ on:
       - 'deploy/**'
       - 'scripts/dev-secrets.sh'
       - 'scripts/restore-drill*.sh'
-      - 'services/**/db/migration/**'
+      - 'services/**'
+      # Application config, code and build: the stack must still start from them (phase 2 environment review E4).
+      - 'verso-app/**'
+      - 'platform/**'
+      - 'pom.xml'
+      - '.mvn/**'
+      - .env.example
       - '.github/workflows/restore-drill.yml'
 permissions:
   contents: read

@@ -42,7 +42,9 @@ class ImageVersionsTest {
 
     @Test
     void postgresImage_whenUsedByTestsAndCompose_isTheSame() throws IOException {
-        Matcher anchor = Pattern.compile("x-postgres-image: &postgres-image (\\S+)@sha256:").matcher(read("compose.yaml"));
+        // Full reference, digest included: a tag alone could be re-pointed between test and deploy (review S6).
+        Matcher anchor = Pattern.compile("x-postgres-image: &postgres-image (\\S+@sha256:[0-9a-f]{64})")
+                .matcher(read("compose.yaml"));
         assertThat(anchor.find()).as("compose postgres image anchor").isTrue();
         assertThat(VersoPostgres.IMAGE).isEqualTo(anchor.group(1));
     }

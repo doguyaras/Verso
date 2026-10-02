@@ -2,17 +2,17 @@
 # every other environment logs ECS JSON (config/verso.yml). No real secrets in this file (reference 15.2).
 #
 # The database is the compose postgres published on 127.0.0.1 by deploy/compose.local.yaml. Passwords are the files
-# that scripts/dev-secrets.sh wrote to secrets/ (config tree; repository root or verso-app as working directory).
+# that scripts/dev-secrets.sh wrote to secrets/ (config tree, relative to the working directory, which must be the
+# repository root: Boot skips a config tree whose path contains "..", so "../secrets/" cannot work; review C2).
 spring:
   config:
     import:
       - "optional:configtree:secrets/"
-      - "optional:configtree:../secrets/"
   datasource:
-    url: jdbc:postgresql://localhost:5432/verso
+    url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
     username: svc_document
   flyway:
-    url: jdbc:postgresql://localhost:5432/verso
+    url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
     user: svc_document_migrate
 management:
   endpoint:

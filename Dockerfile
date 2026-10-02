@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 # Verso application image (reference 18.1, ADR-0009): a multi-stage build without new build plugins (the reference's
 # second option; Jib was not added). Base images are pinned by digest; Renovate/Dependabot updates them.
 #

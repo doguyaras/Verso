@@ -9,18 +9,26 @@
 # log_min_error_statement = panic for this session: a failing CREATE ROLE would otherwise be logged with its password.
 set -euo pipefail
 SECRETS="${VERSO_SECRETS_DIR:-/run/secrets}"
-MODULES=(document)   # one entry per module schema; a new module adds its schema here and its two secret files
+# One entry per module schema; must match 20-database.sh (ModuleConsistencyTest). A new module adds its schema here,
+# its two secret files and its migration folder.
+MODULES=(document)
 
-for f in SECRET_DB_BACKUP_PASSWORD; do
-  [ -s "$SECRETS/$f" ] || { echo "10-roles: missing secret $f" >&2; exit 1; }
-done
+# Readable and non-empty, checked before use: psql's backtick turns an unreadable file into an empty string, and
+# PostgreSQL answers an empty password with a NOTICE and a role WITHOUT password while init reports success (phase 2
+# reviews C1/S2: 0600 secret files owned by the deploying user on Linux).
+require_secret() {
+  if [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
+    echo "10-roles: secret $1 missing, empty or unreadable" >&2
+    exit 1
+  fi
+}
+require_secret SECRET_DB_BACKUP_PASSWORD
 
 sql="SET log_min_error_statement = panic;"
 for schema in "${MODULES[@]}"; do
   upper="$(printf '%s' "$schema" | tr '[:lower:]' '[:upper:]')"
-  for kind in MIGRATE_PASSWORD PASSWORD; do
-    [ -s "$SECRETS/SECRET_DB_${upper}_${kind}" ] || { echo "10-roles: missing secret SECRET_DB_${upper}_${kind}" >&2; exit 1; }
-  done
+  require_secret "SECRET_DB_${upper}_MIGRATE_PASSWORD"
+  require_secret "SECRET_DB_${upper}_PASSWORD"
   sql+="
 \\set migrate_pw \`cat $SECRETS/SECRET_DB_${upper}_MIGRATE_PASSWORD\`
 \\set app_pw \`cat $SECRETS/SECRET_DB_${upper}_PASSWORD\`
@@ -53,4 +61,13 @@ for schema in "${MODULES[@]}"; do
 done
 
 printf '%s\n' "$sql" | psql -v ON_ERROR_STOP=1 -X -q --username "$POSTGRES_USER" --dbname "$POSTGRES_DB"
+
+# Fail closed: every login role created here must have a password.
+missing=$(psql -X -q -t -A -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -c \
+  "SELECT coalesce(string_agg(rolname, ','), '') FROM pg_authid
+    WHERE rolcanlogin AND rolpassword IS NULL AND (rolname LIKE 'svc%' OR rolname = 'verso_backup')")
+if [ -n "$missing" ]; then
+  echo "10-roles: roles without password: $missing" >&2
+  exit 1
+fi
 echo "10-roles: roles created for: ${MODULES[*]} + verso_backup"

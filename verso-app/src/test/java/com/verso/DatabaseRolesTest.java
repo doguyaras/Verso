@@ -151,6 +151,43 @@ class DatabaseRolesTest {
         }
     }
 
+    /**
+     * Phase 2 security review S1: hiding bind parameters is not enough. A failing constraint writes a DETAIL line with
+     * the whole row ("Failing row contains (...)", "Key (title)=(...) already exists"), i.e. document text or file
+     * names, into the PostgreSQL log. log_error_verbosity = terse drops DETAIL.
+     */
+    @Test
+    void constraintViolation_whenRowCarriesDocumentText_neverReachesTheServerLog() throws SQLException {
+        String marker = "SYNTH_DOC_TEXT_" + UUID.randomUUID().toString().replace("-", "");
+        String table = "document.log_probe_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection migrate = connect("svc_document_migrate", "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD");
+             Statement ddl = migrate.createStatement()) {
+            ddl.execute("create table " + table + " (id int primary key, title text unique, body text not null"
+                    + " check (length(body) < 10))");
+            try {
+                jdbc.update("insert into " + table + " values (1, ?, 'short')", marker + "_TITLE");
+                assertThatThrownBy(() -> jdbc.update("insert into " + table + " values (2, ?, ?)",
+                        marker + "_TITLE", "ok")).as("unique violation");
+                assertThatThrownBy(() -> jdbc.update("insert into " + table + " values (3, 'x', ?)",
+                        marker + "_BODY")).as("check violation");
+            } finally {
+                ddl.execute("drop table " + table);
+            }
+        }
+        String logs = VersoPostgres.POSTGRES.getLogs();
+        assertThat(logs).as("server log after constraint violations").contains("violates");
+        assertThat(logs).doesNotContain(marker);
+    }
+
+    @Test
+    void server_whenStarted_logsErrorsTersely() throws SQLException {
+        try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
+                VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
+             Statement st = admin.createStatement()) {
+            assertThat(single(st, "show log_error_verbosity")).isEqualTo("terse");
+        }
+    }
+
     private static Connection connect(String user, String secret) throws SQLException {
         return DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(), user, VersoPostgres.secret(secret));
     }

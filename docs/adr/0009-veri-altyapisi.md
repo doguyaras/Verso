@@ -106,6 +106,43 @@ Kullanıcıya sorulan iki karar (2026-10-02):
 - `@ImportTestcontainers` + `@DynamicPropertySource` de kullanılmadı: bu değerler auto-configuration koşullarından sonra geliyor ve Flyway koşulu `DB_HOST`'u çözemiyordu.
 - `DatabaseRolesTest` yetki sınırını uygulamanın gerçek rolleriyle kanıtlar. "Yetki yok" iddiaları `information_schema`/`aclexplode` üzerinden doğrulanır.
 
+**Review sonrası (faz 2 review'ları, 2026-10-02)**
+
+Altı review'ın bulgularıyla değişen kararlar. Bulgu ve kanıt eşlemesi `docs/evidence/faz-2-dogrulama.md`'de.
+
+- **Migration tek seferlik bir servis (review S4).** Ayrıntılar:
+  - `migrate` servisi uygulama image'ıyla, web sunucusu ve uygulama DataSource'u olmadan Flyway'i çalıştırıp çıkar. Migration parolasını yalnız bu servis alır.
+  - `verso-app` `SPRING_FLYWAY_ENABLED=false` ile çalışır ve `migrate` başarıyla bitmeden başlamaz.
+  - Kazanım: uygulamada bir RCE artık şema sahibinin yetkisine ulaşmaz.
+  - Yerel IDE çalıştırması ve testler Flyway'i uygulama içinde çalıştırmaya devam eder.
+  - Referans 10.2 Flyway'i uygulama açılışında çalıştırır; bu bilinçli bir sapmadır (ADR-0007 #48).
+- **Sunucu logu (review S1).** `log_error_verbosity = terse`: constraint hatalarının `DETAIL` satırı (satırın tamamı, belge metni) yazılmaz. JDBC URL'inde `logServerErrorDetail=false` var; istemci tarafındaki istisna mesajları da ayrıntı taşımaz.
+  - **Kalan risk:** tip dönüşüm hatalarının birincil mesajı girdi değerini içerebilir ("invalid input syntax for type uuid"). Uygulama kimlikleri DB'den önce doğrular ve sorgular parametrelidir; birincil mesaj bu yüzden kabul edildi. `log_min_messages = fatal` ile kapatmak, kilitlenme ve checkpoint gibi işletim mesajlarını da kör ederdi.
+- **Init script'leri (reviews C1/S2/E2).** Okunamayan ya da boş secret'ta init durur. Script, rolleri oluşturduktan sonra her login rolünün parolası olduğunu doğrular.
+- **Yedek ve prova (review D1).**
+  - Yedek, aynı snapshot'ta bir yetki parmak izi (`.acl`) da alır. Prova bu parmak izini karşılaştırır.
+  - Uygulama rolü her tablosunu gerçekten okumak zorundadır.
+  - Öz-test, yetkileri gerçekten kaybeden bir restore'u (`--no-privileges`) yakalar.
+- **`afterMigrateError.sql` (review D4).** Başarısız migrate sonrasında da geçmiş tablosu uygulama rolünden geri alınır.
+- **Sağlık (E7, E8).**
+  - Uygulamanın readiness'ı veritabanını içerir.
+  - Backup servisinin healthcheck'i `last-success` yaşına bakar: iki aralık + 10 dakika.
+  - `init: true` ile durdurma SIGTERM ile yapılır.
+- **Flyway telemetrisi.** Uygulamadaki OSS Flyway yalnız `NullFlywayTelemetryManager`'ı kaydeder; dışarı çağrı yapmaz (jar içeriğiyle doğrulandı). Restore provasındaki Redgate CLI için `REDGATE_DISABLE_TELEMETRY=true`.
+- **İkinci modül şeması (review A1). Açık karar, yeni bir ADR ister.**
+  - **Sorun:** tüm uygulama tek bir DataSource ile `svc_document` olarak bağlanır. İkinci bir şema (örn. `qa`) bu havuzla çalışmaz.
+  - **Yasak çözüm:** `svc_document`'a o şemaya yetki vermek (AGENTS.md §4).
+  - **Flyway sınırı:** ikinci bir `Flyway` bean'i Boot'un auto-configured Flyway'ini sessizce devre dışı bırakır.
+  - **Seçenekler:**
+    1. Modül başına DataSource ve transaction manager.
+    2. Tek login rolü + modül başına `SET LOCAL ROLE`.
+    3. Ortak rol; bu, 10.1'den belgelenmiş bir sapma olur.
+  - **Her durumda gerekenler:**
+    - Her modül için açık Flyway bean'leri.
+    - Modulith `event_publication` tablosunun hangi şemada ve hangi rolle duracağının kararı.
+    - Restore provasında modül başına bir validate adımı (`ModuleConsistencyTest` bunu şimdiden istiyor).
+  - Şekil A'da bütün modüllerin kimlikleri aynı süreçte durur. GRANT kodlama hatasına karşı korur, ele geçirilmiş bir sürece karşı değil.
+
 **Reddedilenler:** WAL-G + MinIO ve Jib, yukarıdaki tabloda yazan nedenlerle.
 
 ## Sonuçlar
@@ -115,6 +152,7 @@ Kullanıcıya sorulan iki karar (2026-10-02):
   - Yetki sınırı ve yedekten geri dönüş makineyle kanıtlanıyor; CI bunu haftalık tekrarlıyor.
   - Test, compose ve prova aynı init script'lerini kullanıyor; tek kaynak var.
 - **Olumsuz / kabul edilen risk:**
+  - **Migration parolası artık uygulama container'ında değil, ama `migrate` container'ı aynı image'ı kullanır.** Image'a sızan bir zafiyet her iki rolde de çalışır. Migrate container'ı yalnız deploy anında birkaç saniye yaşar.
   - **RPO 24 saat (varsayılan).** Gerçek müşteri verisinde aralık kısaltılır ya da WAL-G'ye geçilir.
   - **Yedek aynı host'ta, `backups` volume'ünde.** Host kaybında yedek de gider. Volume'ün host dışına kopyalanması (rsync/rclone) üretim kurulumunun işidir; faz 7'deki alarm ve runbook'la birlikte yazılır.
   - **Init script'leri yalnız ilk kurulumda çalışır.** Rol eklemek ya da parola değiştirmek elle yapılan bir prosedürdür (`secrets/README.md`, rotasyon).

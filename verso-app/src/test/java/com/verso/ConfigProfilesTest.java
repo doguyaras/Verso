@@ -45,13 +45,33 @@ class ConfigProfilesTest {
     void database_whenLocalProfile_isLocalhostWithTheProductionRoles() {
         try (ConfigurableApplicationContext context = start("local")) {
             Environment env = context.getEnvironment();
-            assertThat(env.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://localhost:5432/verso");
+            assertThat(env.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://localhost:5432/verso?logServerErrorDetail=false");
             assertThat(env.getProperty("spring.datasource.username")).isEqualTo("svc_document");
-            assertThat(env.getProperty("spring.flyway.url")).isEqualTo("jdbc:postgresql://localhost:5432/verso");
+            assertThat(env.getProperty("spring.flyway.url")).isEqualTo("jdbc:postgresql://localhost:5432/verso?logServerErrorDetail=false");
             assertThat(env.getProperty("spring.flyway.user")).isEqualTo("svc_document_migrate");
             assertThat(env.getProperty("spring.flyway.locations")).isEqualTo("classpath:db/migration/document");
             assertThat(env.getProperty("spring.flyway.baseline-on-migrate")).isEqualTo("false");
             assertThat(env.getProperty("spring.flyway.clean-disabled")).isEqualTo("true");
+        }
+    }
+
+    /**
+     * Review C2: Boot's config tree skips every file whose path contains a segment starting with "." (".." included),
+     * so "optional:configtree:../secrets/" loaded nothing and the password placeholder reached the database as text.
+     */
+    @Test
+    void configTreeImports_whenDeclared_haveNoDotSegments() throws java.io.IOException {
+        java.nio.file.Path resources = java.nio.file.Path.of("src/main/resources");
+        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.walk(resources)) {
+            for (java.nio.file.Path file : files.filter(p -> p.toString().endsWith(".yml")).toList()) {
+                for (String line : java.nio.file.Files.readAllLines(file)) {
+                    int at = line.indexOf("configtree:");
+                    if (at < 0) continue;
+                    String path = line.substring(at + "configtree:".length()).replace("\"", "").trim();
+                    assertThat(path.replace(java.io.File.separatorChar, '/').split("/")).as(file + ": " + line.trim())
+                            .noneMatch(segment -> segment.startsWith("."));
+                }
+            }
         }
     }
 

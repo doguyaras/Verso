@@ -30,8 +30,12 @@ import org.testcontainers.utility.MountableFile;
  */
 public final class VersoPostgres {
 
-    /** Kept in sync with compose.yaml (ImageVersionsTest). */
-    public static final String IMAGE = "pgvector/pgvector:0.8.7-pg18-trixie";
+    /**
+     * Pinned by digest like compose.yaml, so tests can never run against a re-pointed tag (phase 2 security review S6);
+     * ImageVersionsTest compares the full reference with compose.
+     */
+    public static final String IMAGE =
+            "pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0";
     public static final String DATABASE = "verso";
 
     static final Map<String, String> SECRETS = new LinkedHashMap<>();
@@ -58,9 +62,18 @@ public final class VersoPostgres {
                     "spring.datasource.password=" + secret("SECRET_DB_DOCUMENT_PASSWORD"),
                     "spring.flyway.url=" + POSTGRES.getJdbcUrl(),
                     "spring.flyway.user=svc_document_migrate",
-                    "spring.flyway.password=" + secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"))
+                    "spring.flyway.password=" + secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
+                    // Several cached test contexts share one container: small pools keep them far below
+                    // max_connections (phase 2 spring review C4).
+                    "spring.datasource.hikari.maximum-pool-size=3",
+                    "spring.datasource.hikari.minimum-idle=0")
                     .applyTo(context);
         }
+    }
+
+    /** Names of the secret files the container gets (ModuleConsistencyTest). */
+    public static java.util.Set<String> secretNames() {
+        return java.util.Collections.unmodifiableSet(SECRETS.keySet());
     }
 
     public static String secret(String name) {
