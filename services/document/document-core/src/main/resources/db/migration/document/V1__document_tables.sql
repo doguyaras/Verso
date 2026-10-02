@@ -29,7 +29,8 @@ CREATE TABLE document.document (
     CONSTRAINT pk_document PRIMARY KEY (id),
     CONSTRAINT ck_document_status CHECK (status IN ('PENDING', 'PROCESSING', 'READY', 'FAILED')),
     CONSTRAINT ck_document_failure_reason CHECK (failure_reason IN
-        ('NOT_A_PDF', 'ENCRYPTED', 'TOO_MANY_PAGES', 'TOO_MUCH_TEXT', 'NO_TEXT', 'PROCESSING_FAILED')),
+        ('NOT_A_PDF', 'ENCRYPTED', 'TOO_MANY_PAGES', 'TOO_MUCH_TEXT', 'UNSUPPORTED_PDF', 'NO_TEXT',
+         'PROCESSING_FAILED')),
     -- A reason exactly when FAILED; a lease exactly when PROCESSING.
     CONSTRAINT ck_document_failure_when_failed CHECK ((status = 'FAILED') = (failure_reason IS NOT NULL)),
     CONSTRAINT ck_document_claim_when_processing CHECK
@@ -55,6 +56,8 @@ CREATE TABLE document.document_file (
     CONSTRAINT pk_document_file PRIMARY KEY (document_id),
     CONSTRAINT fk_document_file_document FOREIGN KEY (document_id) REFERENCES document.document (id) ON DELETE CASCADE
 );
+-- PDF streams are compressed already: store out of line without trying pglz on up to 20 MB (reference 10.6).
+ALTER TABLE document.document_file ALTER COLUMN content SET STORAGE EXTERNAL;
 
 -- Extracted text per page: the source of chunks and citations (llm-rules 6.3). Kept instead of the PDF, so chunking
 -- and embedding can be redone without the file.
@@ -86,5 +89,11 @@ CREATE TABLE document.document_chunk (
 -- Retrieval (phase 5): nearest neighbours by cosine distance (bge-m3 vectors are compared by cosine).
 CREATE INDEX idx_document_chunk_embedding ON document.document_chunk
     USING hnsw (embedding extensions.vector_cosine_ops);
--- Retrieval's ownership filter and per-account counts.
+-- Retrieval's ownership filter for accounts with few chunks, where the planner prefers it over the HNSW scan.
 CREATE INDEX idx_document_chunk_account ON document.document_chunk (account_id);
+
+-- Files, pages and chunks are written and deleted, never updated: the application role gets no UPDATE on them
+-- (phase 4 db review D6; the default privileges grant it).
+REVOKE UPDATE ON document.document_file FROM svc_document;
+REVOKE UPDATE ON document.document_page FROM svc_document;
+REVOKE UPDATE ON document.document_chunk FROM svc_document;

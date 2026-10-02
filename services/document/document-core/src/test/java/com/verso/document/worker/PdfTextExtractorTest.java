@@ -8,6 +8,7 @@ import com.verso.document.testing.TestPdfs;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.util.unit.DataSize;
 
 /** Untrusted PDFs end in text per page or in one fixed reason, never in the parser's message (ADR-0011). */
 class PdfTextExtractorTest {
@@ -54,6 +55,48 @@ class PdfTextExtractorTest {
         assertThatThrownBy(() -> strict.extract(TestPdfs.pages("twenty characters...", "twenty characters...")))
                 .isInstanceOfSatisfying(IngestionRejectedException.class,
                         e -> assertThat(e.reason()).isEqualTo(DocumentFailureReason.TOO_MUCH_TEXT));
+    }
+
+    /**
+     * Review C1: a page whose text positions alone would fill the heap is refused while the parser collects them. The
+     * file is a few KB; before the fix a 4 MB page exhausted a 1152 MB heap.
+     */
+    @Test
+    void extract_whenAPageHoldsMoreGlyphsThanAllowed_isRejectedWhileCollecting() {
+        byte[] bomb = TestPdfs.textBomb(4_000_000);
+        assertThat(bomb.length).as("small on disk").isLessThan(64 * 1024);
+        assertRejected(bomb, DocumentFailureReason.TOO_MUCH_TEXT);
+        PdfTextExtractor tight = new PdfTextExtractor(TestPdfs.properties(500, 2_000_000, 10, DataSize.ofMegabytes(64), 1000, 150));
+        assertThatThrownBy(() -> tight.extract(TestPdfs.pages("eleven char")))
+                .isInstanceOfSatisfying(IngestionRejectedException.class,
+                        e -> assertThat(e.reason()).isEqualTo(DocumentFailureReason.TOO_MUCH_TEXT));
+        assertThat(tight.extract(TestPdfs.pages("ten chars!"))).containsExactly("ten chars!");
+    }
+
+    /** Review C2: decompressed content is measured with a bounded inflater before the parser decodes it. */
+    @Test
+    void extract_whenContentInflatesBeyondTheLimit_isRejectedBeforeDecoding() {
+        byte[] bomb = TestPdfs.deflateBomb(8 * 1024 * 1024);
+        assertThat(bomb.length).isLessThan(64 * 1024);
+        PdfTextExtractor tight = new PdfTextExtractor(TestPdfs.properties(500, 2_000_000, 50_000, DataSize.ofMegabytes(1), 1000, 150));
+        assertThatThrownBy(() -> tight.extract(bomb)).isInstanceOfSatisfying(IngestionRejectedException.class,
+                e -> assertThat(e.reason()).isEqualTo(DocumentFailureReason.TOO_MUCH_TEXT));
+        // Within the limit it is just an empty page.
+        assertRejected(TestPdfs.deflateBomb(64 * 1024), DocumentFailureReason.NO_TEXT);
+    }
+
+    /** Security review S1: the graphics state stack is bounded; before, 5M "q" in 10 KB exhausted the heap. */
+    @Test
+    void extract_whenGraphicsStatesPileUp_isRejectedAsUnsupported() {
+        byte[] bomb = TestPdfs.graphicsStateBomb(5_000_000);
+        assertThat(bomb.length).isLessThan(64 * 1024);
+        assertRejected(bomb, DocumentFailureReason.UNSUPPORTED_PDF);
+        assertRejected(TestPdfs.graphicsStateBomb(200), DocumentFailureReason.NO_TEXT);
+    }
+
+    @Test
+    void extract_whenAContentStreamUsesAnUnmeasurableEncoding_isRejectedAsUnsupported() {
+        assertRejected(TestPdfs.lzwContent(), DocumentFailureReason.UNSUPPORTED_PDF);
     }
 
     /** The rejection carries no cause and no parser text (llm-rules 2.1): only the reason's name. */

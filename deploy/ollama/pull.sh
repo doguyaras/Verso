@@ -7,7 +7,8 @@ set -eu
 : "${OLLAMA_MODEL:?}" "${OLLAMA_MODEL_DIGEST:?}"
 name="${OLLAMA_MODEL%%:*}"
 tag="${OLLAMA_MODEL#*:}"
-manifest="/root/.ollama/models/manifests/registry.ollama.ai/library/$name/$tag"
+# OLLAMA_MODELS is Ollama's own setting for the model folder (default under /root/.ollama); tests point it elsewhere.
+manifest="${OLLAMA_MODELS:-/root/.ollama/models}/manifests/registry.ollama.ai/library/$name/$tag"
 
 if [ -f "$manifest" ] && grep -q "$OLLAMA_MODEL_DIGEST" "$manifest"; then
   echo "ollama-pull: $OLLAMA_MODEL already present"

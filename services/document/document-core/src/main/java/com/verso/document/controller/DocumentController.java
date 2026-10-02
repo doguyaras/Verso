@@ -12,10 +12,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,7 +32,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@Validated
 @RequestMapping("/v1/documents")
 public class DocumentController {
 
@@ -49,7 +45,6 @@ public class DocumentController {
 
     /** 201 with Location; the document is PENDING until the worker has processed it. */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<DocumentResponse> upload(@CurrentAccount AccountId account,
                                                    @RequestPart("file") MultipartFile file,
                                                    @RequestHeader(name = "X-Idempotency-Key", required = false)

@@ -73,6 +73,12 @@ public class IngestionTransactionService {
     }
 
     @Transactional
+    public void release(Claim claim, Instant now) {
+        hold(claim, now);
+        repository.release(claim, now);
+    }
+
+    @Transactional
     public void retryLater(Claim claim, Instant nextAttemptAt, Instant now) {
         hold(claim, now);
         repository.retryLater(claim, nextAttemptAt, now);

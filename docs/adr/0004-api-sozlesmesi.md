@@ -35,7 +35,7 @@ Verso'nun istemcileri iki tür: demo script'leri ve müşterinin kendi sistemler
   | qa | 11000–11999 |
   | validation | 90000–90099 |
   | security | 90100–90199 |
-  | system | 99998–99999 |
+  | system | 99997–99999 |
 
 - Her yanıtta `X-Rag-Mode: local|cloud` header'ı bulunur (ADR-0006).
 - Kişisel veri veya belge içeriği dönen uçlar `Cache-Control: private, no-store` döner (referans 6.7).

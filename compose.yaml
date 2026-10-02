@@ -119,8 +119,9 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-      ollama:
-        condition: service_healthy
+    # Not depending on ollama on purpose (review E1): uploads are accepted while the model is down or still being
+    # pulled; the worker pauses and catches up (ADR-0011).
+    networks: [default, models]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\":\"UP\"' <&3"]
       interval: 15s
@@ -179,6 +180,8 @@ services:
     image: *ollama-image
     restart: "no"
     entrypoint: ["sh", "/opt/verso/pull.sh"]
+    mem_limit: 512m
+    pids_limit: 256
     environment:
       OLLAMA_MODEL: *embedding-model
       OLLAMA_MODEL_DIGEST: sha256:daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c
@@ -188,16 +191,21 @@ services:
     tmpfs:
       - /tmp:size=64m
 
-  # Local embedding model server (ADR-0006, ADR-0011). Not published; only the application talks to it. It never pulls
-  # (ollama-pull did) and reads the models read-only. Phase 6 moves it to an internal-only network (llm-rules 1.1).
+  # Local embedding model server (ADR-0006, ADR-0011). Only on the internal "models" network: no route to the internet
+  # (llm-rules 8.2) and nobody but the application can reach it. It never pulls (ollama-pull did) and reads the models
+  # read-only.
   ollama:
     <<: *hardening
     image: *ollama-image
     restart: always
     mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    cpus: ${OLLAMA_CPUS:-2}
     pids_limit: 512
+    networks: [models]
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
+      # No ollama.com cloud models or remotes (llm-rules 1.1, 8.2).
+      OLLAMA_NO_CLOUD: "true"
       # Keep the embedding model loaded between ingestion batches.
       OLLAMA_KEEP_ALIVE: 30m
     volumes:
@@ -208,7 +216,7 @@ services:
       ollama-pull:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "ollama", "show", "bge-m3:567m"]
+      test: ["CMD", "ollama", "show", *embedding-model]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -271,7 +279,7 @@ services:
       - ./deploy/postgres/initdb/05-settings.sh:/docker-entrypoint-initdb.d/05-settings.sh:ro
       - ./deploy/postgres/initdb/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
     tmpfs:
-      - /var/lib/postgresql:size=1g
+      - /var/lib/postgresql:size=${RESTORE_TMPFS_SIZE:-1g}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d verso -q"]
       interval: 3s
@@ -298,7 +306,7 @@ services:
       - ./deploy/backup:/opt/verso:ro
       - backups:/backups:ro
     tmpfs:
-      - /tmp:size=1g
+      - /tmp:size=${RESTORE_TMPFS_SIZE:-1g}
     depends_on:
       restore-db:
         condition: service_healthy
@@ -343,6 +351,11 @@ secrets:
     file: ./secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET
   SECRET_KEYCLOAK_DEMO_USER_PASSWORD:
     file: ./secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD
+
+networks:
+  # Application ↔ ollama only; internal: no gateway to the outside (llm-rules 1.1, 8.2; ADR-0011).
+  models:
+    internal: true
 
 volumes:
   pgdata:

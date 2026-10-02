@@ -64,7 +64,9 @@ class IngestionWorkerTest {
     private ListAppender<ILoggingEvent> appender;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws InterruptedException {
+        // The worker is shared by the tests of this context: wait out a circuit-breaker pause an earlier test opened.
+        while (worker.isPaused()) Thread.sleep(50);
         jdbc.update("DELETE FROM document.document");
         TestEmbeddingModel.INSTANCE.reset();
         root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -124,29 +126,77 @@ class IngestionWorkerTest {
         }
     }
 
-    /** A model outage is temporary: back to PENDING with a later retry time; the pages stay, the PDF is gone. */
+    /**
+     * Review R1: a model outage is not the document's fault. The document goes back to PENDING without spending an
+     * attempt, nothing is claimed while the worker pauses, and however long the outage lasts no document fails.
+     */
     @Test
-    void runOnce_whenTheModelFails_retriesLaterWithBackoff() {
+    void runOnce_whenTheModelIsUnavailable_releasesWithoutAnAttemptAndPauses() throws Exception {
         UUID id = upload(TestPdfs.pages("Some text to embed."));
-        TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException("model down"));
+        TestEmbeddingModel.INSTANCE.failWith(new org.springframework.web.client.ResourceAccessException("down"));
+
+        assertThat(worker.runOnce()).isOne();
+        Map<String, Object> job = job(id);
+        assertThat(job.get("status")).isEqualTo("PENDING");
+        assertThat(job.get("attempts")).as("no attempt spent").isEqualTo(0);
+        assertThat(count("document_page", id)).as("parsed once, kept").isOne();
+        assertThat(worker.runOnce()).as("paused: nothing claimed").isZero();
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("Embedding model unavailable")
+                && e.getLevel().toString().equals("WARN"));
+
+        for (int outage = 0; outage < 8; outage++) {
+            Thread.sleep(1100);
+            assertThat(worker.runOnce()).isOne();
+        }
+        assertThat(job(id).get("status")).as("still waiting, never FAILED").isEqualTo("PENDING");
+        assertThat(job(id).get("attempts")).isEqualTo(0);
+
+        TestEmbeddingModel.INSTANCE.reset();
+        Thread.sleep(1100);
+        assertThat(worker.runOnce()).isOne();
+        assertThat(job(id).get("status")).isEqualTo("READY");
+    }
+
+    /** Review R2: an error that repeats until the configuration changes pauses ingestion and is logged as ERROR. */
+    @Test
+    void runOnce_whenTheModelIsMisconfigured_pausesWithAnErrorAndSpendsNoAttempt() {
+        UUID id = upload(TestPdfs.pages("Some text."));
+        TestEmbeddingModel.INSTANCE.failWith(new org.springframework.ai.retry.NonTransientAiException("model not found"));
+        worker.runOnce();
+        assertThat(job(id).get("status")).isEqualTo("PENDING");
+        assertThat(job(id).get("attempts")).isEqualTo(0);
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("Embedding model misconfigured")
+                && e.getLevel().toString().equals("ERROR"));
+        assertThat(worker.runOnce()).isZero();
+    }
+
+    /** A model that answers with another vector length is misconfigured; nothing is stored (column vector(1024)). */
+    @Test
+    void runOnce_whenTheModelAnswersWithOtherDimensions_storesNothingAndPauses() {
+        UUID id = upload(TestPdfs.pages("Some text."));
+        TestEmbeddingModel.INSTANCE.answerWithDimensions(768);
+        worker.runOnce();
+        assertThat(job(id).get("status")).isEqualTo("PENDING");
+        assertThat(job(id).get("attempts")).isEqualTo(0);
+        assertThat(count("document_chunk", id)).isZero();
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("kind=WRONG_DIMENSIONS"));
+    }
+
+    /** A failure that is not the model's (here: vectors the store rejects) is retried with backoff, then FAILED. */
+    @Test
+    void runOnce_whenStoringKeepsFailing_retriesWithBackoffAndGivesUpAfterMaxAttempts() {
+        UUID id = upload(TestPdfs.pages("Some text."));
+        TestEmbeddingModel.INSTANCE.answerWithNaN();
         Instant before = Instant.now();
 
         assertThat(worker.runOnce()).isOne();
-
         Map<String, Object> job = job(id);
         assertThat(job.get("status")).isEqualTo("PENDING");
         assertThat(job.get("attempts")).isEqualTo(1);
         assertThat(((java.sql.Timestamp) job.get("next_attempt_at")).toInstant()).isAfter(before.plusSeconds(25));
-        assertThat(count("document_page", id)).as("parsed once, kept for the retry").isOne();
-        assertThat(count("document_file", id)).isZero();
         assertThat(worker.runOnce()).as("not due yet").isZero();
-    }
 
-    @Test
-    void runOnce_whenTheModelKeepsFailing_givesUpAfterMaxAttempts() {
-        UUID id = upload(TestPdfs.pages("Some text."));
-        TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException("model down"));
-        for (int attempt = 1; attempt <= 5; attempt++) {
+        for (int attempt = 2; attempt <= 5; attempt++) {
             // Due by any clock: the database container's clock may run slightly ahead of the JVM's.
             jdbc.update("UPDATE document.document SET next_attempt_at = now() - interval '1 minute' WHERE id = ?", id);
             assertThat(worker.runOnce()).isOne();
@@ -155,14 +205,23 @@ class IngestionWorkerTest {
         assertThat(count("document_page", id)).isZero();
     }
 
-    /** A model that answers with another vector length is a fault, never stored (column vector(1024)). */
+    /** Review R3: on shutdown the document in progress is handed back at once, without spending an attempt. */
     @Test
-    void runOnce_whenTheModelAnswersWithOtherDimensions_storesNothing() {
-        UUID id = upload(TestPdfs.pages("Some text."));
-        TestEmbeddingModel.INSTANCE.answerWithDimensions(768);
-        worker.runOnce();
-        assertThat(job(id).get("status")).isEqualTo("PENDING");
-        assertThat(count("document_chunk", id)).isZero();
+    void runOnce_whenShutdownBeginsDuringEmbedding_releasesTheDocument() {
+        UUID first = upload(TestPdfs.pages(words(400)));
+        UUID second = upload(TestPdfs.pages("second"));
+        TestEmbeddingModel.INSTANCE.onCall(worker::stop);
+        try {
+            assertThat(worker.runOnce()).as("no further claim once stopping").isOne();
+            assertThat(job(first).get("status")).isEqualTo("PENDING");
+            assertThat(job(first).get("attempts")).isEqualTo(0);
+            assertThat(job(second).get("status")).isEqualTo("PENDING");
+            assertThat(worker.runOnce()).isZero();
+        } finally {
+            TestEmbeddingModel.INSTANCE.reset();
+            worker.start();
+        }
+        assertThat(worker.runOnce()).isEqualTo(2);
     }
 
     /** Poison file: a document claimed more often than allowed (the worker died each time) ends FAILED. */
@@ -244,13 +303,18 @@ class IngestionWorkerTest {
 
         assertThat(appender.list).as("outcomes are logged").anyMatch(e -> e.getFormattedMessage().contains("outcome=READY"))
                 .anyMatch(e -> e.getFormattedMessage().contains("outcome=FAILED"))
-                .anyMatch(e -> e.getFormattedMessage().contains("outcome=retry"));
+                .anyMatch(e -> e.getFormattedMessage().contains("outcome=released"));
         for (ILoggingEvent event : appender.list) {
             StringBuilder text = new StringBuilder(event.getFormattedMessage()).append(event.getMDCPropertyMap());
             if (event.getArgumentArray() != null) Stream.of(event.getArgumentArray()).forEach(a -> text.append(' ').append(a));
             for (var p = event.getThrowableProxy(); p != null; p = p.getCause()) text.append(' ').append(p.getMessage());
             assertThat(text.toString()).as(event.getLoggerName()).doesNotContain(MARKER).doesNotContain(account);
         }
+    }
+
+    private static String words(int count) {
+        return java.util.stream.IntStream.range(0, count).mapToObj(i -> "word" + i)
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 
     private UUID upload(byte[] pdf) {

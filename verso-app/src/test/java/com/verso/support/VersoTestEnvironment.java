@@ -31,7 +31,10 @@ public @interface VersoTestEnvironment {
             TestPropertyValues.of(
                     "OLLAMA_BASE_URL=http://127.0.0.1:1",
                     "OLLAMA_EMBEDDING_MODEL=test-embedding",
-                    "verso.document.ingestion.enabled=false").applyTo(context);
+                    "verso.document.ingestion.enabled=false",
+                    // Short circuit-breaker pauses, so tests can wait them out.
+                    "verso.document.ingestion.model-unavailable-pause=1s",
+                    "verso.document.ingestion.model-misconfigured-pause=1s").applyTo(context);
         }
     }
 }

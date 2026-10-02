@@ -18,7 +18,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | verso-app | 8080 (API), 8081 (actuator) | verso | – (şekil A: servis JWT'si yok) | user JWT `aud` = `verso-api`, `typ` `at+jwt` (ADR-0005, ADR-0010) | `document` / `svc_document`, `svc_document_migrate` | document 10000–10999, qa 11000–11999 | – (ADR-0003) | – | `POST /v1/questions`: **2** (ADR-0008) |
 
-Ortak kod blokları: validation 90000–90099, security 90100–90199 (90100 UNAUTHENTICATED, 90101 ACCESS_DENIED, 90102 TOO_MANY_REQUESTS, 90103 IDP_UNAVAILABLE), system 99998–99999 (`ErrorCodeUniquenessTest`).
+Ortak kod blokları: validation 90000–90099, security 90100–90199 (90100 UNAUTHENTICATED, 90101 ACCESS_DENIED, 90102 TOO_MANY_REQUESTS, 90103 IDP_UNAVAILABLE), system 99997–99999 (99997 SERVICE_UNAVAILABLE: DB/havuz/kilit zaman aşımı, 503 + Retry-After) (`ErrorCodeUniquenessTest`).
 
 ## 3. Kritik akış kaydı — sıcak yol tablosu (referans Bölüm 1.2)
 
@@ -26,8 +26,8 @@ Ortak kod blokları: validation 90000–90099, security 90100–90199 (90100 UNA
 |---|---|---|---|---|---|---|
 | Kimlik doğrulama (her kimlikli istek; faz 3) | `/v1/**` | anahtar önbellekteyken 0 ek gecikme; önbellek kaçırılınca ≤ 2 sn (`jwks-timeout`) | 0 istek başına. JWKS bir kontrol düzlemi bağımlılığıdır: anahtarlar 5 dk önbellekte, bilinmeyen `kid` için en fazla 30 sn'de bir yeniden çekilir (restart'sız anahtar rotasyonu) | anahtar seti (5 dk önbellek; IdP kesintisinde son bilinen anahtarlar 1 saat) | önbellek sıcak: kesinti görünmez; soğuk: 503 `IDP_UNAVAILABLE` + `Retry-After: 30` (ADR-0010) | IdP kesintisi 1 saati aşarsa veya rotasyon 30 sn'lik sınıra takılırsa |
 | Soru sor (planlı, faz 5) | `POST /v1/questions` | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn (başlangıç ayarı, ADR-0008) | 2: embedding (soru vektörü; read-model ile yapılamaz) + chat (cevap üretimi). Kimlik doğrulama satırındaki JWKS önbellekli olduğu için sayılmaz (ADR-0010) | sahiplik: token `sub` (token ömrü) | 503 `MODEL_UNAVAILABLE`; eşik altında model çağrılmaz | p99 > bütçe 3 gün; ADR-0008 |
-| Belge yükle (faz 4) | `POST /v1/documents` | 2 sn (20 MB sınırı içinde) | 0 (yalnız DB yazımı; işleme asenkron worker'da, ADR-0011) | sahiplik: token `sub` | DB yoksa 503; model kapalıyken yükleme kabul edilir, worker sonra işler | p99 > 2 sn |
-| Belge işleme (worker, faz 4) | – (zamanlanmış) | – (asenkron); kira 10 dk, her embedding grubundan sonra yenilenir | 1 grup başına: embedding (Ollama, transaction dışında, 60 sn okuma timeout'u) | – | geçici hata: backoff'lu yeniden deneme (30 sn · 2^n, en çok 10 dk, 5 deneme); sonra `PROCESSING_FAILED` | bekleme süresi > kira (faz 7 alarmı) |
+| Belge yükle (faz 4) | `POST /v1/documents` | 2 sn (20 MB sınırı içinde) | 0 (yalnız DB yazımı; işleme asenkron worker'da, ADR-0011) | sahiplik: token `sub` | DB yoksa ya da havuz/kilit zaman aşımında 503 `SERVICE_UNAVAILABLE` + `Retry-After` (testli); aynı anda 4'ten fazla yükleme 503 `DOCUMENT_UPLOADS_BUSY`; model kapalıyken yükleme kabul edilir, worker sonra işler (uygulama Ollama'yı beklemez) | p99 > 2 sn |
+| Belge işleme (worker, faz 4) | – (zamanlanmış) | – (asenkron); kira 10 dk, her embedding grubundan sonra yenilenir | 1 grup başına: embedding (Ollama, transaction dışında, 2 sn bağlantı / 60 sn okuma timeout'u, istemci retry'ı yok) | – | model erişilemez: belge deneme harcamadan geri bırakılır, worker 30 sn duraklar (devre kesici); model yanlış yapılandırılmış: 5 dk duraklama + ERROR; model yüzünden belge `FAILED` olmaz. Diğer geçici hatalar: backoff 30 sn · 2^(n-1), en çok 10 dk, 5 denemede `PROCESSING_FAILED`. Kapanışta belge deneme harcamadan geri bırakılır (ADR-0011) | bekleme süresi > kira (faz 7 alarmı) |
 
 Varsayılan: ≤1 uzak senkron çağrı. Aşan satır ADR + `verso-resilience-review` ister; kayıt alanlarından biri boş olan satır `REQUEST CHANGES`.
 
@@ -77,7 +77,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 ```bash
 ./mvnw -B -ntp verify                                              # tüm testler (JAVA_HOME = JDK 25)
 ./mvnw -B -ntp -pl verso-app -am test -Dtest=ConfigDriftTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js
 GITLEAKS=~/.local/bin/gitleaks.exe node --test scripts/gitleaks-check.test.js scripts/pre-commit.test.js
 bash scripts/mutation-check.sh                                     # negatif doğrulama (~40 dk); ONLY="M20 M41" tek tek
 bash scripts/dev-secrets.sh && docker compose up -d --build --wait  # yığın (ADR-0009)

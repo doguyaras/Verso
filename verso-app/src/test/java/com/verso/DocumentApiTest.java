@@ -170,6 +170,49 @@ class DocumentApiTest {
         assertThat(unknown.body()).contains("\"code\":90020");
     }
 
+    /** Review P6: malformed ids and keys are binding errors (400 90002) and never reach the service. */
+    @Test
+    void request_whenIdOrIdempotencyKeyIsMalformed_isRejectedWith400() throws Exception {
+        HttpResponse<String> badId = send(get("/v1/documents/not-a-uuid", owner));
+        assertThat(badId.statusCode()).isEqualTo(400);
+        assertThat(badId.body()).contains("\"code\":90002");
+        Multipart body = Multipart.pdf("a.pdf", TestPdfs.pages("x"));
+        HttpResponse<String> badKey = send(HttpRequest.newBuilder(uri("/v1/documents"))
+                .header("Authorization", TestIdp.bearer(owner)).header("Content-Type", body.contentType())
+                .header("X-Idempotency-Key", "not-a-uuid").POST(body.body()));
+        assertThat(badKey.statusCode()).isEqualTo(400);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document", Integer.class)).isZero();
+    }
+
+    /** llm-rules 2.1 on the upload path: neither the file name nor the content reaches any log of the request. */
+    @Test
+    void upload_whenAcceptedOrRejected_logsNoFileNameOrContent() throws Exception {
+        String marker = "MarkerPayrollOfJohnRoe";
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory
+                .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        root.addAppender(appender);
+        try {
+            assertThat(upload(owner, marker + ".pdf", TestPdfs.pages(marker), null).statusCode()).isEqualTo(201);
+            assertThat(upload(owner, marker + ".pdf", (marker + " not a pdf").getBytes(), null).statusCode()).isEqualTo(415);
+            assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("outcome=accepted"))
+                    .anyMatch(e -> e.getFormattedMessage().contains("code=DOCUMENT_NOT_PDF"));
+            for (var event : appender.list) {
+                StringBuilder text = new StringBuilder(event.getFormattedMessage()).append(event.getMDCPropertyMap());
+                if (event.getArgumentArray() != null) {
+                    for (Object argument : event.getArgumentArray()) text.append(' ').append(argument);
+                }
+                for (var t = event.getThrowableProxy(); t != null; t = t.getCause()) text.append(' ').append(t.getMessage());
+                assertThat(text.toString()).as(event.getLoggerName()).doesNotContain(marker).doesNotContain(owner);
+            }
+        } finally {
+            root.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
     @Test
     void documents_whenCalledWithoutToken_answer401() throws Exception {
         HttpResponse<String> response = send(HttpRequest.newBuilder(uri("/v1/documents")).GET());

@@ -30,16 +30,17 @@ class DocumentPropertiesTest {
     @Test
     void ingestion_whenLeaseOrBackoffIsNotPositive_failsAtStartup() {
         assertThatThrownBy(() -> new DocumentProperties.Ingestion(true, 5000, Duration.ZERO, 5, Duration.ofSeconds(30),
-                Duration.ofMinutes(10), 16, 10)).hasMessageContaining("lease");
+                Duration.ofMinutes(10), 16, 10, Duration.ofSeconds(30), Duration.ofMinutes(5))).hasMessageContaining("lease");
         assertThatThrownBy(() -> new DocumentProperties.Ingestion(true, 5000, Duration.ofMinutes(10), 0,
-                Duration.ofSeconds(30), Duration.ofMinutes(10), 16, 10)).hasMessageContaining("max-attempts");
+                Duration.ofSeconds(30), Duration.ofMinutes(10), 16, 10, Duration.ofSeconds(30), Duration.ofMinutes(5))).hasMessageContaining("max-attempts");
         assertThatThrownBy(() -> new DocumentProperties.Ingestion(true, 5000, Duration.ofMinutes(10), 5,
-                Duration.ofMinutes(20), Duration.ofMinutes(10), 16, 10)).hasMessageContaining("max >= first");
+                Duration.ofMinutes(20), Duration.ofMinutes(10), 16, 10, Duration.ofSeconds(30), Duration.ofMinutes(5))).hasMessageContaining("max >= first");
     }
 
     private static DocumentProperties props(DataSize maxFile, int maxPages, int chunkSize, int overlap, String model,
                                             int dimensions) {
-        return new DocumentProperties(maxFile, maxPages, 2_000_000, 200, DataSize.ofMegabytes(256), chunkSize, overlap,
+        return new DocumentProperties(maxFile, maxPages, 2_000_000, 50_000, DataSize.ofMegabytes(64), 200, 4, 20,
+                DataSize.ofMegabytes(256), chunkSize, overlap,
                 model, dimensions, INGESTION);
     }
 }

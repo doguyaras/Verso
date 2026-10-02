@@ -16,6 +16,7 @@ spring:
     user: svc_document_migrate
   ai:
     ollama:
+      # The compose ollama published on 127.0.0.1 by deploy/compose.local.yaml (or a host Ollama with this model).
       base-url: http://localhost:11434
       embedding:
         model: bge-m3:567m
@@ -25,9 +26,6 @@ verso:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).
       issuer: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso
       jwk-set-uri: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso/protocol/openid-connect/certs
-  document:
-    # The ollama service is not published; an IDE run uses a local Ollama with the same model (ADR-0011).
-    embedding-model: bge-m3:567m
 management:
   endpoint:
     health:

@@ -28,7 +28,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 | qa | 11000–11999 | soru-cevap, model çağrısı |
 | validation | 90000–90099 | ortak: bean validation, binding, 404/405/415, API sürümü |
 | security | 90100–90199 | ortak: kimlik ve yetki (faz 3) |
-| system | 99998–99999 | ortak: upstream, beklenmeyen |
+| system | 99997–99999 | ortak: geçici olarak kullanılamıyor (503), upstream, beklenmeyen |
 
 Hata yanıtı her zaman aynı zarftadır (ADR-0004):
 
@@ -74,14 +74,26 @@ Demo kullanıcıyla token (device flow): betik bir bağlantı yazar, tarayıcıd
 TOKEN="$(bash scripts/demo-token.sh)"
 ```
 
-```bash
-curl -i -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/v1/ping
-```
-
-Henüz uç yok; geçerli token'la `404`, token'sız `401` döner. Uçtan uca kontrol (CI'da da çalışır):
+Token'sız istek `401` döner. Kimlik zincirinin uçtan uca kontrolü (CI'da da çalışır):
 
 ```bash
 bash scripts/auth-smoke.sh
+```
+
+**Belgeler** (ADR-0011; istemci sözleşmesi: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md)). PDF yükle; belge `PENDING` olarak döner, worker sayfa sayfa okuyup yerel bge-m3 modeliyle vektörleştirir ve birkaç saniye içinde `READY` olur. Orijinal PDF işlendikten sonra silinir; sayfa metinleri ve vektörler kalır.
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -F "file=@scripts/fixtures/smoke.pdf;type=application/pdf" http://127.0.0.1:8080/v1/documents
+```
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/v1/documents
+```
+
+`DELETE /v1/documents/{id}` belgeyi tüm türevleriyle siler. Uçtan uca kontrol (gerçek model, CI'da da çalışır):
+
+```bash
+bash scripts/ingest-smoke.sh
 ```
 
 **Faz 2'den yükseltme.** Init script'leri yalnız boş veri volume'ünde çalışır; faz 3'ten önce oluşmuş bir volume'de Keycloak'ın veritabanı yoktur ve `keycloak` sağlıklı olmaz. Bir kez şu adımlar (secret'ları üretir, postgres'i yeni secret'la yeniden oluşturur, idempotent script'i çalıştırır):
@@ -100,7 +112,11 @@ docker compose up -d --build --wait
 
 (`MSYS_NO_PATHCONV=1` yalnız Windows Git Bash için; diğer kabuklarda etkisizdir.)
 
-**Kaynaklar.** Container bellek sınırlarının toplamı yaklaşık 4,5 GB'dır (uygulama 1,5 GB, PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, migrate 512 MB geçici). Host'ta en az 6 GB boş RAM önerilir. Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
+**Kaynaklar.**
+
+- **Bellek:** container sınırlarının toplamı yaklaşık 7,5 GB'dır (uygulama 1,5 GB, Ollama 3 GB, PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 8 GB boş RAM önerilir.
+- **Disk ve ağ:** ilk açılış yaklaşık 5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB). Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
+- **Embedding:** CPU'da yapılır; Ollama 2 CPU ile sınırlıdır (`OLLAMA_CPUS`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
 
@@ -130,7 +146,7 @@ Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontaine
 ```
 
 ```bash
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js
 ```
 
 IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye açan katman. Port `VERSO_DB_LOCAL_PORT` ile değişir. IDE'nin çalışma dizini depo kökü olmalı; parolalar `secrets/`'tan okunur.

@@ -29,6 +29,8 @@ public final class TestEmbeddingModel implements EmbeddingModel {
     private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
     private volatile int dimensions = DIMENSIONS;
     private volatile List<String> lastInputs = List.of();
+    private volatile boolean nan;
+    private volatile Runnable onCall = () -> { };
 
     private TestEmbeddingModel() {}
 
@@ -47,6 +49,18 @@ public final class TestEmbeddingModel implements EmbeddingModel {
         failure.set(null);
         dimensions = DIMENSIONS;
         lastInputs = List.of();
+        nan = false;
+        onCall = () -> { };
+    }
+
+    /** Vectors containing NaN: not a model failure, the store rejects them (a non-model error path). */
+    public void answerWithNaN() {
+        nan = true;
+    }
+
+    /** Runs before every call, e.g. to start a shutdown while a document is being embedded. */
+    public void onCall(Runnable action) {
+        onCall = action;
     }
 
     public void failWith(RuntimeException exception) {
@@ -69,6 +83,7 @@ public final class TestEmbeddingModel implements EmbeddingModel {
     public EmbeddingResponse call(EmbeddingRequest request) {
         calls.incrementAndGet();
         lastInputs = List.copyOf(request.getInstructions());
+        onCall.run();
         RuntimeException error = failure.get();
         if (error != null) throw error;
         List<Embedding> results = new ArrayList<>();
@@ -98,6 +113,7 @@ public final class TestEmbeddingModel implements EmbeddingModel {
         }
         float scale = (float) (1 / Math.sqrt(norm));
         for (int i = 0; i < vector.length; i++) vector[i] *= scale;
+        if (nan) vector[0] = Float.NaN;
         return vector;
     }
 

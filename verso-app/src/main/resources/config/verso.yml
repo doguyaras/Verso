@@ -40,6 +40,8 @@ spring:
       max-file-size: 20MB
       max-request-size: 21MB
       file-size-threshold: 21MB
+      # Parsed when the controller asks for the part, after the upload limiter let the request in.
+      resolve-lazily: true
   # Minor API versions through a header (ADR-0004): optional, 1.0 by default, unknown values are 400.
   mvc:
     apiversion:
@@ -60,14 +62,8 @@ spring:
         pull-model-strategy: never
       embedding:
         model: ${OLLAMA_EMBEDDING_MODEL}
-    # The ingestion worker retries with its own backoff (ADR-0011); the client retry stays short so a dead model does
-    # not hold a claimed document for minutes.
-    retry:
-      max-attempts: 2
-      backoff:
-        initial-interval: 1s
-        multiplier: 2
-        max-interval: 5s
+    # No client retry for embeddings: Spring AI 2.0's Ollama embedding client has none (phase 4 reviews C5/L1), and
+    # the ingestion worker pauses and retries on its own (ADR-0011).
   # Model and other outbound HTTP calls (llm-rules 5.2): Boot's builders apply these to the Ollama client.
   http:
     clients:
@@ -94,12 +90,17 @@ verso:
     max-file-size: 20MB
     max-pages: 500
     max-text-chars: 2000000
+    max-page-chars: 50000
+    max-content-bytes: 64MB
     max-documents-per-account: 200
+    max-queued-per-account: 20
+    # Each upload is held in memory (20 MB, twice): this bounds that memory per instance (ADR-0011).
+    max-concurrent-uploads: 4
     parser-memory: 256MB
     chunk-size: 1000
     chunk-overlap: 150
-    # Stored with every chunk (llm-rules 6.1); the same value the Ollama client uses.
-    embedding-model: ${OLLAMA_EMBEDDING_MODEL}
+    # Stored with every chunk (llm-rules 6.1): read from the Ollama client's own setting, so the two cannot differ.
+    embedding-model: ${spring.ai.ollama.embedding.model}
     embedding-dimensions: 1024
     ingestion:
       enabled: true
@@ -110,6 +111,9 @@ verso:
       max-retry-backoff: 10m
       embedding-batch: 16
       max-documents-per-poll: 10
+      # Circuit breaker of the embedding model (review R1/R2): no claims while it is down or misconfigured.
+      model-unavailable-pause: 30s
+      model-misconfigured-pause: 5m
 logging:
   level:
     # The PDF parser warns about fonts and broken objects; its messages can quote document content (llm-rules 2.1).

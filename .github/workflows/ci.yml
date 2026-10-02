@@ -46,6 +46,7 @@ jobs:
           node --test scripts/review-gate.test.js
           node --test scripts/repo-hygiene.test.js
           node --test scripts/keycloak-start.test.js
+          node --test scripts/ollama-pull.test.js
       - name: migration degismezligi (PR base'ine karsi)
         if: github.event_name == 'pull_request'
         # base_ref goes through env, never straight into the script text (expression injection)

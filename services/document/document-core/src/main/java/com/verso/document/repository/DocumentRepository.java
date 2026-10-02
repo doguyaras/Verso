@@ -6,6 +6,7 @@ import com.verso.document.api.enums.DocumentStatus;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -66,9 +67,32 @@ public class DocumentRepository {
                 .query(ROW).list();
     }
 
+    /** Serialises the uploads of one account until the transaction ends (quota check, reference 4.3 check-then-act). */
+    public void lockAccount(String accountId) {
+        jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:account, 0))").param("account", accountId)
+                .query((rs, n) -> 1).single();
+    }
+
+    /** Documents of the account still waiting for or in ingestion. */
+    public long countQueued(String accountId) {
+        return jdbc.sql("SELECT count(*) FROM document.document WHERE account_id = :account "
+                        + "AND status IN ('PENDING', 'PROCESSING')")
+                .param("account", accountId).query(Long.class).single();
+    }
+
     public long count(String accountId) {
         return jdbc.sql("SELECT count(*) FROM document.document WHERE account_id = :account")
                 .param("account", accountId).query(Long.class).single();
+    }
+
+    /**
+     * Raises the lock wait of the current transaction. A deletion may meet the ingestion worker's transaction that
+     * stores a large document's chunks (seconds); the role default of 3 s would turn the KVKK erasure into an error
+     * (phase 4 review D2).
+     */
+    public void waitForLocksUpTo(Duration timeout) {
+        jdbc.sql("SELECT set_config('lock_timeout', :timeout, true)")
+                .param("timeout", timeout.toMillis() + "ms").query(String.class).single();
     }
 
     /** Removes the document; file, pages, chunks and vectors go with it (ON DELETE CASCADE, llm-rules 4.2). */

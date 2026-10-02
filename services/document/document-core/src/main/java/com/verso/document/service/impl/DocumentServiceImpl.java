@@ -11,9 +11,12 @@ import com.verso.document.repository.DocumentRow;
 import com.verso.document.service.DocumentMapper;
 import com.verso.document.service.DocumentService;
 import com.verso.document.service.FileNames;
+import com.verso.platform.core.exception.CommonErrorCode;
+import com.verso.platform.core.exception.ServiceException;
 import com.verso.platform.security.web.AccountId;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +40,8 @@ public class DocumentServiceImpl implements DocumentService {
     /** ISO 32000: the header is "%PDF-"; readers accept it within the first 1024 bytes. */
     private static final byte[] PDF_MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
     private static final int MAGIC_WINDOW = 1024;
+    /** Longer than the worker's longest transaction (storing the chunks of a document at the text limit, ~6 s). */
+    private static final Duration DELETE_LOCK_WAIT = Duration.ofSeconds(15);
 
     private final DocumentRepository repository;
     private final DocumentProperties properties;
@@ -58,15 +63,23 @@ public class DocumentServiceImpl implements DocumentService {
             if (earlier.isPresent()) return replayed(earlier.get());
         }
         if (content.length == 0) throw rejected(DocumentErrorCode.DOCUMENT_EMPTY);
-        if (content.length > properties.maxFileSize().toBytes()) throw rejected(DocumentErrorCode.DOCUMENT_TOO_LARGE);
-        if (!startsLikePdf(content)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_PDF);
-        if (repository.count(account.value()) >= properties.maxDocumentsPerAccount()) {
-            throw rejected(DocumentErrorCode.DOCUMENT_LIMIT_REACHED);
+        if (content.length > properties.maxFileSize().toBytes()) {
+            // The multipart limit (same value) normally answers first; one code for one rule (review P2).
+            throw new ServiceException(CommonErrorCode.PAYLOAD_TOO_LARGE, "DOCUMENT_TOO_LARGE");
         }
+        if (!startsLikePdf(content)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_PDF);
         String name = FileNames.sanitize(fileName);
         DocumentRow created;
         try {
             created = transaction.execute(status -> {
+                // Count and insert under a per-account lock: parallel uploads cannot overrun the quota (review C6).
+                repository.lockAccount(account.value());
+                if (repository.count(account.value()) >= properties.maxDocumentsPerAccount()) {
+                    throw rejected(DocumentErrorCode.DOCUMENT_LIMIT_REACHED);
+                }
+                if (repository.countQueued(account.value()) >= properties.maxQueuedPerAccount()) {
+                    throw rejected(DocumentErrorCode.DOCUMENT_QUEUE_FULL);
+                }
                 DocumentRow row = repository.insert(account.value(), name, content.length, idempotencyKey, clock.instant());
                 repository.insertFile(row.id(), content);
                 return row;
@@ -95,7 +108,11 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public void delete(AccountId account, UUID documentId) {
-        if (!repository.delete(account.value(), documentId)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        Boolean deleted = transaction.execute(status -> {
+            repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
+            return repository.delete(account.value(), documentId);
+        });
+        if (!Boolean.TRUE.equals(deleted)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND);
         log.info("Document deleted: documentId={} operation=delete outcome=deleted", documentId);
     }
 

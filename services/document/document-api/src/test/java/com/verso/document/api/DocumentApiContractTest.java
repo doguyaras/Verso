@@ -13,9 +13,18 @@ import org.springframework.modulith.NamedInterface;
 /** The contract module's own rules (ADR-0007 #24, reference 3.3): exposed packages and immutable value types. */
 class DocumentApiContractTest {
 
+    /** Every package of the contract, found on the classpath (a new sub-package cannot be forgotten, review A2). */
     @Test
     void packages_whenCompiled_areAllNamedInterfaceApi() throws Exception {
-        for (String name : List.of("com.verso.document.api", "com.verso.document.api.dto", "com.verso.document.api.enums")) {
+        java.util.Set<String> packages = new java.util.TreeSet<>();
+        for (org.springframework.core.io.Resource resource : new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+                .getResources("classpath*:com/verso/document/api/**/*.class")) {
+            String path = resource.getURL().toString();
+            String relative = path.substring(path.indexOf("com/verso/document/api"));
+            packages.add(relative.substring(0, relative.lastIndexOf('/')).replace('/', '.'));
+        }
+        assertThat(packages).contains("com.verso.document.api", "com.verso.document.api.dto", "com.verso.document.api.enums");
+        for (String name : packages) {
             NamedInterface named = Class.forName(name + ".package-info").getAnnotation(NamedInterface.class);
             assertThat(named).as(name).isNotNull();
             assertThat(named.value()).as(name).containsExactly("api");

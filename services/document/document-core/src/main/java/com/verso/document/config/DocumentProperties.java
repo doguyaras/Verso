@@ -12,7 +12,12 @@ import org.springframework.util.unit.DataSize;
  * @param maxFileSize          largest accepted PDF; must not exceed spring.servlet.multipart.max-file-size
  * @param maxPages             a longer PDF fails with TOO_MANY_PAGES
  * @param maxTextChars         more extracted text fails with TOO_MUCH_TEXT (bounds chunks and embedding calls)
+ * @param maxPageChars         glyphs one page may produce; counted while the parser collects them (memory, review C1)
+ * @param maxContentBytes      decompressed size of all content streams; measured before the parser decodes them (C2)
  * @param maxDocumentsPerAccount upload quota per account
+ * @param maxConcurrentUploads uploads received at the same time per instance; each is held in memory (review E2)
+ * @param maxQueuedPerAccount  PENDING or PROCESSING documents per account: one account cannot fill the shared queue
+ *                             in front of everybody else (security review S3)
  * @param parserMemory         heap the PDF parser may use for one document (PDF bombs, ADR-0011)
  * @param chunkSize            characters per chunk (llm-rules 6.4)
  * @param chunkOverlap         characters shared by neighbouring chunks of one page
@@ -25,7 +30,11 @@ public record DocumentProperties(
         @DefaultValue("20MB") DataSize maxFileSize,
         @DefaultValue("500") int maxPages,
         @DefaultValue("2000000") int maxTextChars,
+        @DefaultValue("50000") int maxPageChars,
+        @DefaultValue("64MB") DataSize maxContentBytes,
         @DefaultValue("200") int maxDocumentsPerAccount,
+        @DefaultValue("4") int maxConcurrentUploads,
+        @DefaultValue("20") int maxQueuedPerAccount,
         @DefaultValue("256MB") DataSize parserMemory,
         @DefaultValue("1000") int chunkSize,
         @DefaultValue("150") int chunkOverlap,
@@ -42,6 +51,8 @@ public record DocumentProperties(
      * @param maxRetryBackoff  upper bound of the retry delay
      * @param embeddingBatch   chunks per embedding request
      * @param maxDocumentsPerPoll documents one poll processes before yielding
+     * @param modelUnavailablePause pause of all claims after the embedding model could not be reached (circuit breaker)
+     * @param modelMisconfiguredPause pause after an error that repeats until the configuration changes
      */
     public record Ingestion(
             @DefaultValue("true") boolean enabled,
@@ -51,13 +62,18 @@ public record DocumentProperties(
             @DefaultValue("30s") Duration retryBackoff,
             @DefaultValue("10m") Duration maxRetryBackoff,
             @DefaultValue("16") int embeddingBatch,
-            @DefaultValue("10") int maxDocumentsPerPoll) {
+            @DefaultValue("10") int maxDocumentsPerPoll,
+            @DefaultValue("30s") Duration modelUnavailablePause,
+            @DefaultValue("5m") Duration modelMisconfiguredPause) {
 
         public Ingestion {
             positive(pollIntervalMs, "ingestion.poll-interval-ms");
             positive(maxAttempts, "ingestion.max-attempts");
             positive(embeddingBatch, "ingestion.embedding-batch");
             positive(maxDocumentsPerPoll, "ingestion.max-documents-per-poll");
+            if (!modelUnavailablePause.isPositive() || !modelMisconfiguredPause.isPositive()) {
+                throw new IllegalStateException("verso.document.ingestion: model pauses must be positive");
+            }
             if (!lease.isPositive() || !retryBackoff.isPositive() || maxRetryBackoff.compareTo(retryBackoff) < 0) {
                 throw new IllegalStateException("verso.document.ingestion: lease and backoffs must be positive, max >= first");
             }
@@ -69,7 +85,11 @@ public record DocumentProperties(
         if (parserMemory.toBytes() <= 0) throw new IllegalStateException("verso.document.parser-memory must be positive");
         positive(maxPages, "max-pages");
         positive(maxTextChars, "max-text-chars");
+        positive(maxPageChars, "max-page-chars");
+        if (maxContentBytes.toBytes() <= 0) throw new IllegalStateException("verso.document.max-content-bytes must be positive");
         positive(maxDocumentsPerAccount, "max-documents-per-account");
+        positive(maxConcurrentUploads, "max-concurrent-uploads");
+        positive(maxQueuedPerAccount, "max-queued-per-account");
         positive(chunkSize, "chunk-size");
         if (chunkOverlap < 0 || chunkOverlap >= chunkSize) {
             throw new IllegalStateException("verso.document.chunk-overlap must be at least 0 and below chunk-size");

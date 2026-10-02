@@ -90,7 +90,11 @@ if in_backups "grep -qx 'document.restore_selftest_probe|$ROWS' /backups/verso-s
   ok "manifest holds the $ROWS probe rows"
 else wrong "manifest does not hold the $ROWS probe rows"; fi
 
-expect pass "drill restores rows, privileges and grants" verso-selftest-good.dump.gpg "app_readable_tables=1"
+# Every table of the manifest except the Flyway history must be readable by the application role; the number grows
+# with each migration (phase 4 added four tables; db review D1), so it is read from the manifest, not hard-coded.
+readable_expected="$(in_backups "grep -c '^document\.' /backups/verso-selftest-good.manifest | tr -d ' '")"
+readable_expected=$((readable_expected - 1))
+expect pass "drill restores rows, privileges and grants" verso-selftest-good.dump.gpg "app_readable_tables=$readable_expected"
 expect pass "drill runs Flyway validate" verso-selftest-good.dump.gpg "Successfully validated"
 
 copy_backup count

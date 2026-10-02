@@ -11,8 +11,10 @@ public enum DocumentFailureReason {
     ENCRYPTED,
     /** More pages than verso.document.max-pages. */
     TOO_MANY_PAGES,
-    /** More extracted text than verso.document.max-text-chars. */
+    /** More text or content than the limits allow (verso.document.max-text-chars, max-page-chars, max-content-bytes). */
     TOO_MUCH_TEXT,
+    /** Uses a structure Verso does not process safely, e.g. an unusual content stream encoding. */
+    UNSUPPORTED_PDF,
     /** No extractable text, e.g. a scanned PDF (OCR is out of scope). */
     NO_TEXT,
     /** A temporary failure (embedding model, database) persisted through every retry, or the worker kept dying. */

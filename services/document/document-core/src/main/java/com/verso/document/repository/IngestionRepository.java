@@ -154,6 +154,21 @@ public class IngestionRepository {
                 .param("id", claim.documentId()).param("token", claim.token()).update();
     }
 
+    /**
+     * Hands the document back without counting this claim as an attempt: the model was unavailable or the
+     * application is shutting down (phase 4 review R1/R3). It is due again at once; the worker's pause spaces it out.
+     */
+    public void release(Claim claim, Instant now) {
+        jdbc.sql("""
+                        UPDATE document.document
+                        SET status = 'PENDING', attempts = GREATEST(attempts - 1, 0), next_attempt_at = :now,
+                            claim_token = NULL, locked_until = NULL, updated_at = :now
+                        WHERE id = :id AND claim_token = :token
+                        """)
+                .param("now", Timestamp.from(now)).param("id", claim.documentId()).param("token", claim.token())
+                .update();
+    }
+
     /** pgvector's text form, "[0.1,0.2,...]"; Float.toString keeps every float exactly. */
     static String vectorLiteral(float[] vector) {
         StringBuilder text = new StringBuilder(vector.length * 12).append('[');
