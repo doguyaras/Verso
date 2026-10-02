@@ -24,11 +24,25 @@ LOG="$(mktemp "${TMPDIR:-/tmp}/verso-mutation.XXXXXX")"
 results=()
 failed=0
 
+# ---------- one run per working tree ----------
+# Two concurrent runs on the same tree overwrite each other's .bak copies, and the "restore" then writes mutated
+# content back (seen in phase 2: 22 files left mutated). mkdir is atomic; only the owner removes the lock.
+LOCK_DIR="$ROOT/.git/mutation-check.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  echo "mutation-check: another run holds $LOCK_DIR (started $(cat "$LOCK_DIR/started" 2>/dev/null || echo '?'))." >&2
+  echo "mutation-check: wait for it, or remove the folder if that run is gone." >&2
+  exit 3
+fi
+date -u +%Y-%m-%dT%H:%M:%SZ > "$LOCK_DIR/started"
+
 # ---------- restore on any exit ----------
 cleanup() {
   while IFS= read -r bak; do mv "$bak" "${bak%.bak}"; touch "${bak%.bak}"; done < <(find . -name '*.bak' -not -path './.git/*' 2>/dev/null)
   rm -rf verso-app/src/main/java/com/verso/stray verso-app/src/main/java/com/verso/platform tmp-mutation
   if [ -d verso-app/src/test.off ]; then rm -rf verso-app/src/test && mv verso-app/src/test.off verso-app/src/test; fi
+  # M88 changes the git index, not a file: put the execute bit back even after an interrupt.
+  git update-index --chmod=+x deploy/postgres/initdb/10-roles.sh 2>/dev/null || true
+  rm -rf "$LOCK_DIR"
 }
 # An interrupted run restores the tree and stops: it used to carry on and could exit 0 (third-round review N4).
 trap cleanup EXIT
