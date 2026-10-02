@@ -1,0 +1,10 @@
+# config-lint fixture: deploy config'i (local degil) — 3 ihlal beklenir (satir 5, 7, 9)
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    password: ${SECRET_DB_PASSWORD:changeme}
+security:
+  pepper: not-a-real-pepper
+services:
+  sms: { base-url: "${SMS_URL}", api-key: "${SECRET_SMS_API_KEY:}" }
+  timeout: ${SMS_TIMEOUT:2s}
