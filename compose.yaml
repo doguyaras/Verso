@@ -41,6 +41,8 @@ x-db-env: &db-env
   # Embeddings from the local Ollama (ADR-0006, ADR-0011); the model name is the one ollama-pull fetched.
   OLLAMA_BASE_URL: http://ollama:11434
   OLLAMA_EMBEDDING_MODEL: &embedding-model bge-m3:567m
+  # The local chat model (ADR-0006). VERSO_CHAT_MODEL and its digest can name another one (CI uses a small model).
+  OLLAMA_CHAT_MODEL: ${VERSO_CHAT_MODEL:-gemma4:e2b}
 
 x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
 
@@ -91,8 +93,9 @@ services:
       - --spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       # No DataSource, so no "db" health contributor for the readiness group; there is no web server to ask anyway.
       - --management.endpoint.health.validate-group-membership=false
-      # No model client either (ADR-0011): the document module is not loaded without a web server.
+      # No model client either (ADR-0011): the document and qa modules are not loaded without a web server.
       - --spring.ai.model.embedding=none
+      - --spring.ai.model.chat=none
     environment:
       <<: *db-env
     secrets:
@@ -183,8 +186,10 @@ services:
     mem_limit: 512m
     pids_limit: 256
     environment:
-      OLLAMA_MODEL: *embedding-model
-      OLLAMA_MODEL_DIGEST: sha256:daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c
+      # name@digest pairs: the embedding model, then the chat model (bge-m3 MIT, Gemma 4 Gemma terms; docs/versions.md).
+      OLLAMA_PULL: >-
+        bge-m3:567m@sha256:daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c
+        ${VERSO_CHAT_MODEL:-gemma4:e2b}@${VERSO_CHAT_MODEL_DIGEST:-sha256:6dd7ac24fe13a238898e16e253ebc7a72fa27fb83f2658c2f6c241df3af5937d}
     volumes:
       - ollama-models:/root/.ollama
       - ./deploy/ollama/pull.sh:/opt/verso/pull.sh:ro
@@ -198,7 +203,7 @@ services:
     <<: *hardening
     image: *ollama-image
     restart: always
-    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
     cpus: ${OLLAMA_CPUS:-2}
     pids_limit: 512
     networks: [models]
@@ -206,8 +211,9 @@ services:
       OLLAMA_HOST: 0.0.0.0:11434
       # No ollama.com cloud models or remotes (llm-rules 1.1, 8.2).
       OLLAMA_NO_CLOUD: "true"
-      # Keep the embedding model loaded between ingestion batches.
+      # Keep both models loaded between questions and ingestion batches.
       OLLAMA_KEEP_ALIVE: 30m
+      OLLAMA_MAX_LOADED_MODELS: "2"
     volumes:
       - ollama-models:/root/.ollama:ro
     tmpfs:
@@ -216,7 +222,7 @@ services:
       ollama-pull:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "ollama", "show", *embedding-model]
+      test: ["CMD-SHELL", "ollama show bge-m3:567m >/dev/null && ollama show ${VERSO_CHAT_MODEL:-gemma4:e2b} >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 12

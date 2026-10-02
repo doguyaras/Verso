@@ -24,6 +24,7 @@ public final class TestEmbeddingModel implements EmbeddingModel {
 
     public static final TestEmbeddingModel INSTANCE = new TestEmbeddingModel();
     public static final int DIMENSIONS = 1024;
+    private static final java.util.regex.Pattern TOPIC = java.util.regex.Pattern.compile("topic-([a-z]+)");
 
     private final AtomicInteger calls = new AtomicInteger();
     private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
@@ -103,7 +104,21 @@ public final class TestEmbeddingModel implements EmbeddingModel {
         return dimensions;
     }
 
+    /**
+     * Texts that carry a marker like {@code topic-leave} point (almost) in one direction per topic, so a question and a
+     * passage about the same topic are similar and different topics are not; everything else is pseudo-random.
+     */
     private float[] vector(String text) {
+        java.util.regex.Matcher topic = TOPIC.matcher(text);
+        if (topic.find()) {
+            float[] vector = new float[dimensions];
+            SplittableRandom noise = new SplittableRandom(seed(text));
+            int axis = Math.floorMod(topic.group(1).hashCode(), dimensions);
+            for (int i = 0; i < vector.length; i++) vector[i] = (float) (noise.nextGaussian() * 0.01);
+            vector[axis] = 1f;
+            if (nan) vector[0] = Float.NaN;
+            return vector;
+        }
         SplittableRandom random = new SplittableRandom(seed(text));
         float[] vector = new float[dimensions];
         double norm = 0;

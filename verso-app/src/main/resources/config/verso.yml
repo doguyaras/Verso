@@ -50,26 +50,32 @@ spring:
       required: false
       default: "1.0"
       supported: "1.0"
-  # Models (ADR-0006, ADR-0011). Embeddings always come from the local Ollama (llm-rules 1.2); the chat model joins in
-  # phase 5. The runtime never pulls a model (llm-rules 8.2): compose's one-shot ollama-pull container does that.
+  # Models (ADR-0006, ADR-0011). Embeddings always come from the local Ollama (llm-rules 1.2); the chat model is the
+  # local one in mode "local" (phase 6 adds the cloud providers). The runtime never pulls a model (llm-rules 8.2):
+  # compose's one-shot ollama-pull container does that.
   ai:
     model:
       embedding: ollama
-      chat: none
+      chat: ollama
     ollama:
       base-url: ${OLLAMA_BASE_URL}
       init:
         pull-model-strategy: never
       embedding:
         model: ${OLLAMA_EMBEDDING_MODEL}
+      chat:
+        model: ${OLLAMA_CHAT_MODEL}
+        # Reasoning models (qwen3, gemma4) would spend the token budget on hidden thinking; Verso wants the answer.
+        think: false
     # No client retry for embeddings: Spring AI 2.0's Ollama embedding client has none (phase 4 reviews C5/L1), and
     # the ingestion worker pauses and retries on its own (ADR-0011).
   # Model and other outbound HTTP calls (llm-rules 5.2): Boot's builders apply these to the Ollama client.
   http:
     clients:
       connect-timeout: 2s
-      # An embedding batch on a CPU-only host; the worker's lease is renewed after every batch.
-      read-timeout: 60s
+      # The local chat model on a CPU-only host (ADR-0008: 90 s); also bounds an embedding batch, whose lease is
+      # renewed after every batch.
+      read-timeout: 90s
 
 # Access tokens (ADR-0005, reference 9.2): ES256 only, exact issuer, the API audience, sub as the account. The issuer
 # is the public URL inside the tokens; the keys come from the IdP's internal address (no discovery at startup).
@@ -85,6 +91,20 @@ verso:
       # Connect and read timeout of the key fetch; keys are cached, so this is paid only on a cache miss (ADR-0010).
       jwks-timeout: 2s
       allow-http: ${OIDC_JWKS_ALLOW_HTTP:false}
+  # AI mode and model names (ADR-0006): reported with every answer, in X-Rag-Mode and on /actuator/info.
+  ai:
+    mode: local
+    chat-model: ${spring.ai.ollama.chat.model}
+    embedding-model: ${spring.ai.ollama.embedding.model}
+  # Question answering (ADR-0008, llm-rules 3.4/3.5). Starting values; the eval set (phase 8) measures them.
+  qa:
+    top-k: 5
+    min-similarity: 0.45
+    max-passage-chars: 1500
+    max-answer-tokens: 512
+    temperature: 0.1
+    chat-concurrency: 2
+    chat-wait: 5s
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
     max-file-size: 20MB

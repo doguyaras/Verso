@@ -90,7 +90,15 @@ curl -s -H "Authorization: Bearer $TOKEN" -F "file=@scripts/fixtures/smoke.pdf;t
 curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/v1/documents
 ```
 
-`DELETE /v1/documents/{id}` belgeyi tüm türevleriyle siler. Uçtan uca kontrol (gerçek model, CI'da da çalışır):
+`DELETE /v1/documents/{id}` belgeyi tüm türevleriyle siler.
+
+**Soru sor** (ADR-0012; istemci sözleşmesi: [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md)). Cevap yalnız senin belgelerinden gelir ve kaynak (belge + sayfa) gösterir; ilgili pasaj yoksa model hiç çağrılmaz ve "bulunamadı" döner. Yanıttaki `X-Rag-Mode` cevabı hangi modun verdiğini söyler.
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"question":"Yıllık izin kaç gün?"}' http://127.0.0.1:8080/v1/questions
+```
+
+CPU'da `gemma4:e2b` ile bir cevap on saniyeler sürer (ADR-0008). Uçtan uca kontrol: `bash scripts/qa-smoke.sh`. Uçtan uca kontrol (gerçek model, CI'da da çalışır):
 
 ```bash
 bash scripts/ingest-smoke.sh

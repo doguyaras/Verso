@@ -22,8 +22,8 @@ import org.springframework.modulith.core.Violations;
  */
 class ModuleStructureTest {
 
-    /** Application modules expected today; phase 5 adds "qa" (ADR-0001). */
-    private static final Set<String> EXPECTED_MODULES = Set.of("document");
+    /** Application modules (ADR-0001): document and qa; qa uses only document's named interface "api". */
+    private static final Set<String> EXPECTED_MODULES = Set.of("document", "qa");
 
     static ApplicationModules productionModules() {
         return ApplicationModules.of(VersoApp.class, resideInAPackage("com.verso.platform.."));
