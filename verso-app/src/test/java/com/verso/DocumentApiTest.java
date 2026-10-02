@@ -44,6 +44,9 @@ class DocumentApiTest {
     @Autowired
     IngestionWorker worker;
 
+    @Autowired
+    org.springframework.transaction.support.TransactionTemplate transaction;
+
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final String owner = "acct-doc-" + UUID.randomUUID();
     private final String other = "acct-other-" + UUID.randomUUID();
@@ -131,6 +134,67 @@ class DocumentApiTest {
         assertThat(send(get("/v1/documents", owner)).body()).contains(id).contains("\"totalElements\":1");
     }
 
+    /** Test review T3: the same key sent in parallel creates one document; every request gets it (reference 6.4). */
+    @Test
+    void upload_whenTheSameKeyIsSentInParallel_createsOneDocument() throws Exception {
+        UUID key = UUID.randomUUID();
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Callable<HttpResponse<String>>> uploads = new java.util.ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            uploads.add(() -> {
+                start.await();
+                return upload(owner, "same.pdf", TestPdfs.pages("same"), key);
+            });
+        }
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(4)) {
+            var futures = uploads.stream().map(pool::submit).toList();
+            start.countDown();
+            java.util.Set<String> ids = new java.util.HashSet<>();
+            for (var future : futures) {
+                HttpResponse<String> response = future.get();
+                assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
+                ids.add(id(response));
+            }
+            assertThat(ids).hasSize(1);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document", Integer.class)).isOne();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document_file", Integer.class)).isOne();
+    }
+
+    /** Test review T7: the stored label is the cleaned name, not what the client sent. */
+    @Test
+    void upload_whenTheFileNameHasAPathAndInvisibleCharacters_storesOnlyTheCleanLabel() throws Exception {
+        HttpResponse<String> response = upload(owner, "../x/rap\u202Eor.pdf", TestPdfs.pages("x"), null);
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains("\"fileName\":\"rapor.pdf\"");
+        assertThat(jdbc.queryForObject("SELECT file_name FROM document.document WHERE id = ?::uuid", String.class,
+                id(response))).isEqualTo("rapor.pdf");
+    }
+
+    /** Test review T8: "%PDF-" is accepted anywhere within the first 1024 bytes and nowhere later. */
+    @Test
+    void upload_whenTheHeaderIsWithinOrBeyondTheFirst1024Bytes_isAcceptedOrRejected() throws Exception {
+        assertThat(upload(owner, "in.pdf", withHeaderAt(1019), null).statusCode()).isEqualTo(201);
+        HttpResponse<String> beyond = upload(owner, "out.pdf", withHeaderAt(1020), null);
+        assertThat(beyond.statusCode()).isEqualTo(415);
+        assertThat(beyond.body()).contains("\"code\":10010");
+    }
+
+    /** Test review T9: reading one document returns its file name, so it is private and not stored by caches. */
+    @Test
+    void get_whenTheOwnerReads_answersPrivateNoStore() throws Exception {
+        String id = id(upload(owner, "private.pdf", TestPdfs.pages("x"), null));
+        HttpResponse<String> response = send(get("/v1/documents/" + id, owner));
+        assertThat(response.headers().firstValue("Cache-Control").orElse("")).contains("no-store").contains("private");
+    }
+
+    private static byte[] withHeaderAt(int offset) {
+        byte[] content = new byte[offset + 64];
+        java.util.Arrays.fill(content, (byte) ' ');
+        System.arraycopy("%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, content, offset, 8);
+        return content;
+    }
+
     /** KVKK erasure (llm-rules 4.2): one DELETE removes the document with its pages, chunks and vectors. */
     @Test
     void delete_whenDocumentIsReady_removesPagesChunksAndVectors() throws Exception {
@@ -146,6 +210,29 @@ class DocumentApiTest {
                     Integer.class, id)).as(table).isZero();
         }
         assertThat(send(get("/v1/documents/" + id, owner)).statusCode()).isEqualTo(404);
+    }
+
+    /**
+     * Review D2: the worker's transaction storing a large document holds the row for seconds; a KVKK deletion waits
+     * for it instead of failing at the role's 3 s lock timeout.
+     */
+    @Test
+    void delete_whenTheRowIsLockedForSeconds_waitsAndSucceeds() throws Exception {
+        String id = id(upload(owner, "locked.pdf", TestPdfs.pages("text"), null));
+        java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+        Thread holder = Thread.ofVirtual().start(() -> transaction.executeWithoutResult(status -> {
+            jdbc.queryForList("SELECT id FROM document.document WHERE id = ?::uuid FOR UPDATE", id);
+            locked.countDown();
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }));
+        locked.await();
+        assertThat(send(delete("/v1/documents/" + id, owner)).statusCode()).isEqualTo(204);
+        holder.join();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document WHERE id = ?::uuid", Integer.class, id)).isZero();
     }
 
     @Test

@@ -20,12 +20,14 @@ field() { sed -n "s/.*\"$1\":\"\{0,1\}\([^\",}]*\)\"\{0,1\}.*/\1/p"; }
 psql_value() { docker compose exec -T postgres psql -X -q -t -A -U postgres -d verso -c "$1" | tr -d '\r'; }
 die() { echo "ingest-smoke: FAIL $1" >&2; exit 1; }
 
-token="$(curl --silent --show-error --max-time 10 "$IDP/token" \
-  --data grant_type=client_credentials --data client_id=verso-ci \
-  --data-urlencode "client_secret@secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET" | field access_token)"
-[ -n "$token" ] || die "no access token from the IdP"
-# The token reaches curl on stdin (--header @-), never in an argument list or a file.
-call() { curl --silent --max-time 30 --header @- "$@" <<<"Authorization: Bearer $token"; }
+token() {
+  curl --silent --show-error --max-time 10 "$IDP/token" --data grant_type=client_credentials --data client_id=verso-ci \
+    --data-urlencode "client_secret@secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET" | field access_token
+}
+[ -n "$(token)" ] || die "no access token from the IdP"
+# A fresh token per call (the access token lives 300 s, as long as the wait below); it reaches curl on stdin
+# (--header @-), never in an argument list or a file (test review T19).
+call() { local t; t="$(token)"; curl --silent --max-time 30 --header @- "$@" <<<"Authorization: Bearer $t"; }
 uuid() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | sed -E 's/(.{8})(.{4})(.{4})(.{4})(.{12})/\1-\2-\3-\4-\5/'; }
 
 created="$(call --header "X-Idempotency-Key: $(uuid)" --form "file=@$PDF;type=application/pdf" \

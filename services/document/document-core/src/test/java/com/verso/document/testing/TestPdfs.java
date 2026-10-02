@@ -43,6 +43,13 @@ public final class TestPdfs {
         return build(new String[]{text}, policy);
     }
 
+    /** Encrypted with an owner password only (permissions): readers open it without asking; Verso reads it too. */
+    public static byte[] ownerPasswordOnly(String text) {
+        StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-secret", "", new AccessPermission());
+        policy.setEncryptionKeyLength(128);
+        return build(new String[]{text}, policy);
+    }
+
     /** Pages without any text, like a scanned document. */
     public static byte[] blank(int pageCount) {
         return build(new String[pageCount], null);

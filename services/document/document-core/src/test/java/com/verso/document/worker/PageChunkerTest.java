@@ -48,6 +48,20 @@ class PageChunkerTest {
         for (String word : page.split(" ")) assertThat(joined).contains(word);
     }
 
+    /** Test review T16: when the overlap would start inside a word, the next chunk starts at the next word. */
+    @Test
+    void chunk_whenTheOverlapStartsMidWord_startsTheNextChunkAtAWordBoundary() {
+        PageChunker chunker = new PageChunker(TestPdfs.properties(500, 2_000_000, 50, 13));
+        String text = "aa bbbbbbbbbbbbbbbbbbbb cc dddddddddddddddddddddddd ee ffffffffffffffffffffff gg hhhhhhhhhhhh ii";
+        List<Chunk> chunks = chunker.chunk(List.of(text));
+        assertThat(chunks).hasSizeGreaterThan(1);
+        java.util.Set<String> words = java.util.Set.of(text.split(" "));
+        for (Chunk chunk : chunks) {
+            String first = chunk.content().split(" ")[0];
+            assertThat(words).as("chunk starts with a whole word: " + chunk.content()).contains(first);
+        }
+    }
+
     @Test
     void chunk_whenPagesAreEmptyOrShort_skipsEmptyAndKeepsPageNumbers() {
         PageChunker chunker = new PageChunker(TestPdfs.properties());
