@@ -48,6 +48,7 @@ Kullanıcıya sorulan iki karar (2026-10-02):
 
 - `secrets/` altındaki dosyalar compose `secrets:` ile `/run/secrets`'a bağlanır. Spring config tree her dosyayı aynı adlı property yapar (`SECRET_DB_DOCUMENT_PASSWORD` gibi). Bu adlar `config/verso.yml`'de fallback'siz okunur.
 - **Yerelde:** `scripts/dev-secrets.sh` eksik dosyaları rastgele üretir; var olanlara dokunmaz, hiçbir değeri yazdırmaz. **Üretimde:** deploy işi aynı adlı dosyaları CI secret'larından yazar.
+- **İzinler:** klasör `0700`, dosyalar `0644` (referansın `chmod 600`'ünden sapma, ADR-0007 #47). Compose dosya secret'larını host'taki sahip ve izinle bind mount eder; container'lar root olmayan kullanıcılarla okur (postgres 999, uygulama 10001). `0600` dosya ilk Linux CI koşusunda yığını başlatmadı; host'taki koruma klasör izniyle sağlanır.
 - `.env.example` yalnız gizli olmayan ayarları taşır: port, image tag'i, profil, limitler, yedek aralığı.
 - Ürün isteğindeki "`.env.example` ile ortam değişkenleri" böylece karşılanır. Referansın "secret `.env`'e konmaz" kuralı da korunur (aşağıda ADR-0007 #40).
 

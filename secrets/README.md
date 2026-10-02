@@ -3,7 +3,8 @@
 Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak bağlar (referans 15.3, seviye 1). Bu dosya dışında hiçbir şey git'e girmez (`.gitignore`).
 
 - **Yerelde:** `bash scripts/dev-secrets.sh` eksik dosyaları rastgele değerlerle üretir. Var olan dosyaya dokunmaz ve hiçbir değeri ekrana yazmaz.
-- **Üretimde:** deploy işi aynı adlı dosyaları CI secret'larından yazar (`chmod 600`).
+- **Üretimde:** deploy işi aynı adlı dosyaları CI secret'larından yazar.
+- **İzinler:** klasör `0700`, dosyalar `0644`. Klasör, host'taki diğer kullanıcıları dışarıda tutar. Compose dosya secret'larını host'taki sahip ve izinle bind mount eder; container'lar onları root olmayan kullanıcılarla okur (postgres 999, uygulama 10001). Bu yüzden `0600` bir dosya yığını başlatmaz (ADR-0009).
 
 | Dosya | Kim kullanır | Ne için |
 |---|---|---|

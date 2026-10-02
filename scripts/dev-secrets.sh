@@ -18,8 +18,13 @@ NAMES=(
   SECRET_BACKUP_ENCRYPTION_KEY         # gpg passphrase for backup files
 )
 
-umask 077
+# Permissions (Linux/macOS hosts; Windows ignores them): the folder is 0700, so no other host user can reach the
+# files; the files are 0644, because compose mounts file secrets as bind mounts with the host owner and mode, and the
+# containers read them as non-root users (postgres 999, application 10001). A 0600 file owned by the deploying user
+# is unreadable for both: the stack does not start (first restore-drill CI run, 2026-10-02).
+umask 022
 mkdir -p "$DIR"
+chmod 700 "$DIR" 2>/dev/null || true
 created=0
 for name in "${NAMES[@]}"; do
   file="$DIR/$name"
@@ -27,7 +32,7 @@ for name in "${NAMES[@]}"; do
   value="$(head -c 96 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)"
   [ "${#value}" -eq 40 ] || { echo "dev-secrets: random source failed" >&2; exit 1; }
   printf '%s' "$value" > "$file"
-  chmod 600 "$file" 2>/dev/null || true
   created=$((created + 1))
 done
+for name in "${NAMES[@]}"; do chmod 644 "$DIR/$name" 2>/dev/null || true; done
 echo "dev-secrets: $created created, $(( ${#NAMES[@]} - created )) kept ($DIR)"

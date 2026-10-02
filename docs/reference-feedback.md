@@ -324,3 +324,12 @@ Kaynak: faz 2 uygulaması, gerçek Postgres'e karşı testler (`DatabaseRolesTes
   - Satır sayısı manifest'i `pg_export_snapshot()` + `pg_dump --snapshot` ile aynı snapshot'ta alınsın; prova manifest'le birebir karşılaştırsın.
   - Bir öz-test, provanın değiştirilmiş manifest, bozulmuş dosya ve eksik checksum durumlarında kırmızı verdiğini göstersin.
 - **Verso:** `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill-selftest.sh`.
+
+### R36 · `chmod 600` secret dosyası root olmayan container'larda okunamaz (HIGH, deploy)
+- **Nerede:** Referans 15.3 seviye 1: "Secret dosyaları ... `chmod 600`"; 18.1 non-root image kuralı.
+- **Kanıt:**
+  - Compose (swarm dışı) dosya secret'larını, host'taki sahip ve izinle bind mount eder; long syntax'taki `uid/gid/mode` uygulanmaz.
+  - Deploy kullanıcısına ait `0600` dosyayı postgres (999) ve uygulama (10001) okuyamadı; Linux'ta yeniden üretildi. İlk Linux CI koşusunda yığın başlamadı.
+  - Windows'taki Docker Desktop bind mount'larda izinleri `0777` gösterdiği için bu durum geliştirici makinesinde görünmüyor.
+- **Düzeltme:** Secret klasörü `0700` (host koruması), dosyalar `0644`. Ya da container kullanıcısıyla aynı UID/GID'ye `chown`; ya da gerçek secret mekanizması (swarm/Kubernetes). Kural, Linux'ta koşan bir uçtan uca testle doğrulansın.
+- **Verso:** `scripts/dev-secrets.sh`, `secrets/README.md`; ADR-0007 #47.
