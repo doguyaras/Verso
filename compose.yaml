@@ -77,6 +77,8 @@ services:
     command:
       - --spring.main.web-application-type=none
       - --spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      # No DataSource, so no "db" health contributor for the readiness group; there is no web server to ask anyway.
+      - --management.endpoint.health.validate-group-membership=false
     environment:
       <<: *db-env
     secrets:

@@ -327,6 +327,8 @@ backup .dockerignore; sub .dockerignore 's/\n\*\*\/\.env\n/\n/' \
   && expect_red "M77 nested .env files enter the build context" verso-app ComposeConfigTest dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth; restore .dockerignore
 backup compose.yaml; sub compose.yaml 's/(  postgres:\n    image: \*postgres-image\n)/$1    ports:\n      - "5432:5432"\n/' \
   && expect_red "M78 database published on the host" verso-app ComposeConfigTest ports_whenComposed_publishOnlyTheApiOnLoopback; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/\n\s*- --management\.endpoint\.health\.validate-group-membership=false//' \
+  && expect_red "M79 migrate mode cannot start (readiness group needs db)" verso-app MigrateModeTest migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource; restore compose.yaml
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
