@@ -1,0 +1,6 @@
+# Normalize line endings: shell hooks and scripts break with CRLF (reference 19.4).
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.pdf binary
+*.jar binary
