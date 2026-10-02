@@ -7,7 +7,7 @@
 - **Şekil:** **modüler monolit (A).** Tek deploy birimi `verso-app`; domain modülleri Spring Modulith modülleridir ve `*-api`/`*-core` Maven çiftleri olarak tutulur. Profil: **P0**.
 - **Modüller:**
   - `platform-observability`, `platform-core`, `platform-security` (OIDC resource server, `@CurrentAccount`; faz 3): kodda var.
-  - `document`: planlı, faz 4. Kapsamı yükleme, parse, chunk, embedding, saklama ve retrieval.
+  - `document`: kodda var (faz 4, ADR-0011). Yükleme, PDF ayrıştırma, chunk, embedding, ingestion worker; retrieval faz 5.
   - `qa`: planlı, faz 5. Kapsamı prompt, model çağrısı ve atıflar.
 - **Yeniden değerlendirme eşiği:** ADR-0001.
 - **Repo:** Maven multi-module monorepo; `platform/*` starter'ları, `verso-app`, (planlı) `services/<domain>/<domain>-api|core`.
@@ -16,7 +16,7 @@
 
 | Servis | Port | `application.name` | Actor / `iss` | Audience | DB schema / rol | Hata kodu bloğu | Yayınladığı olaylar | Tükettiği olaylar | Sıcak yol uzak çağrı sayısı |
 |---|---|---|---|---|---|---|---|---|---|
-| verso-app | 8080 (API), 8081 (actuator) | verso | – (şekil A: servis JWT'si yok) | user JWT `aud` = `verso-api`, `typ` `at+jwt` (ADR-0005, ADR-0010) | (planlı) `document` / `svc_document`, `svc_document_migrate` | document 10000–10999, qa 11000–11999 | – (ADR-0003) | – | `POST /v1/questions`: **2** (ADR-0008) |
+| verso-app | 8080 (API), 8081 (actuator) | verso | – (şekil A: servis JWT'si yok) | user JWT `aud` = `verso-api`, `typ` `at+jwt` (ADR-0005, ADR-0010) | `document` / `svc_document`, `svc_document_migrate` | document 10000–10999, qa 11000–11999 | – (ADR-0003) | – | `POST /v1/questions`: **2** (ADR-0008) |
 
 Ortak kod blokları: validation 90000–90099, security 90100–90199 (90100 UNAUTHENTICATED, 90101 ACCESS_DENIED, 90102 TOO_MANY_REQUESTS, 90103 IDP_UNAVAILABLE), system 99998–99999 (`ErrorCodeUniquenessTest`).
 
@@ -26,7 +26,8 @@ Ortak kod blokları: validation 90000–90099, security 90100–90199 (90100 UNA
 |---|---|---|---|---|---|---|
 | Kimlik doğrulama (her kimlikli istek; faz 3) | `/v1/**` | anahtar önbellekteyken 0 ek gecikme; önbellek kaçırılınca ≤ 2 sn (`jwks-timeout`) | 0 istek başına. JWKS bir kontrol düzlemi bağımlılığıdır: anahtarlar 5 dk önbellekte, bilinmeyen `kid` için en fazla 30 sn'de bir yeniden çekilir (restart'sız anahtar rotasyonu) | anahtar seti (5 dk önbellek; IdP kesintisinde son bilinen anahtarlar 1 saat) | önbellek sıcak: kesinti görünmez; soğuk: 503 `IDP_UNAVAILABLE` + `Retry-After: 30` (ADR-0010) | IdP kesintisi 1 saati aşarsa veya rotasyon 30 sn'lik sınıra takılırsa |
 | Soru sor (planlı, faz 5) | `POST /v1/questions` | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn (başlangıç ayarı, ADR-0008) | 2: embedding (soru vektörü; read-model ile yapılamaz) + chat (cevap üretimi). Kimlik doğrulama satırındaki JWKS önbellekli olduğu için sayılmaz (ADR-0010) | sahiplik: token `sub` (token ömrü) | 503 `MODEL_UNAVAILABLE`; eşik altında model çağrılmaz | p99 > bütçe 3 gün; ADR-0008 |
-| Belge yükle (planlı, faz 4) | `POST /v1/documents` | 2 sn (dosya boyutu sınırı içinde) | 0 (yalnız DB yazımı; işleme asenkron worker'da) | sahiplik: token `sub` | DB yoksa 503 | p99 > 2 sn |
+| Belge yükle (faz 4) | `POST /v1/documents` | 2 sn (20 MB sınırı içinde) | 0 (yalnız DB yazımı; işleme asenkron worker'da, ADR-0011) | sahiplik: token `sub` | DB yoksa 503; model kapalıyken yükleme kabul edilir, worker sonra işler | p99 > 2 sn |
+| Belge işleme (worker, faz 4) | – (zamanlanmış) | – (asenkron); kira 10 dk, her embedding grubundan sonra yenilenir | 1 grup başına: embedding (Ollama, transaction dışında, 60 sn okuma timeout'u) | – | geçici hata: backoff'lu yeniden deneme (30 sn · 2^n, en çok 10 dk, 5 deneme); sonra `PROCESSING_FAILED` | bekleme süresi > kira (faz 7 alarmı) |
 
 Varsayılan: ≤1 uzak senkron çağrı. Aşan satır ADR + `verso-resilience-review` ister; kayıt alanlarından biri boş olan satır `REQUEST CHANGES`.
 

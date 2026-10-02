@@ -4,7 +4,7 @@
 >
 > Verso answers questions about your PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your own infrastructure and the application makes no outbound connections. `cloud` mode swaps only the chat model for an external LLM API, behind the same Spring AI interface, through configuration alone. Every response carries `X-Rag-Mode` so a demo can prove which mode answered. Built with Java 25, Spring Boot 4.1, Spring AI 2.0, PostgreSQL 18 + pgvector, following a strict architecture reference with machine-enforced rules.
 
-**Durum:** Faz 3 / 10: kimlik (OIDC resource server, compose'ta demo Keycloak). Önceki faz veri altyapısını kurdu (PostgreSQL 18 + pgvector, roller, Flyway, şifreli yedek ve otomatik restore provası). Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar: [`docs/roadmap.md`](docs/roadmap.md); kararlar: [`docs/decisions.md`](docs/decisions.md).
+**Durum:** Faz 4 / 10: belge alımı (PDF yükleme, sayfa sayfa ayrıştırma, chunking, yerel bge-m3 embedding; ADR-0011). Faz 3 kimliği ekledi (OIDC resource server, compose'ta demo Keycloak). Önceki faz veri altyapısını kurdu (PostgreSQL 18 + pgvector, roller, Flyway, şifreli yedek ve otomatik restore provası). Soru-cevap faz 5'te gelir. Fazlar: [`docs/roadmap.md`](docs/roadmap.md); kararlar: [`docs/decisions.md`](docs/decisions.md).
 
 ## Neden
 

@@ -112,7 +112,8 @@ class ComposeConfigTest {
     /** Reference 18.2 hardening of every container that does not need root to start (phase 2 test review T8). */
     @Test
     void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
-        for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway")) {
+        for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway", "ollama",
+                "ollama-pull")) {
             Map<String, Object> s = service(name);
             assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));

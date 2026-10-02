@@ -1,6 +1,6 @@
 # ADR-0002: Veri stratejisi (PostgreSQL + pgvector)
 
-- **Durum:** Kabul edildi
+- **Durum:** Kabul edildi; vektör tablosu ve PDF saklama ADR-0011 ile güncellendi
 - **Tarih:** 2026-10-02
 - **Karar verenler:** doguyaras
 - **İlgili eşik (referans Bölüm 24):**
@@ -29,10 +29,10 @@ Referans tek PostgreSQL, modül başına şema ve iki DB rolü (migrate/app), Fl
 - Vektör boyutu embedding modeline bağlıdır: `bge-m3` için 1024. Model değişikliği bir migration ve yeniden indeksleme işidir (ADR-0006 ve `docs/ai/llm-rules.md`).
 - **B reddedildi:** tek host'ta ikinci bir veri deposu, faydası ölçülmeden işletim ve tutarlılık yükü getirir.
 
-Faz 4'te ayrıca karara bağlanacaklar (bu ADR'yi güncelleyen yeni bir ADR ile):
+Faz 4'te karara bağlananlar (ADR-0011; tablo yapısı ADR-0007 #54):
 
-- Orijinal PDF dosyasının ingestion sonrası saklanıp saklanmayacağı (veri minimizasyonu ile yeniden indeksleme arasındaki denge).
-- Dosyanın nerede tutulacağı.
+- Orijinal PDF ingestion sonrası **saklanmaz**: ayrıştırılana kadar `document.document_file`'da bekler, sonra silinir. Sayfa metinleri kalır; yeniden indeksleme onlardan yapılır.
+- Embedding tablosu `PgVectorStore` şeması değil, tipli kolonlu `document.document_chunk`'tır.
 
 ## Sonuçlar
 

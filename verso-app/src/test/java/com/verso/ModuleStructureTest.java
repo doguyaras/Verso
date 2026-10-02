@@ -22,8 +22,8 @@ import org.springframework.modulith.core.Violations;
  */
 class ModuleStructureTest {
 
-    /** Application modules expected today; phase 4 adds "document", phase 5 "qa" (ADR-0001). */
-    private static final Set<String> EXPECTED_MODULES = Set.of();
+    /** Application modules expected today; phase 5 adds "qa" (ADR-0001). */
+    private static final Set<String> EXPECTED_MODULES = Set.of("document");
 
     static ApplicationModules productionModules() {
         return ApplicationModules.of(VersoApp.class, resideInAPackage("com.verso.platform.."));

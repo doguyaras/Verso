@@ -33,6 +33,11 @@
       <groupId>com.verso</groupId>
       <artifactId>document-core</artifactId>
     </dependency>
+    <!-- EmbeddingModel (and the chat model in phase 5) served by the local Ollama (ADR-0006, ADR-0011). -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-ollama</artifactId>
+    </dependency>
     <!-- PostgreSQL 18 + pgvector, Flyway (ADR-0002, ADR-0009). The application connects as svc_document (DML only);
          Flyway connects separately as svc_document_migrate (reference 10.1). -->
     <dependency>
@@ -101,6 +106,12 @@
       <scope>test</scope>
     </dependency>
     <!-- Test identity provider (JWKS + token minting) shared with platform-security's tests. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>document-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>com.verso</groupId>
       <artifactId>platform-security</artifactId>

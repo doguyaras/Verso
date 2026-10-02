@@ -38,6 +38,11 @@ x-db-env: &db-env
   # Plain HTTP to a non-loopback host is refused unless allowed explicitly; here the hop never leaves the compose
   # network. A production IdP is fetched over https and keeps the default (false).
   OIDC_JWKS_ALLOW_HTTP: "true"
+  # Embeddings from the local Ollama (ADR-0006, ADR-0011); the model name is the one ollama-pull fetched.
+  OLLAMA_BASE_URL: http://ollama:11434
+  OLLAMA_EMBEDDING_MODEL: &embedding-model bge-m3:567m
+
+x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
 
 x-postgres-image: &postgres-image pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
 
@@ -86,6 +91,8 @@ services:
       - --spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       # No DataSource, so no "db" health contributor for the readiness group; there is no web server to ask anyway.
       - --management.endpoint.health.validate-group-membership=false
+      # No model client either (ADR-0011): the document module is not loaded without a web server.
+      - --spring.ai.model.embedding=none
     environment:
       <<: *db-env
     secrets:
@@ -112,6 +119,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      ollama:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\":\"UP\"' <&3"]
       interval: 15s
@@ -161,6 +170,49 @@ services:
       timeout: 5s
       retries: 30
       start_period: 120s
+
+  # Model download, once (llm-rules 8.2): a private Ollama server inside this container pulls the embedding model into
+  # the volume and checks the pinned layer digest (bge-m3:567m, MIT licence, docs/versions.md). Needs internet only
+  # when the model is not in the volume yet.
+  ollama-pull:
+    <<: *hardening
+    image: *ollama-image
+    restart: "no"
+    entrypoint: ["sh", "/opt/verso/pull.sh"]
+    environment:
+      OLLAMA_MODEL: *embedding-model
+      OLLAMA_MODEL_DIGEST: sha256:daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c
+    volumes:
+      - ollama-models:/root/.ollama
+      - ./deploy/ollama/pull.sh:/opt/verso/pull.sh:ro
+    tmpfs:
+      - /tmp:size=64m
+
+  # Local embedding model server (ADR-0006, ADR-0011). Not published; only the application talks to it. It never pulls
+  # (ollama-pull did) and reads the models read-only. Phase 6 moves it to an internal-only network (llm-rules 1.1).
+  ollama:
+    <<: *hardening
+    image: *ollama-image
+    restart: always
+    mem_limit: ${OLLAMA_MEM_LIMIT:-3g}
+    pids_limit: 512
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      # Keep the embedding model loaded between ingestion batches.
+      OLLAMA_KEEP_ALIVE: 30m
+    volumes:
+      - ollama-models:/root/.ollama:ro
+    tmpfs:
+      - /tmp:size=256m
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "ollama", "show", "bge-m3:567m"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   # Encrypted logical backups on a schedule (ADR-0009): pg_dump as verso_backup (pg_read_all_data), gpg AES256,
   # SHA-256 sum, row-count manifest and privilege fingerprint taken in the same snapshot. RPO = BACKUP_INTERVAL_SECONDS.
@@ -294,4 +346,5 @@ secrets:
 
 volumes:
   pgdata:
+  ollama-models:
   backups:

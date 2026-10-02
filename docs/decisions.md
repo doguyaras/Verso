@@ -14,3 +14,4 @@ Mimari kararların her biri `docs/adr/NNNN-<baslik>.md` dosyasında, referans ş
 | [0008](adr/0008-soru-cevap-sicak-yolu.md) | Soru-cevap sıcak yolunda iki uzak senkron çağrı ve bütçeleri | Kabul edildi |
 | [0009](adr/0009-veri-altyapisi.md) | Compose, roller ve GRANT sınırı, secret dosyaları, pg_dump + gpg yedek ve otomatik restore provası, çok aşamalı Dockerfile | Kabul edildi (faz 2) |
 | [0010](adr/0010-kimlik-altyapisi.md) | Demo IdP (Keycloak prod modu, kendi veritabanı), token kuralları (ES256, `at+jwt`, `iss`/`aud`/`sub`), device flow + PKCE ve client credentials, zarflı 401/403/400 | Kabul edildi (faz 3) |
+| [0011](adr/0011-belge-alimi.md) | Belge alımı: PDFBox 3.0.8, PDF işlenince silinir, DB claim'li worker, sayfa içi chunking, Ollama bge-m3 embedding, `/v1/documents` | Kabul edildi (faz 4) |
