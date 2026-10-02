@@ -13,6 +13,7 @@
   <modules>
     <module>platform/platform-core</module>
     <module>platform/platform-observability</module>
+    <module>platform/platform-security</module>
     <module>services/document/document-core</module>
     <module>verso-app</module>
   </modules>
@@ -73,6 +74,18 @@
         <groupId>com.verso</groupId>
         <artifactId>platform-observability</artifactId>
         <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>platform-security</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>platform-security</artifactId>
+        <version>${revision}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>com.verso</groupId>

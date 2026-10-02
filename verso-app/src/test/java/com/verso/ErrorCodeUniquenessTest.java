@@ -34,6 +34,7 @@ class ErrorCodeUniquenessTest {
     void errorCodes_whenScanned_areUniqueAndInsideTheirBlock() {
         JavaClasses classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .withImportOption(ArchitectureRulesTest.NO_TEST_JARS)
                 .importPackages("com.verso");
 
         Map<Integer, String> seen = new HashMap<>();

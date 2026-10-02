@@ -14,7 +14,7 @@ import org.springframework.test.context.ContextConfiguration;
 
 /**
  * config/verso.yml's own datasource and Flyway lines, fed the way compose feeds them: DB_HOST, DB_PORT and DB_NAME as
- * environment values, SECRET_* as config-tree properties. @WithVersoPostgres overrides spring.datasource.* and
+ * environment values (OIDC_* included), SECRET_* as config-tree properties. @VersoTestEnvironment overrides spring.datasource.* and
  * spring.flyway.*, so before this test a wrong URL or a swapped password in verso.yml passed every test (phase 2 test
  * review T6).
  */
@@ -30,6 +30,8 @@ class DeployConfigTest {
                     "DB_HOST=" + VersoPostgres.POSTGRES.getHost(),
                     "DB_PORT=" + VersoPostgres.POSTGRES.getFirstMappedPort(),
                     "DB_NAME=" + VersoPostgres.DATABASE,
+                    "OIDC_ISSUER=" + com.verso.platform.security.testing.TestIdentityProvider.ISSUER,
+                    "OIDC_JWK_SET_URI=" + com.verso.support.TestIdp.IDP.jwkSetUri(),
                     "SECRET_DB_DOCUMENT_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_PASSWORD"),
                     "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
                     "spring.datasource.hikari.maximum-pool-size=2")

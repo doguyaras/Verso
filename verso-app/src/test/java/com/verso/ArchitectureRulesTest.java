@@ -33,12 +33,20 @@ class ArchitectureRulesTest {
     static JavaClasses classes;
 
     /** Every package is its own slice, so a cycle between any two packages is caught (not only between modules). */
+    /**
+     * DO_NOT_INCLUDE_TESTS only knows test-classes folders; in a "verify" run a module's test-jar (platform-security's
+     * test identity provider) is a jar and was imported as production code, while "test" saw the folder (phase 3
+     * architecture review A2). Both runs now judge the same classes.
+     */
+    static final ImportOption NO_TEST_JARS = location -> !location.contains("-tests.jar");
+
     static final ArchRule NO_PACKAGE_CYCLES = slices().matching(ROOT + ".(**)").should().beFreeOfCycles();
 
     @BeforeAll
     static void importClasses() {
         classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .withImportOption(NO_TEST_JARS)
                 .importPackages(ROOT);
     }
 

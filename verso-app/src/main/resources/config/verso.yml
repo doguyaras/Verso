@@ -33,6 +33,21 @@ spring:
     clean-disabled: true
     # Off on purpose: it removes the check that stops migrations on a wrong, non-empty database (reference 10.2).
     baseline-on-migrate: false
+
+# Access tokens (ADR-0005, reference 9.2): ES256 only, exact issuer, the API audience, sub as the account. The issuer
+# is the public URL inside the tokens; the keys come from the IdP's internal address (no discovery at startup).
+verso:
+  security:
+    jwt:
+      issuer: ${OIDC_ISSUER}
+      jwk-set-uri: ${OIDC_JWK_SET_URI}
+      audience: verso-api
+      # RFC 9068 access tokens only: an ID token or any other JWT of the same IdP is refused by its header too.
+      type-header: at+jwt
+      clock-skew: 30s
+      # Connect and read timeout of the key fetch; keys are cached, so this is paid only on a cache miss (ADR-0010).
+      jwks-timeout: 2s
+      allow-http: ${OIDC_JWKS_ALLOW_HTTP:false}
 ---
 # Structured (JSON) logs outside the local profile (reference 8.1): Loki/OTLP read fields, not regexes.
 spring:

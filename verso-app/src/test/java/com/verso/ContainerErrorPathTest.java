@@ -9,7 +9,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.verso.platform.core.exception.CommonErrorCode;
 import com.verso.platform.core.exception.ServiceException;
 import com.verso.platform.observability.tracing.TraceIds;
-import com.verso.support.WithVersoPostgres;
+import com.verso.support.TestIdp;
+import com.verso.support.VersoTestEnvironment;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,7 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "management.server.port=0")
 @Import(ContainerErrorPathTest.Probes.class)
-@WithVersoPostgres
+@VersoTestEnvironment
 class ContainerErrorPathTest {
 
     static final String MARKER = "container-marker-Ahmet_maas_bordrosu.pdf";
@@ -347,8 +348,10 @@ class ContainerErrorPathTest {
         return URI.create("http://localhost:" + serverPort + path);
     }
 
+    /** Every request carries a valid access token (ADR-0005): these tests are about what happens after it. */
     private HttpResponse<String> send(HttpRequest.Builder builder) throws Exception {
-        return http.send(builder.timeout(Duration.ofSeconds(10)).build(), HttpResponse.BodyHandlers.ofString());
+        return http.send(builder.setHeader("Authorization", TestIdp.bearer("acct-container"))
+                .timeout(Duration.ofSeconds(10)).build(), HttpResponse.BodyHandlers.ofString());
     }
 
     /** java.net.http rejects invalid percent-encoding, so this request is written on a plain socket. */
@@ -356,7 +359,7 @@ class ContainerErrorPathTest {
         try (Socket socket = new Socket("localhost", serverPort)) {
             socket.setSoTimeout(10_000);
             OutputStream out = socket.getOutputStream();
-            out.write(request.getBytes(StandardCharsets.ISO_8859_1));
+            out.write(TestIdp.withToken(request).getBytes(StandardCharsets.ISO_8859_1));
             out.flush();
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             socket.getInputStream().transferTo(buffer);

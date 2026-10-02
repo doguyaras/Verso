@@ -14,6 +14,12 @@ spring:
   flyway:
     url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
     user: svc_document_migrate
+verso:
+  security:
+    jwt:
+      # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).
+      issuer: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso
+      jwk-set-uri: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso/protocol/openid-connect/certs
 management:
   endpoint:
     health:

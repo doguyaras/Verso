@@ -3,7 +3,7 @@ package com.verso;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.verso.platform.core.handler.ContainerErrorLogSilencer;
-import com.verso.support.WithVersoPostgres;
+import com.verso.support.VersoTestEnvironment;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.catalina.Container;
@@ -30,7 +30,7 @@ import org.springframework.context.annotation.Import;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "management.server.port=0")
 @Import(ContainerLogSilencingTest.Recorder.class)
-@WithVersoPostgres
+@VersoTestEnvironment
 class ContainerLogSilencingTest {
 
     @TestConfiguration(proxyBeanMethods = false)

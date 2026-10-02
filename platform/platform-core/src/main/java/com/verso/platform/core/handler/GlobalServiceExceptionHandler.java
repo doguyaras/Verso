@@ -107,7 +107,11 @@ public class GlobalServiceExceptionHandler extends ResponseEntityExceptionHandle
      * pattern can recognise (llm-rules 2.1; stricter than reference 7.3, see ADR-0007).
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) {
+    public ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) throws Exception {
+        // Spring Security's denial and authentication exceptions belong to its ExceptionTranslationFilter (401/403 in
+        // the envelope, platform-security); swallowing them here turned a @PreAuthorize denial into a 500 (phase 3).
+        // Re-throwing the same instance is not logged by Spring as a failing handler.
+        if (ErrorClassifier.isSecurityException(ex)) throw ex;
         String traceId = traceId(request);
         // Undecodable parameters (Tomcat) and broken multipart bodies arrive here, not through the base class.
         if (ErrorClassifier.isMalformedRequest(ex)) {

@@ -16,7 +16,7 @@ import org.testcontainers.utility.MountableFile;
 
 /**
  * The real database for application-context tests (reference 16: gerçek DB, gerçek Flyway migration'ları), applied
- * with {@link WithVersoPostgres}. One container per JVM; Spring's context cache shares it.
+ * with {@link VersoTestEnvironment}. One container per JVM; Spring's context cache shares it.
  *
  * <p>An initializer, not {@code @ImportTestcontainers} with {@code @DynamicPropertySource}: those properties arrive as
  * a bean, after the auto-configuration conditions ran, and Flyway's condition failed on the unresolved DB_HOST.
@@ -42,7 +42,7 @@ public final class VersoPostgres {
 
     static {
         for (String name : new String[]{"SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_DOCUMENT_PASSWORD",
-                "SECRET_DB_BACKUP_PASSWORD"}) {
+                "SECRET_DB_BACKUP_PASSWORD", "SECRET_DB_KEYCLOAK_PASSWORD"}) {
             SECRETS.put(name, randomPassword());
         }
     }

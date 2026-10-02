@@ -403,3 +403,70 @@ Kaynak: faz 2'nin altı bağımsız review'ı (db-migration, security, test-writ
 - **Kanıt:** Postgres image'ının `pg_hba.conf`'u loopback'e güveniyor. Container içinden `127.0.0.1` ile bağlanan bir test her parolayla geçiyor.
 - **Düzeltme:** Testler servis adı (ağ arayüzü) üzerinden bağlansın.
 - **Verso:** `scripts/restore-drill-selftest.sh`.
+
+## Faz 3 (2026-10-02)
+
+Kaynak: faz 3 geliştirmesi sırasında gözlenenler, altı review (security, spring-code, test-writer, environment-impact, architecture-boundary, resilience) ve `scripts/mutation-check.sh` (M89–M127).
+
+### R47 · Global handler'ın `Exception` yakalayıcısı yetki reddini 500'e çevirir (HIGH, güvenlik/hata zarfı)
+- **Nerede:** Ek B `GlobalServiceExceptionHandler.handleUnexpected` (`@ExceptionHandler(Exception.class)`).
+- **Kanıt:** Controller'dan (ileride `@PreAuthorize`) fırlayan `AccessDeniedException`, Spring Security'nin `ExceptionTranslationFilter`'ına ulaşmadan `@ControllerAdvice`'ta yakalandı; istemci 403 yerine 500 ve ERROR logu aldı (`PlatformSecurityTest.request_whenControllerDeniesAccess_*`, mutasyon M97).
+- **Düzeltme:** Catch-all, `AccessDeniedException` ve `AuthenticationException`'ı (alt sınıfları dahil) yeniden fırlatsın. platform-core Spring Security'ye derleme bağımlılığı almamak için sınıf adlarıyla ve üst sınıf zinciriyle kontrol etsin.
+- **Verso:** `ErrorClassifier.isSecurityException`, `GlobalServiceExceptionHandler.handleUnexpected`.
+
+### R48 · Resource server açılınca health probları token ister (MEDIUM, işletim)
+- **Nerede:** Referans 9 ve 18.2: yönetim portu ayrı, compose healthcheck readiness'i sorar.
+- **Kanıt:** `anyRequest().authenticated()` yönetim portundaki `/actuator/health`'i de kapsadı; compose healthcheck 401 aldı, container `unhealthy` kaldı.
+- **Düzeltme:** `EndpointRequest.to("health")` permitAll (yönetim portunu bilen eşleştirici); actuator yoksa kural eklenmesin.
+- **Verso:** `PlatformSecurityAutoConfiguration`, `VersoAppSmokeTest.probesAndApi_whenCalledWithoutToken_*`, M98.
+
+### R49 · Spring Security firewall'ının reddi zarfın dışında kalır (LOW, hata zarfı)
+- **Nerede:** Referans 7 (her hata zarflı) ve Ek B.
+- **Kanıt:** Nokta segmentli yol (`/v1/x/../y`) `StrictHttpFirewall` tarafından `RequestRejectedException` ile durduruldu; varsayılan işleyici zarfsız yanıt üretti. Faz 1'in "ham yol loglanmaz" testi bu yolu dener.
+- **Düzeltme:** Zarflı bir `RequestRejectedHandler` bean'i (400, ortak validation bloğunda bir kod).
+- **Verso:** `EnvelopeRequestRejectedHandler`, `VersoAppSmokeTest.dotSegmentPath_*`, M99.
+
+### R50 · Token türü ayrımı JOSE başlığıyla da yapılmalı (MEDIUM, güvenlik)
+- **Nerede:** Referans 9.2: yüzeyler `typ` **claim**'i ve ayrı anahtarla ayrılır.
+- **Kanıt:** Harici IdP (Keycloak) ID token'ını ve access token'ı aynı anahtarla imzalar; `typ` claim'ini Verso seçemez. RFC 9068 bunun için JOSE `typ: at+jwt` başlığını tanımlar. Kural kaldırılınca `typ: JWT` taşıyan, imzası ve `aud`'u geçerli token kabul edildi (M94, M96).
+- **Düzeltme:** Harici IdP kullanan profiller için kural: "access token = JOSE `typ` `at+jwt` (RFC 9068); IdP desteklemiyorsa `aud` + ADR."
+- **Verso:** `JwtValidation`, `verso.yml` `type-header`, realm istemci ayarı `access.token.header.type.rfc9068`.
+
+### R51 · Keycloak readiness'i realm içe aktarımı bitmeden UP der (LOW, compose)
+- **Kanıt:** Boş veritabanıyla açılışta `/health/ready` 19:05:41'de UP; bootstrap 19:05:49'da bitti, aradaki token istekleri 503 aldı. `docker compose up --wait` hemen ardından gelen smoke testi düştü.
+- **Düzeltme:** Healthcheck realm'in discovery belgesini (`/realms/<realm>/.well-known/openid-configuration`) sorsun.
+- **Verso:** `compose.yaml` keycloak healthcheck; prosedür boş IdP veritabanıyla tekrar denendi.
+
+### R52 · Starter'ın API zinciri, ilk ek zincirde tamamen kapanır (HIGH, güvenlik)
+- **Nerede:** Referans 9 / Ek B güvenlik starter'ı kalıbı: `@ConditionalOnMissingBean(SecurityFilterChain.class)`.
+- **Kanıt:** Bir modül yalnız `/hooks/**` için zincir ekleyince platform zinciri hiç oluşmadı; Boot'un varsayılanı da (`@ConditionalOnDefaultWebSecurity`) geri çekildi. Token'sız `GET /v1/...` 200 döndü (iki review bağımsız buldu).
+- **Düzeltme:** Platform zinciri koşulsuz, `@Order(LOWEST_PRECEDENCE - 10)` ile catch-all; yalnız aynı adlı bean onu değiştirir. Test: ek zincir varken API 401.
+- **Verso:** `PlatformSecurityAutoConfiguration`, `PlatformSecurityTest.api_whenAnotherSecurityChainIsAdded_*`, M107.
+
+### R53 · `@CurrentAccount` yanlış tipte sessizce query'den bağlanır (HIGH, güvenlik/IDOR)
+- **Nerede:** Referans 6.5 örneği `@CurrentAccount UUID accountId`; resolver yalnız kendi tipini destekler.
+- **Kanıt:** `@CurrentAccount String account` + `?account=victim` + başka hesabın geçerli token'ı → `200 account=victim`.
+- **Düzeltme:** Resolver anotasyonlu her parametreyi üstlensin, tip yanlışsa reddetsin; açılışta tüm handler metotları taransın (yanlış tip = uygulama başlamaz). Referans örneği `AccountId` gibi tek bir değer tipine çevrilsin.
+- **Verso:** `CurrentAccountArgumentResolver`, `CurrentAccountParameterCheck`, M108, M109.
+
+### R54 · `withJwkSetUri` hız sınırı olmadan kurulur; IdP kesintisi 500'dür (HIGH, dayanıklılık)
+- **Nerede:** Referans 9.2 rotasyon kuralı ("JWKS'te `kid`... restart gerekmez") ve 13 (dayanıklılık).
+- **Kanıt:** Spring Security 7.1.1'in builder'ı Nimbus kaynağını hız sınırsız kurar: uydurma `kid`'li 20 token = 20 JWKS isteği. IdP kapalıyken (önbellek soğuk) `AuthenticationServiceException` filtre tarafından yeniden fırlatıldı → 500 ve ERROR. Önbellek süresi dolunca outage toleransı da yoktu.
+- **Düzeltme:** `JWKSourceBuilder`: önbellek, `rateLimited`, `outageTolerant`, timeout + boyut sınırı; hız sınırına takılan bilinmeyen `kid` 401, ilk yükleme hiç olmamışsa 503. `AuthenticationEntryPointFailureHandler.setRethrowAuthenticationServiceException(false)` ile 503 + `Retry-After`. Kritik akış kaydına "önbellekli kontrol düzlemi bağımlılığı" satırı.
+- **Verso:** `JwtValidation.keySource`, `EnvelopeAuthenticationEntryPoint`, `IDP_UNAVAILABLE` 90103, M110–M114; canlı denendi (sıcak önbellek: kesinti görünmez; soğuk: 503).
+
+### R55 · ArchUnit'in `DO_NOT_INCLUDE_TESTS`'i test-jar'ları dışlamaz (LOW, mimari test)
+- **Kanıt:** `test` koşusunda test-jar klasör (`test-classes`) olarak gelip dışlandı; `verify`'da `*-tests.jar` olarak geldi ve üretim kodu sayıldı. İki koşu farklı sınıf kümesini denetledi.
+- **Düzeltme:** `location -> !location.contains("-tests.jar")` ek seçeneği.
+- **Verso:** `ArchitectureRulesTest.NO_TEST_JARS`.
+
+### R56 · Keycloak her realm'e password grant'lı `admin-cli` ve isteğe bağlı `offline_access` koyar (MEDIUM, kimlik)
+- **Nerede:** Referans 9.7 (demo IdP / kimlik desenleri).
+- **Kanıt:** Realm dosyasında yalnız iki istemci tanımlıyken `admin-cli` password grant'a açıktı. `verso-cli` varsayılan isteğe bağlı kapsamlarla `offline_access` isteyebiliyordu.
+- **Düzeltme:** Realm dosyasında `admin-cli` kapalı; istemcilerin kapsamları açıkça (`basic`) ve isteğe bağlı kapsam boş. Canlı: `admin-cli` → `invalid_client`; `offline_access` istense de refresh token türü `Refresh`.
+- **Verso:** `verso-realm.json`, `KeycloakRealmTest.builtInAndCliClients_*`, M124.
+
+### R57 · Init script'leri eski volume'de çalışmaz; yeni bir veritabanı eklemek yükseltme yolu ister (MEDIUM, işletim)
+- **Kanıt:** Faz 2'den gelen volume'de `keycloak` rolü ve veritabanı oluşmaz; Keycloak sağlıklı olmaz.
+- **Düzeltme:** Yeni init script'i idempotent olsun (psql `\gset` + `\if`), README'de elle çalıştırma adımı; çalışan sunucuda `pg_stat_statements.track_utility = off` (R44).
+- **Verso:** `30-keycloak.sh`, README "Faz 2'den yükseltme", `DatabaseRolesTest.keycloakScript_*`, M123.

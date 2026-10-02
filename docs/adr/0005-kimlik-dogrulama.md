@@ -1,6 +1,6 @@
 # ADR-0005: Kimlik doğrulama ve belge sahipliği (harici OIDC)
 
-- **Durum:** Kabul edildi (uygulama faz 3)
+- **Durum:** Kabul edildi; faz 3'te uygulandı (ayrıntılar ADR-0010)
 - **Tarih:** 2026-10-02
 - **Karar verenler:** doguyaras
 - **İlgili eşik (referans Bölüm 24):** Servis kimliği satırı.
@@ -24,7 +24,7 @@ Verso'nun hedef müşterisi zaten bir kimlik sistemine sahip kurumlardır (Activ
 **A** seçildi; kullanıcı 2026-10-02'de onayladı.
 
 - Verso, Spring Security OAuth2 Resource Server olarak çalışır. JWT imzası IdP'nin JWKS ucundan, `kid` ile doğrulanır.
-- Kabul edilen algoritmalar EdDSA ve ES256'dır (referans 9.2). `alg` başlığına göre doğrulayıcı seçilmez.
+- Kabul edilen algoritmalar EdDSA ve ES256'dır (referans 9.2). `alg` başlığına göre doğrulayıcı seçilmez. Faz 3'te yalnız ES256 açıldı (ADR-0007 #49).
 - `iss`, `aud` ve `exp` doğrulanır.
 - Hesap kimliği **yalnız** doğrulanmış token'ın `sub` claim'idir ve `@CurrentAccount` ile okunur. Path, query veya body'den alınmaz (referans 6.5).
 - Her belge bir hesaba aittir. Listeleme, okuma, silme ve **retrieval** sahiplik koşuluyla yapılır. Retrieval'da filtre, vektör sorgusunun içindedir; sonuçları bellekte süzmek kabul edilmez (`docs/ai/llm-rules.md`).

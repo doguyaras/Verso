@@ -4,7 +4,7 @@
 >
 > Verso answers questions about your PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your own infrastructure and the application makes no outbound connections. `cloud` mode swaps only the chat model for an external LLM API, behind the same Spring AI interface, through configuration alone. Every response carries `X-Rag-Mode` so a demo can prove which mode answered. Built with Java 25, Spring Boot 4.1, Spring AI 2.0, PostgreSQL 18 + pgvector, following a strict architecture reference with machine-enforced rules.
 
-**Durum:** Faz 2 / 9: veri altyapısı (PostgreSQL 18 + pgvector, roller, Flyway, compose, şifreli yedek ve otomatik restore provası). Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar ve kararlar: [`docs/decisions.md`](docs/decisions.md).
+**Durum:** Faz 3 / 10: kimlik (OIDC resource server, compose'ta demo Keycloak). Önceki faz veri altyapısını kurdu (PostgreSQL 18 + pgvector, roller, Flyway, şifreli yedek ve otomatik restore provası). Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar: [`docs/roadmap.md`](docs/roadmap.md); kararlar: [`docs/decisions.md`](docs/decisions.md).
 
 ## Neden
 
@@ -61,6 +61,46 @@ API `http://127.0.0.1:8080` adresindedir; PostgreSQL ve actuator portu dışarı
 | `SECRET_DB_DOCUMENT_PASSWORD` | verso-app | `spring.datasource.password` → `svc_document` |
 | `SECRET_DB_BACKUP_PASSWORD` | backup | `verso_backup` (`pg_read_all_data`) |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup, restore provası | yedeklerin gpg parolası |
+| `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü ve veritabanı |
+| `SECRET_KEYCLOAK_ADMIN_PASSWORD` | keycloak | master realm yöneticisi `admin` |
+| `SECRET_KEYCLOAK_CI_CLIENT_SECRET` | keycloak, CI smoke | `verso-ci` istemcisi (client credentials) |
+| `SECRET_KEYCLOAK_DEMO_USER_PASSWORD` | keycloak | `verso` realm'indeki `demo` kullanıcısı |
+
+**Kimlik doğrulama** (ADR-0005, ADR-0010). API her istekte `Authorization: Bearer <access token>` ister; health uçları dışında token'sız istek `401` döner. Token'ı OIDC IdP verir: compose'ta demo Keycloak `http://127.0.0.1:8180` (realm `verso`), üretimde kurumun kendi IdP'si (`OIDC_ISSUER`, `OIDC_JWK_SET_URI`). Kabul edilen token: ES256 imzalı, `typ: at+jwt`, `iss` birebir, `aud` içinde `verso-api`, süreli. Hesap kimliği token'ın `sub`'ıdır.
+
+Demo kullanıcıyla token (device flow): betik bir bağlantı yazar, tarayıcıda `demo` kullanıcısıyla (parola `secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD`) giriş yapınca token'ı verir.
+
+```bash
+TOKEN="$(bash scripts/demo-token.sh)"
+```
+
+```bash
+curl -i -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/v1/ping
+```
+
+Henüz uç yok; geçerli token'la `404`, token'sız `401` döner. Uçtan uca kontrol (CI'da da çalışır):
+
+```bash
+bash scripts/auth-smoke.sh
+```
+
+**Faz 2'den yükseltme.** Init script'leri yalnız boş veri volume'ünde çalışır; faz 3'ten önce oluşmuş bir volume'de Keycloak'ın veritabanı yoktur ve `keycloak` sağlıklı olmaz. Bir kez şu adımlar (secret'ları üretir, postgres'i yeni secret'la yeniden oluşturur, idempotent script'i çalıştırır):
+
+```bash
+bash scripts/dev-secrets.sh && docker compose up -d --wait postgres
+```
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose exec -T -u postgres postgres bash /docker-entrypoint-initdb.d/30-keycloak.sh
+```
+
+```bash
+docker compose up -d --build --wait
+```
+
+(`MSYS_NO_PATHCONV=1` yalnız Windows Git Bash için; diğer kabuklarda etkisizdir.)
+
+**Kaynaklar.** Container bellek sınırlarının toplamı yaklaşık 4,5 GB'dır (uygulama 1,5 GB, PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, migrate 512 MB geçici). Host'ta en az 6 GB boş RAM önerilir. Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
 
@@ -75,6 +115,7 @@ bash scripts/restore-drill.sh
 - **RPO:** yedek aralığı (varsayılan 24 saat, `BACKUP_INTERVAL_SECONDS`).
 - **RTO hedefi:** 1 saat.
 - **Bağlantı bütçesi:** uygulama havuzu 10 + Flyway 1 + yedek 2 = 13; `max_connections` 100.
+- **Kapsam:** yalnız Verso veritabanı. Demo Keycloak'un `keycloak` veritabanı yedeklenmez; realm dosyadan yeniden kurulur (ADR-0010).
 - **Bilinen sınır:** yedek aynı host'taki volume'dedir. Host dışına kopyalama üretim kurulumunun işidir (ADR-0009).
 - **`docker compose down -v`** veritabanıyla birlikte `backups` volume'ünü de siler; önce yedekleri kopyala.
 - **Parola ve anahtar rotasyonu:** [`secrets/README.md`](secrets/README.md). Init script'leri yalnız ilk kurulumda çalışır.
@@ -89,7 +130,7 @@ Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontaine
 ```
 
 ```bash
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js
 ```
 
 IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye açan katman. Port `VERSO_DB_LOCAL_PORT` ile değişir. IDE'nin çalışma dizini depo kökü olmalı; parolalar `secrets/`'tan okunur.

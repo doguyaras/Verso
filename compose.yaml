@@ -3,8 +3,8 @@
 #   bash scripts/dev-secrets.sh && docker compose up -d --build --wait
 #
 # Non-secret settings: .env (template: .env.example). Secrets: secrets/ files mounted under /run/secrets (reference
-# 15.3), never environment variables. Only the API is published, and only on 127.0.0.1; PostgreSQL and the actuator
-# port stay inside the compose network. The project name is fixed: a second checkout on the same host shares the
+# 15.3), never environment variables. Only the API and the demo IdP are published, and only on 127.0.0.1; PostgreSQL
+# and the actuator port stay inside the compose network. The project name is fixed: a second checkout on the same host shares the
 # containers and volumes unless COMPOSE_PROJECT_NAME is set.
 name: verso
 
@@ -25,13 +25,19 @@ x-java-service-defaults: &java-service-defaults
   tmpfs:
     - /tmp:size=256m
 
-# Database coordinates inside the compose network; every non-secret placeholder of config/verso.yml must be set here
-# for both Java services (ComposeConfigTest).
+# Database and identity provider coordinates inside the compose network; every non-secret placeholder of
+# config/verso.yml must be set here for both Java services (ComposeConfigTest).
 x-db-env: &db-env
   SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
   DB_HOST: postgres
   DB_PORT: "5432"
   DB_NAME: verso
+  # Tokens carry the public issuer URL; the keys are fetched over the compose network (ADR-0010).
+  OIDC_ISSUER: http://localhost:${VERSO_KEYCLOAK_PORT:-8180}/realms/verso
+  OIDC_JWK_SET_URI: http://keycloak:8080/realms/verso/protocol/openid-connect/certs
+  # Plain HTTP to a non-loopback host is refused unless allowed explicitly; here the hop never leaves the compose
+  # network. A production IdP is fetched over https and keeps the default (false).
+  OIDC_JWKS_ALLOW_HTTP: "true"
 
 x-postgres-image: &postgres-image pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
 
@@ -52,6 +58,7 @@ services:
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
+      - SECRET_DB_KEYCLOAK_PASSWORD
     volumes:
       - pgdata:/var/lib/postgresql
       # Roles, schemas, extensions and settings: run once, on an empty data volume.
@@ -111,6 +118,49 @@ services:
       timeout: 3s
       retries: 3
       start_period: 60s
+
+  # Demo identity provider (ADR-0005, ADR-0010): realm "verso" with ES256 tokens, its own database "keycloak". Published
+  # on 127.0.0.1 for the device-flow login and the CI smoke token; production uses the customer's IdP instead.
+  # Not read_only: Keycloak builds its optimised server and writes caches under /opt/keycloak at startup.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.5@sha256:37dbaf6f0722c9ec246335f36e1ef8b2e6cb960f7c27e0d8c615121a3d475a85
+    restart: always
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: ${KEYCLOAK_MEM_LIMIT:-1g}
+    pids_limit: 512
+    entrypoint: ["bash", "/opt/verso/start.sh"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      # Fixed frontend URL: every token says iss=http://localhost:<port>/realms/verso, whichever address fetched it.
+      KC_HOSTNAME: http://localhost:${VERSO_KEYCLOAK_PORT:-8180}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      # Plain HTTP only on 127.0.0.1 and inside the compose network; a TLS reverse proxy sits in front in production.
+      KC_HTTP_ENABLED: "true"
+    secrets:
+      - SECRET_DB_KEYCLOAK_PASSWORD
+      - SECRET_KEYCLOAK_ADMIN_PASSWORD
+      - SECRET_KEYCLOAK_CI_CLIENT_SECRET
+      - SECRET_KEYCLOAK_DEMO_USER_PASSWORD
+    volumes:
+      - ./deploy/keycloak/start.sh:/opt/verso/start.sh:ro
+      - ./deploy/keycloak/realm:/opt/keycloak/data/import:ro
+    ports:
+      - "127.0.0.1:${VERSO_KEYCLOAK_PORT:-8180}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # No curl in the image: bash's /dev/tcp fetches the realm's discovery document. Not /health/ready: it answers UP
+    # while the bootstrap (realm import) still runs in the background and token requests get 503 (observed: 8 s).
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/verso/.well-known/openid-configuration HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"token_endpoint\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
 
   # Encrypted logical backups on a schedule (ADR-0009): pg_dump as verso_backup (pg_read_all_data), gpg AES256,
   # SHA-256 sum, row-count manifest and privilege fingerprint taken in the same snapshot. RPO = BACKUP_INTERVAL_SECONDS.
@@ -233,6 +283,14 @@ secrets:
     file: ./secrets/SECRET_DB_BACKUP_PASSWORD
   SECRET_BACKUP_ENCRYPTION_KEY:
     file: ./secrets/SECRET_BACKUP_ENCRYPTION_KEY
+  SECRET_DB_KEYCLOAK_PASSWORD:
+    file: ./secrets/SECRET_DB_KEYCLOAK_PASSWORD
+  SECRET_KEYCLOAK_ADMIN_PASSWORD:
+    file: ./secrets/SECRET_KEYCLOAK_ADMIN_PASSWORD
+  SECRET_KEYCLOAK_CI_CLIENT_SECRET:
+    file: ./secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET
+  SECRET_KEYCLOAK_DEMO_USER_PASSWORD:
+    file: ./secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD
 
 volumes:
   pgdata:
