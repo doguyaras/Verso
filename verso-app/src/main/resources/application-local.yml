@@ -1,0 +1,6 @@
+# Local profile only (IDE run against the local compose infrastructure). Plain-text logs stay readable here;
+# every other environment logs ECS JSON (config/verso.yml). No real secrets in this file (reference 15.2).
+management:
+  endpoint:
+    health:
+      show-details: always

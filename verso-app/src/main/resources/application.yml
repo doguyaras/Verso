@@ -1,0 +1,57 @@
+# Environment-independent base (reference 15.1). Business and deploy config: config/verso.yml.
+# Local-only values: application-local.yml. Secrets: /run/secrets (config tree), never env fallbacks.
+server:
+  port: 8080
+  shutdown: graceful
+spring:
+  application:
+    name: verso
+  config:
+    import:
+      # Each file under /run/secrets becomes a property (compose secrets, reference 15.3); absent locally.
+      - "optional:configtree:/run/secrets/"
+      - "classpath:config/verso.yml"
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    formcontent:
+      filter:
+        # JSON API: no form bodies on PUT/PATCH/DELETE. The filter decoded them before Spring MVC and turned a broken
+        # body into a container 500 with the decoder message in the log (second-round review B11).
+        enabled: false
+  web:
+    resources:
+      # API only: no static resource handler. It used to log raw request paths (WARN on "../" segments), which lets
+      # any caller write arbitrary text into the logs (security review B2; reference 8.4).
+      add-mappings: false
+logging:
+  level:
+    # Tomcat logs rejected request lines (invalid characters) at INFO with the raw path; WARN keeps real faults.
+    org.apache.coyote.http11.Http11Processor: WARN
+    # DispatcherServlet writes "No mapping for GET <raw path>" here at WARN for every unmatched request; the global
+    # handler already logs the 404 with its code and without the path (found by VersoAppSmokeTest).
+    org.springframework.web.servlet.PageNotFound: ERROR
+    # Tomcat logs filter exceptions with their message and stack trace on this logger tree: [/].[dispatcherServlet]
+    # before the error dispatch (second-round review B11), the host itself when the error dispatch fails as well, e.g.
+    # a security filter that also runs on ERROR (third-round review B20). EnvelopeErrorController logs the same
+    # failures with types only, so the whole subtree is off. This entry only names the first Tomcat of the JVM and
+    # covers its start-up; platform-core's ContainerErrorLogSilencer turns off every server by its real engine name
+    # (management port "Tomcat-1", later test contexts) once it has started (third-round review N1).
+    "[org.apache.catalina.core.ContainerBase.[Tomcat].[localhost]]": OFF
+    # Rejected cookie headers are logged with their raw value (second-round review B12).
+    org.apache.tomcat.util.http: WARN
+management:
+  # Actuator on its own port: never exposed with the public API and free of API versioning rules (reference 20).
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
