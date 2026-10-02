@@ -78,4 +78,9 @@ Süreç notu: ilk koşu durdurulduğunda alt bash süreci yaşamaya devam etti v
 
 ## 6. CI
 
-CI_RESULTS
+PR [doguyaras/Verso#5](https://github.com/doguyaras/Verso/pull/5), commit `f89ce58`:
+
+| Workflow | Koşu | Sonuç |
+|---|---|---|
+| `ci` (backend: `mvn verify`, `MIN_TESTS` 190; scripts-and-hooks: 7 node suite, gitleaks, config-lint, immutability) | 37058256485 | **success** |
+| `restore-drill` (temiz Linux checkout: `dev-secrets.sh` → `docker compose up --build --wait` → `auth-smoke.sh` → yedek/restore öz-testi → prova) | 37058256490 | **success** |
