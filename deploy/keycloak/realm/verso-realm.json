@@ -26,10 +26,18 @@
         "providerId": "ecdsa-generated",
         "subComponents": {},
         "config": {
-          "priority": ["200"],
-          "enabled": ["true"],
-          "active": ["true"],
-          "ecdsaEllipticCurveKey": ["P-256"]
+          "priority": [
+            "200"
+          ],
+          "enabled": [
+            "true"
+          ],
+          "active": [
+            "true"
+          ],
+          "ecdsaEllipticCurveKey": [
+            "P-256"
+          ]
         }
       }
     ]
@@ -61,7 +69,12 @@
             "introspection.token.claim": "true"
           }
         }
-      ]
+      ],
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "consentRequired": true
     },
     {
       "clientId": "verso-ci",
@@ -89,7 +102,21 @@
             "introspection.token.claim": "true"
           }
         }
-      ]
+      ],
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "admin-cli",
+      "name": "Keycloak built-in admin client (disabled in this realm)",
+      "enabled": false,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
     }
   ],
   "users": [

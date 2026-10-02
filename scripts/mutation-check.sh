@@ -37,7 +37,7 @@ date -u +%Y-%m-%dT%H:%M:%SZ > "$LOCK_DIR/started"
 
 # ---------- restore on any exit ----------
 cleanup() {
-  while IFS= read -r bak; do mv "$bak" "${bak%.bak}"; touch "${bak%.bak}"; done < <(find . -name '*.bak' -not -path './.git/*' 2>/dev/null)
+  while IFS= read -r bak; do mv "$bak" "${bak%.bak}"; touch "${bak%.bak}"; done < <(find . -name '*.bak' -not -path './.git/*' -not -path './.claude/worktrees/*' 2>/dev/null)
   rm -rf verso-app/src/main/java/com/verso/stray verso-app/src/main/java/com/verso/platform tmp-mutation
   if [ -d verso-app/src/test.off ]; then rm -rf verso-app/src/test && mv verso-app/src/test.off verso-app/src/test; fi
   # M88 changes the git index, not a file: put the execute bit back even after an interrupt.
@@ -98,7 +98,7 @@ baseline_tests=$(grep -E '^\[INFO\] Tests run: [0-9]+, Failures: 0, Errors: 0, S
 results+=("baseline      green (${baseline_tests} tests)")
 # The node suites are a baseline too: without gitleaks or node every one of them is red, and a mutation judged by
 # them would look "caught" (third-round review N4).
-NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js"
+NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js"
 for suite in $NODE_SUITES; do
   if ! GITLEAKS="${GITLEAKS:-gitleaks}" node --test "$suite" > "$LOG" 2>&1; then
     echo "BASELINE RED: $suite (log: $LOG)"; exit 2
@@ -410,6 +410,52 @@ backup $REALM; sub $REALM 's/"secret": "\$\{VERSO_CI_CLIENT_SECRET\}"/"secret": 
 backup $REALM; sub $REALM 's/"defaultSignatureAlgorithm": "ES256"/"defaultSignatureAlgorithm": "RS256"/' \
   && expect_red "M106 IdP signs with RS256" verso-app KeycloakRealmTest realm_whenImported_signsShortLivedTokensWithEs256Only; restore $REALM
 
+# ---------- phase 3 review fixes (C1-C8, S1-S6, T1-T13, E1, R1-R2) ----------
+CAR=platform/platform-security/src/main/java/com/verso/platform/security/web/CurrentAccountArgumentResolver.java
+CAC=platform/platform-security/src/main/java/com/verso/platform/security/web/CurrentAccountParameterCheck.java
+ADH=platform/platform-security/src/main/java/com/verso/platform/security/web/EnvelopeAccessDeniedHandler.java
+SUT=SecurityUnitTest
+backup $PSA; sub $PSA 's/\@ConditionalOnMissingBean\(name = "versoApiSecurity"\)/\@ConditionalOnMissingBean(SecurityFilterChain.class)/' \
+  && expect_red "M107 another security chain switches the API chain off" $PSM $PST api_whenAnotherSecurityChainIsAdded_staysProtected; restore $PSA
+backup $CAR; sub $CAR 's/return parameter\.hasParameterAnnotation\(CurrentAccount\.class\);/return parameter.hasParameterAnnotation(CurrentAccount.class) \&\& AccountId.class.equals(parameter.getParameterType());/' \
+  && expect_red "M108 @CurrentAccount String left to request binding" $PSM $SUT currentAccount_whenParameterIsNotAnAccountId_isClaimedAndRefused; restore $CAR
+backup $CAC; sub $CAC 's/verify\(mapping\.getHandlerMethods\(\)\.values\(\)\);/mapping.getHandlerMethods();/' \
+  && expect_red "M109 wrongly typed @CurrentAccount starts anyway" $PSM $PST startup_whenCurrentAccountAnnotatesAnotherType_fails; restore $CAC
+backup $JV; sub $JV 's/\.rateLimited\(REFETCH_MIN_INTERVAL\.toMillis\(\)\)/.rateLimited(false)/' \
+  && expect_red "M110 every made-up kid fetches the JWKS" $PSM $PST request_whenManyTokensCarryUnknownKeyIds_fetchesTheKeysAtMostOnce; restore $JV
+backup $JV; sub $JV 's/                return List\.of\(\);\n/                throw e;\n/' \
+  && expect_red "M111 rate-limited unknown kid answered as an IdP outage" $PSM $PST request_whenManyTokensCarryUnknownKeyIds_fetchesTheKeysAtMostOnce; restore $JV
+backup $JV; sub $JV 's/\n\s*if \(!loaded\.get\(\)\) throw e;//' \
+  && expect_red "M112 cold-cache outage answered as an invalid token" $PSM $PST request_whenIdpKeysAreUnreachable_isRejectedWith503; restore $JV
+backup $PSA; sub $PSA 's/failures\.setRethrowAuthenticationServiceException\(false\);/failures.setRethrowAuthenticationServiceException(true);/' \
+  && expect_red "M113 unreachable IdP becomes a 500" $PSM $PST request_whenIdpKeysAreUnreachable_isRejectedWith503; restore $PSA
+backup $JV; sub $JV 's/new DefaultResourceRetriever\(timeout, timeout, JWKS_SIZE_LIMIT\)/new DefaultResourceRetriever(0, 0, JWKS_SIZE_LIMIT)/' \
+  && expect_red "M114 JWKS fetch without timeout" $PSM $SUT decoder_whenJwksDoesNotAnswer_failsWithinTheConfiguredTimeout; restore $JV
+backup $JV; sub $JV 's/\n\s*timestamps\.setClock\(clock\);//' \
+  && expect_red "M115 token times checked with the system clock" $PSM $SUT validator_whenTimeIsChecked_usesTheConfiguredSkewAndTheInjectedClock; restore $JV
+backup $JV; sub $JV 's/return value\.startsWith\("application\/"\) \? value\.substring\("application\/"\.length\(\)\) : value;/return value;/' \
+  && expect_red "M116 application/at+jwt refused" $PSM $SUT validator_whenTypeHeaderIsTheFullMediaType_acceptsIt; restore $JV
+backup $JP; sub $JP 's/if \("http"\.equals\(scheme\) && !allowHttp && !isLoopback\(jwkSetUri\.getHost\(\)\)\)/if (false)/' \
+  && expect_red "M117 plain-HTTP JWKS to a remote host" $PSM $SUT properties_whenIncompleteOrUnsafe_failAtStartup; restore $JP
+backup $JP; sub $JP 's/!jwksTimeout\.isPositive\(\) \|\| jwksTimeout\.compareTo\(Duration\.ofSeconds\(10\)\) > 0/false/' \
+  && expect_red "M118 JWKS timeout zero or unbounded" $PSM $SUT properties_whenIncompleteOrUnsafe_failAtStartup; restore $JP
+backup $CL; sub $CL 's/type = type\.getSuperclass\(\)/type = null/' \
+  && expect_red "M119 @PreAuthorize denial becomes a 500" $PSM $PST request_whenControllerThrowsAuthorizationDeniedException_isRejectedWith403EnvelopeNot500; restore $CL
+backup $ADH; sub $ADH 's/\n\s*response\.setHeader\("WWW-Authenticate", "Bearer error=\\"insufficient_scope\\""\);//' \
+  && expect_red "M120 403 without insufficient_scope" $PSM $PST request_whenControllerDeniesAccess_isRejectedWith403EnvelopeNot500; restore $ADH
+backup $PSA; sub $PSA 's/SessionCreationPolicy\.STATELESS/SessionCreationPolicy.ALWAYS/' \
+  && expect_red "M121 sessions created" $PSM $PST responses_whenAuthenticatedOrRejected_setNoSessionCookie; restore $PSA
+backup $PSA; sub $PSA 's/EndpointRequest\.to\("health"\)/EndpointRequest.toAnyEndpoint()/' \
+  && expect_red "M122 every actuator endpoint open without a token" verso-app $SMK probesAndApi_whenCalledWithoutToken_probesAnswerAndApiRefuses; restore $PSA
+backup $INIT/30-keycloak.sh; sub $INIT/30-keycloak.sh 's/SELECT NOT EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = \x27keycloak\x27\) AS create_role/SELECT true AS create_role/' \
+  && expect_red "M123 IdP database script not rerunnable (upgrade path)" verso-app $DRT keycloakScript_whenRunAgainOrWithoutItsSecret_isIdempotentAndFailsClosed; restore $INIT/30-keycloak.sh
+backup $REALM; sub $REALM 's/("clientId": "admin-cli",\n[^\n]*\n\s*"enabled": )false/$1true/' \
+  && expect_red "M124 admin-cli (password grant) enabled" verso-app KeycloakRealmTest builtInAndCliClients_whenImported_allowNoPasswordGrantOrOfflineTokens; restore $REALM
+backup $REALM; sub $REALM 's/"failureFactor": 5/"failureFactor": 100000/' \
+  && expect_red "M125 unlimited login attempts" verso-app KeycloakRealmTest realm_whenImported_limitsLoginAttemptsAndSessions; restore $REALM
+backup compose.yaml; sub compose.yaml 's/(      - SECRET_KEYCLOAK_DEMO_USER_PASSWORD\n)/$1      - SECRET_DB_DOCUMENT_PASSWORD\n/' \
+  && expect_red "M126 IdP container gets a Verso database password" verso-app ComposeConfigTest migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService; restore compose.yaml
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
@@ -443,6 +489,9 @@ backup $D; sub $D 's/\n\s*\/\/ any other quoted value[^\n]*\n[^\n]*\x27Q\x27\);/
   && node_red "M43 quoted -C path splits (push not detected)" scripts/review-gate.test.js "third-round review B23"; restore $D
 backup scripts/config-lint.pathspec; sub scripts/config-lint.pathspec 's/\n[^\n]*\*\.yaml//' \
   && node_red "M47 .yaml configs not linted" scripts/config-lint.test.js "pathspec: tum Spring config"; restore scripts/config-lint.pathspec
+KS=deploy/keycloak/start.sh
+backup $KS; sub $KS 's/  if \[ ! -r "\$SECRETS\/\$1" \] \|\| \[ ! -s "\$SECRETS\/\$1" \]; then/  if false; then/' \
+  && node_red "M127 IdP starts with a missing secret" scripts/keycloak-start.test.js "start.sh: missing SECRET_DB_KEYCLOAK_PASSWORD"; restore $KS
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

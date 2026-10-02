@@ -16,7 +16,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param clockSkew tolerated clock difference for {@code exp}/{@code nbf}
  * @param typeHeader required JOSE {@code typ} header (RFC 9068: {@code at+jwt}); empty when the IdP does not set it,
  *                   then {@code aud} alone separates access tokens from other tokens
- * @param jwksTimeout connect and read timeout of the JWKS request
+ * @param jwksTimeout connect and read timeout of the JWKS request (above zero, at most 10 seconds)
+ * @param allowHttp plain-HTTP JWKS URL on a non-loopback host; only for a private network such as the compose
+ *                  network (ADR-0010). Anywhere else a man in the middle of the key fetch could mint any account's
+ *                  token, so HTTP is refused unless the host is loopback or this is set explicitly.
  */
 @ConfigurationProperties("verso.security.jwt")
 public record VersoJwtProperties(
@@ -25,7 +28,8 @@ public record VersoJwtProperties(
         String audience,
         @DefaultValue("30s") Duration clockSkew,
         @DefaultValue("") String typeHeader,
-        @DefaultValue("2s") Duration jwksTimeout) {
+        @DefaultValue("2s") Duration jwksTimeout,
+        @DefaultValue("false") boolean allowHttp) {
 
     public VersoJwtProperties {
         require(issuer, "issuer");
@@ -35,9 +39,19 @@ public record VersoJwtProperties(
         if (!"https".equals(scheme) && !"http".equals(scheme)) {
             throw new IllegalStateException("verso.security.jwt.jwk-set-uri must be http(s)");
         }
+        if ("http".equals(scheme) && !allowHttp && !isLoopback(jwkSetUri.getHost())) {
+            throw new IllegalStateException("verso.security.jwt.jwk-set-uri must be https (or set allow-http on a private network)");
+        }
+        if (!jwksTimeout.isPositive() || jwksTimeout.compareTo(Duration.ofSeconds(10)) > 0) {
+            throw new IllegalStateException("verso.security.jwt.jwks-timeout must be above 0 and at most 10 seconds");
+        }
         if (clockSkew.isNegative() || clockSkew.compareTo(Duration.ofMinutes(2)) > 0) {
             throw new IllegalStateException("verso.security.jwt.clock-skew must be between 0 and 2 minutes");
         }
+    }
+
+    private static boolean isLoopback(String host) {
+        return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "[::1]".equals(host);
     }
 
     private static void require(String value, String name) {

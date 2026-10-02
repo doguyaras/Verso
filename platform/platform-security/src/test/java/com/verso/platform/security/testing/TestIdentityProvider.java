@@ -117,6 +117,7 @@ public final class TestIdentityProvider {
         private Instant notBefore;
         private String typ = ACCESS_TOKEN_TYPE;
         private Signature signature = Signature.ES256;
+        private String keyId;
 
         public Builder subject(String subject) { this.subject = subject; return this; }
         public Builder issuer(String issuer) { this.issuer = issuer; return this; }
@@ -125,6 +126,8 @@ public final class TestIdentityProvider {
         public Builder notBefore(Instant notBefore) { this.notBefore = notBefore; return this; }
         public Builder typ(String typ) { this.typ = typ; return this; }
         public Builder signature(Signature signature) { this.signature = signature; return this; }
+        /** Overrides the kid of ES256_UNKNOWN_KEY tokens: made-up key ids that each look new to the decoder. */
+        public Builder keyId(String keyId) { this.keyId = keyId; return this; }
 
         public String build() {
             JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
@@ -137,7 +140,7 @@ public final class TestIdentityProvider {
                 return switch (signature) {
                     case NONE -> new PlainJWT(set).serialize();
                     case ES256 -> sign(JWSAlgorithm.ES256, signingKey.getKeyID(), new ECDSASigner(signingKey), set);
-                    case ES256_UNKNOWN_KEY -> sign(JWSAlgorithm.ES256, unknownKey.getKeyID(), new ECDSASigner(unknownKey), set);
+                    case ES256_UNKNOWN_KEY -> sign(JWSAlgorithm.ES256, keyId != null ? keyId : unknownKey.getKeyID(), new ECDSASigner(unknownKey), set);
                     case RS256 -> sign(JWSAlgorithm.RS256, rsaKey.getKeyID(), new RSASSASigner(rsaKey), set);
                     // Alg confusion: the published key bytes used as an HMAC secret, with the published kid.
                     case HS256_WITH_PUBLIC_KEY -> sign(JWSAlgorithm.HS256, signingKey.getKeyID(),

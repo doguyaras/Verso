@@ -85,6 +85,26 @@ class DatabaseRolesTest {
                 .as("keycloak into verso").satisfies(e -> assertThat(sqlState(e)).isEqualTo("42501"));
     }
 
+    /**
+     * The upgrade path of a pre-phase-3 volume (README): the script runs again on a live server without error or
+     * change, never leaves the password in the server log, and stops when its secret is missing.
+     */
+    @Test
+    void keycloakScript_whenRunAgainOrWithoutItsSecret_isIdempotentAndFailsClosed() throws Exception {
+        var rerun = VersoPostgres.POSTGRES.execInContainer("bash", "-c",
+                "POSTGRES_USER=postgres POSTGRES_DB=verso bash /docker-entrypoint-initdb.d/30-keycloak.sh");
+        assertThat(rerun.getExitCode()).as(rerun.getStderr()).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from pg_database where datname = 'keycloak'", Integer.class)).isOne();
+        try (Connection own = connectTo("keycloak", "keycloak", "SECRET_DB_KEYCLOAK_PASSWORD")) {
+            assertThat(own.isValid(2)).as("an existing role keeps its password").isTrue();
+        }
+        var noSecret = VersoPostgres.POSTGRES.execInContainer("bash", "-c", "mkdir -p /tmp/no-secrets && "
+                + "VERSO_SECRETS_DIR=/tmp/no-secrets POSTGRES_USER=postgres POSTGRES_DB=verso bash /docker-entrypoint-initdb.d/30-keycloak.sh");
+        assertThat(noSecret.getExitCode()).isEqualTo(1);
+        assertThat(noSecret.getStderr()).contains("SECRET_DB_KEYCLOAK_PASSWORD missing");
+        assertThat(VersoPostgres.POSTGRES.getLogs()).doesNotContain(VersoPostgres.secret("SECRET_DB_KEYCLOAK_PASSWORD"));
+    }
+
     @Test
     void flyway_whenApplicationStarted_ranAsTheMigrationRoleAndOwnsTheHistory() {
         assertThat(jdbc.queryForObject(

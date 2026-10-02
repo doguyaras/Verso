@@ -359,19 +359,12 @@ class ContainerErrorPathTest {
         try (Socket socket = new Socket("localhost", serverPort)) {
             socket.setSoTimeout(10_000);
             OutputStream out = socket.getOutputStream();
-            out.write(withToken(request).getBytes(StandardCharsets.ISO_8859_1));
+            out.write(TestIdp.withToken(request).getBytes(StandardCharsets.ISO_8859_1));
             out.flush();
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             socket.getInputStream().transferTo(buffer);
             return buffer.toString(StandardCharsets.ISO_8859_1);
         }
-    }
-
-    /** Adds the Authorization header right after the request line. */
-    static String withToken(String request) {
-        int lineEnd = request.indexOf("\r\n");
-        return request.substring(0, lineEnd + 2) + "Authorization: " + TestIdp.bearer("acct-container") + "\r\n"
-                + request.substring(lineEnd + 2);
     }
 
     private static void assertEnvelope(HttpResponse<String> response, int status, int code) {

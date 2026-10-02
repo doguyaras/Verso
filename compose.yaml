@@ -3,8 +3,8 @@
 #   bash scripts/dev-secrets.sh && docker compose up -d --build --wait
 #
 # Non-secret settings: .env (template: .env.example). Secrets: secrets/ files mounted under /run/secrets (reference
-# 15.3), never environment variables. Only the API is published, and only on 127.0.0.1; PostgreSQL and the actuator
-# port stay inside the compose network. The project name is fixed: a second checkout on the same host shares the
+# 15.3), never environment variables. Only the API and the demo IdP are published, and only on 127.0.0.1; PostgreSQL
+# and the actuator port stay inside the compose network. The project name is fixed: a second checkout on the same host shares the
 # containers and volumes unless COMPOSE_PROJECT_NAME is set.
 name: verso
 
@@ -35,6 +35,9 @@ x-db-env: &db-env
   # Tokens carry the public issuer URL; the keys are fetched over the compose network (ADR-0010).
   OIDC_ISSUER: http://localhost:${VERSO_KEYCLOAK_PORT:-8180}/realms/verso
   OIDC_JWK_SET_URI: http://keycloak:8080/realms/verso/protocol/openid-connect/certs
+  # Plain HTTP to a non-loopback host is refused unless allowed explicitly; here the hop never leaves the compose
+  # network. A production IdP is fetched over https and keeps the default (false).
+  OIDC_JWKS_ALLOW_HTTP: "true"
 
 x-postgres-image: &postgres-image pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
 

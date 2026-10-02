@@ -39,12 +39,43 @@ class KeycloakRealmTest {
         assertThat(realm.get("sslRequired")).isIn("external", "all");
     }
 
+    /** Login attempts and sessions are bounded; no self-service registration or password reset (T7). */
+    @Test
+    void realm_whenImported_limitsLoginAttemptsAndSessions() throws IOException {
+        Map<String, Object> realm = realm();
+        assertThat(realm.get("resetPasswordAllowed")).isEqualTo(false);
+        assertThat(realm.get("rememberMe")).isEqualTo(false);
+        assertThat((Integer) realm.get("failureFactor")).isBetween(1, 10);
+        assertThat((Integer) realm.get("maxFailureWaitSeconds")).isGreaterThanOrEqualTo(300);
+        assertThat(realm.get("revokeRefreshToken")).isEqualTo(true);
+        assertThat(realm.get("refreshTokenMaxReuse")).isEqualTo(0);
+        assertThat((Integer) realm.get("ssoSessionIdleTimeout")).isLessThanOrEqualTo(3600);
+        assertThat((Integer) realm.get("ssoSessionMaxLifespan")).isLessThanOrEqualTo(36000);
+        assertThat((Integer) realm.get("oauth2DeviceCodeLifespan")).isLessThanOrEqualTo(600);
+    }
+
+    /**
+     * Phase 3 security review: Keycloak's built-in admin-cli client of every realm allows the password grant; here it
+     * is disabled. The CLI client shows a consent screen (device-code phishing) and cannot ask for offline tokens.
+     */
+    @Test
+    void builtInAndCliClients_whenImported_allowNoPasswordGrantOrOfflineTokens() throws IOException {
+        Map<String, Object> adminCli = client("admin-cli");
+        assertThat(adminCli.get("enabled")).isEqualTo(false);
+        assertThat(adminCli.get("directAccessGrantsEnabled")).isEqualTo(false);
+        Map<String, Object> cli = client("verso-cli");
+        assertThat(cli.get("consentRequired")).isEqualTo(true);
+        assertThat(cli.get("optionalClientScopes")).isEqualTo(List.of());
+        assertThat(cli.get("defaultClientScopes")).isEqualTo(List.of("basic"));
+    }
+
     /** No password grant, no implicit or browser flow; every token is an RFC 9068 access token for verso-api. */
     @Test
     void clients_whenDeclared_useOnlyDeviceFlowOrClientCredentials() throws IOException {
         List<Map<String, Object>> clients = list(realm().get("clients"));
-        assertThat(clients).extracting(c -> c.get("clientId")).containsExactlyInAnyOrder("verso-cli", "verso-ci");
+        assertThat(clients).extracting(c -> c.get("clientId")).containsExactlyInAnyOrder("verso-cli", "verso-ci", "admin-cli");
         for (Map<String, Object> client : clients) {
+            if (Boolean.FALSE.equals(client.get("enabled"))) continue;
             String id = (String) client.get("clientId");
             assertThat(client.get("directAccessGrantsEnabled")).as(id + " password grant").isEqualTo(false);
             assertThat(client.get("implicitFlowEnabled")).as(id + " implicit").isEqualTo(false);
@@ -88,6 +119,11 @@ class KeycloakRealmTest {
             assertThat(start).as("start.sh exports " + used.group(1))
                     .containsPattern("(?m)^export .*\\b" + used.group(1) + "\\b");
         }
+    }
+
+    private static Map<String, Object> client(String clientId) throws IOException {
+        return list(realm().get("clients")).stream().filter(c -> clientId.equals(c.get("clientId"))).findFirst()
+                .orElseThrow(() -> new AssertionError("client " + clientId + " not in the realm file"));
     }
 
     private static Map<String, Object> realm() throws IOException {

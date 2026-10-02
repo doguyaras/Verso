@@ -226,6 +226,12 @@ class VersoAppSmokeTest {
                     HttpResponse.BodyHandlers.ofString());
             assertThat(response.statusCode()).as(probe).isEqualTo(200);
         }
+        for (String other : new String[]{"/actuator", "/actuator/info"}) {
+            HttpResponse<String> response = http.send(HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + managementPort + other)).timeout(Duration.ofSeconds(10)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).as(other + " needs a token").isEqualTo(401);
+        }
         HttpResponse<String> api = http.send(HttpRequest.newBuilder(
                 URI.create("http://localhost:" + serverPort + "/v1/ping")).timeout(Duration.ofSeconds(10)).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -265,7 +271,7 @@ class VersoAppSmokeTest {
         try (Socket socket = new Socket("localhost", serverPort)) {
             socket.setSoTimeout(10_000);
             OutputStream out = socket.getOutputStream();
-            out.write(ContainerErrorPathTest.withToken(request).getBytes(StandardCharsets.ISO_8859_1));
+            out.write(TestIdp.withToken(request).getBytes(StandardCharsets.ISO_8859_1));
             out.flush();
             InputStream in = socket.getInputStream();
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();

@@ -45,6 +45,7 @@ jobs:
           node --test scripts/pre-commit.test.js
           node --test scripts/review-gate.test.js
           node --test scripts/repo-hygiene.test.js
+          node --test scripts/keycloak-start.test.js
       - name: migration degismezligi (PR base'ine karsi)
         if: github.event_name == 'pull_request'
         # base_ref goes through env, never straight into the script text (expression injection)
@@ -87,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Toplam test sayisi esigi (sessiz kucultme yok). Faz 2 sonunda 160 test; test eklendikce yukseltilir.
-      MIN_TESTS: '160'
+      MIN_TESTS: '190'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }

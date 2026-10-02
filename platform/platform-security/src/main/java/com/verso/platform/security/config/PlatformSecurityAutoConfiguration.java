@@ -3,11 +3,13 @@ package com.verso.platform.security.config;
 import com.verso.platform.security.jwt.JwtValidation;
 import com.verso.platform.security.jwt.VersoJwtProperties;
 import com.verso.platform.security.web.CurrentAccountArgumentResolver;
+import com.verso.platform.security.web.CurrentAccountParameterCheck;
 import com.verso.platform.security.web.EnvelopeAccessDeniedHandler;
 import com.verso.platform.security.web.EnvelopeAuthenticationEntryPoint;
 import com.verso.platform.security.web.EnvelopeRequestRejectedHandler;
 import java.time.Clock;
 import java.util.List;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -15,11 +17,16 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.HandlerExceptionResolver;
@@ -31,8 +38,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * or basic login. Boot's own resource server and default chain back off because both beans exist here; with a
  * JwtDecoder present Boot also never generates and logs a default user password.
  *
- * <p>Runs before Boot's security auto-configurations through the bean conditions; the filter chain is an ordinary
- * bean so an application can still add a more specific chain in front of it.
+ * <p>The API chain is the catch-all and always present: it matches every request and runs last
+ * ({@link #API_CHAIN_ORDER}). A module that needs other rules (a webhook, a panel) adds its own chain with a
+ * {@code securityMatcher} and a lower {@code @Order}; it never replaces this one. A previous
+ * {@code @ConditionalOnMissingBean(SecurityFilterChain.class)} made the first such chain switch the API's protection
+ * off entirely (phase 3 reviews C1/S4: a token-less request reached a controller). Only a bean with this chain's name
+ * replaces it.
  */
 @AutoConfiguration(beforeName = {
         "org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration",
@@ -44,9 +55,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableConfigurationProperties(VersoJwtProperties.class)
 public class PlatformSecurityAutoConfiguration {
 
-    /** EndpointRequest needs actuator classes at match time; without actuator there is no health endpoint to open. */
+    /** Order of the API chain: last, behind any more specific chain an application adds. */
+    public static final int API_CHAIN_ORDER = Ordered.LOWEST_PRECEDENCE - 10;
+
+    /**
+     * EndpointRequest needs the actuator auto-configuration (ManagementPortType) at match time; without it there is no
+     * health endpoint to open.
+     */
     private static final boolean ACTUATOR_PRESENT = ClassUtils.isPresent(
-            "org.springframework.boot.actuate.endpoint.web.PathMappedEndpoints",
+            "org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType",
             PlatformSecurityAutoConfiguration.class.getClassLoader());
 
     @Bean
@@ -68,7 +85,8 @@ public class PlatformSecurityAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(SecurityFilterChain.class)
+    @Order(API_CHAIN_ORDER)
+    @ConditionalOnMissingBean(name = "versoApiSecurity")
     SecurityFilterChain versoApiSecurity(HttpSecurity http, JwtDecoder decoder,
                                          EnvelopeAuthenticationEntryPoint entryPoint,
                                          EnvelopeAccessDeniedHandler deniedHandler) throws Exception {
@@ -83,7 +101,19 @@ public class PlatformSecurityAutoConfiguration {
                 .oauth2ResourceServer(resource -> resource
                         .jwt(jwt -> jwt.decoder(decoder))
                         .authenticationEntryPoint(entryPoint)
-                        .accessDeniedHandler(deniedHandler))
+                        .accessDeniedHandler(deniedHandler)
+                        // The filter's default handler rethrows AuthenticationServiceException (keys unreachable),
+                        // which ended as a 500; the entry point answers it with 503 IDP_UNAVAILABLE instead.
+                        .withObjectPostProcessor(new ObjectPostProcessor<BearerTokenAuthenticationFilter>() {
+                            @Override
+                            public <O extends BearerTokenAuthenticationFilter> O postProcess(O filter) {
+                                AuthenticationEntryPointFailureHandler failures =
+                                        new AuthenticationEntryPointFailureHandler(entryPoint);
+                                failures.setRethrowAuthenticationServiceException(false);
+                                filter.setAuthenticationFailureHandler(failures);
+                                return filter;
+                            }
+                        }))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(deniedHandler))
@@ -102,6 +132,11 @@ public class PlatformSecurityAutoConfiguration {
     EnvelopeRequestRejectedHandler envelopeRequestRejectedHandler(
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) {
         return new EnvelopeRequestRejectedHandler(resolver);
+    }
+
+    @Bean
+    CurrentAccountParameterCheck currentAccountParameterCheck(ListableBeanFactory beans) {
+        return new CurrentAccountParameterCheck(beans);
     }
 
     @Bean

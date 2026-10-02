@@ -69,6 +69,7 @@ class TransactionBoundaryRulesTest {
     void transactionalMethods_whenProductionCodeImported_makeNoRemoteCalls() {
         JavaClasses production = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .withImportOption(ArchitectureRulesTest.NO_TEST_JARS)
                 .importPackages(ROOT);
         NO_REMOTE_CALL_IN_TRANSACTION.allowEmptyShould(true).check(production);
     }

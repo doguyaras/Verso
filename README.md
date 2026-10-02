@@ -84,6 +84,24 @@ Henüz uç yok; geçerli token'la `404`, token'sız `401` döner. Uçtan uca kon
 bash scripts/auth-smoke.sh
 ```
 
+**Faz 2'den yükseltme.** Init script'leri yalnız boş veri volume'ünde çalışır; faz 3'ten önce oluşmuş bir volume'de Keycloak'ın veritabanı yoktur ve `keycloak` sağlıklı olmaz. Bir kez şu adımlar (secret'ları üretir, postgres'i yeni secret'la yeniden oluşturur, idempotent script'i çalıştırır):
+
+```bash
+bash scripts/dev-secrets.sh && docker compose up -d --wait postgres
+```
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose exec -T -u postgres postgres bash /docker-entrypoint-initdb.d/30-keycloak.sh
+```
+
+```bash
+docker compose up -d --build --wait
+```
+
+(`MSYS_NO_PATHCONV=1` yalnız Windows Git Bash için; diğer kabuklarda etkisizdir.)
+
+**Kaynaklar.** Container bellek sınırlarının toplamı yaklaşık 4,5 GB'dır (uygulama 1,5 GB, PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, migrate 512 MB geçici). Host'ta en az 6 GB boş RAM önerilir. Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
+
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
 
 ```bash
@@ -112,7 +130,7 @@ Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontaine
 ```
 
 ```bash
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js
 ```
 
 IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye açan katman. Port `VERSO_DB_LOCAL_PORT` ile değişir. IDE'nin çalışma dizini depo kökü olmalı; parolalar `secrets/`'tan okunur.

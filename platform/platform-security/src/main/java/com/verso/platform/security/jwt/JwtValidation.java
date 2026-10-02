@@ -1,22 +1,30 @@
 package com.verso.platform.security.jwt;
 
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
+import com.nimbusds.jose.jwk.source.RateLimitReachedException;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.DefaultResourceRetriever;
+import java.net.MalformedURLException;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * The access token rules of reference 9.2 and ADR-0005, in one place.
@@ -27,8 +35,14 @@ import org.springframework.web.client.RestTemplate;
  *   <li>{@code iss} exact, {@code aud} contains the API audience, {@code exp} required, {@code nbf}/{@code exp} with
  *       a bounded clock skew.</li>
  *   <li>{@code sub} required, bounded and printable: it becomes the account id (reference 6.5).</li>
- *   <li>JOSE {@code typ} header when configured (RFC 9068 {@code at+jwt}).</li>
+ *   <li>JOSE {@code typ} header when configured (RFC 9068 {@code at+jwt}, also as {@code application/at+jwt}).</li>
  * </ul>
+ *
+ * <p>The keys come from the JWKS URL through a cache (ADR-0010, phase 3 resilience review): fetched with a timeout and
+ * a size limit, kept for {@link #KEY_CACHE_TTL}, refetched for an unknown {@code kid} at most once per
+ * {@link #REFETCH_MIN_INTERVAL} (an unauthenticated caller with made-up key ids cannot make Verso hammer the IdP), and
+ * still used for {@link #OUTAGE_TOLERANCE} while the IdP is unreachable. Signatures are always checked: an outage
+ * only means the last known keys stay valid, never that a token is accepted unchecked.
  *
  * <p>EdDSA is not enabled: Nimbus' Ed25519 verifier needs the optional Tink library at run time (reference 9.2 note);
  * ES256 alone is stricter than ADR-0005's "EdDSA or ES256" (ADR-0007 #49).
@@ -38,19 +52,51 @@ public final class JwtValidation {
     public static final SignatureAlgorithm ALGORITHM = SignatureAlgorithm.ES256;
     /** An account id is printable, without separators that would let it be confused with a path or a list. */
     private static final Pattern SUBJECT = Pattern.compile("[A-Za-z0-9._@:-]{1,255}");
+    public static final Duration KEY_CACHE_TTL = Duration.ofMinutes(5);
+    public static final Duration REFETCH_MIN_INTERVAL = Duration.ofSeconds(30);
+    public static final Duration OUTAGE_TOLERANCE = Duration.ofHours(1);
+    /** A JWKS document is a few keys; anything larger is not one. */
+    private static final int JWKS_SIZE_LIMIT = 64 * 1024;
 
     private JwtValidation() {}
 
     public static JwtDecoder decoder(VersoJwtProperties properties, Clock clock) {
-        SimpleClientHttpRequestFactory http = new SimpleClientHttpRequestFactory();
-        http.setConnectTimeout(properties.jwksTimeout());
-        http.setReadTimeout(properties.jwksTimeout());
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri().toString())
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSource(keySource(properties))
                 .jwsAlgorithm(ALGORITHM)
-                .restOperations(new RestTemplate(http))
                 .build();
         decoder.setJwtValidator(validator(properties, clock));
         return decoder;
+    }
+
+    static JWKSource<SecurityContext> keySource(VersoJwtProperties properties) {
+        int timeout = Math.toIntExact(properties.jwksTimeout().toMillis());
+        JWKSource<SecurityContext> cached;
+        try {
+            cached = JWKSourceBuilder.<SecurityContext>create(properties.jwkSetUri().toURL(),
+                            new DefaultResourceRetriever(timeout, timeout, JWKS_SIZE_LIMIT))
+                    // Other requests wait for a running refresh at most one fetch long.
+                    .cache(KEY_CACHE_TTL.toMillis(), timeout + 1000L)
+                    .rateLimited(REFETCH_MIN_INTERVAL.toMillis())
+                    .outageTolerant(OUTAGE_TOLERANCE.toMillis())
+                    .retrying(false)
+                    .build();
+        } catch (MalformedURLException e) {
+            throw new IllegalStateException("verso.security.jwt.jwk-set-uri is not a URL", e);
+        }
+        // A refetch refused by the rate limit, once keys were loaded, means "the cached keys are all there is": the
+        // token's kid is unknown, so the token is invalid (401). Left as an exception it became "IdP unavailable" (503)
+        // for every made-up kid. Before the first successful load it stays an outage (503): there is nothing to trust.
+        AtomicBoolean loaded = new AtomicBoolean();
+        return (selector, context) -> {
+            try {
+                List<JWK> keys = cached.get(selector, context);
+                loaded.set(true);
+                return keys;
+            } catch (RateLimitReachedException e) {
+                if (!loaded.get()) throw e;
+                return List.of();
+            }
+        };
     }
 
     public static OAuth2TokenValidator<Jwt> validator(VersoJwtProperties properties, Clock clock) {
@@ -65,19 +111,20 @@ public final class JwtValidation {
         validators.add(require(jwt -> jwt.getSubject() != null && SUBJECT.matcher(jwt.getSubject()).matches(),
                 "sub is missing or not a valid account id"));
         if (!properties.typeHeader().isBlank()) {
-            validators.add(require(jwt -> properties.typeHeader().equalsIgnoreCase(String.valueOf(jwt.getHeaders().get("typ"))),
+            validators.add(require(jwt -> mediaType(properties.typeHeader()).equals(mediaType(jwt.getHeaders().get("typ"))),
                     "typ header is not " + properties.typeHeader()));
         }
         return new DelegatingOAuth2TokenValidator<>(validators);
     }
 
-    private static OAuth2TokenValidator<Jwt> require(java.util.function.Predicate<Jwt> rule, String description) {
-        OAuth2Error error = new OAuth2Error("invalid_token", description, null);
-        return jwt -> rule.test(jwt) ? OAuth2TokenValidatorResult.success() : OAuth2TokenValidatorResult.failure(error);
+    /** RFC 7515 4.1.9 / RFC 9068 4: "at+jwt" and "application/at+jwt" are the same type; names are case-insensitive. */
+    private static String mediaType(Object typ) {
+        String value = String.valueOf(typ).toLowerCase(Locale.ROOT);
+        return value.startsWith("application/") ? value.substring("application/".length()) : value;
     }
 
-    /** The claim names used here, for tests and documentation. */
-    public static List<String> requiredClaims() {
-        return List.of(JwtClaimNames.ISS, JwtClaimNames.AUD, JwtClaimNames.SUB, JwtClaimNames.EXP);
+    private static OAuth2TokenValidator<Jwt> require(Predicate<Jwt> rule, String description) {
+        OAuth2Error error = new OAuth2Error("invalid_token", description, null);
+        return jwt -> rule.test(jwt) ? OAuth2TokenValidatorResult.success() : OAuth2TokenValidatorResult.failure(error);
     }
 }

@@ -20,6 +20,13 @@ public final class TestIdp {
         return "Bearer " + IDP.tokenFor(account);
     }
 
+    /** Adds a valid Authorization header right after the request line of a raw HTTP request. */
+    public static String withToken(String request) {
+        int lineEnd = request.indexOf("\r\n");
+        return request.substring(0, lineEnd + 2) + "Authorization: " + bearer("acct-container") + "\r\n"
+                + request.substring(lineEnd + 2);
+    }
+
     public static final class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
         @Override
         public void initialize(ConfigurableApplicationContext context) {

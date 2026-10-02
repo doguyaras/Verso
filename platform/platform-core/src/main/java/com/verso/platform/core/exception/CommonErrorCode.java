@@ -30,6 +30,8 @@ public enum CommonErrorCode implements ErrorCode {
     UNAUTHENTICATED(90100, "security", "Authentication is required.", HttpStatus.UNAUTHORIZED),
     ACCESS_DENIED(90101, "security", "Access is denied.", HttpStatus.FORBIDDEN),
     TOO_MANY_REQUESTS(90102, "security", "Too many requests.", HttpStatus.TOO_MANY_REQUESTS),
+    /** The token could not be checked: the identity provider's keys are unreachable (ADR-0010). */
+    IDP_UNAVAILABLE(90103, "security", "Identity provider is unavailable.", HttpStatus.SERVICE_UNAVAILABLE),
     // --- system
     UPSTREAM_ERROR(99998, "system", "Upstream service failed.", HttpStatus.BAD_GATEWAY),
     INTERNAL_ERROR(99999, "system", "Unexpected error.", HttpStatus.INTERNAL_SERVER_ERROR);
