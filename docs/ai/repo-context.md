@@ -45,14 +45,18 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Trace id | `platform/platform-observability/src/main/java/com/verso/platform/observability/tracing/{TraceIds,TraceIdFilter}.java` |
 | Starter kayıtları | `platform/*/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` |
 | Config | `verso-app/src/main/resources/{application.yml,application-local.yml,config/verso.yml}`, `deploy/prod.env.example` |
-| Mimari ve tutarlılık testleri | `verso-app/src/test/java/com/verso/{ArchitectureRulesTest,ModuleStructureTest,ErrorCodeUniquenessTest,ConfigDriftTest}.java` |
+| Mimari ve tutarlılık testleri | `verso-app/src/test/java/com/verso/{ArchitectureRulesTest,TransactionBoundaryRulesTest,ModuleStructureTest,ErrorCodeUniquenessTest,ConfigDriftTest,ImageVersionsTest}.java` |
+| Gerçek DB testleri ve yetki sınırı | `verso-app/src/test/java/com/verso/support/{VersoPostgres,WithVersoPostgres}.java`, `DatabaseRolesTest.java` |
 | Mutasyon kanıtı | `scripts/mutation-check.sh`, sonuçlar `docs/evidence/` |
 | Yerel git hook'ları | `.githooks/pre-commit` (`git config core.hooksPath .githooks`) |
 | Referansa geri bildirim | `docs/reference-feedback.md` |
 | LLM kuralları | `docs/ai/llm-rules.md` |
 | Kararlar | `docs/adr/`, indeks `docs/decisions.md` |
 | CI | `.github/workflows/ci.yml` |
-| Migration'lar (planlı, faz 2) | `services/document/document-core/src/main/resources/db/migration/` |
+| Migration'lar ve kuralları | `services/document/document-core/src/main/resources/db/migration/document/` (+ `afterMigrate.sql`), `MigrationConventionsTest` |
+| Compose, image, Postgres init | `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `deploy/postgres/initdb/`, `deploy/compose.local.yaml` |
+| Secret dosyaları | `secrets/` (git dışı; `scripts/dev-secrets.sh`; eşleme `secrets/README.md`) |
+| Yedek ve restore provası | `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill.sh`, `scripts/restore-drill-selftest.sh`, `.github/workflows/restore-drill.yml` |
 
 ## 5. Altyapı
 
@@ -60,7 +64,8 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 |---|---|---|
 | Java / Spring Boot / Spring Modulith | 25 / 4.1.1 / 2.1.1 | `docs/versions.md` |
 | Spring AI (planlı) | 2.0.x | Boot 4 hattı; 1.x yalnız Boot 3 |
-| PostgreSQL + pgvector (planlı, faz 2) | 18 + 0.8.x (`pgvector/pgvector:pg18`) | tek instance, şema + iki rol/modül |
+| PostgreSQL + pgvector | 18.6 + 0.8.7 (digest ile pinli) | tek instance; şema + iki rol/modül; `extensions` şeması; ADR-0009 |
+| Flyway | 12.4.0 | migration rolüyle; `baseline-on-migrate` kapalı |
 | Ollama (planlı) | – | local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla |
 | Keycloak (planlı, faz 3) | – | OIDC IdP (ADR-0005) |
 | Gözlem (planlı, faz 7) | Alloy → Loki, Prometheus + Alertmanager, Grafana | portlar yalnız 127.0.0.1 |
@@ -73,6 +78,8 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js
 GITLEAKS=~/.local/bin/gitleaks.exe node --test scripts/gitleaks-check.test.js scripts/pre-commit.test.js
 bash scripts/mutation-check.sh                                     # negatif doğrulama (~40 dk); ONLY="M20 M41" tek tek
+bash scripts/dev-secrets.sh && docker compose up -d --build --wait  # yığın (ADR-0009)
+bash scripts/restore-drill-selftest.sh                             # yedek + restore provası öz-testi (çalışan yığın)
 git config core.hooksPath .githooks                                # klon başına bir kez
 node scripts/flyway-immutability.js check --base origin/develop    # pre-commit: check --staged (index)
 node scripts/config-lint.js $(git ls-files -- $(grep -v '^#' scripts/config-lint.pathspec))   # liste: config-lint.pathspec

@@ -272,3 +272,55 @@ Kaynak: `verso-security-review` (APPROVE WITH NON-BLOCKING COMMENTS) ve `verso-t
 - **Kanıt:** 36 karakterlik `container-marker-Ahmet_maas_bordrosu` "opak blok" kuralıyla `[REDACTED]` oluyordu. Sanitize edilmiş istisna mesajının ERROR loguna girmesi (yalnız tip yazılmalı) bu yüzden testte görünmüyordu.
 - **Düzeltme:** Log sızıntı testlerinde işaretçi, hiçbir redaksiyon kuralına takılmayan düz bir metin olsun (boşluklu, kısa kelimeler).
 - **Verso:** `ContainerErrorPathTest.PLAIN_MARKER`.
+
+## Faz 2 (2026-10-02)
+
+Kaynak: faz 2 uygulaması, gerçek Postgres'e karşı testler (`DatabaseRolesTest`), compose ile uçtan uca kurulum ve restore provası öz-testi.
+
+### R29 · Maven Wrapper, `unzip` yoksa dağıtımı sessizce değiştiriyor (MEDIUM, build)
+- **Nerede:** Referans 18.1 Dockerfile'ı hazır jar kopyalar. Ama aynı repoda image içinde `./mvnw` ile build eden her kurulum, `distributionSha256Sum` pinini kullanır.
+- **Kanıt:** `eclipse-temurin:25-jdk-noble` image'ında `unzip` yok. `mvnw` (3.3.4, only-script) bu durumda `distributionUrl`'i `.zip`'ten `.tar.gz`'ye çeviriyor; pinlenmiş SHA zip'e ait olduğu için "Maven distribution might be compromised" hatası veriyor. CI runner'larında `unzip` olduğu için görünmüyor.
+- **Düzeltme:** Build aşamasına `unzip` kurulsun ya da wrapper properties'e iki SHA'yı ayırt eden bir not düşülsün. Image build'i CI'da en az bir kez koşsun.
+- **Verso:** `Dockerfile` build aşaması; ADR-0009.
+
+### R30 · Testcontainers bağlantısı rolleri ve auto-configuration sırasını bozuyor (MEDIUM, test)
+- **Nerede:** Referans 16, "`@ServiceConnection` (`@DynamicPropertySource` yerine)".
+- **Kanıt:**
+  - `@ServiceConnection` uygulamayı container'ın superuser'ıyla bağlar. Rol ayrımının (10.1) test edildiği her durumda eksik GRANT'ı gizler.
+  - `@ImportTestcontainers` ile gelen `@DynamicPropertySource` değerleri bean olarak geliyor. Flyway auto-configuration koşulu daha önce değerlendirildiği için `DB_HOST` çözülemedi ve context açılmadı.
+- **Düzeltme:** Rol ayrımı olan projelerde, uygulamayı ve Flyway'i kendi rolleriyle bağlayan bir `ApplicationContextInitializer` kullanılsın; container compose ile aynı image'ı ve aynı init script'lerini kullansın.
+- **Verso:** `VersoPostgres`, `@WithVersoPostgres`; ADR-0007 #43.
+
+### R31 · `pg_dump` veritabanı düzeyindeki yetkileri taşımaz (MEDIUM, yedek)
+- **Nerede:** Referans 10.1 altyapı SQL'i ve 10.5 restore provası.
+- **Kanıt:** `pg_dump` (`--create` olmadan) `REVOKE ... ON DATABASE` / `GRANT CONNECT` satırlarını içermiyor. Bu yetkiler şema script'inde dururken restore hedefinde `PUBLIC` yeniden bağlanabiliyordu.
+- **Düzeltme:** Veritabanı ACL'leri rol script'inde dursun; restore hedefinde yalnız rol script'i çalışsın, şemalar ve yetkiler dump'tan gelsin. Prova bunu doğrulasın.
+- **Verso:** `10-roles.sh`, `DatabaseRolesTest.database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles`.
+
+### R32 · Altyapı SQL'i parolayı loga yazabilir (MEDIUM, güvenlik)
+- **Nerede:** Referans 10.1, `CREATE ROLE ... PASSWORD '<secret>'`.
+- **Kanıt:**
+  - `log_min_error_statement` varsayılanı `error`. Başarısız bir `CREATE ROLE`/`ALTER ROLE ... PASSWORD` ifadesi, parolayla birlikte sunucu loguna yazılır.
+  - Parola argüman olarak (`psql -v pw=...`) verilirse process listesinde görünür.
+- **Düzeltme:** Oturumda `SET log_min_error_statement = panic`; parola dosyadan psql `\set` ve backtick ile okunsun.
+- **Verso:** `deploy/postgres/initdb/10-roles.sh`.
+
+### R33 · Sunucu tarafı parametre logu içerik sızdırabilir (LOW, gizlilik)
+- **Nerede:** Referans 8.4 uygulama loglarını kapsar; PostgreSQL'in kendi logundan söz etmez.
+- **Kanıt:** `log_parameter_max_length` varsayılanı -1 (tam değer). `log_min_duration_statement` açılınca bind parametreleri (belge metni, soru) sunucu loguna düşer; hata anında da `log_parameter_max_length_on_error` devreye girer.
+- **Düzeltme:** İki ayar da 0 olsun; `log_statement = none`. Test bunları okusun.
+- **Verso:** `05-settings.sh`, `DatabaseRolesTest.server_whenStarted_hasStatisticsAndNoParameterLogging`.
+
+### R34 · `public` kapatılınca extension'lar erişilemez olur (LOW, veri)
+- **Nerede:** Referans 10.1, `REVOKE ALL ON SCHEMA public FROM PUBLIC`.
+- **Kanıt:** `vector` tipi ve operatörleri `public`'te kurulursa modül rolleri onlara erişemez.
+- **Düzeltme:** Extension'lar superuser'a ait ayrı bir `extensions` şemasında dursun; modül rollerine `USAGE` verilsin; `search_path` = `<şema>, extensions`.
+- **Verso:** `20-database.sh`; ADR-0007 #45.
+
+### R35 · Restore provasındaki "smoke test" tanımsız; tutarlı karşılaştırma gerekiyor (süreç)
+- **Nerede:** Referans 10.5, "Flyway `validate` + smoke test".
+- **Kanıt:** Yedekten sonra ayrı alınan satır sayıları, eşzamanlı yazmalar yüzünden geri yüklenen veriyle uyuşmayabilir (yanlış alarm). Hiç başarısız olmayan bir prova da bir şey kanıtlamaz.
+- **Düzeltme:**
+  - Satır sayısı manifest'i `pg_export_snapshot()` + `pg_dump --snapshot` ile aynı snapshot'ta alınsın; prova manifest'le birebir karşılaştırsın.
+  - Bir öz-test, provanın değiştirilmiş manifest, bozulmuş dosya ve eksik checksum durumlarında kırmızı verdiğini göstersin.
+- **Verso:** `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill-selftest.sh`.

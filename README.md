@@ -4,7 +4,7 @@
 >
 > Verso answers questions about your PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your own infrastructure and the application makes no outbound connections. `cloud` mode swaps only the chat model for an external LLM API, behind the same Spring AI interface, through configuration alone. Every response carries `X-Rag-Mode` so a demo can prove which mode answered. Built with Java 25, Spring Boot 4.1, Spring AI 2.0, PostgreSQL 18 + pgvector, following a strict architecture reference with machine-enforced rules.
 
-**Durum:** Faz 1 / 9: iskelet, yönetişim ve mimari testler. Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar ve kararlar: [`docs/decisions.md`](docs/decisions.md).
+**Durum:** Faz 2 / 9: veri altyapısı (PostgreSQL 18 + pgvector, roller, Flyway, compose, şifreli yedek ve otomatik restore provası). Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar ve kararlar: [`docs/decisions.md`](docs/decisions.md).
 
 ## Neden
 
@@ -16,7 +16,7 @@ Ayrıntılı açıklama, kurulum ve demo faz 9'da bu dosyaya eklenecek. Bu metin
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API), 8081 (actuator) | `verso` | (faz 2) `document` / `svc_document`, `svc_document_migrate` | document 10000–10999, qa 11000–11999 | `VersoApp` |
+| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL) | document 10000–10999, qa 11000–11999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -38,16 +38,61 @@ Hata yanıtı her zaman aynı zarftadır (ADR-0004):
              "path": "/v1/...", "timestamp": 1790935200000, "traceId": "…", "details": [] } }
 ```
 
+## Çalıştırma
+
+Gereksinim: Docker (Compose v2). Temiz bir klondan:
+
+```bash
+bash scripts/dev-secrets.sh
+```
+
+```bash
+docker compose up -d --build --wait
+```
+
+API `http://127.0.0.1:8080` adresindedir; PostgreSQL ve actuator portu dışarı açılmaz. Gizli olmayan ayarlar için `.env.example`'ı `.env` olarak kopyalayabilirsin; her değerin varsayılanı vardır. Kararlar: [ADR-0009](docs/adr/0009-veri-altyapisi.md).
+
+**Secret'lar** dosyadır, ortam değişkeni değildir (referans 15.3). `secrets/<AD>` → container'da `/run/secrets/<AD>` → Spring'de aynı adlı property:
+
+| Secret dosyası / CI secret adı | Kullanan | Property / rol |
+|---|---|---|
+| `SECRET_POSTGRES_SUPERUSER_PASSWORD` | postgres | superuser; uygulama görmez |
+| `SECRET_DB_DOCUMENT_MIGRATE_PASSWORD` | verso-app (Flyway) | `spring.flyway.password` → `svc_document_migrate` |
+| `SECRET_DB_DOCUMENT_PASSWORD` | verso-app | `spring.datasource.password` → `svc_document` |
+| `SECRET_DB_BACKUP_PASSWORD` | backup | `verso_backup` (`pg_read_all_data`) |
+| `SECRET_BACKUP_ENCRYPTION_KEY` | backup, restore provası | yedeklerin gpg parolası |
+
+**Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
+
+```bash
+docker compose run --rm backup once
+```
+
+```bash
+bash scripts/restore-drill.sh
+```
+
+- **RPO:** yedek aralığı (varsayılan 24 saat, `BACKUP_INTERVAL_SECONDS`).
+- **RTO hedefi:** 1 saat.
+- **Bağlantı bütçesi:** uygulama havuzu 10 + Flyway 1 + yedek 2 = 13; `max_connections` 100.
+- **Bilinen sınır:** yedek aynı host'taki volume'dedir. Host dışına kopyalama üretim kurulumunun işidir (ADR-0009).
+
 ## Geliştirme
 
-Gereksinimler: JDK 25, Node 24 (script testleri için), gitleaks 8.24.3 (pre-commit için), Docker (faz 2'den itibaren).
+Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontainers ile koşar), Node 24 (script testleri için), gitleaks 8.24.3 (pre-commit için).
 
 ```bash
 ./mvnw -B -ntp verify
 ```
 
 ```bash
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js
+```
+
+IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye açan katman:
+
+```bash
+docker compose -f compose.yaml -f deploy/compose.local.yaml up -d postgres
 ```
 
 Klon başına bir kez: commit öncesinde CI ile aynı kontroller (immutability, config-lint, gitleaks) çalışır.

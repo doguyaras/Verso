@@ -11,12 +11,14 @@
 | ArchUnit | 1.5.1 | – | Maven Central 2026-10-02 | düz `@Test` ile (Ek B ders 2) |
 | Maven / Maven Wrapper | 3.9.16 / 3.3.4 | – | Maven Central 2026-10-02 | dağıtım SHA-256'sı `.mvn/wrapper/maven-wrapper.properties`'te |
 | maven-compiler / surefire / enforcer / flatten | 3.16.0 / 3.5.6 / 3.6.3 / 1.8.0 | – | Maven Central 2026-10-02 | flatten: `${revision}` çözümü (ADR-0007 #22) |
-| PostgreSQL + pgvector (planlı, faz 2) | 18 + 0.8.x (`pgvector/pgvector:pg18`) | 2030-11 | postgresql.org/support/versioning; hub.docker.com/r/pgvector/pgvector | |
-| Testcontainers (planlı, faz 2) | 2.0.x | – | Maven Central 2026-10-02 (2.0.5) | `testcontainers-` önekli artefaktlar |
+| PostgreSQL + pgvector | 18.6 + 0.8.7 (`pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c9302…2e0`) | 2030-11 | postgresql.org/support/versioning; Docker Hub 2026-10-02 | compose, Testcontainers ve restore provası aynı image (`ImageVersionsTest`) |
+| PostgreSQL JDBC / HikariCP | 42.7.13 / 7.0.2 | – | Boot 4.1.1 BOM | |
+| Flyway (kütüphane / CLI image) | 12.4.0 / `flyway/flyway:12.4.0@sha256:5be18367…afac` | – | Boot 4.1.1 BOM; Docker Hub 2026-10-02 | CLI yalnız restore provasında `validate` için; kütüphaneyle aynı sürüm |
+| Testcontainers | 2.0.5 (`testcontainers-postgresql`) | – | Boot 4.1.1 BOM | `org.testcontainers.postgresql.PostgreSQLContainer` (2.x paketi) |
 | Node (CI script'leri) | 24 LTS | 2028-04-30 | nodejs.org/en/about/eol | |
 | gitleaks (CI ve yerel pre-commit) | 8.24.3 | – | github.com/gitleaks/gitleaks releases | güncel 8.30.1; sarmalayıcı testleri 8.24.3 ile doğrulandı (ADR-0007 #15) |
 | GitHub Actions | checkout v7.0.1, setup-node v7.0.0, setup-java v6.0.1, upload-artifact v7.0.1 | – | `git ls-remote` ile SHA ↔ tag doğrulandı (2026-10-02) | hepsi en son sürüm |
-| Docker base image (planlı, faz 2) | eclipse-temurin:25-jre | – | hub.docker.com | |
+| Docker base image | `eclipse-temurin:25.0.4.1_1-jdk-noble@sha256:0d623ea1…7602` (build), `-jre-noble@sha256:398f8102…168b` (çalışma) | – | Docker Hub 2026-10-02 | Ubuntu 24.04; JRE image'ında wget/curl yok (healthcheck bash `/dev/tcp`) |
 
 **Lombok:** faz 1'de yok; ilk kullanımda eklenir (ADR-0007 #27).
 
