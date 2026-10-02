@@ -1,0 +1,16 @@
+# config-lint fixture: dogru deploy config'i — ihlal yok
+service-jwt:
+  private-key-path: ${SECRET_ORDER_SIGNING_KEY_PATH}
+  token-ttl: ${JWT_TOKEN_TTL:15m}
+spring:
+  datasource:
+    password: ${SECRET_DB_PASSWORD}
+  ssl:
+    bundle:
+      pem:
+        server:
+          keystore:
+            private-key: /run/secrets/order_tls_key
+server:
+  ssl:
+    key-store-type: PKCS12

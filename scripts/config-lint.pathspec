@@ -1,0 +1,7 @@
+# Config files that config-lint.js checks, as git pathspecs (one per line; "#" lines and blank lines are skipped).
+# Single source for .githooks/pre-commit and CI, so the two lists cannot drift. Spring loads .yml, .yaml and
+# .properties alike: a fallback secret in application-prod.yaml used to pass both checks (third-round review B22).
+:(glob)**/src/main/resources/**/*.yml
+:(glob)**/src/main/resources/**/*.yaml
+:(glob)**/src/main/resources/**/*.properties
+:(glob)deploy/**/*.env*

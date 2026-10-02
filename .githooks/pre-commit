@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Local pre-commit: the same scripts CI runs (reference 15.3, 19.5). A convenience for humans, not a guarantee:
+# "git commit --no-verify" skips it, so CI and branch protection stay the enforcing layer.
+# Enable once per clone:  git config core.hooksPath .githooks
+#
+# Every check looks at what is being COMMITTED (the index), not at the working tree: a secret that was staged and
+# then removed from the working copy must still block, and an ignored local .env must not (second-round review B13).
+# Written for bash 3.2 as well (macOS): no mapfile, no associative arrays.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+# 1) Migrations already on the base branch are immutable (exit 1 violation, 3 unverifiable: both block). --staged:
+#    the index is compared, so a change that is staged but reverted in the working copy still blocks (review N6).
+node scripts/flyway-immutability.js check --staged
+
+# 2) Secret hygiene in staged config files, linted from their staged content under the same file name
+#    (config-lint recognises the local profile by file name).
+STAGE_DIR="$(mktemp -d)"
+trap 'rm -rf "$STAGE_DIR"' EXIT
+specs=()
+while IFS= read -r spec; do
+  case "$spec" in ''|'#'*) continue ;; esac
+  specs+=("$spec")
+done < scripts/config-lint.pathspec
+staged_files=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  mkdir -p "$STAGE_DIR/$(dirname "$file")"
+  git show ":$file" > "$STAGE_DIR/$file"
+  staged_files+=("$STAGE_DIR/$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR -- "${specs[@]}")
+if [ "${#staged_files[@]}" -gt 0 ]; then
+  node scripts/config-lint.js "${staged_files[@]}"
+fi
+
+# 3) gitleaks on the staged content. A missing binary is "unverifiable" (exit 3) and blocks.
+if [ -z "${GITLEAKS:-}" ]; then
+  GITLEAKS="$(command -v gitleaks || command -v gitleaks.exe || echo "$HOME/.local/bin/gitleaks.exe")"
+fi
+export GITLEAKS
+bash scripts/gitleaks-check.sh staged .

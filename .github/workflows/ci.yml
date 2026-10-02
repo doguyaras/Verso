@@ -1,0 +1,100 @@
+# PR gate (referans Bolum 18.3, 16, 19.5). Kaynak: referans Ek A blueprint sablonu (docs/architecture-reference.md); repo koku = proje koku varsayar.
+# Kurallar: (1) ucuncu taraf action'lar 40 karakterlik commit SHA'ya pinli (tag'ler mutable; tj-actions olayi 2025),
+#           (2) permissions en dar, (3) gercek DB testleri her PR'da kosar (gomulu PostgreSQL veya Testcontainers),
+#           (4) mimari/tutarlilik testleri "0 test = basarisiz" (failIfNoTests + toplam sayi korumasi),
+#           (5) migration degismezligi PR'in base'ine karsi, (6) hook'lar kuru calistirilir (bozuk hook = sessiz gate).
+# Verso uyarlamasi (ADR-0007): RabbitMQ servisi, redis/pgbouncer kurulumu ve frontend job'i yok (Verso'da broker ve panel yok);
+# Maven Wrapper kullanilir; gitleaks ikilisi SHA-256 ile dogrulanir. SHA'lar 2026-10-02'de git ls-remote ile tag'lere karsi dogrulandi.
+name: ci
+on:
+  pull_request:
+    # edited: a changed base branch re-runs the migration immutability check against the new base (reference 18.3)
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [develop, release, main]
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scripts-and-hooks:
+    # edited: only a changed base branch needs a re-run (immutability against the new base), not a title edit
+    if: github.event.action != 'edited' || github.event.changes.base != null
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # persist-credentials: false keeps the job token out of .git/config, where later PR code could read it
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '24' }
+      - name: gitleaks ikilisi (surum ve SHA-256 sabit; testler ve tarama ayni ikiliyi kullanir)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tgz" https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+          echo "GITLEAKS=$RUNNER_TEMP/gitleaks" >> "$GITHUB_ENV"
+      - name: script ve hook testleri (immutability, config-lint, gitleaks, pre-commit, review gate)
+        # "test -f ... || true" kalibi kullanilmaz: script varken test kirmizisini da yutar (fail-open).
+        # pre-commit testi hook'u gecici depoda gercek commit'lerle calistirir (ucuncu tur N5); git kimligi testte verilir.
+        run: |
+          node --test scripts/flyway-immutability.test.js
+          node --test scripts/config-lint.test.js
+          node --test scripts/gitleaks-check.test.js
+          node --test scripts/pre-commit.test.js
+          node --test scripts/review-gate.test.js
+      - name: migration degismezligi (PR base'ine karsi)
+        if: github.event_name == 'pull_request'
+        # base_ref goes through env, never straight into the script text (expression injection)
+        env: { BASE_REF: "${{ github.base_ref }}" }
+        run: node scripts/flyway-immutability.js check --base "origin/$BASE_REF"
+      - name: config lint (secret fallback / literal secret yok)
+        # dosya listesi bossa script exit 3 verir (dogrulanamadi); liste pre-commit ile ortak dosyadan gelir (ucuncu tur B22)
+        run: |
+          set -euo pipefail
+          mapfile -t specs < <(grep -v -e '^#' -e '^$' scripts/config-lint.pathspec)
+          node scripts/config-lint.js $(git ls-files -- "${specs[@]}")
+      - name: hook kuru calistirma (bozuk hook sessizce etkisiz kalmasin)
+        run: |
+          set -euo pipefail
+          export CLAUDE_PROJECT_DIR="$PWD"
+          export FLYWAY_BASE_REF=HEAD   # kuru calistirma: HEAD agacindaki V dosyasi "base'te var" sayilsin (repo'nun gercek base branch'inden bagimsiz)
+          for h in .claude/hooks/*.sh .githooks/*; do bash -n "$h"; done
+          # review-gate davranisi "script ve hook testleri" adiminda (scripts/review-gate.test.js)
+          # base'te var olan bir V dosyasi: hook engellemeli (exit 2)
+          FIRST=$(git ls-files '*/db/migration/V*.sql' | head -1)
+          if [ -n "$FIRST" ]; then
+            if echo '{"tool_input":{"file_path":"'"$PWD/$FIRST"'"}}' | node .claude/hooks/flyway-immutability.js; then echo "hook base migration'a izin verdi"; exit 1; fi
+          fi
+          # yeni V dosyasi: serbest (exit 0)
+          echo '{"tool_input":{"file_path":"'"$PWD"'/x/src/main/resources/db/migration/V9999__new.sql"}}' | node .claude/hooks/flyway-immutability.js
+      - name: gitleaks (tum gecmis + calisma agaci; 0 temiz, 1 bulgu, 3 dogrulanamadi)
+        run: bash scripts/gitleaks-check.sh all .
+      - name: pre-commit hook davranissal kuru calistirma (yalniz sozdizimi degil; environment review L-E)
+        # Bos index ile: immutability, staged config-lint ve staged gitleaks yollari gercekten kosar.
+        env: { FLYWAY_BASE_REF: HEAD }
+        run: bash .githooks/pre-commit
+
+  backend:
+    # edited: only a changed base branch needs a re-run (immutability against the new base), not a title edit
+    if: github.event.action != 'edited' || github.event.changes.base != null
+    runs-on: ubuntu-latest
+    env:
+      # Toplam test sayisi esigi (sessiz kucultme yok). Faz 1 sonunda 120 test (ucuncu review turu); test eklendikce yukseltilir.
+      MIN_TESTS: '120'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      # Java surumu prod image (eclipse-temurin:25-jre) ve maven.compiler.release ile ayni
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: '25', cache: maven }
+      - name: build + test (ArchUnit, ErrorCode tekilligi, config drift; faz 2'den itibaren Testcontainers ile gercek DB)
+        run: ./mvnw -B -ntp verify
+      - name: toplam test sayisi korumasi (sessiz kucultme yok; esik projeye gore)
+        run: |
+          total=$(grep -ho 'tests="[0-9]*"' $(find . -path '*/target/surefire-reports/TEST-*.xml') | grep -o '[0-9]*' | paste -sd+ | bc)
+          echo "toplam test: $total"; test "$total" -ge "$MIN_TESTS"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with: { name: surefire-reports, path: '**/target/surefire-reports/' }

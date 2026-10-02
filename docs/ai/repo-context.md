@@ -1,0 +1,87 @@
+# repo-context.md — verso Repo Haritası
+
+> Amaç: Ajanın ilk 2 dakikada sistemi anlaması. Kurallar burada değil; `AGENTS.md`, `security-rules.md` ve `llm-rules.md`'dedir. Bu dosya **gerçekleri** taşır ve her yeni modül, uç veya olayda güncellenir. "(planlı)" işaretli satırlar henüz kodda yoktur; kodda karşılığı olmayan satır uydurulmaz.
+
+## 1. Mimari şekil (ADR-0001)
+
+- **Şekil:** **modüler monolit (A).** Tek deploy birimi `verso-app`; domain modülleri Spring Modulith modülleridir ve `*-api`/`*-core` Maven çiftleri olarak tutulur. Profil: **P0**.
+- **Modüller:**
+  - `platform-observability`, `platform-core`: kodda var.
+  - `document`: planlı, faz 4. Kapsamı yükleme, parse, chunk, embedding, saklama ve retrieval.
+  - `qa`: planlı, faz 5. Kapsamı prompt, model çağrısı ve atıflar.
+  - `platform-security`: planlı, faz 3. Kapsamı OIDC resource server ve `@CurrentAccount`.
+- **Yeniden değerlendirme eşiği:** ADR-0001.
+- **Repo:** Maven multi-module monorepo; `platform/*` starter'ları, `verso-app`, (planlı) `services/<domain>/<domain>-api|core`.
+
+## 2. Servis kimlik tablosu
+
+| Servis | Port | `application.name` | Actor / `iss` | Audience | DB schema / rol | Hata kodu bloğu | Yayınladığı olaylar | Tükettiği olaylar | Sıcak yol uzak çağrı sayısı |
+|---|---|---|---|---|---|---|---|---|---|
+| verso-app | 8080 (API), 8081 (actuator) | verso | – (şekil A: servis JWT'si yok) | user JWT `aud` (planlı, faz 3; ADR-0005) | (planlı) `document` / `svc_document`, `svc_document_migrate` | document 10000–10999, qa 11000–11999 | – (ADR-0003) | – | `POST /v1/questions`: **2** (ADR-0008) |
+
+Ortak kod blokları: validation 90000–90099, security 90100–90199, system 99998–99999 (`ErrorCodeUniquenessTest`).
+
+## 3. Kritik akış kaydı — sıcak yol tablosu (referans Bölüm 1.2)
+
+| Akış | Uç | Gecikme bütçesi (p99) | Uzak senkron bağımlılıklar (gerekçe) | Read-model / claim ile karşılanan kontroller (kabul edilen eskilik) | Bağımlılık düşünce davranış | Yeniden değerlendirme |
+|---|---|---|---|---|---|---|
+| Soru sor (planlı, faz 5) | `POST /v1/questions` | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn (başlangıç ayarı, ADR-0008) | 2: embedding (soru vektörü; read-model ile yapılamaz) + chat (cevap üretimi) | sahiplik: token `sub` (token ömrü) | 503 `MODEL_UNAVAILABLE`; eşik altında model çağrılmaz | p99 > bütçe 3 gün; ADR-0008 |
+| Belge yükle (planlı, faz 4) | `POST /v1/documents` | 2 sn (dosya boyutu sınırı içinde) | 0 (yalnız DB yazımı; işleme asenkron worker'da) | sahiplik: token `sub` | DB yoksa 503 | p99 > 2 sn |
+
+Varsayılan: ≤1 uzak senkron çağrı. Aşan satır ADR + `verso-resilience-review` ister; kayıt alanlarından biri boş olan satır `REQUEST CHANGES`.
+
+## 3.1 Delegasyon matrisi (referans Bölüm 9.2.1)
+
+Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-0001, ADR-0005). İlk internal uç eklendiğinde bu tablo zorunlu hale gelir.
+
+## 4. Yüksek sinyalli dosyalar
+
+| Konu | Dosya |
+|---|---|
+| Uygulama girişi ve component scan sınırı | `verso-app/src/main/java/com/verso/VersoApp.java` |
+| Hata zarfı, global handler ve hata sayfası | `platform/platform-core/src/main/java/com/verso/platform/core/handler/{GlobalServiceExceptionHandler,EnvelopeErrorController}.java` |
+| Hata kodu sözleşmesi | `platform/platform-core/src/main/java/com/verso/platform/core/exception/{ErrorCode,ServiceException,CommonErrorCode}.java` |
+| Log sanitizer | `platform/platform-observability/src/main/java/com/verso/platform/observability/logging/SensitiveLogSanitizer.java` |
+| Trace id | `platform/platform-observability/src/main/java/com/verso/platform/observability/tracing/{TraceIds,TraceIdFilter}.java` |
+| Starter kayıtları | `platform/*/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` |
+| Config | `verso-app/src/main/resources/{application.yml,application-local.yml,config/verso.yml}`, `deploy/prod.env.example` |
+| Mimari ve tutarlılık testleri | `verso-app/src/test/java/com/verso/{ArchitectureRulesTest,ModuleStructureTest,ErrorCodeUniquenessTest,ConfigDriftTest}.java` |
+| Mutasyon kanıtı | `scripts/mutation-check.sh`, sonuçlar `docs/evidence/` |
+| Yerel git hook'ları | `.githooks/pre-commit` (`git config core.hooksPath .githooks`) |
+| Referansa geri bildirim | `docs/reference-feedback.md` |
+| LLM kuralları | `docs/ai/llm-rules.md` |
+| Kararlar | `docs/adr/`, indeks `docs/decisions.md` |
+| CI | `.github/workflows/ci.yml` |
+| Migration'lar (planlı, faz 2) | `services/document/document-core/src/main/resources/db/migration/` |
+
+## 5. Altyapı
+
+| Bileşen | Sürüm | Not |
+|---|---|---|
+| Java / Spring Boot / Spring Modulith | 25 / 4.1.1 / 2.1.1 | `docs/versions.md` |
+| Spring AI (planlı) | 2.0.x | Boot 4 hattı; 1.x yalnız Boot 3 |
+| PostgreSQL + pgvector (planlı, faz 2) | 18 + 0.8.x (`pgvector/pgvector:pg18`) | tek instance, şema + iki rol/modül |
+| Ollama (planlı) | – | local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla |
+| Keycloak (planlı, faz 3) | – | OIDC IdP (ADR-0005) |
+| Gözlem (planlı, faz 7) | Alloy → Loki, Prometheus + Alertmanager, Grafana | portlar yalnız 127.0.0.1 |
+
+## 6. Komutlar
+
+```bash
+./mvnw -B -ntp verify                                              # tüm testler (JAVA_HOME = JDK 25)
+./mvnw -B -ntp -pl verso-app -am test -Dtest=ConfigDriftTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js
+GITLEAKS=~/.local/bin/gitleaks.exe node --test scripts/gitleaks-check.test.js scripts/pre-commit.test.js
+bash scripts/mutation-check.sh                                     # negatif doğrulama (~40 dk); ONLY="M20 M41" tek tek
+git config core.hooksPath .githooks                                # klon başına bir kez
+node scripts/flyway-immutability.js check --base origin/develop    # pre-commit: check --staged (index)
+node scripts/config-lint.js $(git ls-files -- $(grep -v '^#' scripts/config-lint.pathspec))   # liste: config-lint.pathspec
+```
+
+## 7. Bu Belgede Özellikle Taşınmayanlar
+
+Secret değerleri, üretim host adları, CI token'ları, kişisel veri örnekleri, gerçek belge içerikleri.
+
+## 8. Net Kanıt Bulunamayan Alanlar
+
+- Sıcak yol bütçeleri ölçülmedi; başlangıç ayarıdır (ADR-0008). Ölçüm faz 5'te.

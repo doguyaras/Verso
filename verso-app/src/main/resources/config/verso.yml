@@ -1,0 +1,17 @@
+# Verso service config (reference 15.1): every environment imports this file. Deploy-specific values come from
+# environment placeholders declared in deploy/prod.env.example; secrets from /run/secrets. Keys mirrored in
+# application-local.yml are checked by ConfigDriftTest (which also scans comments, so no placeholder syntax here).
+---
+# Structured (JSON) logs outside the local profile (reference 8.1): Loki/OTLP read fields, not regexes.
+spring:
+  config:
+    activate:
+      on-profile: "!local"
+logging:
+  structured:
+    format:
+      console: ecs
+    json:
+      stacktrace:
+        root: first
+        max-length: 4000

@@ -1,0 +1,8 @@
+# config-lint fixture: local profil — literal sahte deger serbest, fallback yalniz gerekceli isaretle (satir 8 ihlal)
+spring:
+  datasource:
+    password: local-dev-only
+services:
+  sms:
+    api-key: ${SECRET_SMS_API_KEY:fake-local-key} # lint:allow-secret-fallback local sahte SMS saglayicisi
+    webhook-secret: ${SMS_WEBHOOK_SECRET:fake-local-webhook} # TODO sonra bakilacak
