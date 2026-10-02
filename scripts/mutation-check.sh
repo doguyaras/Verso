@@ -290,6 +290,31 @@ backup $EC; sub $EC 's/return value instanceof Throwable t \? ErrorClassifier\.u
 backup $YML; sub $YML 's/include: health,info/include: "*"/' \
   && expect_red "M55 every actuator endpoint exposed" verso-app $CEP actuator_whenSensitiveEndpointsRequested_areNotExposed; restore $YML
 
+# ---------- phase 2: database roles, migrations, images (Testcontainers: needs Docker) ----------
+DRT=DatabaseRolesTest
+INIT=deploy/postgres/initdb
+AFTER=services/document/document-core/src/main/resources/db/migration/document/afterMigrate.sql
+backup $AFTER; sub $AFTER 's/^REVOKE ALL ON [^\n]*\n//m' \
+  && expect_red "M65 history table left writable by the application" verso-app $DRT applicationRole_whenMigrationsRan_hasNoPrivilegeOnTheHistoryTable; restore $AFTER
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nALTER ROLE svc_\$\{schema\} SET statement_timeout = \x2710s\x27;//' \
+  && expect_red "M66 application role without statement timeout" verso-app $DRT application_whenConnected_usesTheDmlRoleWithItsTimeoutsAndSearchPath; restore $INIT/10-roles.sh
+backup $INIT/20-database.sh; sub $INIT/20-database.sh 's/\nGRANT USAGE ON SCHEMA \$\{schema\} TO svc_\$\{schema\};//' \
+  && expect_red "M67 application role cannot reach its schema" verso-app $DRT migrationRoleTable_whenCreated_isWritableByTheApplicationRoleButNotDroppable; restore $INIT/20-database.sh
+backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/\nALTER SYSTEM SET log_parameter_max_length = 0;//' \
+  && expect_red "M68 bind parameters logged by PostgreSQL" verso-app $DRT server_whenStarted_hasStatisticsAndNoParameterLogging; restore $INIT/05-settings.sh
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nREVOKE ALL ON DATABASE [^\n]*//' \
+  && expect_red "M69 database open to PUBLIC" verso-app $DRT database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles; restore $INIT/10-roles.sh
+VY=verso-app/src/main/resources/config/verso.yml
+backup $VY; sub $VY 's/baseline-on-migrate: false/baseline-on-migrate: true/' \
+  && expect_red "M70 baseline-on-migrate switched on" verso-app ConfigProfilesTest database_whenLocalProfile_isLocalhostWithTheProductionRoles; restore $VY
+MCT=services/document/document-core/src/test/java/com/verso/document/migration/MigrationConventionsTest.java
+backup $MCT; sub $MCT 's/\n\s*Pattern\.compile\("\(\?i\)\\\\bcreate\\\\s\+schema\\\\b"\),//' \
+  && expect_red "M71 CREATE SCHEMA allowed in migrations" services/document/document-core MigrationConventionsTest violations_whenFixturesBreakEachRule_areAllReported; restore $MCT
+backup compose.yaml; sub compose.yaml 's/(x-postgres-image: &postgres-image \S+)\@sha256:[0-9a-f]{64}/$1/' \
+  && expect_red "M72 compose image not pinned by digest" verso-app ImageVersionsTest images_whenReferencedInComposeOrDockerfile_arePinnedByDigest; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/pgvector\/pgvector:0\.8\.7-pg18-trixie/pgvector\/pgvector:0.8.6-pg18-trixie/' \
+  && expect_red "M73 tests and compose on different PostgreSQL images" verso-app ImageVersionsTest postgresImage_whenUsedByTestsAndCompose_isTheSame; restore compose.yaml
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
