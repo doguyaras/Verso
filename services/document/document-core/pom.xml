@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.verso</groupId>
+    <artifactId>verso</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>document-core</artifactId>
+  <description>Document module (ADR-0001): upload, parsing, chunking, embeddings, retrieval. Phase 2 brings only the
+    schema migrations of the "document" schema; the code arrives in phase 4.</description>
+
+  <properties>
+    <!-- 0 tests = failure (reference Ek B lesson 2). A property, not plugin config, so a filtered run
+         (-Dtest=... -am) can pass -DfailIfNoTests=false for upstream modules (reference Ek A skill notes). -->
+    <failIfNoTests>true</failIfNoTests>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

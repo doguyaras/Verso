@@ -272,3 +272,134 @@ Kaynak: `verso-security-review` (APPROVE WITH NON-BLOCKING COMMENTS) ve `verso-t
 - **Kanıt:** 36 karakterlik `container-marker-Ahmet_maas_bordrosu` "opak blok" kuralıyla `[REDACTED]` oluyordu. Sanitize edilmiş istisna mesajının ERROR loguna girmesi (yalnız tip yazılmalı) bu yüzden testte görünmüyordu.
 - **Düzeltme:** Log sızıntı testlerinde işaretçi, hiçbir redaksiyon kuralına takılmayan düz bir metin olsun (boşluklu, kısa kelimeler).
 - **Verso:** `ContainerErrorPathTest.PLAIN_MARKER`.
+
+## Faz 2 (2026-10-02)
+
+Kaynak: faz 2 uygulaması, gerçek Postgres'e karşı testler (`DatabaseRolesTest`), compose ile uçtan uca kurulum ve restore provası öz-testi.
+
+### R29 · Maven Wrapper, `unzip` yoksa dağıtımı sessizce değiştiriyor (MEDIUM, build)
+- **Nerede:** Referans 18.1 Dockerfile'ı hazır jar kopyalar. Ama aynı repoda image içinde `./mvnw` ile build eden her kurulum, `distributionSha256Sum` pinini kullanır.
+- **Kanıt:** `eclipse-temurin:25-jdk-noble` image'ında `unzip` yok. `mvnw` (3.3.4, only-script) bu durumda `distributionUrl`'i `.zip`'ten `.tar.gz`'ye çeviriyor; pinlenmiş SHA zip'e ait olduğu için "Maven distribution might be compromised" hatası veriyor. CI runner'larında `unzip` olduğu için görünmüyor.
+- **Düzeltme:** Build aşamasına `unzip` kurulsun ya da wrapper properties'e iki SHA'yı ayırt eden bir not düşülsün. Image build'i CI'da en az bir kez koşsun.
+- **Verso:** `Dockerfile` build aşaması; ADR-0009.
+
+### R30 · Testcontainers bağlantısı rolleri ve auto-configuration sırasını bozuyor (MEDIUM, test)
+- **Nerede:** Referans 16, "`@ServiceConnection` (`@DynamicPropertySource` yerine)".
+- **Kanıt:**
+  - `@ServiceConnection` uygulamayı container'ın superuser'ıyla bağlar. Rol ayrımının (10.1) test edildiği her durumda eksik GRANT'ı gizler.
+  - `@ImportTestcontainers` ile gelen `@DynamicPropertySource` değerleri bean olarak geliyor. Flyway auto-configuration koşulu daha önce değerlendirildiği için `DB_HOST` çözülemedi ve context açılmadı.
+- **Düzeltme:** Rol ayrımı olan projelerde, uygulamayı ve Flyway'i kendi rolleriyle bağlayan bir `ApplicationContextInitializer` kullanılsın; container compose ile aynı image'ı ve aynı init script'lerini kullansın.
+- **Verso:** `VersoPostgres`, `@WithVersoPostgres`; ADR-0007 #43.
+
+### R31 · `pg_dump` veritabanı düzeyindeki yetkileri taşımaz (MEDIUM, yedek)
+- **Nerede:** Referans 10.1 altyapı SQL'i ve 10.5 restore provası.
+- **Kanıt:** `pg_dump` (`--create` olmadan) `REVOKE ... ON DATABASE` / `GRANT CONNECT` satırlarını içermiyor. Bu yetkiler şema script'inde dururken restore hedefinde `PUBLIC` yeniden bağlanabiliyordu.
+- **Düzeltme:** Veritabanı ACL'leri rol script'inde dursun; restore hedefinde yalnız rol script'i çalışsın, şemalar ve yetkiler dump'tan gelsin. Prova bunu doğrulasın.
+- **Verso:** `10-roles.sh`, `DatabaseRolesTest.database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles`.
+
+### R32 · Altyapı SQL'i parolayı loga yazabilir (MEDIUM, güvenlik)
+- **Nerede:** Referans 10.1, `CREATE ROLE ... PASSWORD '<secret>'`.
+- **Kanıt:**
+  - `log_min_error_statement` varsayılanı `error`. Başarısız bir `CREATE ROLE`/`ALTER ROLE ... PASSWORD` ifadesi, parolayla birlikte sunucu loguna yazılır.
+  - Parola argüman olarak (`psql -v pw=...`) verilirse process listesinde görünür.
+- **Düzeltme:** Oturumda `SET log_min_error_statement = panic`; parola dosyadan psql `\set` ve backtick ile okunsun.
+- **Verso:** `deploy/postgres/initdb/10-roles.sh`.
+
+### R33 · Sunucu tarafı parametre logu içerik sızdırabilir (LOW, gizlilik)
+- **Nerede:** Referans 8.4 uygulama loglarını kapsar; PostgreSQL'in kendi logundan söz etmez.
+- **Kanıt:** `log_parameter_max_length` varsayılanı -1 (tam değer). `log_min_duration_statement` açılınca bind parametreleri (belge metni, soru) sunucu loguna düşer; hata anında da `log_parameter_max_length_on_error` devreye girer.
+- **Düzeltme:** İki ayar da 0 olsun; `log_statement = none`. Test bunları okusun.
+- **Verso:** `05-settings.sh`, `DatabaseRolesTest.server_whenStarted_hasStatisticsAndNoParameterLogging`.
+
+### R34 · `public` kapatılınca extension'lar erişilemez olur (LOW, veri)
+- **Nerede:** Referans 10.1, `REVOKE ALL ON SCHEMA public FROM PUBLIC`.
+- **Kanıt:** `vector` tipi ve operatörleri `public`'te kurulursa modül rolleri onlara erişemez.
+- **Düzeltme:** Extension'lar superuser'a ait ayrı bir `extensions` şemasında dursun; modül rollerine `USAGE` verilsin; `search_path` = `<şema>, extensions`.
+- **Verso:** `20-database.sh`; ADR-0007 #45.
+
+### R35 · Restore provasındaki "smoke test" tanımsız; tutarlı karşılaştırma gerekiyor (süreç)
+- **Nerede:** Referans 10.5, "Flyway `validate` + smoke test".
+- **Kanıt:** Yedekten sonra ayrı alınan satır sayıları, eşzamanlı yazmalar yüzünden geri yüklenen veriyle uyuşmayabilir (yanlış alarm). Hiç başarısız olmayan bir prova da bir şey kanıtlamaz.
+- **Düzeltme:**
+  - Satır sayısı manifest'i `pg_export_snapshot()` + `pg_dump --snapshot` ile aynı snapshot'ta alınsın; prova manifest'le birebir karşılaştırsın.
+  - Bir öz-test, provanın değiştirilmiş manifest, bozulmuş dosya ve eksik checksum durumlarında kırmızı verdiğini göstersin.
+- **Verso:** `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill-selftest.sh`.
+
+### R36 · `chmod 600` secret dosyası root olmayan container'larda okunamaz (HIGH, deploy)
+- **Nerede:** Referans 15.3 seviye 1: "Secret dosyaları ... `chmod 600`"; 18.1 non-root image kuralı.
+- **Kanıt:**
+  - Compose (swarm dışı) dosya secret'larını, host'taki sahip ve izinle bind mount eder; long syntax'taki `uid/gid/mode` uygulanmaz.
+  - Deploy kullanıcısına ait `0600` dosyayı postgres (999) ve uygulama (10001) okuyamadı; Linux'ta yeniden üretildi. İlk Linux CI koşusunda yığın başlamadı.
+  - Windows'taki Docker Desktop bind mount'larda izinleri `0777` gösterdiği için bu durum geliştirici makinesinde görünmüyor.
+- **Düzeltme:** Secret klasörü `0700` (host koruması), dosyalar `0644`. Ya da container kullanıcısıyla aynı UID/GID'ye `chown`; ya da gerçek secret mekanizması (swarm/Kubernetes). Kural, Linux'ta koşan bir uçtan uca testle doğrulansın.
+- **Verso:** `scripts/dev-secrets.sh`, `secrets/README.md`; ADR-0007 #47.
+
+## Faz 2 review'ları (2026-10-02)
+
+Kaynak: faz 2'nin altı bağımsız review'ı (db-migration, security, test-writer, environment, spring-code, architecture). Her madde bir reproduksiyonla doğrulandı; düzeltmeler önce kırmızı testle yapıldı.
+
+### R37 · Constraint hatası satırın tamamını sunucu loguna yazar (HIGH, gizlilik)
+- **Nerede:** Referans 8.4 ve R33. Bind parametrelerini gizlemek yetmiyor.
+- **Kanıt:** Uygulama rolü bind parametreleriyle bir CHECK ve bir UNIQUE constraint'i ihlal etti. Sunucu logu `DETAIL: Failing row contains (..., <belge metni>, ...)` ve `Key (title)=(...) already exists` yazdı.
+- **Düzeltme:** `log_error_verbosity = terse`. İstemci tarafında JDBC `logServerErrorDetail=false`. Bunu container logunu okuyan bir test doğrulasın.
+- **Verso:** `05-settings.sh`, `DatabaseRolesTest.constraintViolation_whenRowCarriesDocumentText_neverReachesTheServerLog`.
+
+### R38 · Uygulama içi Flyway, uygulama sürecine şema sahibi yetkisi verir (MEDIUM, güvenlik)
+- **Nerede:** Referans 10.2 (Flyway uygulama açılışında) ile 10.1'in gerekçesi ("ele geçirilen uygulama tablo düşürememeli") çelişiyor.
+- **Kanıt:** Uygulama container'ı (UID 10001) migration parolasını okuyabiliyor. Bu parolayla Flyway geçmişi silinebildi ve tablo düşürülebildi.
+- **Düzeltme:** Migration'ı aynı image'la çalışan tek seferlik bir job/servis yapsın. Uzun ömürlü uygulama yalnız DML rolünü alsın.
+- **Verso:** compose `migrate` servisi; ADR-0007 #48; `ComposeConfigTest`.
+
+### R39 · Okunamayan secret, init'te sessizce parolasız rol üretir (MEDIUM, işletim)
+- **Kanıt:**
+  - psql'in backtick'i okunamayan dosyada boş string döndürüyor.
+  - PostgreSQL boş parolayı NOTICE ile "parolasız rol"e çeviriyor.
+  - `[ -s ]` kontrolü okuma izni olmadan da geçiyor.
+  - Init başarı raporluyor.
+- **Düzeltme:** `[ -r ] && [ -s ]` ile kontrol et; rollerden sonra `rolpassword IS NOT NULL` doğrula; init'i durdur.
+- **Verso:** `10-roles.sh`.
+
+### R40 · Katalog sorgusu yetkinin geri geldiğini kanıtlamaz (MEDIUM, yedek)
+- **Kanıt:** `pg_restore --no-privileges` ile tüm yetkiler kaybedildi. `pg_tables` sorgusu, yetki gerektirmediği için yine geçti ve prova "OK" dedi.
+- **Düzeltme:**
+  - Yedek, aynı snapshot'ta bir ACL parmak izi alsın (`acldefault` ile normalize edilmiş). Prova bu parmak izini karşılaştırsın.
+  - Uygulama rolü her tablosunu gerçekten okusun.
+  - Öz-test, gerçek bir yetki kaybını yakalasın.
+- **Verso:** `deploy/backup/queries.sh`, `restore-check.sh`, öz-test vakası "restore that loses its grants".
+
+### R41 · `afterMigrate` yalnız başarıda çalışır (LOW, veri)
+- **Kanıt:** İlk migrate başarısız olunca geçmiş tablosu default privilege'larla uygulama rolüne açık kaldı. Uygulama rolü sahte bir `success=true` satırı ekleyebildi.
+- **Düzeltme:** Aynı `REVOKE` ile bir `afterMigrateError.sql`; ya da geçmiş tablosu uygulama rolünün erişemediği bir şemada dursun.
+- **Verso:** `afterMigrateError.sql`, `MigrationConventionsTest.callbacks_*`.
+
+### R42 · Config tree, yolunda `..` geçen klasörü sessizce atlar (MEDIUM, yapılandırma)
+- **Nerede:** Referans 15.3 config tree önerisi.
+- **Kanıt:** Boot'un `ConfigTreePropertySource`'u, adı "." ile başlayan her yol parçasını (`..` dahil) atlıyor. `optional:configtree:../secrets/` hiçbir property yüklemedi; yer tutucu metin olarak veritabanına gitti.
+- **Düzeltme:** Config tree yollarında nokta ile başlayan parça olmasın; bir test bunu denetlesin.
+- **Verso:** `ConfigProfilesTest.configTreeImports_whenDeclared_haveNoDotSegments`.
+
+### R43 · `@Transactional` tanımı Spring 7'de daha geniş (MEDIUM, mimari test)
+- **Nerede:** Referans 16, `TransactionBoundaryRulesTest` ("@Transactional metot ... çağırmaz").
+- **Kanıt:** Spring 7, `public` olmayan metotları da transaction'a alıyor. Şu biçimler ilk kural sürümünden kaçtı:
+  - birleşik (meta) anotasyon;
+  - arayüz metodu ya da üst sınıftaki anotasyon;
+  - `jakarta.transaction.Transactional`;
+  - private yardımcı üzerinden çağrı;
+  - `RestClient`'ın iç tipleri.
+- **Düzeltme:** Meta-anotasyon, arayüz ve üst sınıf taransın; private ve static dışındaki metotlar sayılsın; aynı sınıf içi çağrılar izlensin; iç tipler ön ekle eşleşsin. Her biçim için bir fixture olsun.
+- **Verso:** `TransactionBoundaryRulesTest`, `archfixture.tx`.
+
+### R44 · Parola rotasyonu `pg_stat_statements`'e ve loga iz bırakır (MEDIUM, güvenlik)
+- **Kanıt:** Superuser'ın çalıştırdığı `ALTER ROLE ... PASSWORD '...'`, metni `pg_stat_statements`'e ve PGDATA'daki sorgu dosyasına yazdı. Başarısız olursa sunucu loguna da düşer.
+- **Düzeltme:** Oturumda `SET pg_stat_statements.track_utility = off; SET log_min_error_statement = panic;`. Parola stdin'den psql değişkenine alınsın.
+- **Verso:** `secrets/README.md` rotasyon bölümü; prosedür denendi ve iz kalmadığı doğrulandı.
+
+### R45 · `.dockerignore` desenleri yalnız kökte eşleşir (LOW, image)
+- **Kanıt:** `verso-app/.env` ve `src/main/resources/.env.prod` build context'ine girdi. İkincisi `target/classes` üzerinden jar'a ve image'a gidebilirdi.
+- **Düzeltme:** `**/.env`, `**/.env.*`, `**/secrets/`.
+- **Verso:** `.dockerignore`.
+
+### R46 · Test yığınında loopback güveni parola kontrolünü gizler (LOW, test)
+- **Kanıt:** Postgres image'ının `pg_hba.conf`'u loopback'e güveniyor. Container içinden `127.0.0.1` ile bağlanan bir test her parolayla geçiyor.
+- **Düzeltme:** Testler servis adı (ağ arayüzü) üzerinden bağlansın.
+- **Verso:** `scripts/restore-drill-selftest.sh`.

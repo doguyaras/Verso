@@ -1,0 +1,25 @@
+# Build context = repository root (reference 15.3, 18.1): secrets, env files and build output never enter an image.
+# Patterns without **/ only match at the root: a stray verso-app/.env or src/main/resources/.env.prod would otherwise
+# reach target/classes, the jar and the image (phase 2 security review S5).
+.git
+.github
+.agents
+.claude
+.githooks
+**/target
+**/node_modules
+.env
+.env.*
+**/.env
+**/.env.*
+secrets/
+**/secrets/
+backups/
+docs/
+samples/
+scripts/
+deploy/
+*.md
+Dockerfile
+.dockerignore
+.flattened-pom.xml

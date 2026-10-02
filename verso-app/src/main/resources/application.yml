@@ -55,3 +55,8 @@ management:
     health:
       probes:
         enabled: true
+      # Ready only while the database answers: with PostgreSQL down the container must not report healthy (phase 2
+      # environment review E8). Liveness stays independent of the database, so a DB outage does not restart the app.
+      group:
+        readiness:
+          include: readinessState,db

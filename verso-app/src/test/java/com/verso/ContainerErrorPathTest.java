@@ -9,6 +9,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.verso.platform.core.exception.CommonErrorCode;
 import com.verso.platform.core.exception.ServiceException;
 import com.verso.platform.observability.tracing.TraceIds;
+import com.verso.support.WithVersoPostgres;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,6 +51,7 @@ import org.springframework.web.multipart.MultipartFile;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "management.server.port=0")
 @Import(ContainerErrorPathTest.Probes.class)
+@WithVersoPostgres
 class ContainerErrorPathTest {
 
     static final String MARKER = "container-marker-Ahmet_maas_bordrosu.pdf";

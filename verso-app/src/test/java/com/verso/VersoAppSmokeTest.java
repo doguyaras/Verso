@@ -8,6 +8,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.verso.platform.core.handler.EnvelopeErrorController;
 import com.verso.platform.core.handler.GlobalServiceExceptionHandler;
 import com.verso.platform.observability.tracing.TraceIds;
+import com.verso.support.WithVersoPostgres;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -44,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "management.server.port=0")
 @Import(VersoAppSmokeTest.PingController.class)
+@WithVersoPostgres
 class VersoAppSmokeTest {
 
     static final String PATH_MARKER = "path-marker-jane.doe@example.com";

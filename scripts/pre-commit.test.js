@@ -50,6 +50,8 @@ beforeEach(() => {
   write('verso-app/src/main/resources/application.yml', 'spring:\n  application:\n    name: verso\n');
   write(V1, 'CREATE SCHEMA verso;\n');
   git('add', '-A');
+  // The repository's own modes (Windows records new files as 100644): the hook checks staged *.sh modes.
+  git('update-index', '--chmod=+x', '.githooks/pre-commit', 'scripts/gitleaks-check.sh');
   git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'base');
   git('config', 'core.hooksPath', '.githooks');
   git('checkout', '-q', '-b', 'feature/x');
@@ -95,4 +97,16 @@ test("base'teki migration stage'de degisip calisma kopyasi geri alinsa da commit
   const r = commit('fix: migration');
   assert.notEqual(r.code, 0, r.out);
   assert.match(r.out, /flyway-immutability: IHLAL/);
+});
+
+test('staged shell script without execute bit is blocked', () => {
+  write('deploy/new-tool.sh', '#!/usr/bin/env bash\necho ok\n');
+  git('add', 'deploy/new-tool.sh');
+  git('update-index', '--chmod=-x', 'deploy/new-tool.sh');
+  const blocked = commit('chore: new tool');
+  assert.notEqual(blocked.code, 0, blocked.out);
+  assert.match(blocked.out, /not executable in git/);
+  git('update-index', '--chmod=+x', 'deploy/new-tool.sh');
+  const fixed = commit('chore: new tool');
+  assert.equal(fixed.code, 0, fixed.out);
 });

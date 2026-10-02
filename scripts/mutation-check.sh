@@ -24,11 +24,25 @@ LOG="$(mktemp "${TMPDIR:-/tmp}/verso-mutation.XXXXXX")"
 results=()
 failed=0
 
+# ---------- one run per working tree ----------
+# Two concurrent runs on the same tree overwrite each other's .bak copies, and the "restore" then writes mutated
+# content back (seen in phase 2: 22 files left mutated). mkdir is atomic; only the owner removes the lock.
+LOCK_DIR="$ROOT/.git/mutation-check.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  echo "mutation-check: another run holds $LOCK_DIR (started $(cat "$LOCK_DIR/started" 2>/dev/null || echo '?'))." >&2
+  echo "mutation-check: wait for it, or remove the folder if that run is gone." >&2
+  exit 3
+fi
+date -u +%Y-%m-%dT%H:%M:%SZ > "$LOCK_DIR/started"
+
 # ---------- restore on any exit ----------
 cleanup() {
   while IFS= read -r bak; do mv "$bak" "${bak%.bak}"; touch "${bak%.bak}"; done < <(find . -name '*.bak' -not -path './.git/*' 2>/dev/null)
   rm -rf verso-app/src/main/java/com/verso/stray verso-app/src/main/java/com/verso/platform tmp-mutation
   if [ -d verso-app/src/test.off ]; then rm -rf verso-app/src/test && mv verso-app/src/test.off verso-app/src/test; fi
+  # M88 changes the git index, not a file: put the execute bit back even after an interrupt.
+  git update-index --chmod=+x deploy/postgres/initdb/10-roles.sh 2>/dev/null || true
+  rm -rf "$LOCK_DIR"
 }
 # An interrupted run restores the tree and stops: it used to carry on and could exit 0 (third-round review N4).
 trap cleanup EXIT
@@ -84,7 +98,7 @@ baseline_tests=$(grep -E '^\[INFO\] Tests run: [0-9]+, Failures: 0, Errors: 0, S
 results+=("baseline      green (${baseline_tests} tests)")
 # The node suites are a baseline too: without gitleaks or node every one of them is red, and a mutation judged by
 # them would look "caught" (third-round review N4).
-NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js"
+NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js"
 for suite in $NODE_SUITES; do
   if ! GITLEAKS="${GITLEAKS:-gitleaks}" node --test "$suite" > "$LOG" 2>&1; then
     echo "BASELINE RED: $suite (log: $LOG)"; exit 2
@@ -290,6 +304,66 @@ backup $EC; sub $EC 's/return value instanceof Throwable t \? ErrorClassifier\.u
 backup $YML; sub $YML 's/include: health,info/include: "*"/' \
   && expect_red "M55 every actuator endpoint exposed" verso-app $CEP actuator_whenSensitiveEndpointsRequested_areNotExposed; restore $YML
 
+# ---------- phase 2: database roles, migrations, images (Testcontainers: needs Docker) ----------
+DRT=DatabaseRolesTest
+INIT=deploy/postgres/initdb
+AFTER=services/document/document-core/src/main/resources/db/migration/document/afterMigrate.sql
+backup $AFTER; sub $AFTER 's/^REVOKE ALL ON [^\n]*\n//m' \
+  && expect_red "M65 history table left writable by the application" verso-app $DRT applicationRole_whenMigrationsRan_hasNoPrivilegeOnTheHistoryTable; restore $AFTER
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nALTER ROLE svc_\$\{schema\} SET statement_timeout = \x2710s\x27;//' \
+  && expect_red "M66 application role without statement timeout" verso-app $DRT application_whenConnected_usesTheDmlRoleWithItsTimeoutsAndSearchPath; restore $INIT/10-roles.sh
+backup $INIT/20-database.sh; sub $INIT/20-database.sh 's/\nGRANT USAGE ON SCHEMA \$\{schema\} TO svc_\$\{schema\};//' \
+  && expect_red "M67 application role cannot reach its schema" verso-app $DRT migrationRoleTable_whenCreated_isWritableByTheApplicationRoleButNotDroppable; restore $INIT/20-database.sh
+backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/\nALTER SYSTEM SET log_parameter_max_length = 0;//' \
+  && expect_red "M68 bind parameters logged by PostgreSQL" verso-app $DRT server_whenStarted_hasStatisticsAndNoParameterLogging; restore $INIT/05-settings.sh
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nREVOKE ALL ON DATABASE [^\n]*//' \
+  && expect_red "M69 database open to PUBLIC" verso-app $DRT database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles; restore $INIT/10-roles.sh
+VY=verso-app/src/main/resources/config/verso.yml
+backup $VY; sub $VY 's/baseline-on-migrate: false/baseline-on-migrate: true/' \
+  && expect_red "M70 baseline-on-migrate switched on" verso-app ConfigProfilesTest database_whenLocalProfile_isLocalhostWithTheProductionRoles; restore $VY
+MCT=services/document/document-core/src/test/java/com/verso/document/migration/MigrationConventionsTest.java
+backup $MCT; sub $MCT 's/\n\s*Pattern\.compile\("\(\?i\)\\\\bcreate\\\\s\+schema\\\\b"\),//' \
+  && expect_red "M71 CREATE SCHEMA allowed in migrations" services/document/document-core MigrationConventionsTest violations_whenFixturesBreakEachRule_areAllReported; restore $MCT
+backup compose.yaml; sub compose.yaml 's/(x-postgres-image: &postgres-image \S+)\@sha256:[0-9a-f]{64}/$1/' \
+  && expect_red "M72 compose image not pinned by digest" verso-app ImageVersionsTest images_whenReferencedInComposeOrDockerfile_arePinnedByDigest; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/pgvector\/pgvector:0\.8\.7-pg18-trixie/pgvector\/pgvector:0.8.6-pg18-trixie/' \
+  && expect_red "M73 tests and compose on different PostgreSQL images" verso-app ImageVersionsTest postgresImage_whenUsedByTestsAndCompose_isTheSame; restore compose.yaml
+
+# ---------- phase 2 review fixes ----------
+backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/\nALTER SYSTEM SET log_error_verbosity = \x27terse\x27;//' \
+  && expect_red "M74 constraint DETAIL (row content) in server log" verso-app $DRT constraintViolation_whenRowCarriesDocumentText_neverReachesTheServerLog; restore $INIT/05-settings.sh
+AFTERERR=services/document/document-core/src/main/resources/db/migration/document/afterMigrateError.sql
+backup $AFTERERR; sub $AFTERERR 's/^REVOKE ALL ON [^\n]*\n//m' \
+  && expect_red "M75 history left writable after a failed migrate" services/document/document-core MigrationConventionsTest callbacks_whenPresent_revokeTheHistoryTableFromTheApplicationRole; restore $AFTERERR
+backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n    ports:)/    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n    ports:/' \
+  && expect_red "M76 application container gets the migration password" verso-app ComposeConfigTest migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService; restore compose.yaml
+backup .dockerignore; sub .dockerignore 's/\n\*\*\/\.env\n/\n/' \
+  && expect_red "M77 nested .env files enter the build context" verso-app ComposeConfigTest dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth; restore .dockerignore
+backup compose.yaml; sub compose.yaml 's/(  postgres:\n    image: \*postgres-image\n)/$1    ports:\n      - "5432:5432"\n/' \
+  && expect_red "M78 database published on the host" verso-app ComposeConfigTest ports_whenComposed_publishOnlyTheApiOnLoopback; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/\n\s*- --management\.endpoint\.health\.validate-group-membership=false//' \
+  && expect_red "M79 migrate mode cannot start (readiness group needs db)" verso-app MigrateModeTest migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource; restore compose.yaml
+
+# ---------- phase 2 test review survivors (R01-R16), now pinned ----------
+# Statements replaced by a no-op, not deleted: an empty for-loop body would be a bash syntax error (no init at all).
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nREVOKE ALL ON DATABASE [^\n]*\nGRANT CONNECT ON DATABASE [^\n]*//' \
+  && sub $INIT/10-roles.sh 's/GRANT CONNECT ON DATABASE \\"\$POSTGRES_DB\\" TO svc_\$\{schema\}, svc_\$\{schema\}_migrate;/SELECT 1;/' \
+  && expect_red "M80 database ACL never set (PUBLIC keeps implicit CONNECT)" verso-app $DRT database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles; restore $INIT/10-roles.sh
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/CREATE ROLE svc_\$\{schema\} LOGIN PASSWORD/CREATE ROLE svc_\${schema} LOGIN CREATEROLE PASSWORD/' \
+  && expect_red "M81 application role may create roles" verso-app $DRT roles_whenCreated_haveNoElevatedAttributes; restore $INIT/10-roles.sh
+backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/password_encryption = \x27scram-sha-256\x27/password_encryption = \x27md5\x27/' \
+  && expect_red "M82 passwords hashed with md5" verso-app $DRT server_whenStarted_hashesPasswordsWithScram; restore $INIT/05-settings.sh
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/sql="SET log_min_error_statement = panic;"/sql=""/' \
+  && expect_red "M83 failing CREATE ROLE logs its password" verso-app $DRT rolesScript_whenCreateRoleFails_doesNotLogThePassword; restore $INIT/10-roles.sh
+backup $INIT/20-database.sh; sub $INIT/20-database.sh 's/GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES/GRANT ALL ON TABLES/' \
+  && expect_red "M84 default privileges wider than DML" verso-app $DRT migrationRoleObjects_whenCreated_giveTheApplicationRoleExactlyDmlAndSequenceUsage; restore $INIT/20-database.sh
+backup $VY; sub $VY 's/password: \$\{SECRET_DB_DOCUMENT_PASSWORD\}/password: \${SECRET_DB_DOCUMENT_MIGRATE_PASSWORD}/' \
+  && expect_red "M85 application datasource uses the migration password" verso-app DeployConfigTest deployConfig_whenFedLikeCompose_connectsAsTheApplicationRoleToTheVersoDatabase; restore $VY
+backup Dockerfile; sub Dockerfile 's/\nUSER 10001//' \
+  && expect_red "M86 image runs as root" verso-app ComposeConfigTest dockerfile_whenFinalStageRuns_usesANonRootUser; restore Dockerfile
+backup compose.yaml; sub compose.yaml 's/(  backup:\n)    <<: \*hardening\n/$1/' \
+  && expect_red "M87 backup container without hardening" verso-app ComposeConfigTest hardening_whenServicesStart_isReadOnlyWithoutCapabilities; restore compose.yaml
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
@@ -312,6 +386,12 @@ backup scripts/flyway-immutability.js; sub scripts/flyway-immutability.js 's/\.\
   && node_red "M59 flyway --staged ignored" scripts/flyway-immutability.test.js "--staged:"; restore scripts/flyway-immutability.js
 backup scripts/config-lint.js; sub scripts/config-lint.js 's/\n\s*\.replace\(\/\(\[a-z0-9\]\)\(\[A-Z\]\)\/g, \x27\$1 \$2\x27\)//' \
   && node_red "M63 camelCase secret keys not split" scripts/config-lint.test.js "(b) camelCase"; restore scripts/config-lint.js
+# The git index, not a file: the trap does not know about it, so the bit is restored right after the run.
+if want M88; then
+  git update-index --chmod=-x deploy/postgres/initdb/10-roles.sh
+  node_red "M88 initdb script not executable in git" scripts/repo-hygiene.test.js "shell scripts and git hooks"
+  git update-index --chmod=+x deploy/postgres/initdb/10-roles.sh
+fi
 D=.claude/hooks/review-gate-detect.js
 backup $D; sub $D 's/\n\s*\/\/ any other quoted value[^\n]*\n[^\n]*\x27Q\x27\);/;/' \
   && node_red "M43 quoted -C path splits (push not detected)" scripts/review-gate.test.js "third-round review B23"; restore $D

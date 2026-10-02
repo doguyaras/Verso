@@ -44,6 +44,7 @@ jobs:
           node --test scripts/gitleaks-check.test.js
           node --test scripts/pre-commit.test.js
           node --test scripts/review-gate.test.js
+          node --test scripts/repo-hygiene.test.js
       - name: migration degismezligi (PR base'ine karsi)
         if: github.event_name == 'pull_request'
         # base_ref goes through env, never straight into the script text (expression injection)
@@ -60,7 +61,11 @@ jobs:
           set -euo pipefail
           export CLAUDE_PROJECT_DIR="$PWD"
           export FLYWAY_BASE_REF=HEAD   # kuru calistirma: HEAD agacindaki V dosyasi "base'te var" sayilsin (repo'nun gercek base branch'inden bagimsiz)
-          for h in .claude/hooks/*.sh .githooks/*; do bash -n "$h"; done
+          for h in .claude/hooks/*.sh .githooks/* scripts/*.sh deploy/postgres/initdb/*.sh deploy/backup/*.sh; do bash -n "$h"; done
+          # compose dosyasi gecerli mi (secret dosyalari bu kosu icin rastgele uretilir; ADR-0009)
+          bash scripts/dev-secrets.sh
+          docker compose config --quiet
+          docker compose --profile drill config --quiet
           # review-gate davranisi "script ve hook testleri" adiminda (scripts/review-gate.test.js)
           # base'te var olan bir V dosyasi: hook engellemeli (exit 2)
           FIRST=$(git ls-files '*/db/migration/V*.sql' | head -1)
@@ -81,8 +86,8 @@ jobs:
     if: github.event.action != 'edited' || github.event.changes.base != null
     runs-on: ubuntu-latest
     env:
-      # Toplam test sayisi esigi (sessiz kucultme yok). Faz 1 sonunda 120 test (ucuncu review turu); test eklendikce yukseltilir.
-      MIN_TESTS: '120'
+      # Toplam test sayisi esigi (sessiz kucultme yok). Faz 2 sonunda 160 test; test eklendikce yukseltilir.
+      MIN_TESTS: '160'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }

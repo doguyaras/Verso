@@ -23,6 +23,30 @@
       <groupId>com.verso</groupId>
       <artifactId>platform-core</artifactId>
     </dependency>
+    <!-- Domain modules (ADR-0001). document-core brings the migrations of the "document" schema. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>document-core</artifactId>
+    </dependency>
+    <!-- PostgreSQL 18 + pgvector, Flyway (ADR-0002, ADR-0009). The application connects as svc_document (DML only);
+         Flyway connects separately as svc_document_migrate (reference 10.1). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc</artifactId>
@@ -63,6 +87,12 @@
     <dependency>
       <groupId>com.tngtech.archunit</groupId>
       <artifactId>archunit-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Real PostgreSQL in tests (reference 16): the same image and init scripts as compose. -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

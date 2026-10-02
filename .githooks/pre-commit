@@ -34,7 +34,16 @@ if [ "${#staged_files[@]}" -gt 0 ]; then
   node scripts/config-lint.js "${staged_files[@]}"
 fi
 
-# 3) gitleaks on the staged content. A missing binary is "unverifiable" (exit 3) and blocks.
+# 3) Staged shell scripts are executable (mode 100755): a Linux checkout sources a non-executable initdb script and
+#    skips a non-executable hook; files added from Windows get 100644 (scripts/repo-hygiene.test.js checks the tree).
+not_executable=$(git ls-files --stage -- '*.sh' '.githooks/*' | awk '$1 != "100755" {print $4}')
+if [ -n "$not_executable" ]; then
+  echo "pre-commit: not executable in git (fix: git update-index --chmod=+x <file>):" >&2
+  printf '  %s\n' $not_executable >&2
+  exit 1
+fi
+
+# 4) gitleaks on the staged content. A missing binary is "unverifiable" (exit 3) and blocks.
 if [ -z "${GITLEAKS:-}" ]; then
   GITLEAKS="$(command -v gitleaks || command -v gitleaks.exe || echo "$HOME/.local/bin/gitleaks.exe")"
 fi

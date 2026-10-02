@@ -1,0 +1,55 @@
+# Restore drill (reference 10.5: "test edilmemiş yedek, yedek değildir"; ADR-0009). Builds the image, starts the
+# compose stack from a clean checkout, writes data, takes an encrypted backup and restores it into a throwaway
+# PostgreSQL: row counts, grants and Flyway validate must match. The self-test also proves the drill fails on a
+# changed manifest, a corrupted file and a missing checksum. Weekly, on demand, and on PRs touching what it covers.
+name: restore-drill
+on:
+  schedule:
+    - cron: '17 3 * * 1'   # Mondays 03:17 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - compose.yaml
+      - Dockerfile
+      - .dockerignore
+      - 'deploy/**'
+      - 'scripts/dev-secrets.sh'
+      - 'scripts/restore-drill*.sh'
+      - 'services/**'
+      # Application config, code and build: the stack must still start from them (phase 2 environment review E4).
+      - 'verso-app/**'
+      - 'platform/**'
+      - 'pom.xml'
+      - '.mvn/**'
+      - .env.example
+      - '.github/workflows/restore-drill.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: secrets (random, this run only) + stack (image built from this checkout)
+        run: |
+          bash scripts/dev-secrets.sh
+          docker compose up --detach --build --wait
+      - name: backup + restore drill self-test (passes on real data, fails on every tampering)
+        run: bash scripts/restore-drill-selftest.sh
+      - name: drill on the newest backup (what the weekly run is for)
+        run: |
+          docker compose run --rm --no-deps -T backup once
+          bash scripts/restore-drill.sh
+      - name: container status and app logs on failure (logs carry ids and timings only)
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail 200 verso-app backup postgres
+      - name: teardown
+        if: always()
+        run: docker compose --profile drill down --volumes --remove-orphans

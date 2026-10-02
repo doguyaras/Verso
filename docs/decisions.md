@@ -12,3 +12,4 @@ Mimari kararların her biri `docs/adr/NNNN-<baslik>.md` dosyasında, referans ş
 | [0006](adr/0006-ai-calisma-modu.md) | `verso.ai.mode` local/cloud; embedding her zaman yerel; varsayılan cloud Anthropic | Kabul edildi (faz 4–6) |
 | [0007](adr/0007-blueprint-uyarlamalari.md) | Blueprint ve iskelet örneğinden bilinçli uyarlamalar | Kabul edildi |
 | [0008](adr/0008-soru-cevap-sicak-yolu.md) | Soru-cevap sıcak yolunda iki uzak senkron çağrı ve bütçeleri | Kabul edildi |
+| [0009](adr/0009-veri-altyapisi.md) | Compose, roller ve GRANT sınırı, secret dosyaları, pg_dump + gpg yedek ve otomatik restore provası, çok aşamalı Dockerfile | Kabul edildi (faz 2) |
