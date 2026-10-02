@@ -104,6 +104,16 @@ class MigrationConventionsTest {
         assertThat(found).anyMatch(v -> v.contains("V3__infrastructure.sql") && v.contains("set_config"));
         assertThat(found).anyMatch(v -> v.contains("V3__infrastructure.sql") && v.contains("execute"));
         assertThat(found).anyMatch(v -> v.contains("versions") && v.contains("expected 4"));
+        // Every rule has its own fixture (phase 2 test review T9).
+        assertThat(found).anyMatch(v -> v.contains("V6__more_infrastructure.sql") && v.contains("create\\s+extension"));
+        assertThat(found).anyMatch(v -> v.contains("V6__more_infrastructure.sql") && v.contains("drop\\s+schema"));
+        assertThat(found).anyMatch(v -> v.contains("V6__more_infrastructure.sql") && v.contains("search_path"));
+        assertThat(found).anyMatch(v -> v.contains("V6__more_infrastructure.sql") && v.contains("default\\s+privileges"));
+        assertThat(found).anyMatch(v -> v.contains("V6__more_infrastructure.sql") && v.contains("alter\\s+role"));
+        assertThat(found).anyMatch(v -> v.contains("V6__more_infrastructure.sql") && v.contains("session\\s+authorization"));
+        assertThat(found).anyMatch(v -> v.contains("V2__other_schema.sql") && v.contains("version also used by"));
+        assertThat(found).anyMatch(v -> v.contains("V8__evasions.sql") && v.contains("schema 'qa'"));
+        assertThat(found).anyMatch(v -> v.contains("V8__evasions.sql") && v.contains("set\\s+schema"));
         assertThat(found).anyMatch(v -> v.contains("V5__no_comment.sql") && v.contains("comment"));
         // ...and no false alarm on the clean fixture: own schema, narrowing REVOKE, alias after ON, comment first.
         assertThat(found).noneMatch(v -> v.startsWith("V1__first.sql"));

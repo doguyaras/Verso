@@ -202,12 +202,14 @@ services:
         condition: service_healthy
 
   # Flyway validate against the restored database: the history must match the migrations of this checkout.
+  # -ignoreMigrationPatterns= (empty): the default "*:future" would accept applied versions unknown to this checkout
+  # (phase 2 test review T4).
   restore-flyway:
     profiles: ["drill"]
     <<: *hardening
     image: flyway/flyway:12.4.0@sha256:5be18367a9b3979a9f37234c371b80da457a448fb9577bd94d4bf24d923fafac
     # The password goes through FLYWAY_PASSWORD, never the argument list.
-    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_DOCUMENT_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_document_migrate -schemas=document -defaultSchema=document -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true validate"]
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_DOCUMENT_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_document_migrate -schemas=document -defaultSchema=document -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"
     secrets:

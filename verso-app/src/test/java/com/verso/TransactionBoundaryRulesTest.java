@@ -86,6 +86,7 @@ class TransactionBoundaryRulesTest {
                 .hasMessageContaining("RestClient$RequestHeadersUriSpec")
                 .hasMessageContaining("TransactionalPortImpl.fetch")
                 .hasMessageContaining("InheritedTransaction.call")
+                .hasMessageContaining("TransactionalLambdaRemoteCall.restCallInLambdaInsideTransaction")
                 .hasMessageNotContaining("restCallWithTransactionSuspended")
                 .hasMessageNotContaining("restCallWithoutTransaction")
                 .hasMessageNotContaining("staticCall");
@@ -104,6 +105,8 @@ class TransactionBoundaryRulesTest {
         assertThat(isRemote("org.springframework.web.client.RestClient")).isTrue();
         assertThat(isRemote("org.springframework.web.client.RestClient$RequestHeadersSpec")).isTrue();
         assertThat(isRemote("java.net.http.HttpClient")).isTrue();
+        assertThat(isRemote("org.springframework.web.client.RestTemplate")).isTrue();
+        assertThat(isRemote("org.springframework.web.reactive.function.client.WebClient")).isTrue();
         assertThat(isRemote("com.verso.qa.client.OllamaClient")).isTrue();
         assertThat(isRemote("org.springframework.ai.document.Document")).isFalse();
         assertThat(isRemote("org.springframework.ai.transformer.splitter.TokenTextSplitter")).isFalse();

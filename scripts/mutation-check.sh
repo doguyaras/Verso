@@ -330,6 +330,26 @@ backup compose.yaml; sub compose.yaml 's/(  postgres:\n    image: \*postgres-ima
 backup compose.yaml; sub compose.yaml 's/\n\s*- --management\.endpoint\.health\.validate-group-membership=false//' \
   && expect_red "M79 migrate mode cannot start (readiness group needs db)" verso-app MigrateModeTest migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource; restore compose.yaml
 
+# ---------- phase 2 test review survivors (R01-R16), now pinned ----------
+# Statements replaced by a no-op, not deleted: an empty for-loop body would be a bash syntax error (no init at all).
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nREVOKE ALL ON DATABASE [^\n]*\nGRANT CONNECT ON DATABASE [^\n]*//' \
+  && sub $INIT/10-roles.sh 's/GRANT CONNECT ON DATABASE \\"\$POSTGRES_DB\\" TO svc_\$\{schema\}, svc_\$\{schema\}_migrate;/SELECT 1;/' \
+  && expect_red "M80 database ACL never set (PUBLIC keeps implicit CONNECT)" verso-app $DRT database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles; restore $INIT/10-roles.sh
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/CREATE ROLE svc_\$\{schema\} LOGIN PASSWORD/CREATE ROLE svc_\${schema} LOGIN CREATEROLE PASSWORD/' \
+  && expect_red "M81 application role may create roles" verso-app $DRT roles_whenCreated_haveNoElevatedAttributes; restore $INIT/10-roles.sh
+backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/password_encryption = \x27scram-sha-256\x27/password_encryption = \x27md5\x27/' \
+  && expect_red "M82 passwords hashed with md5" verso-app $DRT server_whenStarted_hashesPasswordsWithScram; restore $INIT/05-settings.sh
+backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/sql="SET log_min_error_statement = panic;"/sql=""/' \
+  && expect_red "M83 failing CREATE ROLE logs its password" verso-app $DRT rolesScript_whenCreateRoleFails_doesNotLogThePassword; restore $INIT/10-roles.sh
+backup $INIT/20-database.sh; sub $INIT/20-database.sh 's/GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES/GRANT ALL ON TABLES/' \
+  && expect_red "M84 default privileges wider than DML" verso-app $DRT migrationRoleObjects_whenCreated_giveTheApplicationRoleExactlyDmlAndSequenceUsage; restore $INIT/20-database.sh
+backup $VY; sub $VY 's/password: \$\{SECRET_DB_DOCUMENT_PASSWORD\}/password: \${SECRET_DB_DOCUMENT_MIGRATE_PASSWORD}/' \
+  && expect_red "M85 application datasource uses the migration password" verso-app DeployConfigTest deployConfig_whenFedLikeCompose_connectsAsTheApplicationRoleToTheVersoDatabase; restore $VY
+backup Dockerfile; sub Dockerfile 's/\nUSER 10001//' \
+  && expect_red "M86 image runs as root" verso-app ComposeConfigTest dockerfile_whenFinalStageRuns_usesANonRootUser; restore Dockerfile
+backup compose.yaml; sub compose.yaml 's/(  backup:\n)    <<: \*hardening\n/$1/' \
+  && expect_red "M87 backup container without hardening" verso-app ComposeConfigTest hardening_whenServicesStart_isReadOnlyWithoutCapabilities; restore compose.yaml
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
@@ -352,6 +372,12 @@ backup scripts/flyway-immutability.js; sub scripts/flyway-immutability.js 's/\.\
   && node_red "M59 flyway --staged ignored" scripts/flyway-immutability.test.js "--staged:"; restore scripts/flyway-immutability.js
 backup scripts/config-lint.js; sub scripts/config-lint.js 's/\n\s*\.replace\(\/\(\[a-z0-9\]\)\(\[A-Z\]\)\/g, \x27\$1 \$2\x27\)//' \
   && node_red "M63 camelCase secret keys not split" scripts/config-lint.test.js "(b) camelCase"; restore scripts/config-lint.js
+# The git index, not a file: the trap does not know about it, so the bit is restored right after the run.
+if want M88; then
+  git update-index --chmod=-x deploy/postgres/initdb/10-roles.sh
+  node_red "M88 initdb script not executable in git" scripts/repo-hygiene.test.js "shell scripts and git hooks"
+  git update-index --chmod=+x deploy/postgres/initdb/10-roles.sh
+fi
 D=.claude/hooks/review-gate-detect.js
 backup $D; sub $D 's/\n\s*\/\/ any other quoted value[^\n]*\n[^\n]*\x27Q\x27\);/;/' \
   && node_red "M43 quoted -C path splits (push not detected)" scripts/review-gate.test.js "third-round review B23"; restore $D

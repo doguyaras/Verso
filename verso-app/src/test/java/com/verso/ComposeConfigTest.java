@@ -104,6 +104,42 @@ class ComposeConfigTest {
         assertThat(published.getFirst()).startsWith("verso-app 127.0.0.1:").endsWith(":8080");
     }
 
+    /** Reference 18.2 hardening of every container that does not need root to start (phase 2 test review T8). */
+    @Test
+    void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
+        for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway")) {
+            Map<String, Object> s = service(name);
+            assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
+            assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
+            assertThat(s.get("security_opt")).as(name).isEqualTo(List.of("no-new-privileges:true"));
+        }
+        for (String name : List.of("postgres", "restore-db")) {
+            assertThat(service(name).get("security_opt")).as(name).isEqualTo(List.of("no-new-privileges:true"));
+        }
+    }
+
+    /** Resolved per service (YAML aliases included), so an unpinned image behind another anchor is caught too. */
+    @Test
+    void images_whenResolvedPerService_arePinnedByDigest() {
+        services().forEach((name, definition) -> {
+            Map<?, ?> service = (Map<?, ?>) definition;
+            String image = String.valueOf(service.get("image"));
+            if (service.containsKey("build") || image.startsWith("verso:")) return; // our own image, tagged by CI
+            assertThat(image).as(name).containsPattern("@sha256:[0-9a-f]{64}$");
+        });
+    }
+
+    /** The final image stage runs as a non-root numeric user, set before the entrypoint (reference 18.1). */
+    @Test
+    void dockerfile_whenFinalStageRuns_usesANonRootUser() throws IOException {
+        String dockerfile = read("Dockerfile");
+        String finalStage = dockerfile.substring(dockerfile.lastIndexOf("\nFROM "));
+        Matcher user = Pattern.compile("(?m)^USER\\s+(\\S+)\\s*$").matcher(finalStage);
+        assertThat(user.find()).as("USER in the final stage").isTrue();
+        assertThat(user.group(1)).matches("[1-9][0-9]*");
+        assertThat(finalStage.indexOf("\nUSER ")).isLessThan(finalStage.indexOf("\nENTRYPOINT "));
+    }
+
     /** Review S5: root-only patterns let verso-app/.env or src/main/resources/.env.prod into the jar and the image. */
     @Test
     void dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth() throws IOException {

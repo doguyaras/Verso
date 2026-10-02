@@ -52,6 +52,10 @@ class ConfigProfilesTest {
             assertThat(env.getProperty("spring.flyway.locations")).isEqualTo("classpath:db/migration/document");
             assertThat(env.getProperty("spring.flyway.baseline-on-migrate")).isEqualTo("false");
             assertThat(env.getProperty("spring.flyway.clean-disabled")).isEqualTo("true");
+            // The schema is infrastructure: Flyway never creates it and never works outside it (test review R12).
+            assertThat(env.getProperty("spring.flyway.create-schemas")).isEqualTo("false");
+            assertThat(env.getProperty("spring.flyway.schemas")).isEqualTo("document");
+            assertThat(env.getProperty("spring.flyway.default-schema")).isEqualTo("document");
         }
     }
 

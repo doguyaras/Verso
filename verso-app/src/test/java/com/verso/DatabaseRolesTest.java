@@ -45,10 +45,12 @@ class DatabaseRolesTest {
     /** 10-roles.sh: only the named roles may connect; PUBLIC has no database privilege at all. */
     @Test
     void database_whenInitialized_isClosedToPublicAndOpenToTheNamedRoles() {
+        // A NULL datacl means the built-in defaults, where PUBLIC has CONNECT and TEMPORARY; aclexplode(NULL) returns
+        // no rows and hid that (phase 2 test review T1). acldefault() makes the implicit grants visible.
         assertThat(jdbc.queryForObject("""
-                select count(*) from pg_database d, aclexplode(d.datacl) a
+                select count(*) from pg_database d, aclexplode(coalesce(d.datacl, acldefault('d', d.datdba))) a
                 where d.datname = current_database() and a.grantee = 0
-                """, Integer.class)).as("privileges granted to PUBLIC").isZero();
+                """, Integer.class)).as("privileges granted to PUBLIC, explicit or implicit").isZero();
         for (String role : new String[]{"svc_document", "svc_document_migrate", "verso_backup"}) {
             assertThat(jdbc.queryForObject("select has_database_privilege(?, current_database(), 'CONNECT')",
                     Boolean.class, role)).as(role).isTrue();
@@ -185,6 +187,83 @@ class DatabaseRolesTest {
                 VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
              Statement st = admin.createStatement()) {
             assertThat(single(st, "show log_error_verbosity")).isEqualTo("terse");
+        }
+    }
+
+    // ---- deploy/postgres/initdb guarantees that stock PostgreSQL defaults would not give (phase 2 test review T7) ----
+
+    @Test
+    void roles_whenCreated_haveNoElevatedAttributes() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from pg_roles
+                where rolname in ('svc_document', 'svc_document_migrate', 'verso_backup')
+                  and (rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls)
+                """, Integer.class)).isZero();
+    }
+
+    @Test
+    void migrationRole_whenConnected_hasItsLockTimeoutAndSearchPath() throws SQLException {
+        try (Connection c = connect("svc_document_migrate", "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD");
+             Statement st = c.createStatement()) {
+            assertThat(single(st, "show lock_timeout")).isEqualTo("10s");
+            assertThat(single(st, "show statement_timeout")).as("backfills may run long").isEqualTo("0");
+            assertThat(single(st, "show search_path")).isEqualTo("document, extensions");
+        }
+    }
+
+    /** Default privileges give exactly DML (no TRUNCATE, REFERENCES, TRIGGER) and keep sequences usable (bigserial). */
+    @Test
+    void migrationRoleObjects_whenCreated_giveTheApplicationRoleExactlyDmlAndSequenceUsage() throws SQLException {
+        String name = "probe_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection migrate = connect("svc_document_migrate", "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD");
+             Statement ddl = migrate.createStatement()) {
+            ddl.execute("create table document." + name + " (id bigserial primary key, v int)");
+            try {
+                assertThat(jdbc.queryForList("""
+                        select privilege_type from information_schema.role_table_grants
+                        where grantee = 'svc_document' and table_schema = 'document' and table_name = ?
+                        order by 1
+                        """, String.class, name)).containsExactly("DELETE", "INSERT", "SELECT", "UPDATE");
+                assertThat(jdbc.update("insert into document." + name + " (v) values (1)")).isEqualTo(1);
+            } finally {
+                ddl.execute("drop table document." + name);
+            }
+        }
+    }
+
+    @Test
+    void schemas_whenInitialized_allowNoCreateInExtensionsAndNoUseOfPublic() {
+        assertThat(jdbc.queryForObject("select has_schema_privilege('extensions', 'CREATE')", Boolean.class)).isFalse();
+        assertThat(jdbc.queryForObject("select has_schema_privilege('public', 'USAGE')", Boolean.class)).isFalse();
+        assertThat(jdbc.queryForObject("select has_schema_privilege('svc_document_migrate', 'extensions', 'CREATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbc.queryForObject("select has_schema_privilege('svc_document_migrate', 'public', 'CREATE')",
+                Boolean.class)).isFalse();
+    }
+
+    @Test
+    void server_whenStarted_hashesPasswordsWithScram() throws SQLException {
+        try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
+                VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
+             Statement st = admin.createStatement()) {
+            assertThat(single(st, "show password_encryption")).isEqualTo("scram-sha-256");
+            assertThat(single(st, "select count(*) from pg_authid where rolname in "
+                    + "('svc_document', 'svc_document_migrate', 'verso_backup') and rolpassword like 'SCRAM-SHA-256$%'"))
+                    .isEqualTo("3");
+        }
+    }
+
+    /** 10-roles.sh again: CREATE ROLE fails (the role exists); the server log must not carry the password. */
+    @Test
+    void rolesScript_whenCreateRoleFails_doesNotLogThePassword() throws Exception {
+        var rerun = VersoPostgres.POSTGRES.execInContainer("bash", "-c",
+                "POSTGRES_USER=postgres POSTGRES_DB=verso bash /docker-entrypoint-initdb.d/10-roles.sh");
+        assertThat(rerun.getExitCode()).as("second run must fail on the existing role").isNotZero();
+        assertThat(rerun.getStderr()).contains("already exists");
+        String logs = VersoPostgres.POSTGRES.getLogs();
+        assertThat(logs).contains("already exists");
+        for (String secret : VersoPostgres.secretNames()) {
+            assertThat(logs).as(secret).doesNotContain(VersoPostgres.secret(secret));
         }
     }
 
