@@ -1,0 +1,8 @@
+# Local development overlay: publishes PostgreSQL on 127.0.0.1:5432 for an IDE run with the "local" profile
+# (application-local.yml). Never used in production, where the database stays inside the compose network.
+#
+#   docker compose -f compose.yaml -f deploy/compose.local.yaml up -d postgres
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"

@@ -60,7 +60,11 @@ jobs:
           set -euo pipefail
           export CLAUDE_PROJECT_DIR="$PWD"
           export FLYWAY_BASE_REF=HEAD   # kuru calistirma: HEAD agacindaki V dosyasi "base'te var" sayilsin (repo'nun gercek base branch'inden bagimsiz)
-          for h in .claude/hooks/*.sh .githooks/*; do bash -n "$h"; done
+          for h in .claude/hooks/*.sh .githooks/* scripts/*.sh deploy/postgres/initdb/*.sh deploy/backup/*.sh; do bash -n "$h"; done
+          # compose dosyasi gecerli mi (secret dosyalari bu kosu icin rastgele uretilir; ADR-0009)
+          bash scripts/dev-secrets.sh
+          docker compose config --quiet
+          docker compose --profile drill config --quiet
           # review-gate davranisi "script ve hook testleri" adiminda (scripts/review-gate.test.js)
           # base'te var olan bir V dosyasi: hook engellemeli (exit 2)
           FIRST=$(git ls-files '*/db/migration/V*.sql' | head -1)

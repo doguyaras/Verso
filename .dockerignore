@@ -1,0 +1,20 @@
+# Build context = repository root (reference 15.3, 18.1): secrets, env files and build output never enter an image.
+.git
+.github
+.agents
+.claude
+.githooks
+**/target
+**/node_modules
+.env
+.env.*
+secrets/
+backups/
+docs/
+samples/
+scripts/
+deploy/
+*.md
+Dockerfile
+.dockerignore
+.flattened-pom.xml
