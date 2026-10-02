@@ -23,6 +23,11 @@
       <groupId>com.verso</groupId>
       <artifactId>platform-core</artifactId>
     </dependency>
+    <!-- OAuth2 resource server: every request needs a valid access token (ADR-0005). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-security</artifactId>
+    </dependency>
     <!-- Domain modules (ADR-0001). document-core brings the migrations of the "document" schema. -->
     <dependency>
       <groupId>com.verso</groupId>
@@ -93,6 +98,13 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test identity provider (JWKS + token minting) shared with platform-security's tests. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-security</artifactId>
+      <type>test-jar</type>
       <scope>test</scope>
     </dependency>
   </dependencies>

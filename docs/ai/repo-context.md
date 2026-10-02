@@ -56,6 +56,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Migration'lar ve kuralları | `services/document/document-core/src/main/resources/db/migration/document/` (+ `afterMigrate.sql`), `MigrationConventionsTest` |
 | Compose, image, Postgres init | `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `deploy/postgres/initdb/`, `deploy/compose.local.yaml` |
 | Secret dosyaları | `secrets/` (git dışı; `scripts/dev-secrets.sh`; eşleme `secrets/README.md`) |
+| Kimlik (resource server, demo IdP) | `platform/platform-security/` (`JwtValidation`, `PlatformSecurityAutoConfiguration`, test-jar `TestIdentityProvider`), `deploy/keycloak/`, `deploy/postgres/initdb/30-keycloak.sh`, `scripts/{auth-smoke,demo-token}.sh` |
 | Yedek ve restore provası | `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill.sh`, `scripts/restore-drill-selftest.sh`, `.github/workflows/restore-drill.yml` |
 
 ## 5. Altyapı
@@ -67,7 +68,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | PostgreSQL + pgvector | 18.6 + 0.8.7 (digest ile pinli) | tek instance; şema + iki rol/modül; `extensions` şeması; ADR-0009 |
 | Flyway | 12.4.0 | migration rolüyle; `baseline-on-migrate` kapalı |
 | Ollama (planlı) | – | local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla |
-| Keycloak (planlı, faz 3) | – | OIDC IdP (ADR-0005) |
+| Keycloak (demo IdP) | 26.7.5 (digest ile pinli) | prod modu, kendi `keycloak` veritabanı ve rolü; realm `verso` ES256; yalnız 127.0.0.1:8180 (ADR-0005, ADR-0010) |
 | Gözlem (planlı, faz 7) | Alloy → Loki, Prometheus + Alertmanager, Grafana | portlar yalnız 127.0.0.1 |
 
 ## 6. Komutlar
@@ -80,6 +81,7 @@ GITLEAKS=~/.local/bin/gitleaks.exe node --test scripts/gitleaks-check.test.js sc
 bash scripts/mutation-check.sh                                     # negatif doğrulama (~40 dk); ONLY="M20 M41" tek tek
 bash scripts/dev-secrets.sh && docker compose up -d --build --wait  # yığın (ADR-0009)
 bash scripts/restore-drill-selftest.sh                             # yedek + restore provası öz-testi (çalışan yığın)
+bash scripts/auth-smoke.sh                                         # IdP token + API 401/404 (çalışan yığın)
 git config core.hooksPath .githooks                                # klon başına bir kez
 node scripts/flyway-immutability.js check --base origin/develop    # pre-commit: check --staged (index)
 node scripts/config-lint.js $(git ls-files -- $(grep -v '^#' scripts/config-lint.pathspec))   # liste: config-lint.pathspec

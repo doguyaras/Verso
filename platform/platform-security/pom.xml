@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.verso</groupId>
+    <artifactId>verso</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>platform-security</artifactId>
+  <description>Spring Boot starter: OAuth2 resource server with pinned JWT validation, @CurrentAccount, enveloped
+    401/403 (reference 9.2, 6.5; ADR-0005).</description>
+
+  <properties>
+    <!-- 0 tests = failure (reference Ek B lesson 2). A property, not plugin config, so a filtered run
+         (-Dtest=... -am) can pass -DfailIfNoTests=false for upstream modules (reference Ek A skill notes). -->
+    <failIfNoTests>true</failIfNoTests>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-core</artifactId>
+    </dependency>
+    <!-- Resource server + JOSE (Nimbus). Spring Security only; no other new library (ADR-0005). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- The test identity provider (JWKS server + token minting) is shared with verso-app's tests. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

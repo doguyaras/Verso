@@ -92,16 +92,18 @@ class ComposeConfigTest {
         assertThat(String.valueOf(dependsOn.get("migrate"))).contains("service_completed_successfully");
     }
 
-    /** Only the API is published, and only on the loopback interface (reference 18.2). */
+    /** Only the API and the demo IdP are published, and only on the loopback interface (reference 18.2). */
     @Test
-    void ports_whenComposed_publishOnlyTheApiOnLoopback() {
+    void ports_whenComposed_publishOnlyTheApiAndTheIdpOnLoopback() {
         List<String> published = new ArrayList<>();
         services().forEach((name, definition) -> {
             Object ports = ((Map<?, ?>) definition).get("ports");
             if (ports instanceof List<?> list) list.forEach(p -> published.add(name + " " + p));
         });
-        assertThat(published).hasSize(1);
-        assertThat(published.getFirst()).startsWith("verso-app 127.0.0.1:").endsWith(":8080");
+        // The API and the demo IdP (device-flow login, CI token); both only on the loopback interface.
+        assertThat(published).hasSize(2);
+        assertThat(published).anyMatch(p -> p.startsWith("verso-app 127.0.0.1:") && p.endsWith(":8080"));
+        assertThat(published).anyMatch(p -> p.startsWith("keycloak 127.0.0.1:") && p.endsWith(":8080"));
     }
 
     /** Reference 18.2 hardening of every container that does not need root to start (phase 2 test review T8). */
@@ -113,7 +115,9 @@ class ComposeConfigTest {
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
             assertThat(s.get("security_opt")).as(name).isEqualTo(List.of("no-new-privileges:true"));
         }
-        for (String name : List.of("postgres", "restore-db")) {
+        // Keycloak writes its optimised build under /opt/keycloak at startup: not read_only, but without capabilities.
+        assertThat(service("keycloak").get("cap_drop")).isEqualTo(List.of("ALL"));
+        for (String name : List.of("postgres", "restore-db", "keycloak")) {
             assertThat(service(name).get("security_opt")).as(name).isEqualTo(List.of("no-new-privileges:true"));
         }
     }

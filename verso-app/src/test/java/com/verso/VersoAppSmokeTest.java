@@ -8,7 +8,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.verso.platform.core.handler.EnvelopeErrorController;
 import com.verso.platform.core.handler.GlobalServiceExceptionHandler;
 import com.verso.platform.observability.tracing.TraceIds;
-import com.verso.support.WithVersoPostgres;
+import com.verso.support.TestIdp;
+import com.verso.support.VersoTestEnvironment;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "management.server.port=0")
 @Import(VersoAppSmokeTest.PingController.class)
-@WithVersoPostgres
+@VersoTestEnvironment
 class VersoAppSmokeTest {
 
     static final String PATH_MARKER = "path-marker-jane.doe@example.com";
@@ -127,12 +128,28 @@ class VersoAppSmokeTest {
         assertEnvelope(get(serverPort, "/error"), 404, 90010);
     }
 
-    /** Security review B2: dot segments used to make the resource handler log the raw path at WARN. */
+    /**
+     * DispatcherServlet writes "No mapping for GET <raw path>" (logger PageNotFound) for every unmatched request; an
+     * authenticated caller can put any text into that path. Since phase 3 the firewall stops dot segments earlier, so
+     * this normal unknown path is what keeps PageNotFound silenced (mutation M29).
+     */
     @Test
-    void dotSegmentPath_whenRequested_isNotLogged() throws Exception {
+    void unknownPath_whenRequested_isNotLogged() throws Exception {
+        HttpResponse<String> response = get(serverPort, "/v1/" + PATH_MARKER + "/unknown");
+
+        assertEnvelope(response, 404, 90010);
+        assertNoLogEventContains(PATH_MARKER);
+    }
+
+    /**
+     * Security review B2: dot segments used to make the resource handler log the raw path at WARN. Since phase 3
+     * Spring Security's firewall refuses the non-normalised path first: 400 REQUEST_REJECTED, still never logged.
+     */
+    @Test
+    void dotSegmentPath_whenRequested_isRejectedAndNotLogged() throws Exception {
         HttpResponse<String> response = get(serverPort, "/v1/" + PATH_MARKER + "/../x");
 
-        assertThat(response.statusCode()).isEqualTo(404);
+        assertEnvelope(response, 400, 90004);
         assertNoLogEventContains(PATH_MARKER);
     }
 
@@ -197,8 +214,48 @@ class VersoAppSmokeTest {
         }
     }
 
+    /**
+     * Phase 3: every helper above sends a valid token, which would hide two facts that need none. Health probes on the
+     * management port must answer without a token (compose healthcheck, orchestrators); the API must not.
+     */
+    @Test
+    void probesAndApi_whenCalledWithoutToken_probesAnswerAndApiRefuses() throws Exception {
+        for (String probe : new String[]{"/actuator/health", "/actuator/health/readiness", "/actuator/health/liveness"}) {
+            HttpResponse<String> response = http.send(HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + managementPort + probe)).timeout(Duration.ofSeconds(10)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).as(probe).isEqualTo(200);
+        }
+        HttpResponse<String> api = http.send(HttpRequest.newBuilder(
+                URI.create("http://localhost:" + serverPort + "/v1/ping")).timeout(Duration.ofSeconds(10)).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(api.statusCode()).isEqualTo(401);
+        assertThat(api.body()).contains("\"code\":90100");
+        assertThat(api.headers().firstValue("WWW-Authenticate")).hasValue("Bearer");
+    }
+
+    /**
+     * The application's own token rules (config/verso.yml), not the starter's defaults: an ID token header (typ JWT)
+     * and a token for another audience of the same IdP are refused although signature and issuer are valid.
+     */
+    @Test
+    void api_whenTokenIsNotAnAccessTokenForVerso_isRefused() throws Exception {
+        var tokens = java.util.Map.of(
+                "typ JWT", TestIdp.IDP.token().typ("JWT").build(),
+                "audience verso-cli", TestIdp.IDP.token().audience("verso-cli").build());
+        for (var entry : tokens.entrySet()) {
+            HttpResponse<String> response = http.send(HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + serverPort + "/v1/test-ping"))
+                    .header("Authorization", "Bearer " + entry.getValue())
+                    .timeout(Duration.ofSeconds(10)).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).as(entry.getKey()).isEqualTo(401);
+        }
+        assertThat(get(serverPort, "/v1/test-ping").statusCode()).as("a real access token still works").isEqualTo(200);
+    }
+
     private HttpResponse<String> get(int port, String path) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                .header("Authorization", TestIdp.bearer("acct-smoke"))
                 .timeout(Duration.ofSeconds(10)).GET().build();
         return http.send(request, HttpResponse.BodyHandlers.ofString());
     }
@@ -208,7 +265,7 @@ class VersoAppSmokeTest {
         try (Socket socket = new Socket("localhost", serverPort)) {
             socket.setSoTimeout(10_000);
             OutputStream out = socket.getOutputStream();
-            out.write(request.getBytes(StandardCharsets.ISO_8859_1));
+            out.write(ContainerErrorPathTest.withToken(request).getBytes(StandardCharsets.ISO_8859_1));
             out.flush();
             InputStream in = socket.getInputStream();
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();

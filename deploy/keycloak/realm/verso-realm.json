@@ -1,0 +1,112 @@
+{
+  "realm": "verso",
+  "displayName": "Verso (demo IdP)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "loginWithEmailAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "defaultSignatureAlgorithm": "ES256",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "components": {
+    "org.keycloak.keys.KeyProvider": [
+      {
+        "name": "verso-es256",
+        "providerId": "ecdsa-generated",
+        "subComponents": {},
+        "config": {
+          "priority": ["200"],
+          "enabled": ["true"],
+          "active": ["true"],
+          "ecdsaEllipticCurveKey": ["P-256"]
+        }
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "verso-cli",
+      "name": "Verso command line (device authorization grant)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true",
+        "access.token.header.type.rfc9068": "true",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "verso-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "verso-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "verso-ci",
+      "name": "Verso CI smoke test (client credentials)",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${VERSO_CI_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.header.type.rfc9068": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "verso-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "verso-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "email": "demo@verso.invalid",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "User",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${VERSO_DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

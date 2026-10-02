@@ -16,6 +16,10 @@ NAMES=(
   SECRET_DB_DOCUMENT_PASSWORD          # svc_document: application, DML only
   SECRET_DB_BACKUP_PASSWORD            # verso_backup: pg_read_all_data, pg_dump only
   SECRET_BACKUP_ENCRYPTION_KEY         # gpg passphrase for backup files
+  SECRET_DB_KEYCLOAK_PASSWORD          # keycloak: the demo IdP's own database (ADR-0010)
+  SECRET_KEYCLOAK_ADMIN_PASSWORD       # keycloak: bootstrap admin of the master realm
+  SECRET_KEYCLOAK_CI_CLIENT_SECRET     # keycloak: verso-ci client (client credentials, CI smoke test)
+  SECRET_KEYCLOAK_DEMO_USER_PASSWORD   # keycloak: the "demo" user of the verso realm
 )
 
 # Permissions (Linux/macOS hosts; Windows ignores them): the folder is 0700, so no other host user can reach the

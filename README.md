@@ -4,7 +4,7 @@
 >
 > Verso answers questions about your PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your own infrastructure and the application makes no outbound connections. `cloud` mode swaps only the chat model for an external LLM API, behind the same Spring AI interface, through configuration alone. Every response carries `X-Rag-Mode` so a demo can prove which mode answered. Built with Java 25, Spring Boot 4.1, Spring AI 2.0, PostgreSQL 18 + pgvector, following a strict architecture reference with machine-enforced rules.
 
-**Durum:** Faz 2 / 9: veri altyapısı (PostgreSQL 18 + pgvector, roller, Flyway, compose, şifreli yedek ve otomatik restore provası). Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar ve kararlar: [`docs/decisions.md`](docs/decisions.md).
+**Durum:** Faz 3 / 10: kimlik (OIDC resource server, compose'ta demo Keycloak). Önceki faz veri altyapısını kurdu (PostgreSQL 18 + pgvector, roller, Flyway, şifreli yedek ve otomatik restore provası). Uygulama henüz belge almıyor; ingestion faz 4'te, soru-cevap faz 5'te gelir. Fazlar: [`docs/roadmap.md`](docs/roadmap.md); kararlar: [`docs/decisions.md`](docs/decisions.md).
 
 ## Neden
 
@@ -61,6 +61,28 @@ API `http://127.0.0.1:8080` adresindedir; PostgreSQL ve actuator portu dışarı
 | `SECRET_DB_DOCUMENT_PASSWORD` | verso-app | `spring.datasource.password` → `svc_document` |
 | `SECRET_DB_BACKUP_PASSWORD` | backup | `verso_backup` (`pg_read_all_data`) |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup, restore provası | yedeklerin gpg parolası |
+| `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü ve veritabanı |
+| `SECRET_KEYCLOAK_ADMIN_PASSWORD` | keycloak | master realm yöneticisi `admin` |
+| `SECRET_KEYCLOAK_CI_CLIENT_SECRET` | keycloak, CI smoke | `verso-ci` istemcisi (client credentials) |
+| `SECRET_KEYCLOAK_DEMO_USER_PASSWORD` | keycloak | `verso` realm'indeki `demo` kullanıcısı |
+
+**Kimlik doğrulama** (ADR-0005, ADR-0010). API her istekte `Authorization: Bearer <access token>` ister; health uçları dışında token'sız istek `401` döner. Token'ı OIDC IdP verir: compose'ta demo Keycloak `http://127.0.0.1:8180` (realm `verso`), üretimde kurumun kendi IdP'si (`OIDC_ISSUER`, `OIDC_JWK_SET_URI`). Kabul edilen token: ES256 imzalı, `typ: at+jwt`, `iss` birebir, `aud` içinde `verso-api`, süreli. Hesap kimliği token'ın `sub`'ıdır.
+
+Demo kullanıcıyla token (device flow): betik bir bağlantı yazar, tarayıcıda `demo` kullanıcısıyla (parola `secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD`) giriş yapınca token'ı verir.
+
+```bash
+TOKEN="$(bash scripts/demo-token.sh)"
+```
+
+```bash
+curl -i -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/v1/ping
+```
+
+Henüz uç yok; geçerli token'la `404`, token'sız `401` döner. Uçtan uca kontrol (CI'da da çalışır):
+
+```bash
+bash scripts/auth-smoke.sh
+```
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
 
@@ -75,6 +97,7 @@ bash scripts/restore-drill.sh
 - **RPO:** yedek aralığı (varsayılan 24 saat, `BACKUP_INTERVAL_SECONDS`).
 - **RTO hedefi:** 1 saat.
 - **Bağlantı bütçesi:** uygulama havuzu 10 + Flyway 1 + yedek 2 = 13; `max_connections` 100.
+- **Kapsam:** yalnız Verso veritabanı. Demo Keycloak'un `keycloak` veritabanı yedeklenmez; realm dosyadan yeniden kurulur (ADR-0010).
 - **Bilinen sınır:** yedek aynı host'taki volume'dedir. Host dışına kopyalama üretim kurulumunun işidir (ADR-0009).
 - **`docker compose down -v`** veritabanıyla birlikte `backups` volume'ünü de siler; önce yedekleri kopyala.
 - **Parola ve anahtar rotasyonu:** [`secrets/README.md`](secrets/README.md). Init script'leri yalnız ilk kurulumda çalışır.

@@ -1,6 +1,7 @@
 package com.verso.platform.core.handler;
 
 import jakarta.servlet.ServletException;
+import java.util.List;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MultipartException;
 
@@ -20,6 +21,19 @@ final class ErrorClassifier {
     static final String TOMCAT_BAD_REQUEST = "org.apache.coyote.BadRequestException";
 
     private ErrorClassifier() {}
+
+    /** Spring Security's own exception roots; matched by name so platform-core needs no security dependency. */
+    static final List<String> SECURITY_EXCEPTIONS = List.of(
+            "org.springframework.security.access.AccessDeniedException",
+            "org.springframework.security.core.AuthenticationException");
+
+    /** True for Spring Security's denial and authentication exceptions (subclasses included). */
+    static boolean isSecurityException(Throwable t) {
+        for (Class<?> type = t == null ? null : t.getClass(); type != null; type = type.getSuperclass()) {
+            if (SECURITY_EXCEPTIONS.contains(type.getName())) return true;
+        }
+        return false;
+    }
 
     /** Strips the ServletException wrappers the container adds around an exception thrown by a filter. */
     static Throwable unwrapServlet(Throwable t) {

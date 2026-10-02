@@ -51,7 +51,9 @@ class ConfigDriftTest {
             "spring.flyway.url",
             "spring.flyway.user",
             "spring.ai.ollama.base-url",
-            "spring.security.oauth2.resourceserver.jwt.");
+            "spring.security.oauth2.resourceserver.jwt.",
+            "verso.security.jwt.issuer",
+            "verso.security.jwt.jwk-set-uri");
 
     /** Security prefixes whose keys AND values must match (allowlist paths and actors). */
     private static final Set<String> MIRRORED_VALUE_PREFIXES = Set.of("service-jwt.internal-access");

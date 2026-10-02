@@ -263,7 +263,7 @@ backup $PC; sub $PC 's/\@AutoConfiguration\(before = ErrorMvcAutoConfiguration\.
 
 # ---------- container error path and logs ----------
 backup $YML; sub $YML 's/\n\s*org\.springframework\.web\.servlet\.PageNotFound: ERROR//' \
-  && expect_red "M29 raw path logged by PageNotFound" verso-app $SMK dotSegmentPath_whenRequested_isNotLogged; restore $YML
+  && expect_red "M29 raw path logged by PageNotFound" verso-app $SMK unknownPath_whenRequested_isNotLogged; restore $YML
 # Tomcat's host logger is silenced twice: the yml entry (first server, start-up) and ContainerErrorLogSilencer (every
 # server by its real engine name). M31/M44 break both layers, M50 only the listener (third-round reviews B20, N1).
 SIL=platform/platform-core/src/main/java/com/verso/platform/core/handler/ContainerErrorLogSilencer.java
@@ -340,7 +340,7 @@ backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUME
 backup .dockerignore; sub .dockerignore 's/\n\*\*\/\.env\n/\n/' \
   && expect_red "M77 nested .env files enter the build context" verso-app ComposeConfigTest dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth; restore .dockerignore
 backup compose.yaml; sub compose.yaml 's/(  postgres:\n    image: \*postgres-image\n)/$1    ports:\n      - "5432:5432"\n/' \
-  && expect_red "M78 database published on the host" verso-app ComposeConfigTest ports_whenComposed_publishOnlyTheApiOnLoopback; restore compose.yaml
+  && expect_red "M78 database published on the host" verso-app ComposeConfigTest ports_whenComposed_publishOnlyTheApiAndTheIdpOnLoopback; restore compose.yaml
 backup compose.yaml; sub compose.yaml 's/\n\s*- --management\.endpoint\.health\.validate-group-membership=false//' \
   && expect_red "M79 migrate mode cannot start (readiness group needs db)" verso-app MigrateModeTest migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource; restore compose.yaml
 
@@ -363,6 +363,52 @@ backup Dockerfile; sub Dockerfile 's/\nUSER 10001//' \
   && expect_red "M86 image runs as root" verso-app ComposeConfigTest dockerfile_whenFinalStageRuns_usesANonRootUser; restore Dockerfile
 backup compose.yaml; sub compose.yaml 's/(  backup:\n)    <<: \*hardening\n/$1/' \
   && expect_red "M87 backup container without hardening" verso-app ComposeConfigTest hardening_whenServicesStart_isReadOnlyWithoutCapabilities; restore compose.yaml
+
+# ---------- phase 3: identity (ADR-0005, ADR-0010) ----------
+JV=platform/platform-security/src/main/java/com/verso/platform/security/jwt/JwtValidation.java
+JP=platform/platform-security/src/main/java/com/verso/platform/security/jwt/VersoJwtProperties.java
+PSA=platform/platform-security/src/main/java/com/verso/platform/security/config/PlatformSecurityAutoConfiguration.java
+PSM=platform/platform-security
+PST=PlatformSecurityTest
+REFUSED=request_whenTokenIsRefused_isRejectedWith401InvalidToken
+REALM=deploy/keycloak/realm/verso-realm.json
+backup $JV; sub $JV 's/\.jwsAlgorithm\(ALGORITHM\)/.jwsAlgorithms(a -> { a.add(ALGORITHM); a.add(SignatureAlgorithm.RS256); })/' \
+  && expect_red "M89 RS256 accepted next to ES256" $PSM $PST $REFUSED; restore $JV
+backup $JV; sub $JV 's/\n\s*validators\.add\(new JwtIssuerValidator\(properties\.issuer\(\)\)\);//' \
+  && expect_red "M90 issuer not checked" $PSM $PST $REFUSED; restore $JV
+backup $JV; sub $JV 's/jwt\.getAudience\(\) != null && jwt\.getAudience\(\)\.contains\(properties\.audience\(\)\)/true/' \
+  && expect_red "M91 audience not checked" $PSM $PST $REFUSED; restore $JV
+backup $JV; sub $JV 's/jwt -> jwt\.getExpiresAt\(\) != null/jwt -> true/' \
+  && expect_red "M92 token without exp accepted" $PSM $PST $REFUSED; restore $JV
+backup $JV; sub $JV 's/jwt\.getSubject\(\) != null && SUBJECT\.matcher\(jwt\.getSubject\(\)\)\.matches\(\)/jwt.getSubject() != null/' \
+  && expect_red "M93 any sub becomes an account id" $PSM $PST $REFUSED; restore $JV
+backup $JV; sub $JV 's/if \(!properties\.typeHeader\(\)\.isBlank\(\)\)/if (false)/' \
+  && expect_red "M94 typ header ignored (ID token accepted)" $PSM $PST $REFUSED; restore $JV
+backup $JP; sub $JP 's/!"https"\.equals\(scheme\) && !"http"\.equals\(scheme\)/false/' \
+  && expect_red "M95 JWKS from a non-HTTP URL" $PSM SecurityUnitTest properties_whenIncompleteOrUnsafe_failAtStartup; restore $JP
+backup $VY; sub $VY 's/\n\s*type-header: at\+jwt//' \
+  && expect_red "M96 application config does not require at+jwt" verso-app $SMK api_whenTokenIsNotAnAccessTokenForVerso_isRefused; restore $VY
+backup $H; sub $H 's/\n\s*if \(ErrorClassifier\.isSecurityException\(ex\)\) throw ex;//' \
+  && expect_red "M97 access denied becomes a 500" $PSM $PST request_whenControllerDeniesAccess_isRejectedWith403EnvelopeNot500; restore $H
+backup $PSA; sub $PSA 's/if \(ACTUATOR_PRESENT\) requests/if (false) requests/' \
+  && expect_red "M98 health probes need a token" verso-app $SMK probesAndApi_whenCalledWithoutToken_probesAnswerAndApiRefuses; restore $PSA
+backup $PSA; sub $PSA 's/EnvelopeRequestRejectedHandler envelopeRequestRejectedHandler\(/org.springframework.security.web.firewall.RequestRejectedHandler envelopeRequestRejectedHandler(/' \
+  && sub $PSA 's/return new EnvelopeRequestRejectedHandler\(resolver\);/return new org.springframework.security.web.firewall.DefaultRequestRejectedHandler();/' \
+  && expect_red "M99 firewall rejection outside the envelope" verso-app $SMK dotSegmentPath_whenRequested_isRejectedAndNotLogged; restore $PSA
+backup compose.yaml; sub compose.yaml 's/"127\.0\.0\.1:\$\{VERSO_KEYCLOAK_PORT:-8180\}:8080"/"\${VERSO_KEYCLOAK_PORT:-8180}:8080"/' \
+  && expect_red "M100 IdP published on every interface" verso-app ComposeConfigTest ports_whenComposed_publishOnlyTheApiAndTheIdpOnLoopback; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/(  keycloak:\n    image: [^\n]*\n    restart: always\n    security_opt: \[[^\n]*\]\n)    cap_drop: \[ALL\]\n/$1/' \
+  && expect_red "M101 IdP container keeps its capabilities" verso-app ComposeConfigTest hardening_whenServicesStart_isReadOnlyWithoutCapabilities; restore compose.yaml
+backup $INIT/30-keycloak.sh; sub $INIT/30-keycloak.sh 's/\nREVOKE ALL ON DATABASE keycloak FROM PUBLIC;//' \
+  && expect_red "M102 Verso roles can connect to the IdP database" verso-app $DRT keycloakDatabase_whenInitialized_isSeparatedFromVerso; restore $INIT/30-keycloak.sh
+backup $REALM; sub $REALM 's/"directAccessGrantsEnabled": false/"directAccessGrantsEnabled": true/' \
+  && expect_red "M103 password grant enabled" verso-app KeycloakRealmTest clients_whenDeclared_useOnlyDeviceFlowOrClientCredentials; restore $REALM
+backup $REALM; sub $REALM 's/("verso-ci".*?"access\.token\.header\.type\.rfc9068": )"true"/$1"false"/s' \
+  && expect_red "M104 CI client tokens without at+jwt" verso-app KeycloakRealmTest clients_whenDeclared_useOnlyDeviceFlowOrClientCredentials; restore $REALM
+backup $REALM; sub $REALM 's/"secret": "\$\{VERSO_CI_CLIENT_SECRET\}"/"secret": "ci-secret-in-git"/' \
+  && expect_red "M105 literal client secret in the public realm file" verso-app KeycloakRealmTest secrets_whenRealmIsCommitted_areOnlyPlaceholdersFilledByTheStartScript; restore $REALM
+backup $REALM; sub $REALM 's/"defaultSignatureAlgorithm": "ES256"/"defaultSignatureAlgorithm": "RS256"/' \
+  && expect_red "M106 IdP signs with RS256" verso-app KeycloakRealmTest realm_whenImported_signsShortLivedTokensWithEs256Only; restore $REALM
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node

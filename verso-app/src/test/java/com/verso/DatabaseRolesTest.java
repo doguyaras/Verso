@@ -4,12 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.verso.support.VersoPostgres;
-import com.verso.support.WithVersoPostgres;
+import com.verso.support.VersoTestEnvironment;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * non-owner's GRANT into a silent WARNING, so an SQLState alone could prove the wrong thing (reference 10.1).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = "management.server.port=0")
-@WithVersoPostgres
+@VersoTestEnvironment
 class DatabaseRolesTest {
 
     private static final String PERMISSION_DENIED = "42501";
@@ -55,6 +56,33 @@ class DatabaseRolesTest {
             assertThat(jdbc.queryForObject("select has_database_privilege(?, current_database(), 'CONNECT')",
                     Boolean.class, role)).as(role).isTrue();
         }
+    }
+
+    /**
+     * 30-keycloak.sh (ADR-0010): the demo IdP's database is its own island. PUBLIC has nothing on it, Verso's roles
+     * cannot connect to it and the keycloak role cannot connect to Verso's database: checked with real logins.
+     */
+    @Test
+    void keycloakDatabase_whenInitialized_isSeparatedFromVerso() throws SQLException {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from pg_database d, aclexplode(coalesce(d.datacl, acldefault('d', d.datdba))) a
+                where d.datname = 'keycloak' and a.grantee = 0
+                """, Integer.class)).as("privileges granted to PUBLIC on the keycloak database").isZero();
+        assertThat(jdbc.queryForObject("select datdba::regrole::text from pg_database where datname = 'keycloak'",
+                String.class)).isEqualTo("keycloak");
+        assertThat(jdbc.queryForObject("""
+                select count(*) from pg_roles where rolname = 'keycloak'
+                  and (rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls)
+                """, Integer.class)).isZero();
+        try (Connection own = connectTo("keycloak", "keycloak", "SECRET_DB_KEYCLOAK_PASSWORD")) {
+            assertThat(own.isValid(2)).isTrue();
+        }
+        Map<String, String> verso = Map.of("svc_document", "SECRET_DB_DOCUMENT_PASSWORD",
+                "svc_document_migrate", "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "verso_backup", "SECRET_DB_BACKUP_PASSWORD");
+        verso.forEach((role, secret) -> assertThatThrownBy(() -> connectTo("keycloak", role, secret).close())
+                .as(role + " into keycloak").satisfies(e -> assertThat(sqlState(e)).isEqualTo("42501")));
+        assertThatThrownBy(() -> connectTo(VersoPostgres.DATABASE, "keycloak", "SECRET_DB_KEYCLOAK_PASSWORD").close())
+                .as("keycloak into verso").satisfies(e -> assertThat(sqlState(e)).isEqualTo("42501"));
     }
 
     @Test
@@ -269,6 +297,12 @@ class DatabaseRolesTest {
 
     private static Connection connect(String user, String secret) throws SQLException {
         return DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(), user, VersoPostgres.secret(secret));
+    }
+
+    private static Connection connectTo(String database, String user, String secret) throws SQLException {
+        String url = "jdbc:postgresql://" + VersoPostgres.POSTGRES.getHost() + ":"
+                + VersoPostgres.POSTGRES.getMappedPort(5432) + "/" + database;
+        return DriverManager.getConnection(url, user, VersoPostgres.secret(secret));
     }
 
     private static String sqlState(Throwable e) {

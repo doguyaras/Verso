@@ -15,6 +15,8 @@
 | PostgreSQL JDBC / HikariCP | 42.7.13 / 7.0.2 | – | Boot 4.1.1 BOM | |
 | Flyway (kütüphane / CLI image) | 12.4.0 / `flyway/flyway:12.4.0@sha256:5be18367…afac` | – | Boot 4.1.1 BOM; Docker Hub 2026-10-02 | CLI yalnız restore provasında `validate` için; kütüphaneyle aynı sürüm |
 | Testcontainers | 2.0.5 (`testcontainers-postgresql`) | – | Boot 4.1.1 BOM | `org.testcontainers.postgresql.PostgreSQLContainer` (2.x paketi) |
+| Keycloak (demo IdP) | 26.7.5 (`quay.io/keycloak/keycloak:26.7.5@sha256:37dbaf6f…5a85`) | – | quay.io 2026-10-02 | prod modu (`start`), compose'ta; üretimde müşterinin IdP'si (ADR-0010) |
+| Spring Security / OAuth2 Resource Server | 7.1.1 | – | Boot 4.1.1 BOM | `spring-boot-starter-oauth2-resource-server`; Nimbus JOSE+JWT BOM'dan |
 | Node (CI script'leri) | 24 LTS | 2028-04-30 | nodejs.org/en/about/eol | |
 | gitleaks (CI ve yerel pre-commit) | 8.24.3 | – | github.com/gitleaks/gitleaks releases | güncel 8.30.1; sarmalayıcı testleri 8.24.3 ile doğrulandı (ADR-0007 #15) |
 | GitHub Actions | checkout v7.0.1, setup-node v7.0.0, setup-java v6.0.1, upload-artifact v7.0.1 | – | `git ls-remote` ile SHA ↔ tag doğrulandı (2026-10-02) | hepsi en son sürüm |

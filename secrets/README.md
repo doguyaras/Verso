@@ -13,6 +13,12 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_DB_DOCUMENT_PASSWORD` | uygulama | `svc_document`: yalnız DML, DDL yetkisi yok |
 | `SECRET_DB_BACKUP_PASSWORD` | backup servisi | `verso_backup`: `pg_read_all_data`, yalnız okuma |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup servisi, restore provası | Yedek dosyalarının gpg (AES256) parolası |
+| `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü: demo IdP'nin kendi veritabanı (ADR-0010) |
+| `SECRET_KEYCLOAK_ADMIN_PASSWORD` | keycloak | master realm'in açılış yöneticisi `admin` (`127.0.0.1:8180/admin`) |
+| `SECRET_KEYCLOAK_CI_CLIENT_SECRET` | keycloak, `scripts/auth-smoke.sh` | `verso-ci` istemcisinin secret'ı (client credentials) |
+| `SECRET_KEYCLOAK_DEMO_USER_PASSWORD` | keycloak | `verso` realm'indeki `demo` kullanıcısının parolası |
+
+Keycloak secret'larını `deploy/keycloak/start.sh` okur ve yalnız Keycloak sürecinin ortamına verir; compose ortamına girmezler.
 
 Dosya adı Spring'de aynı adlı property olur (config tree). Bu yüzden `config/verso.yml` `${SECRET_DB_DOCUMENT_PASSWORD}` yazar ve fallback kullanmaz.
 
@@ -38,5 +44,17 @@ Postgres init script'leri yalnız ilk kurulumda (boş veri volume'ünde) çalı�
 1. Eski anahtarı `secrets/` dışında, erişimi kısıtlı bir yerde sakla. Eski yedekler saklama süresi (`BACKUP_RETENTION_DAYS`) boyunca yalnız onunla açılır.
 2. Yeni anahtarı yaz, `backup` servisini yeniden başlat, `docker compose run --rm backup once` ile yeni bir yedek al ve `bash scripts/restore-drill.sh` ile doğrula.
 3. Saklama süresi dolunca eski anahtarı imha et.
+
+**Keycloak** (`SECRET_DB_KEYCLOAK_PASSWORD` dışındakiler): realm dosyası yalnız ilk açılışta, `keycloak` veritabanı boşken içe aktarılır. Sonradan dosyayı değiştirmek realm'deki değeri değiştirmez.
+
+- **Demo yığını:** en basit yol IdP'yi sıfırdan kurmaktır; Verso verisi etkilenmez. Yeni değeri dosyaya yaz, sonra:
+
+  ```bash
+  docker compose stop keycloak && docker compose exec -T postgres psql -X -q -v ON_ERROR_STOP=1 -U postgres -d verso -c 'DROP DATABASE keycloak WITH (FORCE)' -c 'CREATE DATABASE keycloak OWNER keycloak' -c 'REVOKE ALL ON DATABASE keycloak FROM PUBLIC' -c 'GRANT CONNECT ON DATABASE keycloak TO keycloak' && docker compose up -d --wait keycloak
+  ```
+
+- **Kalıcı kurulum:** değeri yönetim konsolundan değiştir (istemci → Credentials → Regenerate; kullanıcı → Credentials → Reset password), sonra aynı değeri dosyaya yaz.
+
+`SECRET_DB_KEYCLOAK_PASSWORD` veritabanı parolalarıyla aynı psql kalıbıyla (`ALTER ROLE keycloak`) değişir; sonra `docker compose up -d --force-recreate keycloak`.
 
 **Superuser parolası:** yalnız ilk kurulumda ve restore provasında kullanılır. Rotasyonu aynı psql kalıbıyla `ALTER ROLE postgres` olarak yapılır.
