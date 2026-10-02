@@ -24,6 +24,8 @@
 | Review gate | `node --test scripts/review-gate.test.js` | **PASS**: 5/5. 15 push biçimi soruyor, push olmayan 7 komut sessiz geçiyor, 300 bin karakterlik komut soruyor |
 | Hook kuru çalıştırma | `bash -n` tüm hook'lar, flyway hook (Windows yolları) | **PASS**: hook'lar fail-closed |
 | Mutasyon (negatif doğrulama) | `bash scripts/mutation-check.sh` | **PASS**: 66/66 mutasyonun her biri beklenen **test metodunu** adıyla kırmızıya çevirdi. Java ve node baseline'ları yeşil, artık dosya yok. Çıktılar: `faz-1-mutasyon-ciktisi.txt` (ilk tur, 30), `-2.txt` (ikinci tur, 46), `-3.txt` (üçüncü tur, 66) |
+| CI (GitHub Actions) | `.github/workflows/ci.yml`: `backend` ve `scripts-and-hooks` | **PASS** (ikinci denemede). İlk koşuda `backend` yeşildi (Linux'ta 120 test), `scripts-and-hooks` kırmızıydı: pre-commit testi Linux'ta hook'u atlıyordu (ders 12). Düzeltme c665df0, PR #2 yeşil. `main` ve `develop` 12bc1c0'da yeşil. Hata ve düzeltme ayrıca `node:24` container'ında yeniden üretildi; CI'da hiç koşmamış beş adım da Linux'ta denendi |
+| Branch protection | GitHub API, `main` ve `develop` | **Aktif**: `backend` ve `scripts-and-hooks` geçmeden merge yok (`strict`, yöneticiler dahil); force push ve dal silme kapalı. PR #1 CI kırmızıyken merge edilebilmişti |
 
 ## 2. Review skill'leri
 
@@ -58,6 +60,7 @@
 9. **Test işaretçisi de bir kurala takılabilir.** 36 karakterlik işaretçi, sanitizer'ın "opak blok" kuralıyla maskeleniyordu. Bu yüzden sanitize edilmiş istisna mesajının loga girmesi testte görünmüyordu (N3). Log sızıntı testlerinde işaretçi düz ve boşluklu bir metin olmalı.
 10. **Eşzamanlı doğrulama kendi kanıtını kirletebilir.** Mutasyon script'i sabit bir log yolu kullanıyordu. Reviewer'ın kopyasındaki koşu ile ana koşu aynı dosyaya yazınca 137 ve 177 testlik sahte baseline'lar çıktı. Log artık her koşuda `mktemp` ile ayrı.
 11. **Adla eşleşen tipler sessizce kırılır.** `org.apache.catalina.connector.BadRequestException` Tomcat 11'de yok, sınıf `org.apache.coyote` paketinde. Adla eşleşen her konteyner tipi için artık "sınıf yolunda gerçekten var" testi bulunuyor.
+12. **Windows'ta yeşil olmak Linux'ta yeşil olmak değildir.** Pre-commit testi hook'u geçici depoya `fs.writeFileSync` ile kopyalıyordu ve çalıştırma izni düşüyordu. Windows'taki git bu izne bakmıyor; Linux'taki git hook'u sessizce atlıyor. CI'ın ilk koşusunda üç "engellenmeli" testi kırmızıya döndü. Düzeltmeyle birlikte pozitif kontrol de eklendi: temiz commit testi, hook'un kontrolleri gerçekten çalıştırdığını çıktısından doğruluyor. Platforma bağlı her test artık bir Linux container'ında da koşturuluyor.
 
 ## 4. İkinci tur review kararları
 
@@ -120,5 +123,5 @@
 
 ## 6. Net kanıt bulunamayan alanlar
 
-- `.claude/settings.json` hook'larının bu oturumda gerçekten tetiklendiği: hook'lar örnek girdilerle doğrulandı. Oturum içindeki tetiklenme ilk korunan migration (faz 2) ve ilk push sırasında gözlenecek.
-- CI workflow'u henüz GitHub Actions'ta koşmadı. İlk push'ta koşacak; sonuç PR'a yazılacak.
+- **Claude Code hook'larının oturum içinde tetiklenmesi hâlâ kanıtsız.** Hook'lar örnek girdilerle ve `scripts/review-gate.test.js` ile doğrulandı. Ancak ilk push'ta review gate sormadı. Bu oturum ayarlarını `C:\verso` dışındaki bir klasörden yükledi, bu yüzden projenin `.claude/settings.json`'u etkin değildi. Push'u kullanıcı sohbette onayladı. Oturum içi tetiklenme, `C:\verso`'da açılan bir oturumda ilk korunan migration (faz 2) ve ilk push sırasında gözlenecek.
+- ~~CI workflow'u henüz koşmadı~~: koştu, sonuç bölüm 1'de.
