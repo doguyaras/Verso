@@ -44,6 +44,9 @@ beforeEach(() => {
   repo = fs.mkdtempSync(path.join(os.tmpdir(), 'pre-commit-'));
   git('init', '-q', '-b', 'develop');
   for (const f of HOOK_FILES) write(f, fs.readFileSync(path.join(ROOT, f)));
+  // Linux/macOS git silently skips a hook without the execute bit (Windows does not check it): the copy must keep
+  // it, otherwise every commit passes and the blocking tests fail for the wrong reason (first CI run, 2026-10-02).
+  fs.chmodSync(path.join(repo, '.githooks/pre-commit'), 0o755);
   write('verso-app/src/main/resources/application.yml', 'spring:\n  application:\n    name: verso\n');
   write(V1, 'CREATE SCHEMA verso;\n');
   git('add', '-A');
@@ -61,6 +64,10 @@ test('temiz staged degisiklik commit edilir (hook exit 0)', () => {
   git('add', 'README.md');
   const r = commit('docs: readme');
   assert.equal(r.code, 0, r.out);
+  // Positive control: the hook really ran all three checks. A skipped hook (no execute bit, wrong hooksPath) would
+  // otherwise pass this test and make the blocking tests below meaningless.
+  assert.match(r.out, /flyway-immutability: OK/);
+  assert.match(r.out, /gitleaks-check: staged OK/);
 });
 
 test('staged secret, calisma kopyasi temizlense de commit engellenir (gitleaks staged)', () => {
