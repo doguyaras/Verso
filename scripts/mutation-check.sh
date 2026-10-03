@@ -637,6 +637,16 @@ backup deploy/obs/alloy/config.alloy; sub deploy/obs/alloy/config.alloy 's/\n  r
 backup compose.yaml; sub compose.yaml 's/(can leave the host \(phase 7 review B1\)\. obs-edge publishes it on 127\.0\.0\.1\. The settings below say the same\.\n    networks: )\[obs\]/$1\[obs, default\]/' \
   && expect_red "M199 Grafana has a route out" verso-app ComposeConfigTest observability_whenComposed_isOptInInternalAndQuiet; restore compose.yaml
 
+
+# ---------- phase 8: measurement findings (docs/capacity.md) ----------
+SPDF=$APP/test/java/com/verso/samples/SamplePdfs.java
+backup $QSVC; sub $QSVC 's/(            call\.cancel\(true\);\n)(            throw failure\("TIMEOUT"\);)/$2/' \
+  && expect_red "M200 an abandoned chat generation keeps running" verso-app $QAT ask_whenTheModelHangs_answers503AtTheChatTimeout; restore $QSVC
+backup $RSVC; sub $RSVC 's/(        \} catch \(TimeoutException e\) \{\n)            call\.cancel\(true\);\n/$1/' \
+  && expect_red "M201 an abandoned question embedding keeps running" verso-app $RTT search_whenTheEmbeddingTimesOut_interruptsTheModelCall; restore $RSVC
+backup $SPDF; sub $SPDF 's/return unicode == 0x130 \? new byte\[\]\{\(byte\) 144\} : super\.encode\(unicode\);/return super.encode(unicode);/' \
+  && expect_red "M202 the sample PDFs cannot write a dotted capital I" verso-app SamplePdfsTest samples_whenBuiltFromTheirSources_matchTheCommittedPdfs; restore $SPDF
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.

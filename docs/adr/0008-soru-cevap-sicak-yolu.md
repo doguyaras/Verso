@@ -31,7 +31,7 @@ Kritik akış kaydı (`docs/ai/repo-context.md` Bölüm 3) bu ADR ile tutarlıd�
 
 | Alan | Değer |
 |---|---|
-| Gecikme bütçesi (p99) | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn |
+| Gecikme bütçesi (p99) | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn. Faz 8 ölçümü (local-CPU, gemma4:e2b, Ollama 2 CPU): sıralı sorularda p50 28 sn, p95 45 sn, en çok 67 sn (`docs/capacity.md`) |
 | Embedding timeout | 10 sn (sorunun embedding'i; worker'ın toplu çağrıları HTTP okuma timeout'una tabidir) |
 | Chat timeout | local 90 sn · cloud 30 sn (HTTP okuma timeout'u) |
 | Eşzamanlılık | Chat: instance başına 2 çağrı (semaphore, boş slot için 5 sn bekleme → 503 `MODEL_BUSY`). Sorunun embedding'i: 4 çağrı, dolunca anında 503. Ollama zaten tek tek işler |
