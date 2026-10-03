@@ -158,7 +158,8 @@ class RetrievalTest {
     void search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel() throws Exception {
         ready(alice, "topic-leave");
         CountDownLatch release = new CountDownLatch(1);
-        TestEmbeddingModel.INSTANCE.onCall(() -> await(release));
+        // A model call that ignores the interrupt: it really hangs until released.
+        TestEmbeddingModel.INSTANCE.onCall(() -> awaitIgnoringInterrupts(release));
         int before = TestEmbeddingModel.INSTANCE.calls();
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             for (int i = 0; i < 4; i++) pool.submit(() -> retrieval.search(alice, "topic-leave", 5));
@@ -179,6 +180,40 @@ class RetrievalTest {
         TestEmbeddingModel.INSTANCE.reset();
         Thread.sleep(100);
         assertThat(retrieval.search(alice, "topic-leave", 5)).as("slots come back when the calls end").isNotEmpty();
+    }
+
+    /** Phase 8 (docs/capacity.md): a question that gives up interrupts its model call, so the request is cancelled. */
+    @Test
+    void search_whenTheEmbeddingTimesOut_interruptsTheModelCall() throws Exception {
+        ready(alice, "topic-leave");
+        java.util.concurrent.atomic.AtomicBoolean interrupted = new java.util.concurrent.atomic.AtomicBoolean();
+        CountDownLatch release = new CountDownLatch(1);
+        TestEmbeddingModel.INSTANCE.onCall(() -> {
+            try {
+                release.await(30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                interrupted.set(true);
+            }
+        });
+        try {
+            assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5)).isInstanceOf(DocumentServiceException.class);
+            long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
+            while (!interrupted.get() && System.nanoTime() < deadline) Thread.sleep(20);
+            assertThat(interrupted).as("the abandoned call was interrupted").isTrue();
+        } finally {
+            release.countDown();
+        }
+    }
+
+    private static void awaitIgnoringInterrupts(CountDownLatch latch) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+        while (latch.getCount() > 0 && System.nanoTime() < deadline) {
+            try {
+                latch.await(100, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ignored) {
+                // keeps hanging, like a model that does not notice the cancellation
+            }
+        }
     }
 
     private static void await(CountDownLatch latch) {
