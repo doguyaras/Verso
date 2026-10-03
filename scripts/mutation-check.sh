@@ -27,7 +27,8 @@ failed=0
 # ---------- one run per working tree ----------
 # Two concurrent runs on the same tree overwrite each other's .bak copies, and the "restore" then writes mutated
 # content back (seen in phase 2: 22 files left mutated). mkdir is atomic; only the owner removes the lock.
-LOCK_DIR="$ROOT/.git/mutation-check.lock"
+# The per-tree git dir: in a linked worktree .git is a file, and mkdir under it always failed ("another run").
+LOCK_DIR="$(git rev-parse --absolute-git-dir)/mutation-check.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   echo "mutation-check: another run holds $LOCK_DIR (started $(cat "$LOCK_DIR/started" 2>/dev/null || echo '?'))." >&2
   echo "mutation-check: wait for it, or remove the folder if that run is gone." >&2
@@ -544,6 +545,53 @@ V1=$DCM/src/main/resources/db/migration/document/V1__document_tables.sql
 backup $V1; sub $V1 's/\nREVOKE UPDATE ON document\.document_chunk FROM svc_document;//' \
   && expect_red "M161 application role may rewrite stored chunks" verso-app $DRT documentTables_whenMigrated_giveTheApplicationRoleNoUpdateOnStoredContent; restore $V1
 
+
+# ---------- phase 5: question answering ----------
+QS=services/qa/qa-core/src/main/java/com/verso/qa
+QCM=services/qa/qa-core
+QAT=QuestionApiTest
+RTT=RetrievalTest
+RREPO=$DOC/repository/RetrievalRepository.java
+RSVC=$DOC/service/impl/DocumentRetrievalServiceImpl.java
+QSVC=$QS/service/impl/QuestionServiceImpl.java
+backup $RREPO; sub $RREPO 's/WHERE c\.account_id = :account AND c\.embedding_model/WHERE c.embedding_model/' \
+  && expect_red "M164 another account's passages are searched" verso-app $RTT search_whenAnotherAccountHasTheSameTopic_returnsOnlyTheCallersPassages; restore $RREPO
+backup $RREPO; sub $RREPO "s/ AND d\.status = 'READY'//" \
+  && expect_red "M165 documents that are not READY are searched" verso-app $RTT search_whenADocumentIsNotReady_ignoresIt; restore $RREPO
+backup $RSVC; sub $RSVC 's/if \(repository\.hasChunksOfAnotherModel\(accountId, model\)\) \{/if (false) {/' \
+  && expect_red "M166 vectors of another model are compared" verso-app $RTT search_whenChunksCameFromAnotherModel_failsClosed; restore $RSVC
+backup $RSVC; sub $RSVC 's/return call\.get\(timeout\.toMillis\(\), TimeUnit\.MILLISECONDS\);/return call.get(600_000L, TimeUnit.MILLISECONDS);/' \
+  && expect_red "M167 a hanging embedding model holds the question" verso-app $RTT search_whenTheEmbeddingModelHangs_givesUpAfterTheTimeout; restore $RSVC
+backup $RSVC; sub $RSVC 's/if \(!embeddingSlots\.tryAcquire\(\)\) \{/if (false) {/' \
+  && expect_red "M168 unbounded question embeddings" verso-app $RTT search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel; restore $RSVC
+backup $QSVC; sub $QSVC 's/\.filter\(p -> p\.similarity\(\) >= properties\.minSimilarity\(\)\)/.filter(p -> true)/' \
+  && expect_red "M169 the model is asked below the threshold" verso-app $QAT ask_whenNothingIsRelevant_answersNotFoundWithoutCallingTheModel; restore $QSVC
+backup $QSVC; sub $QSVC 's/\n\s*if \(circuit\.isOpen\(\)\) throw new QaServiceException\(QaErrorCode\.MODEL_UNAVAILABLE, "CIRCUIT_OPEN"\);//' \
+  && expect_red "M170 no circuit breaker on the chat model" verso-app $QAT ask_whenTheChatModelKeepsFailing_opensTheCircuitAndRecovers; restore $QSVC
+backup $QS/service/ModelCircuitBreaker.java; sub $QS/service/ModelCircuitBreaker.java 's/consecutiveFailures >= properties\.circuitFailures\(\)/consecutiveFailures > properties.circuitFailures()/' \
+  && expect_red "M171 the circuit opens one failure late" $QCM ModelCircuitBreakerTest opensAfterConsecutiveFailures_andOnlyForThePause; restore $QS/service/ModelCircuitBreaker.java
+backup $QS/service/PromptBuilder.java; sub $QS/service/PromptBuilder.java "s/return folded\.replace\('\[', '\('\)\.replace\('\]', '\)'\);/return folded;/" \
+  && expect_red "M172 passages can imitate a fence" $QCM PromptBuilderTest build_whenAPassageOrTheQuestionImitatesAFence_defusesIt; restore $QS/service/PromptBuilder.java
+backup $QS/service/PromptBuilder.java; sub $QS/service/PromptBuilder.java 's/Normalizer\.normalize\(text, Normalizer\.Form\.NFKC\)/text/' \
+  && expect_red "M173 full-width look-alikes pass the fence" $QCM PromptBuilderTest defuse_whenDataImitatesAFenceOrAMarker_leavesNoBracketAndIsIdempotent; restore $QS/service/PromptBuilder.java
+backup $QS/service/CitationExtractor.java; sub $QS/service/CitationExtractor.java 's/if \(from < 1 \|\| to > passages\.size\(\) \|\| from > to\) continue;/if (from > to) continue;/' \
+  && expect_red "M174 an invented citation number is used" $QCM CitationExtractorTest extract_whenAMarkerIsInvented_removesItAndNeverCitesIt; restore $QS/service/CitationExtractor.java
+backup $VY; sub $VY 's/\n    retry:\n      max-attempts: 0//' \
+  && expect_red "M175 the chat client retries a failing model" verso-app OllamaChatClientTest call_whenTheModelFails_asksExactlyOnceAndLogsNoProviderText; restore $VY
+backup $VY; sub $VY 's/\n        think: false//' \
+  && expect_red "M176 reasoning models think away the answer budget" verso-app OllamaChatClientTest call_sendsTheConfiguredModelAndOptions; restore $VY
+backup $H; sub $H 's/(phase 5 api review P2\)[^\n]*\n[^\n]*\n[^\n]*\n\s*headers = new HttpHeaders\(\);)\n\s*headers\.set\(HttpHeaders\.RETRY_AFTER, RETRY_AFTER_SECONDS\);/$1/' \
+  && expect_red "M177 a 503 without Retry-After" platform/platform-core $GEH serviceException_whenServerSideWithCause_logsErrorWithoutCauseText; restore $H
+backup $H; sub $H 's/ && !hasRetryAfter\(request\)//' \
+  && expect_red "M178 the IdP outage's Retry-After is overwritten" $PSM $PST request_whenIdpKeysAreUnreachable_isRejectedWith503; restore $H
+backup $QS/controller/QuestionBodyLimit.java; sub $QS/controller/QuestionBodyLimit.java 's/if \(length > MAX_BODY_BYTES\)/if (false)/' \
+  && expect_red "M179 a huge question body is parsed" verso-app $QAT ask_whenTheBodyIsHugeOrHasNoLength_isRefusedBeforeParsing; restore $QS/controller/QuestionBodyLimit.java
+MCI=$QCM/src/main/resources/META-INF/spring/org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration.imports
+backup $MCI; sub $MCI 's/com\.verso\.qa\.config\.QaManagementContextConfiguration\n//' \
+  && expect_red "M180 the management port has no X-Rag-Mode" verso-app $QAT actuatorInfo_whenAsked_namesTheModeAndModels; restore $MCI
+backup $QS/config/QaConfiguration.java; sub $QS/config/QaConfiguration.java 's/\n\s*response\.setHeader\(MODE_HEADER, mode\);//' \
+  && expect_red "M181 responses do not say which mode answered" verso-app $QAT ragModeHeader_whenTheRequestIsRejectedOrUnknown_isStillPresent; restore $QS/config/QaConfiguration.java
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
@@ -581,8 +629,10 @@ KS=deploy/keycloak/start.sh
 backup $KS; sub $KS 's/  if \[ ! -r "\$SECRETS\/\$1" \] \|\| \[ ! -s "\$SECRETS\/\$1" \]; then/  if false; then/' \
   && node_red "M127 IdP starts with a missing secret" scripts/keycloak-start.test.js "start.sh: missing SECRET_DB_KEYCLOAK_PASSWORD"; restore $KS
 PULL=deploy/ollama/pull.sh
-backup $PULL; sub $PULL 's/if ! grep -q "\$OLLAMA_MODEL_DIGEST" "\$manifest"; then/if false; then/' \
+backup $PULL; sub $PULL 's/if ! grep -qF "\\"\$digest\\"" "\$manifest"; then/if false; then/' \
   && node_red "M162 a model with another digest is accepted" scripts/ollama-pull.test.js "ollama-pull: another digest"; restore $PULL
+backup $PULL; sub $PULL 's/\[0-9a-f\]\{64\}/[0-9a-f]{2,64}/' \
+  && node_red "M182 a digest prefix passes as a pin" scripts/ollama-pull.test.js "ollama-pull: a digest prefix"; restore $PULL
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

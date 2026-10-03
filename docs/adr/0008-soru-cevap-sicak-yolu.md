@@ -27,15 +27,16 @@ Referansın varsayılan tercihi, sıcak yolda en fazla bir uzak senkron çağrı
 
 **A** seçildi. İki çağrı da okuma amaçlı değildir; hesaplamadır ve read-model ya da JWT claim ile karşılanamaz.
 
-Kritik akış kaydı (`docs/ai/repo-context.md` Bölüm 3) bu ADR ile tutarlıdır. Aşağıdaki değerler **başlangıç ayarıdır** (referans 1.4) ve faz 5'te ölçülüp güncellenir:
+Kritik akış kaydı (`docs/ai/repo-context.md` Bölüm 3) bu ADR ile tutarlıdır. Aşağıdaki değerler **başlangıç ayarıdır** (referans 1.4); faz 5 review'ından sonra uygulamadaki hâlleriyle yazıldı, ölçümü faz 8'de:
 
 | Alan | Değer |
 |---|---|
 | Gecikme bütçesi (p99) | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn |
-| Embedding timeout | 10 sn |
-| Chat timeout | local 90 sn · cloud 30 sn |
-| Eşzamanlılık | Chat çağrısı `@ConcurrencyLimit` ile sınırlı; Ollama zaten tek tek işler |
-| Retry | Senkron yolda yok (referans 4.7) |
+| Embedding timeout | 10 sn (sorunun embedding'i; worker'ın toplu çağrıları HTTP okuma timeout'una tabidir) |
+| Chat timeout | local 90 sn · cloud 30 sn (HTTP okuma timeout'u) |
+| Eşzamanlılık | Chat: instance başına 2 çağrı (semaphore, boş slot için 5 sn bekleme → 503 `MODEL_BUSY`). Sorunun embedding'i: 4 çağrı, dolunca anında 503. Ollama zaten tek tek işler |
+| Retry | Senkron yolda yok (referans 4.7). Spring AI'ın istemci retry'ı kapalı (`spring.ai.retry.max-attempts: 0`; `OllamaChatClientTest` gerçek istemciyle doğrular) |
+| Devre kesici | Ardışık 2 chat hatasından sonra 15 sn boyunca soru modele ve embedding'e gitmeden 503 `MODEL_UNAVAILABLE` alır; süre dolunca ilk soru modeli yeniden dener |
 | Bağımlılık düşünce | 503 `MODEL_UNAVAILABLE`; boş ya da uydurma cevap dönülmez (fail-closed) |
 | Benzerlik eşiği altında | Chat çağrısı **yapılmaz**; "belgelerde bulunamadı" cevabı döner. Hem maliyet hem uydurma riski düşer |
 
@@ -44,7 +45,7 @@ Kritik akış kaydı (`docs/ai/repo-context.md` Bölüm 3) bu ADR ile tutarlıd�
 ## Sonuçlar
 
 - **Olumlu:** Akışın tek bir gerçek darboğazı var: model çalışma süresi. Bu süre açıkça ölçülür.
-- **Olumsuz / kabul edilen risk:** CPU'da çalışan küçük modellerle cevap süresi on saniyeler mertebesindedir. README'de donanıma göre beklenti yazılır.
+- **Olumsuz / kabul edilen risk:** CPU'da çalışan küçük modellerle cevap süresi on saniyeler mertebesindedir. README'de donanıma göre beklenti yazılır. En kötü durumda bir soru: 10 sn embedding + 5 sn slot bekleme + 90 sn chat ≈ 105 sn; istemci zaman aşımı en az 120 sn olmalıdır.
 - **Etkilenen dosyalar (faz 5):** `qa-core` (service, client yapılandırması), `config/verso.yml` (timeout'lar), `docs/ai/repo-context.md`.
 - **Geri alma yolu:** Akışa streaming (SSE) eklemek yeni bir uç gerektirir (ayrı ADR).
 

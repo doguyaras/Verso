@@ -33,6 +33,10 @@
       <groupId>com.verso</groupId>
       <artifactId>document-core</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>qa-core</artifactId>
+    </dependency>
     <!-- EmbeddingModel (and the chat model in phase 5) served by the local Ollama (ADR-0006, ADR-0011). -->
     <dependency>
       <groupId>org.springframework.ai</groupId>

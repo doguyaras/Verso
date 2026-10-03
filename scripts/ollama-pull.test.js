@@ -22,8 +22,9 @@ case "$1" in
   pull)
     echo "pull $2" >> "$FAKE_LOG"
     [ -n "$FAKE_DIGEST" ] || { echo "pull failed" >&2; exit 1; }
-    dir="$OLLAMA_MODELS/manifests/registry.ollama.ai/library/bge-m3"
-    mkdir -p "$dir" && printf '{"layers":[{"digest":"%s"}]}' "$FAKE_DIGEST" > "$dir/567m" ;;
+    name="\${2%%:*}"; tag="\${2#*:}"
+    dir="$OLLAMA_MODELS/manifests/registry.ollama.ai/library/$name"
+    mkdir -p "$dir" && printf '{"layers":[{"digest":"%s"}]}' "$FAKE_DIGEST" > "$dir/$tag" ;;
 esac
 `;
 
@@ -39,7 +40,7 @@ function run(env, fakeDigest) {
   const result = spawnSync('sh', [SCRIPT], {
     encoding: 'utf8',
     env: { ...process.env, PATH: `${env.bin}${path.delimiter}${process.env.PATH}`, OLLAMA_MODELS: env.models,
-      OLLAMA_MODEL: MODEL, OLLAMA_MODEL_DIGEST: PINNED, FAKE_DIGEST: fakeDigest ?? '', FAKE_LOG: env.log },
+      OLLAMA_PULL: env.pull ?? `${MODEL}@${PINNED}`, FAKE_DIGEST: fakeDigest ?? '', FAKE_LOG: env.log },
   });
   const pulls = fs.existsSync(env.log) ? fs.readFileSync(env.log, 'utf8').trim().split('\n').filter(Boolean) : [];
   return { ...result, pulls };
@@ -75,4 +76,32 @@ test('ollama-pull: a failed download is reported in one line and exits non-zero'
   const result = run(env, '');
   assert.equal(result.status, 1);
   assert.match(result.stderr, /download of bge-m3:567m failed/);
+});
+
+test('ollama-pull: every listed model is pulled and checked (embedding and chat)', () => {
+  const env = setup();
+  env.pull = `${MODEL}@${PINNED} other:1b@${PINNED}`;
+  const result = run(env, PINNED);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.pulls, [`pull ${MODEL}`, 'pull other:1b']);
+});
+
+test('ollama-pull: a digest prefix or fragment is refused, also for a model already present', () => {
+  const env = setup();
+  assert.equal(run(env, PINNED).status, 0);
+  for (const weak of ['sha256:', 'sha256:da', PINNED.toUpperCase().replace('SHA256', 'sha256')]) {
+    env.pull = `${MODEL}@${weak}`;
+    const result = run(env, PINNED);
+    assert.equal(result.status, 1, weak);
+    assert.match(result.stderr, /has no pinned sha256 digest/);
+  }
+});
+
+test('ollama-pull: a model without a pinned digest is refused before any download', () => {
+  const env = setup();
+  env.pull = `${MODEL}@latest`;
+  const result = run(env, PINNED);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /has no pinned sha256 digest/);
+  assert.deepEqual(result.pulls, []);
 });

@@ -31,7 +31,8 @@
 | Model | Etiket | Model katmanı digest'i | Boyut | Lisans | Kaynak |
 |---|---|---|---|---|---|
 | Embedding | `bge-m3:567m` | `sha256:daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c` | 1,16 GB, 1024 boyut | MIT | registry.ollama.ai manifest 2026-10-02; `ollama-pull` doğrular |
-| Chat (planlı, faz 5) | bir Gemma 4 küçük modeli | – | – | – | faz 5 |
+| Chat (varsayılan) | `gemma4:e2b` | `sha256:6dd7ac24fe13a238898e16e253ebc7a72fa27fb83f2658c2f6c241df3af5937d` | 3,5 GB | Gemma kullanım şartları | registry.ollama.ai manifest 2026-10-03; `ollama-pull` doğrular |
+| Chat (yalnız CI) | `qwen3:0.6b` | `sha256:7f4030143c1c477224c5434f8272c662a8b042079a0a584f0a27a1684fe2e1fa` | 523 MB | Apache 2.0 | registry.ollama.ai manifest 2026-10-03 |
 
 **Bilinen CVE tetikleyicileri** (yaması yalnız ticari sürümde olan → upgrade): yok (2026-10-02).
 

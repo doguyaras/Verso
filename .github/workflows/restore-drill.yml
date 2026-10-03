@@ -19,6 +19,7 @@ on:
       - 'scripts/restore-drill*.sh'
       - 'scripts/auth-smoke.sh'
       - 'scripts/ingest-smoke.sh'
+      - 'scripts/qa-smoke.sh'
       - 'scripts/fixtures/**'
       - 'services/**'
       # Application config, code and build: the stack must still start from them (phase 2 environment review E4).
@@ -30,6 +31,10 @@ on:
       - '.github/workflows/restore-drill.yml'
 permissions:
   contents: read
+# CI exercises the pipeline, not answer quality (the eval set does, phase 8): a tiny chat model keeps the download small.
+env:
+  VERSO_CHAT_MODEL: qwen3:0.6b
+  VERSO_CHAT_MODEL_DIGEST: sha256:7f4030143c1c477224c5434f8272c662a8b042079a0a584f0a27a1684fe2e1fa
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -49,6 +54,8 @@ jobs:
         run: bash scripts/auth-smoke.sh
       - name: ingestion smoke (upload → worker with the real Ollama bge-m3 → READY, PDF dropped, 1024-d vectors → delete)
         run: bash scripts/ingest-smoke.sh
+      - name: question-answering smoke (real embedding and chat model; citations point at the upload; unrelated → not found)
+        run: bash scripts/qa-smoke.sh
       - name: backup + restore drill self-test (passes on real data, fails on every tampering)
         run: bash scripts/restore-drill-selftest.sh
       - name: drill on the newest backup (what the weekly run is for)

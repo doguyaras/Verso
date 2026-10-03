@@ -172,14 +172,21 @@ class ComposeConfigTest {
         assertThat(ollama).doesNotContainKey("ports");
         assertThat((List<String>) ollama.get("volumes")).singleElement().asString().endsWith(":ro");
         assertThat(environment("ollama")).containsEntry("OLLAMA_NO_CLOUD", "true");
-        String pulled = String.valueOf(environment("ollama-pull").get("OLLAMA_MODEL"));
-        assertThat((List<Object>) ((Map<String, Object>) ollama.get("healthcheck")).get("test")).contains(pulled);
-        assertThat(environment("verso-app")).containsEntry("OLLAMA_EMBEDDING_MODEL", pulled);
-        assertThat(String.valueOf(environment("ollama-pull").get("OLLAMA_MODEL_DIGEST"))).matches("sha256:[0-9a-f]{64}");
+        // Every pulled model is pinned by digest; the healthcheck asks for each; the application uses exactly them.
+        List<String> pulled = List.of(String.valueOf(environment("ollama-pull").get("OLLAMA_PULL")).trim().split("\\s+"));
+        assertThat(pulled).hasSize(2).allSatisfy(entry -> assertThat(entry)
+                .matches(".+@(sha256:[0-9a-f]{64}|\\$\\{[A-Z_]+:-sha256:[0-9a-f]{64}})"));
+        String embedding = pulled.get(0).substring(0, pulled.get(0).indexOf('@'));
+        String chat = pulled.get(1).substring(0, pulled.get(1).lastIndexOf("}@") + 1);
+        String healthcheck = String.valueOf(((Map<String, Object>) ollama.get("healthcheck")).get("test"));
+        assertThat(healthcheck).contains(embedding).contains(chat);
+        assertThat(environment("verso-app")).containsEntry("OLLAMA_EMBEDDING_MODEL", embedding)
+                .containsEntry("OLLAMA_CHAT_MODEL", chat);
 
         assertThat((List<String>) service("verso-app").get("networks")).contains("models");
         assertThat((Map<String, Object>) service("verso-app").get("depends_on")).doesNotContainKey("ollama");
-        assertThat((List<String>) service("migrate").get("command")).contains("--spring.ai.model.embedding=none");
+        assertThat((List<String>) service("migrate").get("command"))
+                .contains("--spring.ai.model.embedding=none", "--spring.ai.model.chat=none");
     }
 
     @SuppressWarnings("unchecked")

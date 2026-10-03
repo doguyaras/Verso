@@ -79,6 +79,13 @@ public class GlobalServiceExceptionHandler extends ResponseEntityExceptionHandle
         ErrorCode code = ex.getErrorCode();
         HttpStatus status = code.getHttpStatus();
         String traceId = traceId(request);
+        HttpHeaders headers = null;
+        // Busy or a dependency down: the client should come back, and is told when (phase 5 api review P2). A value the
+        // thrower already set (the IdP outage's 30 s) wins.
+        if (status == HttpStatus.SERVICE_UNAVAILABLE && !hasRetryAfter(request)) {
+            headers = new HttpHeaders();
+            headers.set(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS);
+        }
         if (status.is5xxServerError()) {
             log.error("Request failed: code={} status={} reason={} category={} exceptionType={} traceId={}",
                     name(code), status.value(), ex.getSafeLogReason(), ex.getSafeLogCategory(),
@@ -87,7 +94,12 @@ public class GlobalServiceExceptionHandler extends ResponseEntityExceptionHandle
             log.warn("Request rejected: code={} status={} reason={} category={} traceId={}",
                     name(code), status.value(), ex.getSafeLogReason(), ex.getSafeLogCategory(), traceId);
         }
-        return envelope(status, code, ex.getDetails(), traceId, request, null);
+        return envelope(status, code, ex.getDetails(), traceId, request, headers);
+    }
+
+    private static boolean hasRetryAfter(WebRequest request) {
+        return request instanceof ServletWebRequest servlet && servlet.getResponse() != null
+                && servlet.getResponse().containsHeader(HttpHeaders.RETRY_AFTER);
     }
 
     /** Constraint violations on @Validated method parameters are not covered by the base class. */

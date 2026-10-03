@@ -1,36 +1,55 @@
 #!/bin/sh
 # One-shot model download (ADR-0011, llm-rules 8.2): runs a private Ollama server on 127.0.0.1 inside this container,
-# pulls the embedding model into the shared volume, and checks the model layer against the pinned digest. The
-# long-running "ollama" service never pulls; it starts only after this container exited 0. When the model is already
-# in the volume with the right digest nothing is downloaded, so a restart works offline.
+# pulls every model of OLLAMA_PULL ("name:tag@sha256:digest" pairs, separated by whitespace) into the shared volume, and
+# checks each model layer against its pinned digest. The long-running "ollama" service never pulls; it starts only
+# after this container exited 0. A model already in the volume with the right digest is not downloaded again, so a
+# restart works offline.
 set -eu
-: "${OLLAMA_MODEL:?}" "${OLLAMA_MODEL_DIGEST:?}"
-name="${OLLAMA_MODEL%%:*}"
-tag="${OLLAMA_MODEL#*:}"
+: "${OLLAMA_PULL:?}"
 # OLLAMA_MODELS is Ollama's own setting for the model folder (default under /root/.ollama); tests point it elsewhere.
-manifest="${OLLAMA_MODELS:-/root/.ollama/models}/manifests/registry.ollama.ai/library/$name/$tag"
+models_dir="${OLLAMA_MODELS:-/root/.ollama/models}"
+server=""
 
-if [ -f "$manifest" ] && grep -q "$OLLAMA_MODEL_DIGEST" "$manifest"; then
-  echo "ollama-pull: $OLLAMA_MODEL already present"
-  exit 0
-fi
+manifest_of() {
+  model="$1"
+  echo "$models_dir/manifests/registry.ollama.ai/library/${model%%:*}/${model#*:}"
+}
 
-ollama serve >/dev/null 2>&1 &
-server=$!
-trap 'kill "$server" 2>/dev/null || true' EXIT
-i=0
-until ollama list >/dev/null 2>&1; do
-  i=$((i + 1))
-  if [ "$i" -gt 60 ]; then echo "ollama-pull: local server did not start" >&2; exit 1; fi
-  sleep 1
+start_server() {
+  [ -n "$server" ] && return 0
+  ollama serve >/dev/null 2>&1 &
+  server=$!
+  trap 'kill "$server" 2>/dev/null || true' EXIT
+  i=0
+  until ollama list >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -gt 60 ]; then echo "ollama-pull: local server did not start" >&2; exit 1; fi
+    sleep 1
+  done
+}
+
+for entry in $OLLAMA_PULL; do
+  model="${entry%@*}"
+  digest="${entry#*@}"
+  # A full 64-hex digest, matched as a whole JSON string: a prefix or a fragment must not pass (phase 5 review S3).
+  if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+    echo "ollama-pull: $model has no pinned sha256 digest" >&2
+    exit 1
+  fi
+  manifest="$(manifest_of "$model")"
+  if [ -f "$manifest" ] && grep -qF "\"$digest\"" "$manifest"; then
+    echo "ollama-pull: $model already present"
+    continue
+  fi
+  start_server
+  # Progress bars (stderr) are noise in compose logs; a failure is reported in one line.
+  if ! ollama pull "$model" >/dev/null 2>&1; then
+    echo "ollama-pull: download of $model failed" >&2
+    exit 1
+  fi
+  if ! grep -qF "\"$digest\"" "$manifest"; then
+    echo "ollama-pull: $model does not match the pinned digest" >&2
+    exit 1
+  fi
+  echo "ollama-pull: $model ready"
 done
-# Progress bars (stderr) are noise in compose logs; a failure is reported in one line.
-if ! ollama pull "$OLLAMA_MODEL" >/dev/null 2>&1; then
-  echo "ollama-pull: download of $OLLAMA_MODEL failed" >&2
-  exit 1
-fi
-if ! grep -q "$OLLAMA_MODEL_DIGEST" "$manifest"; then
-  echo "ollama-pull: $OLLAMA_MODEL does not match the pinned digest" >&2
-  exit 1
-fi
-echo "ollama-pull: $OLLAMA_MODEL ready"

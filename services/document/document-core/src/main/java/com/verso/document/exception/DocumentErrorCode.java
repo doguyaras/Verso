@@ -17,7 +17,12 @@ public enum DocumentErrorCode implements ErrorCode {
     DOCUMENT_UPLOADS_BUSY(10014, "Too many uploads in progress, try again shortly.", HttpStatus.SERVICE_UNAVAILABLE),
     /** The account already has verso.document.max-queued-per-account documents waiting (security review S3). */
     DOCUMENT_QUEUE_FULL(10015, "Too many documents are waiting to be processed, try again later.",
-            HttpStatus.TOO_MANY_REQUESTS);
+            HttpStatus.TOO_MANY_REQUESTS),
+    // --- retrieval (10030-10039)
+    /** The question could not be embedded: the local embedding model is down (llm-rules 2.3). */
+    EMBEDDING_MODEL_UNAVAILABLE(10030, "The embedding model is unavailable, try again later.", HttpStatus.SERVICE_UNAVAILABLE),
+    /** The account's documents were embedded by another model; they must be indexed again (llm-rules 6.1). */
+    DOCUMENT_REINDEX_REQUIRED(10031, "Documents must be indexed again before they can be searched.", HttpStatus.CONFLICT);
 
     private final int code;
     private final String message;

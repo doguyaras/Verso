@@ -122,7 +122,7 @@ Yükleme kontrolleri, sırayla:
 
 - Chunk sayfa sınırını aşmaz. Boyut 1000 karakter, örtüşme 150; kesim mümkünse boşlukta yapılır. `chunk_index` belge boyunca sıralıdır.
 - Model: Spring AI `EmbeddingModel` → Ollama `bge-m3:567m` (1024 boyut, MIT). Saklanan model adı, istemcinin kullandığı `spring.ai.ollama.embedding.model` değerinden okunur; ikisi ayrışamaz.
-- HTTP: bağlantı 2 sn, okuma 60 sn (`spring.http.clients.*`; testle doğrulandı). Spring AI 2.0'ın Ollama embedding istemcisinde retry yoktur; yeniden deneme yalnız worker'ındır.
+- HTTP: bağlantı 2 sn, okuma 90 sn (`spring.http.clients.*`; faz 5'te local chat için 60 sn'den yükseltildi, ADR-0008). Spring AI 2.0'ın Ollama embedding istemcisinde retry yoktur; yeniden deneme yalnız worker'ındır.
 - Model compose'ta tek seferlik `ollama-pull` container'ıyla indirilir ve model katmanının digest'i doğrulanır (`scripts/ollama-pull.test.js`). Model volume'de varsa indirme yapılmaz, ikinci açılış internetsiz çalışır.
 - **Çalışan `ollama` servisi:** yalnız `internal: true` olan `models` ağındadır (internete ve DNS'e çıkışı yok, canlı doğrulandı). `OLLAMA_NO_CLOUD=true`; model çekmez (`pull-model-strategy: never`, llm-rules 8.2); modelleri salt okunur bağlar.
 - Uygulama Ollama'yı beklemeden başlar: model yokken de yükleme kabul edilir, worker duraklar ve sonra yetişir.

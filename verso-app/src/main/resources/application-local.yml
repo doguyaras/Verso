@@ -20,6 +20,8 @@ spring:
       base-url: http://localhost:11434
       embedding:
         model: bge-m3:567m
+      chat:
+        model: gemma4:e2b
 verso:
   security:
     jwt:
