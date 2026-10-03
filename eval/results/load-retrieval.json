@@ -1,0 +1,33 @@
+{
+  "measuredAt": "2026-10-03T08:30:04.302Z",
+  "host": {
+    "cpus": 8
+  },
+  "settings": {
+    "CONCURRENCY": 20,
+    "DURATION": 30,
+    "UPLOADS": 12,
+    "CHAT_QUESTIONS": 6,
+    "CHAT_CONCURRENCY": 3,
+    "SCENARIOS": [
+      "retrieval"
+    ],
+    "ollamaCpus": "2 (compose default)"
+  },
+  "retrieval": {
+    "concurrency": 20,
+    "seconds": 30,
+    "requests": 328,
+    "perSecond": 10.9,
+    "byStatus": {
+      "200": 232,
+      "503/10030": 96
+    },
+    "okLatencyMs": {
+      "p50": 490,
+      "p95": 804,
+      "p99": 1701,
+      "max": 2095
+    }
+  }
+}

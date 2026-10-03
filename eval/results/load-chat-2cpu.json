@@ -1,0 +1,52 @@
+{
+  "measuredAt": "2026-10-03T08:28:30.931Z",
+  "host": {
+    "cpus": 8
+  },
+  "settings": {
+    "CONCURRENCY": 20,
+    "DURATION": 30,
+    "UPLOADS": 6,
+    "CHAT_QUESTIONS": 6,
+    "CHAT_CONCURRENCY": 2,
+    "SCENARIOS": [
+      "upload",
+      "chat"
+    ],
+    "ollamaCpus": "2"
+  },
+  "upload": {
+    "parallel": 6,
+    "requests": 6,
+    "byStatus": {
+      "201": 4,
+      "503/10014": 2
+    },
+    "okLatencyMs": {
+      "p50": 207,
+      "p95": 217,
+      "p99": 217,
+      "max": 217
+    },
+    "accepted": 4,
+    "ready": 4,
+    "secondsUntilAllReady": 8,
+    "documentsPerMinute": 28.7
+  },
+  "chat": {
+    "concurrency": 2,
+    "requests": 6,
+    "perSecond": 0.1,
+    "byStatus": {
+      "200": 1,
+      "503/11002": 2,
+      "503/10030": 3
+    },
+    "okLatencyMs": {
+      "p50": 84213,
+      "p95": 84213,
+      "p99": 84213,
+      "max": 84213
+    }
+  }
+}
