@@ -99,6 +99,19 @@ class PdfTextExtractorTest {
         assertRejected(TestPdfs.lzwContent(), DocumentFailureReason.UNSUPPORTED_PDF);
     }
 
+    /** Test review T16 / ADR-0011: owner-password-only PDFs open without a password and are read. */
+    @Test
+    void extract_whenOnlyAnOwnerPasswordIsSet_readsTheText() {
+        assertThat(extractor.extract(TestPdfs.ownerPasswordOnly("open text"))).containsExactly("open text");
+    }
+
+    /** Test review T16: the text limit is inclusive; exactly the limit is accepted. */
+    @Test
+    void extract_whenTheTextIsExactlyTheLimit_isAccepted() {
+        PdfTextExtractor exact = new PdfTextExtractor(TestPdfs.properties(500, 10, 1000, 150));
+        assertThat(exact.extract(TestPdfs.pages("0123456789"))).containsExactly("0123456789");
+    }
+
     /** The rejection carries no cause and no parser text (llm-rules 2.1): only the reason's name. */
     @Test
     void rejection_whenThrown_carriesNoCauseOrParserMessage() {

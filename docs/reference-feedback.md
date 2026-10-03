@@ -470,3 +470,70 @@ Kaynak: faz 3 geliştirmesi sırasında gözlenenler, altı review (security, sp
 - **Kanıt:** Faz 2'den gelen volume'de `keycloak` rolü ve veritabanı oluşmaz; Keycloak sağlıklı olmaz.
 - **Düzeltme:** Yeni init script'i idempotent olsun (psql `\gset` + `\if`), README'de elle çalıştırma adımı; çalışan sunucuda `pg_stat_statements.track_utility = off` (R44).
 - **Verso:** `30-keycloak.sh`, README "Faz 2'den yükseltme", `DatabaseRolesTest.keycloakScript_*`, M123.
+
+## Faz 4 (2026-10-03)
+
+Kaynak: beş review ajanında dokuz skill (security, llm, spring-code, architecture-boundary, test-writer, db-migration, api-contract, environment-impact, resilience) ve `scripts/mutation-check.sh`. Referans PDF, vektör ve embedding konusunda sessiz olduğu için maddelerin çoğu referansa eklenmesi önerilen yeni kurallardır.
+
+### R58 · Güvenilmeyen dosyayı API sürecinde ayrıştırmak bellek sınırı ister; "bellek ayarı" yetmez (HIGH, güvenlik)
+- **Nerede:** Referans 9.9 dosya hattı (yalnız görsel için) ve 1.4; PDF/belge girdisi için kural yok.
+- **Kanıt:** PDFBox `setupMainMemoryOnly(256 MB)` ile çalışırken üç küçük dosya üretim heap'inde (1152 MB) JVM'i `ExitOnOutOfMemoryError` ile kapattı:
+  - 21 KB'lık glif bombası (tek sayfada milyonlarca karakter; metin sınırı sayfa toplandıktan sonra bakılıyordu);
+  - 10 KB'lık `q` bombası (grafik durum yığını);
+  - deflate edilmiş içerik akışı.
+  Belge kira dolunca yeniden claim edildi ve süreç tekrar düştü (iki review bağımsız buldu).
+- **Düzeltme:**
+  - Sınırlar birikim anında uygulansın: sayfa başına glif, operatör sayısı, grafik yığını derinliği.
+  - Açılmış akış boyutu ayrıştırmadan önce, bayt sınırlı inflater ile ölçülsün; ölçülemeyen kodlama reddedilsin.
+  - `StackOverflowError` sabit bir nedene çevrilsin.
+  - Her bomba için regresyon testi yazılsın.
+  - Uzun vadede ayrıştırma ayrı süreçte çalışsın.
+- **Verso:** `PdfTextExtractor`, `PdfTextExtractorTest` (glif, deflate, `q`, LZW), M141–M144.
+
+### R59 · Bellekte tutulan yüklemeler için eşzamanlılık sınırı (HIGH, işletim/güvenlik)
+- **Nerede:** Referans 4.7 (virtual thread'lerde Hikari sınır), 21.2 (rate-limit scope).
+- **Kanıt:** 20 MB'lık 20 paralel yükleme 1152 MB heap'i tüketti, JVM çıktı. Virtual thread'ler isteği sınırsız kabul eder; her yükleme bellekte iki kopya tutar (multipart parçası ve `getBytes()`).
+- **Düzeltme:** Yükleme yolunda bir semafor (dolunca 503 + `Retry-After`). Multipart gövdesi semafordan sonra okunsun (`resolve-lazily`).
+- **Verso:** `UploadLimiter`, `DOCUMENT_UPLOADS_BUSY`, M153.
+
+### R60 · Bağımlılık kesintisi iş kalemini tüketmemeli: worker içi devre kesici (HIGH, dayanıklılık)
+- **Nerede:** Referans 11.1/11.2 (deneme, backoff, DEAD) iş başına sayar; "bağımlılık düştü" ile "bu iş kötü" ayrımı yok.
+- **Kanıt:** Ollama 7,5 dakikadan uzun kapalı kaldığında kuyruktaki her belge 5 denemeyi tüketti ve sayfaları silinerek `FAILED` oldu.
+- **Düzeltme:**
+  - Bağımlılık hatası işi deneme harcamadan geri bıraksın ve tüm claim'leri bir süre durdursun.
+  - Düzelmeyecek hata (bilinmeyen model, yanlış boyut) daha uzun dursun ve ERROR olarak loglansın.
+  - Kapanışta işlenen iş cezasız geri bırakılsın.
+- **Verso:** `IngestionWorker` (devre kesici, `SmartLifecycle`), M146–M151.
+
+### R61 · Veritabanı geçici kullanılamazlığı 503 olmalı (MEDIUM, API)
+- **Nerede:** Referans 7.3 eşleme tablosu; DataAccess istisnaları yok.
+- **Kanıt:**
+  - DB kapalıyken ve havuz dolduğunda `GET /v1/documents` 500 99999 döndü.
+  - Worker'ın uzun transaction'ı sırasında gelen KVKK silmesi rolün 3 sn'lik `lock_timeout`'una takıldı ve 500 aldı.
+- **Düzeltme:**
+  - `DataAccessResourceFailureException` ve `TransientDataAccessException` (alt sınıflarıyla) → 503 + `Retry-After`, ayrı bir system kodu.
+  - Silme gibi önemli işlemler kilit için daha uzun beklesin (`SET LOCAL lock_timeout`).
+- **Verso:** `ErrorClassifier.isTemporarilyUnavailable`, `SERVICE_UNAVAILABLE` 99997, `DatabaseUnavailableTest`, `delete_whenTheRowIsLockedForSeconds_*`, M140, M152.
+
+### R62 · Restore provası sabit tablo sayısına bağlanmamalı (HIGH, yedek)
+- **Kanıt:** Öz-test `app_readable_tables=1` bekliyordu; dört yeni tablo onu kıracaktı (CI'dan önce db review buldu).
+- **Düzeltme:** Beklenen sayı manifest'ten hesaplansın.
+- **Verso:** `restore-drill-selftest.sh`.
+
+### R63 · Spring AI 2.0 Ollama embedding istemcisinde retry yoktur (LOW, LLM)
+- **Kanıt:** `spring.ai.retry.*` ayarlıyken 500 ve askıda kalan sunucuya tek istek gitti; `OllamaEmbeddingModel` 2.0.1'de `RetryTemplate` yok (javap).
+- **Düzeltme:** Retry ayarına güvenilmesin; yeniden deneme çağıranın işi. `spring.http.clients.*` timeout'ları istemciye uygulanıyor (testle doğrulandı).
+
+### R64 · Çalışan model sunucusu internete çıkmamalı, ilk günden (MEDIUM, LLM)
+- **Nerede:** llm-rules 8.2 (Verso), referans yok.
+- **Kanıt:** Ollama varsayılan ağdaydı; logunda `OLLAMA_REMOTES:[ollama.com]` görünüyordu.
+- **Düzeltme:**
+  - Model indirme ayrı bir container'da yapılsın ve digest doğrulansın.
+  - Çalışan sunucu `internal: true` bir ağda dursun, `OLLAMA_NO_CLOUD=true` ile ve modelleri salt okunur bağlasın.
+  - Uygulama sunucuyu beklemeden başlasın.
+- **Verso:** `compose.yaml` (`models` ağı), `deploy/ollama/pull.sh`, `scripts/ollama-pull.test.js`, `ComposeConfigTest.ollama_*`, M159, M162. Canlı: container'dan `1.1.1.1:443` ve DNS erişilemez.
+
+### R65 · `@NamedInterface` alt paketlere geçmez (MEDIUM, mimari)
+- **Kanıt:** İşaretsiz bir `api.extra` alt paketi Modulith'in "api" arayüzüne girmedi; başka modülden kullanımı ihlal sayıldı. Sabit paket listesi kontrol eden test bunu görmedi.
+- **Düzeltme:** Api modülünün bütün paketleri classpath'ten taransın; her biri `@NamedInterface` taşısın; negatif fixture olsun.
+- **Verso:** `DocumentApiContractTest`, `ModuleStructureTest.verify_whenModuleUsesAnUnmarkedApiSubPackage_*`.
