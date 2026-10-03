@@ -209,15 +209,19 @@ class RetrievalTest {
     /**
      * Phase 8 review RS1: a caller interrupted right after submitting cancels a task that never started; a cancelled
      * FutureTask never runs its body, so the caller must free the slot. Before the fix, four such calls took every
-     * slot until a restart.
+     * slot until a restart. Whether a single call fails or still gets its (instant) result is a race and does not
+     * matter here; the slots must survive every outcome. Many calls make "cancelled before it started" certain enough
+     * that the unfixed code loses all four slots (M212).
      */
     @Test
     void search_whenTheCallerIsInterrupted_keepsTheEmbeddingSlots() {
         ready(alice, "topic-leave");
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 64; i++) {
             Thread.currentThread().interrupt();
             try {
-                assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5)).isInstanceOf(RuntimeException.class);
+                retrieval.search(alice, "topic-leave", 5);
+            } catch (RuntimeException expected) {
+                // the usual outcome: the interrupted caller gives up (10030)
             } finally {
                 Thread.interrupted();
             }

@@ -72,4 +72,4 @@ Kodla birlikte değişen iki eski tanım (M98, M170) uyarlandı ve ikisi de yaka
 
 ## 6. CI
 
-CI_RESULT
+PR #9 (`db5ad73`): `ci` (backend, scripts-and-hooks) ve `restore-drill` (obs-smoke ve promtool testleri dahil) **success**: run 37110133954, 37110133962. Birleştirme sonrası `develop` push'u (`c497a82`): success, run 37110534660.
