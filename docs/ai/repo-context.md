@@ -58,6 +58,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Compose, image, Postgres init | `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `deploy/postgres/initdb/`, `deploy/compose.local.yaml` |
 | Secret dosyaları | `secrets/` (git dışı; `scripts/dev-secrets.sh`; eşleme `secrets/README.md`) |
 | Kimlik (resource server, demo IdP) | `platform/platform-security/` (`JwtValidation`, `PlatformSecurityAutoConfiguration`, test-jar `TestIdentityProvider`), `deploy/keycloak/`, `deploy/postgres/initdb/30-keycloak.sh`, `scripts/{auth-smoke,demo-token}.sh` |
+| Panel (faz 10, ADR-0015) | `panel/` (bağımlılıksız ES modülleri; `index.html`, `js/{app,auth,api,config,render,roles}.js`), `scripts/panel.test.mjs`, kenar proxy'de `/panel/` ve CSP (`deploy/edge/nginx.conf`), realm'de `verso-panel` istemcisi ve `verso-operator` rolü, `GET /v1/info` (`qa-core` `InfoController`; uzak çağrı yok), `scripts/keycloak-reimport.sh` |
 | Yedek ve restore provası | `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill.sh`, `scripts/restore-drill-selftest.sh`, `.github/workflows/restore-drill.yml` |
 
 ## 5. Altyapı

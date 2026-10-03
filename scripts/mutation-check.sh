@@ -99,7 +99,7 @@ baseline_tests=$(grep -E '^\[INFO\] Tests run: [0-9]+, Failures: 0, Errors: 0, S
 results+=("baseline      green (${baseline_tests} tests)")
 # The node suites are a baseline too: without gitleaks or node every one of them is red, and a mutation judged by
 # them would look "caught" (third-round review N4).
-NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js"
+NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js scripts/panel.test.mjs"
 for suite in $NODE_SUITES; do
   if ! GITLEAKS="${GITLEAKS:-gitleaks}" node --test "$suite" > "$LOG" 2>&1; then
     echo "BASELINE RED: $suite (log: $LOG)"; exit 2
@@ -654,6 +654,18 @@ QP=$QS/config/QaProperties.java
 backup $QP; sub $QP 's/\@DefaultValue\("1"\) int chatConcurrency/\@DefaultValue("2") int chatConcurrency/' \
   && expect_red "M214 the code default runs two chat calls on one model server" verso-app ConfigProfilesTest qaSettings_whenDeployProfile_areTheMeasuredValues; restore $QP
 
+
+# ---------- phase 10: panel (ADR-0015) ----------
+REALM=deploy/keycloak/realm/verso-realm.json
+backup $NGX; sub $NGX 's/\n\s*add_header Content-Security-Policy "[^"]*" always;//' \
+  && expect_red "M205 the panel is served without a CSP" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
+backup $REALM; sub $REALM 's/("clientId": "verso-cli",(?:(?!"clientId")[\s\S])*?"standardFlowEnabled": )false/$1true/' \
+  && expect_red "M206 the device-flow client also accepts the browser code flow" verso-app KeycloakRealmTest clients_whenDeclared_useOnlyDeviceFlowClientCredentialsOrThePanelsCodeFlow; restore $REALM
+backup $QSVC; sub $QSVC 's/: PromptBuilder\.saysNotFound\(extracted\.answer\(\)\) \? AnswerOutcome\.NOT_FOUND : AnswerOutcome\.UNCITED/: AnswerOutcome.UNCITED/' \
+  && expect_red "M207 the model's own not-found sentence is reported as an uncited answer" verso-app $QAT ask_whenTheModelCitesNothing_tellsNotFoundFromUncited; restore $QSVC
+backup $NGX; sub $NGX 's/; require-trusted-types-for \x27script\x27; trusted-types \x27none\x27//' \
+  && expect_red "M208 the panel's CSP leaves HTML sinks to the tests alone (no Trusted Types)" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
@@ -695,6 +707,18 @@ backup $PULL; sub $PULL 's/if ! grep -qF "\\"\$digest\\"" "\$manifest"; then/if 
   && node_red "M162 a model with another digest is accepted" scripts/ollama-pull.test.js "ollama-pull: another digest"; restore $PULL
 backup $PULL; sub $PULL 's/\[0-9a-f\]\{64\}/[0-9a-f]{2,64}/' \
   && node_red "M182 a digest prefix passes as a pin" scripts/ollama-pull.test.js "ollama-pull: a digest prefix"; restore $PULL
+
+PANEL=panel/js
+backup $PANEL/render.js; sub $PANEL/render.js 's/(const node = document\.createElement\(tag\);)/$1\n  node.innerHTML = "";/' \
+  && node_red "M203 the panel writes HTML" scripts/panel.test.mjs "safety: the panel never writes HTML"; restore $PANEL/render.js
+backup $PANEL/roles.js; sub $PANEL/roles.js 's/system: \{ title: .Sistem., roles: \[ROLES\.OPERATOR\] \}/system: { title: "Sistem", roles: [ROLES.USER, ROLES.OPERATOR] }/' \
+  && node_red "M204 every user sees the system screen" scripts/panel.test.mjs "roles: a user without Verso roles"; restore $PANEL/roles.js
+backup $PANEL/auth.js; sub $PANEL/auth.js 's/refreshing \?\?= tokenRequest\(/refreshing = tokenRequest(/' \
+  && node_red "M209 concurrent callers each refresh (the second gets a revoked refresh token)" scripts/panel.test.mjs "refresh: concurrent callers"; restore $PANEL/auth.js
+backup $PANEL/auth.js; sub $PANEL/auth.js 's/ \|\| query\.get\(.state.\) !== pending\.state//' \
+  && node_red "M210 the sign-in redirect is accepted with any state (login CSRF)" scripts/panel.test.mjs "sign-in: a wrong state"; restore $PANEL/auth.js
+backup $PANEL/render.js; sub $PANEL/render.js 's/return String\(name\)\.replace\(/return String(name); void String(name).replace(/' \
+  && node_red "M211 file names keep bidi overrides in the delete prompt" scripts/panel.test.mjs "text: file names lose control"; restore $PANEL/render.js
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

@@ -296,6 +296,8 @@ services:
       - ./deploy/edge/nginx.conf:/etc/nginx/nginx.conf:ro
       # The mode on the proxy's own error responses; the cloud overlay mounts mode-cloud.conf.
       - ./deploy/edge/mode-local.conf:/etc/nginx/mode.conf:ro
+      # The panel (ADR-0015): static files, served at /panel/.
+      - ./panel:/usr/share/verso-panel:ro
     tmpfs:
       - /tmp:size=32m
     depends_on:

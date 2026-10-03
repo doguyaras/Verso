@@ -22,3 +22,6 @@ secrets/*
 # Real deploy env files (host names, ports) never enter git; only the *.example templates do.
 deploy/**/*.env*
 !deploy/**/*.env.example
+
+# demo.sh writes the question body here while it runs
+demo-question.tmp

@@ -69,17 +69,22 @@ class KeycloakRealmTest {
         assertThat(cli.get("defaultClientScopes")).isEqualTo(List.of("basic"));
     }
 
-    /** No password grant, no implicit or browser flow; every token is an RFC 9068 access token for verso-api. */
+    /**
+     * No password grant and no implicit flow; every token is an RFC 9068 access token for verso-api. The browser flow
+     * (authorization code + PKCE) belongs to the panel's client alone (ADR-0015).
+     */
     @Test
-    void clients_whenDeclared_useOnlyDeviceFlowOrClientCredentials() throws IOException {
+    void clients_whenDeclared_useOnlyDeviceFlowClientCredentialsOrThePanelsCodeFlow() throws IOException {
         List<Map<String, Object>> clients = list(realm().get("clients"));
-        assertThat(clients).extracting(c -> c.get("clientId")).containsExactlyInAnyOrder("verso-cli", "verso-ci", "admin-cli");
+        assertThat(clients).extracting(c -> c.get("clientId"))
+                .containsExactlyInAnyOrder("verso-cli", "verso-ci", "verso-panel", "admin-cli");
         for (Map<String, Object> client : clients) {
             if (Boolean.FALSE.equals(client.get("enabled"))) continue;
             String id = (String) client.get("clientId");
             assertThat(client.get("directAccessGrantsEnabled")).as(id + " password grant").isEqualTo(false);
             assertThat(client.get("implicitFlowEnabled")).as(id + " implicit").isEqualTo(false);
-            assertThat(client.get("standardFlowEnabled")).as(id + " authorization code").isEqualTo(false);
+            assertThat(client.get("standardFlowEnabled")).as(id + " authorization code")
+                    .isEqualTo("verso-panel".equals(id));
             Map<String, Object> attributes = map(client.get("attributes"));
             assertThat(attributes.get("access.token.header.type.rfc9068")).as(id + " at+jwt").isEqualTo("true");
             assertThat(list(client.get("protocolMappers"))).as(id + " audience").anySatisfy(mapper -> {
@@ -87,7 +92,11 @@ class KeycloakRealmTest {
                 assertThat(map(mapper.get("config")).get("included.custom.audience")).isEqualTo("verso-api");
                 assertThat(map(mapper.get("config")).get("id.token.claim")).isEqualTo("false");
             });
-            if (Boolean.TRUE.equals(client.get("publicClient"))) {
+            if ("verso-panel".equals(id)) {
+                assertThat(attributes.get("oauth2.device.authorization.grant.enabled")).as(id).isEqualTo("false");
+                assertThat(attributes.get("pkce.code.challenge.method")).as(id).isEqualTo("S256");
+                assertThat(client.get("serviceAccountsEnabled")).as(id).isEqualTo(false);
+            } else if (Boolean.TRUE.equals(client.get("publicClient"))) {
                 assertThat(attributes.get("oauth2.device.authorization.grant.enabled")).as(id).isEqualTo("true");
                 assertThat(attributes.get("pkce.code.challenge.method")).as(id).isEqualTo("S256");
                 assertThat(client.get("serviceAccountsEnabled")).as(id).isEqualTo(false);
@@ -96,6 +105,41 @@ class KeycloakRealmTest {
                 assertThat(attributes.get("oauth2.device.authorization.grant.enabled")).as(id).isNotEqualTo("true");
             }
         }
+    }
+
+    /**
+     * ADR-0015: the panel's client redirects to one exact URL (no wildcard), talks only to its own origin, puts the
+     * roles into the access token for the role matrix and the user name only into the ID token, which stays in the
+     * browser; the demo user is an operator, so the demo shows every screen.
+     */
+    @Test
+    void panelClient_whenImported_isAnExactPkceBrowserClient() throws IOException {
+        Map<String, Object> panel = client("verso-panel");
+        assertThat(panel.get("publicClient")).isEqualTo(true);
+        assertThat(panel.get("implicitFlowEnabled")).isEqualTo(false);
+        assertThat(panel.get("directAccessGrantsEnabled")).isEqualTo(false);
+        assertThat(panel.get("consentRequired")).isEqualTo(false);
+        assertThat(map(panel.get("attributes")).get("pkce.code.challenge.method")).isEqualTo("S256");
+        assertThat(panel.get("redirectUris")).isEqualTo(List.of("http://localhost:8080/panel/"));
+        assertThat(panel.get("webOrigins")).isEqualTo(List.of("http://localhost:8080"));
+        assertThat(map(panel.get("attributes")).get("post.logout.redirect.uris")).isEqualTo("http://localhost:8080/panel/");
+        assertThat(panel.get("defaultClientScopes")).isEqualTo(List.of("basic"));
+        assertThat(panel.get("optionalClientScopes")).isEqualTo(List.of());
+        List<Map<String, Object>> mappers = list(panel.get("protocolMappers"));
+        assertThat(mappers).anySatisfy(m -> {
+            assertThat(m.get("protocolMapper")).isEqualTo("oidc-usermodel-realm-role-mapper");
+            assertThat(map(m.get("config")).get("access.token.claim")).isEqualTo("true");
+            assertThat(map(m.get("config")).get("id.token.claim")).as("roles stay out of the ID token").isEqualTo("false");
+        });
+        assertThat(list(map(realm().get("roles")).get("realm"))).anySatisfy(r -> assertThat(r.get("name")).isEqualTo("verso-operator"));
+        assertThat(mappers).anySatisfy(m -> {
+            assertThat(map(m.get("config")).get("claim.name")).isEqualTo("preferred_username");
+            assertThat(map(m.get("config")).get("access.token.claim")).as("no name in the access token").isEqualTo("false");
+        });
+        Map<String, Object> demo = list(realm().get("users")).stream().filter(u -> "demo".equals(u.get("username")))
+                .findFirst().orElseThrow();
+        assertThat(demo.get("realmRoles")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .contains("verso-operator");
     }
 
     /** The repository is public: every secret in the realm is a placeholder that start.sh fills from /run/secrets. */
