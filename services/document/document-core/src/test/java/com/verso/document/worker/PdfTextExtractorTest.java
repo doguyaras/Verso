@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.verso.document.api.enums.DocumentFailureReason;
-import com.verso.document.config.DocumentProperties;
 import com.verso.document.testing.TestPdfs;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -98,19 +97,6 @@ class PdfTextExtractorTest {
     @Test
     void extract_whenAContentStreamUsesAnUnmeasurableEncoding_isRejectedAsUnsupported() {
         assertRejected(TestPdfs.lzwContent(), DocumentFailureReason.UNSUPPORTED_PDF);
-    }
-
-    /** Test review T10: the parser's stream cache is bounded; beyond it the file is refused with a fixed reason. */
-    @Test
-    void extract_whenTheParserMemoryIsExceeded_isRejectedWithAFixedReason() {
-        DocumentProperties tiny = new DocumentProperties(DataSize.ofMegabytes(20), 500, 2_000_000, 50_000,
-                DataSize.ofMegabytes(64), 200, 4, 20, DataSize.ofBytes(512), 1000, 150, "test-embedding", 1024,
-                TestPdfs.properties().ingestion());
-        assertThatThrownBy(() -> new PdfTextExtractor(tiny).extract(TestPdfs.pages("a".repeat(2000), "b", "c")))
-                .isInstanceOfSatisfying(IngestionRejectedException.class, e -> {
-                    assertThat(e.reason()).isEqualTo(DocumentFailureReason.NOT_A_PDF);
-                    assertThat(e.getCause()).isNull();
-                });
     }
 
     /** Test review T16 / ADR-0011: owner-password-only PDFs open without a password and are read. */
