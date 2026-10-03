@@ -1,7 +1,9 @@
-# Image publish (phase 9, reference 18.1): a version tag (v*) builds the application image from that commit, tests it
-# like CI, and pushes it to GitHub Container Registry as ghcr.io/<owner>/verso:<version> and :sha-<commit>, with the
-# build's SBOM and provenance attestations. Nothing is pushed for branches or pull requests. Only GITHUB_TOKEN is used
-# (packages: write for this job only); no third-party action besides checkout.
+# Image publish (phase 9, reference 18.1): a version tag (v*) first runs the same build and tests as the ci workflow on
+# the tagged commit (the Dockerfile itself skips tests), then builds the application image once and pushes it to GitHub
+# Container Registry with the build's SBOM and provenance attestations. The pushed digest is pulled back and checked
+# before the version tag points at it; until then only ghcr.io/<owner>/verso:sha-<commit> exists. Nothing is pushed for
+# branches or pull requests. Only GITHUB_TOKEN is used (packages: write for the image job only); no third-party action
+# besides the pinned checkout and setup-java ones the ci workflow uses; BuildKit and the SBOM scanner are pinned by digest.
 #
 #   git tag v0.1.0 && git push origin v0.1.0
 name: release
@@ -14,7 +16,20 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: '25', cache: maven }
+      # The image holds only the application; the repository tooling and the panel are tested by the ci workflow.
+      - name: build and tests (as the ci workflow's backend job)
+        run: ./mvnw -B -ntp verify
+
   image:
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -22,6 +37,9 @@ jobs:
       packages: write
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/verso
+      # moby/buildkit:v0.31.0 and docker/buildkit-syft-scanner:1.12.0, resolved 2026-10-03
+      BUILDKIT: moby/buildkit:v0.31.0@sha256:a095b3d11ce1a9a05b6064ef515dfca0291ec5bcf2ea8178da8f6461924294e1
+      SBOM_SCANNER: docker/buildkit-syft-scanner:1.12.0@sha256:ae4f3b554449e7e25548e7d8ccc029d17357348e30c6e3df01b92bc93654d6a9
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -32,28 +50,36 @@ jobs:
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "not a semantic version: $GITHUB_REF_NAME" >&2; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "image=${IMAGE,,}" >> "$GITHUB_OUTPUT"
-      - name: build (the Dockerfile runs the full Maven verify in its build stage)
-        run: |
-          docker buildx create --use --name verso-release
-          docker buildx build --load \
-            --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
-            --label org.opencontainers.image.revision="${GITHUB_SHA}" \
-            --label org.opencontainers.image.version="${{ steps.version.outputs.version }}" \
-            -t "${{ steps.version.outputs.image }}:${{ steps.version.outputs.version }}" \
-            -t "${{ steps.version.outputs.image }}:sha-${GITHUB_SHA::12}" .
-      - name: the image runs as a non-root user and starts
-        run: |
-          user="$(docker image inspect "${{ steps.version.outputs.image }}:${{ steps.version.outputs.version }}" --format '{{.Config.User}}')"
-          [[ "$user" =~ ^[1-9][0-9]*$ ]] || { echo "image user is '$user'" >&2; exit 1; }
-      - name: push with SBOM and provenance
+      - name: build once and push under the commit tag, with SBOM and provenance
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE_NAME: ${{ steps.version.outputs.image }}
         run: |
           printf '%s' "$TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          docker buildx build --push --sbom=true --provenance=mode=max \
+          docker buildx create --use --name verso-release --driver-opt "image=$BUILDKIT"
+          docker buildx build --push --sbom="generator=$SBOM_SCANNER" --provenance=mode=max \
+            --metadata-file "$RUNNER_TEMP/build.json" \
             --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
             --label org.opencontainers.image.revision="${GITHUB_SHA}" \
-            --label org.opencontainers.image.version="${{ steps.version.outputs.version }}" \
-            -t "${{ steps.version.outputs.image }}:${{ steps.version.outputs.version }}" \
-            -t "${{ steps.version.outputs.image }}:sha-${GITHUB_SHA::12}" .
+            --label org.opencontainers.image.version="$VERSION" \
+            -t "$IMAGE_NAME:sha-${GITHUB_SHA::12}" .
+          digest="$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/build.json")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "no image digest in the build metadata" >&2; exit 1; }
+          echo "DIGEST=$digest" >> "$GITHUB_ENV"
+      - name: the pushed image runs as a non-root user and carries the tagged revision
+        env:
+          IMAGE_NAME: ${{ steps.version.outputs.image }}
+        run: |
+          docker pull "$IMAGE_NAME@$DIGEST"
+          user="$(docker image inspect "$IMAGE_NAME@$DIGEST" --format '{{.Config.User}}')"
+          [[ "$user" =~ ^[1-9][0-9]*$ ]] || { echo "image user is '$user'" >&2; exit 1; }
+          revision="$(docker image inspect "$IMAGE_NAME@$DIGEST" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+          [[ "$revision" == "$GITHUB_SHA" ]] || { echo "image revision is '$revision'" >&2; exit 1; }
+      - name: point the version tag at the checked digest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE_NAME: ${{ steps.version.outputs.image }}
+        run: |
+          docker buildx imagetools create -t "$IMAGE_NAME:$VERSION" "$IMAGE_NAME@$DIGEST"
           docker logout ghcr.io

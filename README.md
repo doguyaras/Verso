@@ -19,10 +19,10 @@ Verso answers questions about your own PDF documents in Turkish and cites every 
   - median answer time 28 s.
 - **Engineering:**
   - A modular monolith with machine-checked architecture rules.
-  - About 350 tests on a real PostgreSQL, and 200 mutation checks that prove the tests catch what they claim to.
+  - About 350 tests (the database ones on a real PostgreSQL), and 200 mutation checks that prove the tests catch what they claim to.
   - An ADR for every decision.
   - Encrypted backups with an automated restore drill in CI.
-- **Run it:** the four commands below, then `bash scripts/demo.sh`.
+- **Run it:** the four commands below; the last one is the demo.
 - **Disclaimer:** this is a portfolio project. The KVKK notes describe design choices; they are not legal advice.
 
 ## Ne yapar
@@ -36,7 +36,7 @@ Kurumlar yapay zekâ ile belgelerine soru sormak istiyor, ama belgeleri, sorular
 
 ## Hızlı başlangıç
 
-Gereksinim: Docker (Compose v2) ve Node 24 (demo betiği için). İlk açılış yaklaşık 8,5 GB indirir; host'ta en az 12 GB boş RAM önerilir.
+Gereksinim: Docker (Compose v2) ve Node 24 (demo betiği için). İlk açılış model tarafı için yaklaşık 8,5 GB, `--build` sırasında Maven bağımlılıkları ve diğer imajlar için birkaç GB daha indirir; host'ta en az 12 GB boş RAM önerilir.
 
 ```bash
 git clone https://github.com/doguyaras/Verso.git && cd Verso
@@ -108,6 +108,8 @@ curl -s -H "Authorization: Bearer $TOKEN" -F "file=@samples/izin-yonetmeligi.pdf
 curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"question":"Doğum izni toplam kaç haftadır?"}' http://localhost:8080/v1/questions
 ```
 
+Windows'ta (Git Bash) yerel `curl.exe`, argümandaki Türkçe harfleri bozar; gövdeyi UTF-8 bir dosyadan verin: `--data-binary @soru.json` (`scripts/demo.sh` böyle yapar).
+
 Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md).
 
 ## Modlar ve KVKK md. 9
@@ -138,7 +140,7 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 | Belgelerde olmayan soruya "bulunamadı" | 1,00 | aynı |
 | Cevap süresi (CPU, 2 çekirdek) | p50 28 sn, p95 45 sn | aynı |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
-| Eşzamanlı soru | 1 (ikincisi "meşgul" alır ve yeniden dener) | `docs/capacity.md` |
+| Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır) | `docs/capacity.md` |
 
 Set küçüktür (33 soru, 6 belge). Sonuçlar yön gösterir, istatistiksel güvence vermez. Komutlar: [`eval/README.md`](eval/README.md).
 
@@ -303,7 +305,7 @@ docker compose up -d --build --wait
 **Kaynaklar.**
 
 - **Bellek:** container sınırlarının toplamı yaklaşık 10,6 GB'dır (uygulama 1,5 GB, kenar proxy 64 MB, Ollama 6 GB (embedding ve chat modeli birlikte yüklü), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
-- **Disk ve ağ:** ilk açılış yaklaşık 8,5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB, gemma4:e2b modeli 3,5 GB, nginx imajı 23 MB). Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
+- **Disk ve ağ:** ilk açılış yaklaşık 8,5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB, gemma4:e2b modeli 3,5 GB, nginx imajı 23 MB); buna Keycloak, PostgreSQL, Flyway ve Temurin imajları ile `--build` sırasında Maven bağımlılıkları eklenir. Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
 - **Embedding:** CPU'da yapılır; Ollama 2 CPU ile sınırlıdır (`OLLAMA_CPUS`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
@@ -325,6 +327,8 @@ bash scripts/restore-drill.sh
 - **Parola ve anahtar rotasyonu:** [`secrets/README.md`](secrets/README.md). Init script'leri yalnız ilk kurulumda çalışır.
 - **Backup servisi** son başarılı yedek iki aralıktan eskiyse `unhealthy` görünür (`docker compose ps`).
 
+**İmaj yayını** (`.github/workflows/release.yml`): `v*` etiketi önce o commit'te build ve testleri koşar, sonra uygulama imajını bir kez build edip SBOM ve provenance ile `ghcr.io/<owner>/verso` adresine iter. Sürüm etiketi, geri çekilip kontrol edilen digest'e konur. İmaj yalnız uygulamayı içerir: compose dosyaları, kenar proxy ayarı, panel, realm ve init script'leri depodan bağlanır. Yani imajdan kurulum için de depo checkout'u gerekir.
+
 ## Geliştirme
 
 Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontainers ile koşar), Node 24 (script testleri için), gitleaks 8.24.3 (pre-commit için).
@@ -334,7 +338,7 @@ Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontaine
 ```
 
 ```bash
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js
+GITLEAKS=<gitleaks ikilisi> node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js
 ```
 
 IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye açan katman. Port `VERSO_DB_LOCAL_PORT` ile değişir. IDE'nin çalışma dizini depo kökü olmalı; parolalar `secrets/`'tan okunur.

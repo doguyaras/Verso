@@ -18,19 +18,21 @@ command -v node >/dev/null || { echo "demo: needs node (JSON formatting)" >&2; e
 token() {
   curl --silent --show-error --max-time 10 "$IDP/token" --data grant_type=client_credentials --data client_id=verso-ci \
     --data-urlencode "client_secret@secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET" \
-    | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).access_token))"
+    | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{let t;try{t=JSON.parse(s).access_token}catch{}
+        if(!t){console.error('demo: no token from Keycloak (is the stack up? docker compose ps)');process.exit(1)}console.log(t)})"
 }
-call() { local t; t="$(token)"; curl --silent --max-time 180 --header @- "$@" <<<"Authorization: Bearer $t"; }
-ids() { call "$API/v1/documents?size=100" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{for(const d of JSON.parse(s).data)console.log(d.id+' '+d.fileName+' '+d.status)})"; }
+call() { local t; t="$(token)" || exit 1; curl --silent --max-time 180 --header @- "$@" <<<"Authorization: Bearer $t"; }
+# One document per line, tab-separated: id, status, file name (last, so a name with spaces stays whole).
+ids() { call "$API/v1/documents?size=100" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{for(const d of JSON.parse(s).data)console.log(d.id+'\t'+d.status+'\t'+d.fileName)})"; }
 
 if [ "${1:-}" = --clean ]; then
-  ids | while read -r id name _; do call -X DELETE "$API/v1/documents/$id" >/dev/null; echo "demo: deleted $name"; done
+  ids | while IFS=$'\t' read -r id _ name; do call -X DELETE "$API/v1/documents/$id" >/dev/null; echo "demo: deleted $name"; done
   exit 0
 fi
 
 echo "== Verso demo: $(curl --silent --output /dev/null --dump-header - "$API/v1/documents" | tr -d '\r' | sed -n 's/^[Xx]-[Rr]ag-[Mm]ode: *//p') mode =="
 trap 'rm -f demo-question.tmp' EXIT
-existing="$(ids | awk '{print $2}')"
+existing="$(ids | cut -f3)"
 for pdf in samples/*.pdf; do
   name="$(basename "$pdf")"
   if printf '%s\n' "$existing" | grep -qx "$name"; then echo "demo: $name already uploaded"; continue; fi
@@ -40,11 +42,11 @@ done
 
 printf 'demo: processing'
 for _ in $(seq 1 120); do
-  pending="$(ids | grep -cv ' READY$' || true)"
+  pending="$(ids | cut -f2 | grep -cEv '^(READY|FAILED)$' || true)"
   [ "$pending" = 0 ] && break
   printf '.'; sleep 3
 done
-echo; ids | awk '{print "  " $3 "  " $2}'
+echo; ids | awk -F'\t' '{print "  " $2 "  " $3}'
 
 ask() {
   echo; echo "Soru: $1"
