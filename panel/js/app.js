@@ -1,213 +1,196 @@
-// Verso panel: documents, questions with citations, and the system view for operators (ADR-0015). No framework and no
-// build step; ES modules served by the edge proxy. Screens are hash routes (#/documents, #/ask, #/system).
-import { CONFIG } from './config.js';
+// Verso panel (ADR-0015): overview, documents, questions with citations, and the system view for operators. No
+// framework and no build step; ES modules served by the edge proxy. Screens are hash routes (#/overview, …).
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
-import { api, ApiError, lastMode, PAGE_SIZE } from './api.js';
+import { ApiError, lastMode } from './api.js';
+import { icon } from './icons.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
-import { answerParts, el, FAILURES, formatDate, formatLabel, formatSize, plainName, sourceLabel, STATUS, UPLOAD_TYPES } from './render.js';
+import { el } from './render.js';
+import { initials, toast } from './ui.js';
+import { renderAsk } from './screens/ask.js';
+import { renderDocuments } from './screens/documents.js';
+import { renderOverview } from './screens/overview.js';
+import { renderSystem } from './screens/system.js';
 
-const MAX_UPLOAD = 20 * 1024 * 1024;
-const main = document.querySelector('#main');
-const nav = document.querySelector('#nav');
-const user = document.querySelector('#user');
-const modeBadge = document.querySelector('#mode');
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
+const THEME = 'verso.panel.theme';
+const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, system: renderSystem };
+
+const $ = (selector) => document.querySelector(selector);
 let roles = [];
-let poll = null;
 let view = 0; // bumped on every navigation: a late answer for a screen the user left is dropped
-let documentsPage = 0;
+let cleanup = null;
+let params = null;
+const counts = {};
 
-function toast(message, tone = 'bad') {
-  const node = el('div', { class: `toast ${tone}`, role: 'status' }, message);
-  document.querySelector('#toasts').append(node);
-  setTimeout(() => node.remove(), 6000);
+// ---------- theme ----------
+function storedTheme() {
+  try {
+    return sessionStorage.getItem(THEME);
+  } catch {
+    return null;
+  }
 }
 
-function showMode() {
-  if (!lastMode) return;
-  modeBadge.hidden = false;
-  modeBadge.className = `badge mode-${lastMode}`;
-  modeBadge.textContent = lastMode === 'local' ? 'Yerel mod' : 'Bulut modu';
-  modeBadge.title = lastMode === 'local'
-    ? 'Belgeler ve sorular bu sunucudan çıkmaz.'
-    : 'Sorular ve seçilen pasajlar bulut sağlayıcısına gider (KVKK md. 9).';
+function applyTheme(theme) {
+  const dark = theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('#theme-toggle').replaceChildren(icon(dark ? 'sun' : 'moon'));
+  $('#theme-toggle').setAttribute('aria-label', dark ? 'Açık temaya geç' : 'Koyu temaya geç');
 }
 
-async function guarded(action) {
+// ---------- calls that need the session ----------
+let redirecting = false; // parallel calls that all get 401 start one sign-in
+
+function handleUnauthorized() {
+  if (redirecting) return;
+  if (sessionStorage.getItem(AUTO_SIGN_IN)) {
+    showSignIn('Oturum açılamadı: servis girişinizi kabul etmedi. Yöneticinize bildirin.');
+    return;
+  }
+  sessionStorage.setItem(AUTO_SIGN_IN, '1');
+  redirecting = true;
+  signIn();
+}
+
+/** Runs an API call; a 401 starts the sign-in, any other error is thrown to the caller. */
+async function withAuth(action) {
   try {
     const result = await action();
     sessionStorage.removeItem(AUTO_SIGN_IN);
     return result;
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      if (sessionStorage.getItem(AUTO_SIGN_IN)) return showSignIn('Oturum açılamadı: servis girişinizi kabul etmedi. Yöneticinize bildirin.');
-      sessionStorage.setItem(AUTO_SIGN_IN, '1');
-      return signIn();
-    }
-    toast(error instanceof ApiError ? error.message : 'Bağlantı kurulamadı.');
-    return undefined;
+    if (error instanceof ApiError && error.status === 401) handleUnauthorized();
+    throw error;
   } finally {
     showMode();
   }
 }
 
-// ---------- documents ----------
-function documentRow(doc) {
-  const status = STATUS[doc.status] ?? { label: doc.status, tone: 'wait' };
-  return el('tr', { 'data-id': doc.id },
-    el('td', { class: 'name' }, plainName(doc.fileName)),
-    el('td', {}, el('span', { class: 'chip' }, formatLabel(doc.format))),
-    el('td', {}, el('span', { class: `chip ${status.tone}` }, status.label),
-      doc.failureReason ? el('span', { class: 'hint' }, FAILURES[doc.failureReason] ?? doc.failureReason) : null),
-    el('td', { class: 'num' }, doc.pageCount ?? '–'),
-    el('td', { class: 'num' }, formatSize(doc.sizeBytes)),
-    el('td', {}, formatDate(doc.createdAt)),
-    el('td', { class: 'actions' }, el('button', { class: 'ghost danger', type: 'button', title: 'Sil',
-      onclick: () => removeDocument(doc) }, 'Sil')));
-}
-
-async function removeDocument(doc) {
-  if (!confirm(`"${plainName(doc.fileName)}" belgesi, metni ve vektörleriyle birlikte kalıcı olarak silinsin mi?`)) return;
-  await guarded(async () => {
-    await api.deleteDocument(doc.id);
-    toast('Belge silindi.', 'ok');
-    await renderDocuments();
-  });
-}
-
-async function uploadFiles(files) {
-  for (const file of files) {
-    // The type is the server's decision (name and first bytes, ADR-0016): an unknown name gets its 415 message.
-    if (file.size > MAX_UPLOAD) { toast(`${plainName(file.name)}: 20 MB sınırını aşıyor.`); continue; }
-    await guarded(async () => {
-      await api.upload(file);
-      toast(`${plainName(file.name)} yüklendi; işleniyor.`, 'ok');
-    });
+/** Runs an API call and shows its error as a toast; resolves to undefined on failure. */
+async function guarded(action) {
+  try {
+    return await withAuth(action);
+  } catch (error) {
+    if (!(error instanceof ApiError && error.status === 401)) {
+      toast(error instanceof ApiError ? error.message : 'Bağlantı kurulamadı.');
+    }
+    return undefined;
   }
-  await renderDocuments();
 }
 
-async function renderDocuments() {
-  const shown = view;
-  clearInterval(poll);
-  const page = await guarded(() => api.listDocuments(documentsPage));
-  if (shown !== view) return;
-  if (!page) return; // the poll stays stopped after a failure; navigating again retries
-  if (documentsPage > 0 && documentsPage >= page.page.totalPages) {
-    documentsPage = Math.max(0, page.page.totalPages - 1);
-    return renderDocuments();
-  }
-  const input = el('input', { type: 'file', accept: UPLOAD_TYPES.join(','), multiple: true, hidden: true,
-    onchange: (e) => uploadFiles([...e.target.files]) });
-  const drop = el('div', { class: 'drop', tabindex: 0, role: 'button',
-    onclick: () => input.click(), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') input.click(); },
-    ondragover: (e) => { e.preventDefault(); drop.classList.add('over'); },
-    ondragleave: () => drop.classList.remove('over'),
-    ondrop: (e) => { e.preventDefault(); drop.classList.remove('over'); uploadFiles([...e.dataTransfer.files]); } },
-  el('strong', {}, 'Belge yükle'), el('span', {}, 'PDF, Word (DOCX), TXT ya da Markdown · sürükleyip bırakın ya da tıklayın · en çok 20 MB'), input);
-  const rows = page.data.map(documentRow);
-  const table = rows.length
-    ? el('table', {}, el('thead', {}, el('tr', {}, ['Ad', 'Tür', 'Durum', 'Sayfa / bölüm', 'Boyut', 'Yüklenme', ''].map((h) => el('th', {}, h)))),
-      el('tbody', {}, rows))
-    : el('p', { class: 'empty' }, 'Henüz belge yok. Örnekler: samples/ klasöründeki PDF\'ler.');
-  main.replaceChildren(el('h1', {}, 'Belgeler'),
-    el('p', { class: 'lead' }, 'Belgeleriniz bu sunucuda işlenir; orijinal dosya işlendikten sonra silinir, metni ve vektörleri kalır. Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.'),
-    drop, table, pager(page.page));
-  if (page.data.some((d) => d.status === 'PENDING' || d.status === 'PROCESSING')) poll = setInterval(renderDocuments, 4000);
-}
-
-function pager({ number, totalPages, totalElements }) {
-  const go = (to) => () => { documentsPage = to; renderDocuments(); };
-  return el('div', { class: 'row pager' },
-    el('p', { class: 'meta' }, totalPages > 1
-      ? `${totalElements} belge · sayfa ${number + 1}/${totalPages} (sayfa başına ${PAGE_SIZE})` : `${totalElements} belge`),
-    totalPages > 1 ? el('span', {},
-      el('button', { class: 'ghost', type: 'button', disabled: number === 0, onclick: go(number - 1) }, 'Önceki'),
-      el('button', { class: 'ghost', type: 'button', disabled: number + 1 >= totalPages, onclick: go(number + 1) }, 'Sonraki'))
-      : null);
-}
-
-// ---------- questions ----------
-function citationChip(citation) {
-  return el('span', { class: 'cite', title: sourceLabel(citation) }, String(citation.number));
-}
-
-function answerCard(question, result) {
-  const body = el('p', { class: 'answer' }, answerParts(result.answer, result.citations)
-    .map((part) => (part.citation ? citationChip(part.citation) : part.text)));
-  const sources = result.citations.length
-    ? el('ol', { class: 'sources' }, result.citations.map((c) => el('li', {}, el('strong', {}, c.fileName), sourceLabel(c).slice(c.fileName.length))))
-    : null;
-  const note = result.outcome === 'UNCITED'
-    ? el('p', { class: 'hint' }, 'Kaynak gösterilemedi: bu cevap belgelerinize dayanmıyor olabilir.') : null;
-  return el('article', { class: `card ${result.found ? '' : 'muted'}` },
-    el('p', { class: 'question' }, question), body, note, sources,
-    el('p', { class: 'meta' }, `${result.mode === 'local' ? 'Yerel' : 'Bulut'} model: ${result.model}`));
-}
-
-function renderAsk() {
-  const history = el('section', { class: 'history', 'aria-live': 'polite' });
-  const field = el('textarea', { rows: 3, maxlength: 1000, placeholder: 'Örnek: Yıllık izin kaç gün?', required: true });
-  const button = el('button', { type: 'submit' }, 'Sor');
-  const form = el('form', { class: 'ask', onsubmit: async (e) => {
-    e.preventDefault();
-    const question = field.value.trim();
-    if (!question) return;
-    button.disabled = true;
-    button.textContent = 'Düşünüyor…';
-    const pending = el('article', { class: 'card pending' }, el('p', { class: 'question' }, question),
-      el('p', { class: 'hint' }, 'Cevap hazırlanıyor. Yerel modelle bu birkaç on saniye sürebilir.'));
-    history.prepend(pending);
-    const result = await guarded(() => api.ask(question));
-    pending.replaceWith(result ? answerCard(question, result) : el('article', { class: 'card muted' },
-      el('p', { class: 'question' }, question), el('p', { class: 'hint' }, 'Cevap alınamadı.')));
-    if (result) field.value = '';
-    button.disabled = false;
-    button.textContent = 'Sor';
-  } }, field, el('div', { class: 'row' }, el('span', { class: 'hint' }, 'Cevaplar yalnız sizin belgelerinizden gelir ve kaynak gösterir.'), button));
-  main.replaceChildren(el('h1', {}, 'Soru sor'), form, history);
-  field.focus();
-}
-
-// ---------- system (operators) ----------
-async function renderSystem() {
-  const shown = view;
-  const info = await guarded(() => api.info());
-  if (shown !== view) return;
-  const left = Math.max(0, Math.round((expiresAt() - Date.now()) / 1000));
-  const identity = currentIdentity();
-  main.replaceChildren(el('h1', {}, 'Sistem'),
-    el('dl', { class: 'facts' },
-      el('dt', {}, 'Mod'), el('dd', {}, info ? (info.mode === 'local' ? 'Yerel (hiçbir model çağrısı dışarı çıkmaz)' : 'Bulut (yalnız chat çağrısı sağlayıcıya gider)') : '–'),
-      el('dt', {}, 'Chat modeli'), el('dd', {}, info?.chatModel ?? '–'),
-      el('dt', {}, 'Embedding modeli'), el('dd', {}, info?.embeddingModel ?? '–'),
-      el('dt', {}, 'Oturum'), el('dd', {}, `${identity.preferred_username ?? '–'} · rol: ${roles.join(', ')} · token ${left} sn geçerli (yalnız bellekte)`)),
-    el('h2', {}, 'Gözlem'),
-    el('p', {}, 'Metrikler, alarmlar ve log\'lar Grafana\'da (gözlem profili açıksa): ',
-      el('a', { href: CONFIG.grafana, target: '_blank', rel: 'noopener noreferrer' }, CONFIG.grafana), '. Runbook\'lar: docs/runbooks/.'));
+function showMode() {
+  if (!lastMode) return;
+  const pill = $('#mode');
+  const local = lastMode === 'local';
+  pill.hidden = false;
+  pill.className = `mode-pill ${local ? 'local' : 'cloud'}`;
+  pill.title = local ? 'Belgeler ve sorular bu sunucudan çıkmaz.' : 'Sorular ve seçilen pasajlar bulut sağlayıcısına gider (KVKK md. 9).';
+  pill.replaceChildren(el('span', { class: 'dot' }), el('span', { class: 'label' }, local ? 'Yerel mod' : 'Bulut modu'));
+  const card = el('div', { class: `privacy-card ${local ? 'local' : 'cloud'}` },
+    el('strong', {}, icon(local ? 'shield' : 'cloud', 'sm'), local ? 'Veriler sunucuda' : 'Bulut modu açık'),
+    el('span', {}, local ? 'Belgeler, sorular ve cevaplar bu sunucudan çıkmaz.' : 'Soru ve seçilen pasajlar sağlayıcıya gider.'));
+  $('#sidebar-foot').replaceChildren(card);
 }
 
 // ---------- shell ----------
-const RENDER = { documents: renderDocuments, ask: renderAsk, system: renderSystem };
+function navigate(screen, withParams = null) {
+  params = withParams;
+  if (location.hash === `#/${screen}`) route();
+  else location.hash = `#/${screen}`;
+}
+
+function setCount(screen, value) {
+  counts[screen] = value;
+  const badge = $(`#nav a[data-screen="${screen}"] .count`);
+  if (badge) badge.textContent = String(value);
+}
+
+function closeMenu() {
+  $('#sidebar').classList.remove('open');
+  $('#scrim').hidden = true;
+  $('#menu-toggle').setAttribute('aria-expanded', 'false');
+}
 
 function route() {
-  const wanted = location.hash.replace(/^#\//, '') || 'documents';
+  const wanted = location.hash.replace(/^#\//, '') || 'overview';
   const screen = canOpen(wanted, roles) ? wanted : screensFor(roles)[0];
-  for (const link of nav.querySelectorAll('a')) link.classList.toggle('active', link.dataset.screen === screen);
+  for (const link of document.querySelectorAll('#nav a')) link.classList.toggle('active', link.dataset.screen === screen);
   view += 1;
-  clearInterval(poll);
-  RENDER[screen]();
+  const shown = view;
+  if (typeof cleanup === 'function') cleanup();
+  cleanup = null;
+  closeMenu();
+  $('#page-title').textContent = SCREENS[screen].title;
+  $('#crumb').textContent = 'Verso';
+  document.title = `${SCREENS[screen].title} · Verso`;
+  const ctx = {
+    main: $('#main'), roles, identity: currentIdentity(), expiresAt, guarded, withAuth, navigate, setCount, showMode,
+    params, isCurrent: () => shown === view,
+  };
+  params = null;
+  const result = RENDER[screen](ctx);
+  Promise.resolve(result).then((dispose) => {
+    if (typeof dispose !== 'function') return;
+    if (shown === view) cleanup = dispose;
+    else dispose();
+  });
+  $('#main').focus({ preventScroll: true });
+  scrollTo(0, 0);
+}
+
+function userMenu() {
+  const identity = currentIdentity();
+  const name = identity.preferred_username ?? 'kullanıcı';
+  const holder = $('#user');
+  let menu = null;
+  const close = () => {
+    menu?.remove();
+    menu = null;
+    removeEventListener('click', outside);
+  };
+  const outside = (event) => {
+    if (!holder.contains(event.target)) close();
+  };
+  const button = el('button', { class: 'avatar-button', type: 'button', 'aria-haspopup': 'menu', onclick: () => {
+    if (menu) return close();
+    menu = el('div', { class: 'menu', role: 'menu' },
+      el('div', { class: 'menu-head' }, el('strong', {}, name), el('span', {}, roles.includes('verso-operator') ? 'Operatör' : 'Kullanıcı')),
+      el('button', { type: 'button', role: 'menuitem', onclick: () => { close(); navigate('system'); }, hidden: !canOpen('system', roles) },
+        icon('server', 'sm'), 'Sistem'),
+      el('button', { type: 'button', role: 'menuitem', onclick: signOut }, icon('logout', 'sm'), 'Çıkış yap'));
+    holder.append(menu);
+    setTimeout(() => addEventListener('click', outside));
+  } }, el('span', { class: 'avatar' }, initials(name)), el('span', { class: 'who' }, name));
+  holder.replaceChildren(button);
 }
 
 function showSignIn(problem) {
   view += 1;
-  clearInterval(poll);
-  main.replaceChildren(el('section', { class: 'signin' }, el('h1', {}, 'Verso'),
-    el('p', { class: 'lead' }, 'Kendi belgelerinize kaynak gösteren sorular sorun. Belgeler bu sunucuda kalır.'),
-    problem ? el('p', { class: 'hint bad', role: 'alert' }, problem) : null,
-    el('button', { type: 'button', onclick: () => { sessionStorage.removeItem(AUTO_SIGN_IN); signIn(); } }, 'Giriş yap')));
+  if (typeof cleanup === 'function') cleanup();
+  cleanup = null;
+  $('#shell').hidden = true;
+  const gate = $('#gate');
+  gate.hidden = false;
+  gate.replaceChildren(el('section', { class: 'signin' },
+    el('div', { class: 'signin-hero' },
+      el('span', { class: 'brand-mark big' }, 'V'),
+      el('h2', {}, 'Belgelerinize soru sorun, cevabı kaynağıyla alın.'),
+      el('p', {}, 'Verso, kurumunuzun belgelerini kendi sunucunuzda okur ve Türkçe sorulara kaynak göstererek cevap verir.'),
+      el('ul', {},
+        el('li', {}, icon('shield'), el('span', {}, 'Yerel modda hiçbir veri sunucudan çıkmaz.')),
+        el('li', {}, icon('quote'), el('span', {}, 'Her bilginin yanında belge ve sayfa ya da bölüm.')),
+        el('li', {}, icon('files'), el('span', {}, 'PDF, Word, TXT ve Markdown.')))),
+    el('div', { class: 'signin-form' },
+      el('h3', {}, 'Giriş yapın'),
+      el('p', {}, 'Kurumunuzun kimlik sağlayıcısına yönlendirileceksiniz.'),
+      problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
+      el('button', { class: 'button block', type: 'button', onclick: () => {
+        sessionStorage.removeItem(AUTO_SIGN_IN);
+        signIn();
+      } }, icon('key'), 'Giriş yap'),
+      el('p', { class: 'signin-note' }, icon('info', 'sm'), 'Oturum bilgisi yalnız bu sekmenin belleğinde tutulur.'))));
 }
 
 async function start() {
@@ -216,6 +199,17 @@ async function start() {
     location.replace(`${location.protocol}//localhost:${location.port}${location.pathname}${location.hash}`);
     return;
   }
+  applyTheme(storedTheme());
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(storedTheme()));
+  $('#theme-toggle').addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try {
+      sessionStorage.setItem(THEME, next);
+    } catch {
+      // the choice then lasts for this page only
+    }
+    applyTheme(next);
+  });
   let signedIn = false;
   try {
     signedIn = await completeSignIn();
@@ -226,12 +220,21 @@ async function start() {
     showSignIn();
     return;
   }
-  const claims = currentClaims();
-  roles = rolesOf(claims);
-  user.hidden = false;
-  user.replaceChildren(el('span', {}, currentIdentity().preferred_username ?? 'kullanıcı'),
-    el('button', { class: 'ghost', type: 'button', onclick: signOut }, 'Çıkış'));
-  nav.replaceChildren(...screensFor(roles).map((id) => el('a', { href: `#/${id}`, 'data-screen': id }, SCREENS[id].title)));
+  roles = rolesOf(currentClaims());
+  $('#gate').hidden = true;
+  $('#shell').hidden = false;
+  $('#menu-toggle').replaceChildren(icon('menu'));
+  $('#menu-toggle').addEventListener('click', () => {
+    const open = !$('#sidebar').classList.contains('open');
+    $('#sidebar').classList.toggle('open', open);
+    $('#scrim').hidden = !open;
+    $('#menu-toggle').setAttribute('aria-expanded', String(open));
+  });
+  $('#scrim').addEventListener('click', closeMenu);
+  $('#nav').replaceChildren(el('div', { class: 'nav-label' }, 'Çalışma alanı'),
+    ...screensFor(roles).map((id) => el('a', { href: `#/${id}`, 'data-screen': id }, icon(SCREENS[id].icon), SCREENS[id].title,
+      id === 'documents' ? el('span', { class: 'count' }, String(counts.documents ?? '')) : null)));
+  userMenu();
   addEventListener('hashchange', route);
   route();
 }

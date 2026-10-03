@@ -37,7 +37,7 @@ Kullanıcı yeni bağımlılıktan kaçınılmasını istedi. React/TS bir derle
 
 - Rol, access token'ın `realm_access.roles` claim'inden gelir. Rolü olmayan her oturum `verso-user` sayılır.
 - Panel yalnız menüyü gizler. Asıl kural API'dedir: her istek token taşır ve sahiplik sunucuda kontrol edilir (ADR-0005).
-- Demo kullanıcısı `verso-operator` rolündedir.
+- Demo kullanıcısı `demo` ve panel yöneticisi `admin` `verso-operator` rolündedir; parolaları `/run/secrets` dosyalarından gelir (`SECRET_KEYCLOAK_DEMO_USER_PASSWORD`, `SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD`).
 
 **Kimlik (ADR-0010):**
 
@@ -91,3 +91,12 @@ Kullanıcı yeni bağımlılıktan kaçınılmasını istedi. React/TS bir derle
 ## Yeniden değerlendirme koşulu
 
 - Ekran sayısı beşi geçerse, ya da kullanıcı bir bileşen çatısı (ör. React/TS) isterse: bileşen modeli olan bir çatıya geçilir. Bu, onay gerektiren yeni bir bağımlılıktır.
+
+## Panel v2 (2026-10-03, kullanıcı isteği: "güzel, sağlam bir arayüz")
+
+- **Ekranlar:** Genel bakış (sayılar, tür dağılımı, son belgeler, hızlı soru, asistan), Belgeler (sayfa genelinde sürükle-bırak, dosya başına ilerleme, arama, durum filtresi, ayrıntı çekmecesi, onay penceresi), Soru sor (sohbet görünümü, atıf çipleri, kaynak listesi, cevap türü, geçen süre), Sistem (mod ve KVKK, modeller, oturum süresi, gözlem).
+- **Kabuk:** sol menü (telefonda çekmece), üst çubuk (sayfa başlığı, mod göstergesi, tema, kullanıcı menüsü), açık ve koyu tema.
+- **Yeni bağımlılık yok:** sistem fontları, panelin kendi çizdiği SVG ikonlar (`panel/js/icons.js`, `createElementNS` ile), CSS değişkenleri. CSP değişmedi: inline stil yok; ilerleme çubuğu genişliği CSSOM ile (`element.style`), HTML hiç yazılmaz (Trusted Types).
+- **Yükleme ilerlemesi** `XMLHttpRequest` ile (fetch yükleme ilerlemesi vermez); aynı `X-Idempotency-Key` ve hata eşlemesi.
+- **Tema tercihi** `sessionStorage`'da (yalnız "light" ya da "dark"); token yine yalnız bellekte.
+- **Testler:** `scripts/panel.test.mjs` her modülün ES modülü olarak ayrıştığını (tek bir sözdizimi hatası bütün paneli boşaltır) ve kullanılan her ikonun çizili olduğunu da sınar.

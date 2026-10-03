@@ -75,10 +75,44 @@ export const api = {
   listDocuments: (page = 0, size = PAGE_SIZE) => request(`/v1/documents?page=${page}&size=${size}`),
   getDocument: (id) => request(`/v1/documents/${encodeURIComponent(id)}`),
   deleteDocument: (id) => request(`/v1/documents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  upload(file) {
+  /** Every document of the account (the quota keeps it to two pages at most). */
+  async listAllDocuments() {
+    const first = await api.listDocuments(0);
+    const rest = [];
+    for (let page = 1; page < first.page.totalPages; page++) rest.push(...(await api.listDocuments(page)).data);
+    return [...first.data, ...rest];
+  },
+  /**
+   * Uploads one file and reports the bytes sent (fetch cannot report upload progress, XMLHttpRequest can). The same
+   * idempotency key would make a retry return the first document instead of a second one.
+   */
+  async upload(file, onProgress = () => {}) {
+    const token = await accessToken();
+    if (!token) throw new ApiError(401, 90100);
     const form = new FormData();
     form.append('file', file, file.name);
-    return request('/v1/documents', { method: 'POST', body: form, headers: { 'X-Idempotency-Key': crypto.randomUUID() } });
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${CONFIG.api}/v1/documents`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('X-Idempotency-Key', crypto.randomUUID());
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      };
+      xhr.onerror = () => reject(new TypeError('network'));
+      xhr.onload = () => {
+        lastMode = xhr.getResponseHeader('X-Rag-Mode') ?? lastMode;
+        let body = null;
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          body = null;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+        else reject(new ApiError(xhr.status, body?.error?.code, Number(xhr.getResponseHeader('Retry-After')) || undefined));
+      };
+      xhr.send(form);
+    });
   },
   ask: (question) => request('/v1/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }) }),

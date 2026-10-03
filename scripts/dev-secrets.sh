@@ -20,6 +20,7 @@ NAMES=(
   SECRET_KEYCLOAK_ADMIN_PASSWORD       # keycloak: bootstrap admin of the master realm
   SECRET_KEYCLOAK_CI_CLIENT_SECRET     # keycloak: verso-ci client (client credentials, CI smoke test)
   SECRET_KEYCLOAK_DEMO_USER_PASSWORD   # keycloak: the "demo" user of the verso realm
+  SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD # keycloak: the "admin" user of the verso realm (panel operator)
   SECRET_GRAFANA_ADMIN_PASSWORD        # grafana (profile "obs"): the "admin" user (ADR-0014)
 )
 

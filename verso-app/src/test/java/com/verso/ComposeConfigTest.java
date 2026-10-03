@@ -88,7 +88,7 @@ class ComposeConfigTest {
         assertThat(service("migrate")).containsEntry("restart", "no");
         assertThat(secrets("keycloak")).as("the IdP gets its own secrets only").containsExactlyInAnyOrder(
                 "SECRET_DB_KEYCLOAK_PASSWORD", "SECRET_KEYCLOAK_ADMIN_PASSWORD", "SECRET_KEYCLOAK_CI_CLIENT_SECRET",
-                "SECRET_KEYCLOAK_DEMO_USER_PASSWORD");
+                "SECRET_KEYCLOAK_DEMO_USER_PASSWORD", "SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD");
         @SuppressWarnings("unchecked")
         Map<String, Object> dependsOn = (Map<String, Object>) service("verso-app").get("depends_on");
         assertThat(dependsOn).containsKey("migrate");

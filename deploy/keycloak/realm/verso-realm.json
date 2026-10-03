@@ -205,6 +205,24 @@
       "realmRoles": [
         "verso-operator"
       ]
+    },
+    {
+      "username": "admin",
+      "email": "admin@verso.invalid",
+      "emailVerified": true,
+      "firstName": "Verso",
+      "lastName": "Admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${VERSO_PANEL_ADMIN_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "verso-operator"
+      ]
     }
   ],
   "roles": {

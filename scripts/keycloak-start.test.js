@@ -10,7 +10,7 @@ const { spawnSync } = require('node:child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'deploy', 'keycloak', 'start.sh');
 const NAMES = ['SECRET_DB_KEYCLOAK_PASSWORD', 'SECRET_KEYCLOAK_ADMIN_PASSWORD', 'SECRET_KEYCLOAK_CI_CLIENT_SECRET',
-  'SECRET_KEYCLOAK_DEMO_USER_PASSWORD'];
+  'SECRET_KEYCLOAK_DEMO_USER_PASSWORD', 'SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD'];
 
 function secretsDir(overrides = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verso-kc-'));

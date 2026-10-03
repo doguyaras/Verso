@@ -748,7 +748,7 @@ backup $PULL; sub $PULL 's/\[0-9a-f\]\{64\}/[0-9a-f]{2,64}/' \
 PANEL=panel/js
 backup $PANEL/render.js; sub $PANEL/render.js 's/(const node = document\.createElement\(tag\);)/$1\n  node.innerHTML = "";/' \
   && node_red "M203 the panel writes HTML" scripts/panel.test.mjs "safety: the panel never writes HTML"; restore $PANEL/render.js
-backup $PANEL/roles.js; sub $PANEL/roles.js 's/system: \{ title: .Sistem., roles: \[ROLES\.OPERATOR\] \}/system: { title: "Sistem", roles: [ROLES.USER, ROLES.OPERATOR] }/' \
+backup $PANEL/roles.js; sub $PANEL/roles.js 's/system: \{ title: .Sistem., icon: .server., roles: \[ROLES\.OPERATOR\] \}/system: { title: "Sistem", icon: "server", roles: [ROLES.USER, ROLES.OPERATOR] }/' \
   && node_red "M204 every user sees the system screen" scripts/panel.test.mjs "roles: a user without Verso roles"; restore $PANEL/roles.js
 backup $PANEL/auth.js; sub $PANEL/auth.js 's/refreshing \?\?= tokenRequest\(/refreshing = tokenRequest(/' \
   && node_red "M209 concurrent callers each refresh (the second gets a revoked refresh token)" scripts/panel.test.mjs "refresh: concurrent callers"; restore $PANEL/auth.js
@@ -758,6 +758,10 @@ backup $PANEL/render.js; sub $PANEL/render.js 's/return String\(name\)\.replace\
   && node_red "M211 file names keep bidi overrides in the delete prompt" scripts/panel.test.mjs "text: file names lose control"; restore $PANEL/render.js
 backup $PANEL/render.js; sub $PANEL/render.js "s/citation\.unit === 'SECTION' \? 'bölüm' : 'sayfa'/'sayfa'/" \
   && node_red "M224 the panel cites a DOCX section as a page" scripts/panel.test.mjs "formats: a section is cited"; restore $PANEL/render.js
+backup $PANEL/screens/system.js; sub $PANEL/screens/system.js 's/(docker compose --profile obs\)\.\x27\)\)\)\);)/$1)/' \
+  && node_red "M231 a syntax error in one screen module blanks the panel" scripts/panel.test.mjs "modules: every panel module parses"; restore $PANEL/screens/system.js
+backup $PANEL/roles.js; sub $PANEL/roles.js "s/icon: 'server'/icon: 'servers'/" \
+  && node_red "M232 a menu icon that is not drawn" scripts/panel.test.mjs "icons: every icon"; restore $PANEL/roles.js
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

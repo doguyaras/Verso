@@ -71,15 +71,25 @@ CPU'da bir cevap 20–60 sn sürer. Küçük yerel model kaynağı doğru göste
 
 ## Panel
 
-Tarayıcıdan: `http://localhost:8080/panel/`. Kullanıcı `demo`, parola `secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD` dosyasında.
+Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikisi de operatör rolünde; parolaları `scripts/dev-secrets.sh`'ın ürettiği dosyalarda:
 
-- **Belgeler:** sürükle-bırak yükleme, işlenme durumu, silme.
-- **Soru sor:** atıflı cevaplar.
-- **Sistem:** mod, modeller, oturum; yalnız operatör rolüne görünür.
+| Kullanıcı | Parola dosyası |
+|---|---|
+| `admin` | `secrets/SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD` |
+| `demo` | `secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD` |
+
+Ekranlar:
+
+- **Genel bakış:** belge sayıları (aranabilir, işleniyor, hata), tür dağılımı, son yüklenenler, hızlı soru, asistanın modu ve modelleri.
+- **Belgeler:** sayfanın her yerine sürükle-bırak, dosya başına yükleme ilerlemesi, arama ve durum filtresi, ayrıntı paneli, onaylı silme.
+- **Soru sor:** sohbet görünümü; atıf numaraları, kaynak listesi (sayfa ya da bölüm), cevabın türü (kaynaklı, bulunamadı, kaynak gösterilemedi), geçen süre, kopyalama.
+- **Sistem:** mod ve KVKK açıklaması, modeller, oturum süresi, gözlem bağlantıları; yalnız operatör rolüne görünür.
+
+Açık ve koyu tema (sistemi izler, üst çubuktan değişir), telefon genişliğinde çekmece menü.
 
 Panelin özellikleri:
 
-- Bağımlılıksızdır; derleme adımı yoktur.
+- Bağımlılıksızdır; derleme adımı, dış font ya da ikon paketi yoktur (ikonlar panelin kendi SVG'leri).
 - Token yalnız bellekte durur.
 - Model çıktısı sayfaya yalnız metin olarak girer.
 - Rol matrisi tek dosyadadır (`panel/js/roles.js`).
@@ -87,7 +97,7 @@ Panelin özellikleri:
 
 Kararlar: [ADR-0015](docs/adr/0015-panel.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
 
-Faz 10'dan önce kurulmuş bir yığında panelin IdP istemcisi yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Bir kez şunu çalıştırın; yalnız demo IdP'nin verisini sıfırlar:
+Daha önce kurulmuş bir yığında panelin IdP istemcisi ya da `admin` kullanıcısı yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz), sonra bir kez şunu çalıştırın; yalnız demo IdP'nin verisini sıfırlar:
 
 ```bash
 bash scripts/keycloak-reimport.sh
