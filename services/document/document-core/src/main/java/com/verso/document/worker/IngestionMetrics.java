@@ -43,7 +43,7 @@ public class IngestionMetrics {
         gauge(registry, "verso.ingestion.queue", "pending", s -> s.pending() < 0 ? Double.NaN : s.pending(),
                 "Documents waiting for the worker");
         gauge(registry, "verso.ingestion.queue", "processing", s -> s.processing() < 0 ? Double.NaN : s.processing(),
-                "Documents waiting for the worker");
+                "Documents being processed by a worker");
         Gauge.builder("verso.ingestion.oldest.due.wait", this, m -> m.current().oldestDueWaitSeconds())
                 .baseUnit("seconds").description("How long the oldest due document has been waiting")
                 .register(registry);
@@ -56,7 +56,9 @@ public class IngestionMetrics {
 
     /** 1 while the embedding model circuit is open and the worker claims nothing (alert ModelUnavailable). */
     void registerPause(java.util.function.BooleanSupplier paused) {
-        Gauge.builder("verso.ingestion.paused", paused, p -> p.getAsBoolean() ? 1 : 0)
+        // Strong reference: Micrometer holds gauge state weakly, and nothing else holds this lambda; without it the
+        // gauge read NaN from the first garbage collection on (phase 7 review SP1).
+        Gauge.builder("verso.ingestion.paused", paused, p -> p.getAsBoolean() ? 1 : 0).strongReference(true)
                 .description("1 while ingestion is paused because the embedding model failed").register(registry);
     }
 

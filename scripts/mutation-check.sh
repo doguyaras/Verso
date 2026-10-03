@@ -624,6 +624,19 @@ backup $MCHK; sub $MCHK 's/\n\s*requireInternalIfLiteral\(environment\.getProper
 backup $VY; sub $VY 's/(        model: \$\{CLOUD_CHAT_MODEL\}\n)(        # No temperature)/$1        temperature: 0.1\n$2/' \
   && expect_red "M195 Claude gets a sampling value it refuses" verso-app AnthropicCloudModeTest ask_whenAPassageMatches_sendsOnlyRulesQuestionAndPassagesToTheProvider; restore $VY
 
+
+# ---------- phase 7: observability (ADR-0014) ----------
+IMET=$DOC/worker/IngestionMetrics.java
+PSAC=platform/platform-security/src/main/java/com/verso/platform/security/config/PlatformSecurityAutoConfiguration.java
+backup $IMET; sub $IMET 's/\.strongReference\(true\)//' \
+  && expect_red "M196 the paused gauge is held weakly and reads NaN" verso-app MetricsTest outageGauges_whenModelsFail_turnFromZeroToOne; restore $IMET
+backup $PSAC; sub $PSAC 's/managementPort::matches/request -> true/' \
+  && expect_red "M197 the token-free scrape follows the actuator onto the API port" verso-app MetricsSharedPortTest prometheus_whenTheActuatorSharesTheApiPort_needsAToken; restore $PSAC
+backup deploy/obs/alloy/config.alloy; sub deploy/obs/alloy/config.alloy 's/\n  rule \{\n    source_labels = \["__meta_docker_container_label_com_docker_compose_service"\]\n    regex         = "verso-app\|migrate\|edge\|backup"\n    action        = "keep"\n  \}//' \
+  && expect_red "M198 every container's log goes to Loki" verso-app ComposeConfigTest observability_whenComposed_isOptInInternalAndQuiet; restore deploy/obs/alloy/config.alloy
+backup compose.yaml; sub compose.yaml 's/(can leave the host \(phase 7 review B1\)\. obs-edge publishes it on 127\.0\.0\.1\. The settings below say the same\.\n    networks: )\[obs\]/$1\[obs, default\]/' \
+  && expect_red "M199 Grafana has a route out" verso-app ComposeConfigTest observability_whenComposed_isOptInInternalAndQuiet; restore compose.yaml
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.

@@ -55,6 +55,11 @@ management:
       exposure:
         # prometheus: scraped by the "obs" compose profile over the internal network, without a token (ADR-0014).
         include: health,info,prometheus
+  metrics:
+    distribution:
+      # Buckets for the dashboard's per-endpoint p95 (uri is the route template, never a raw path; ADR-0014).
+      percentiles-histogram:
+        http.server.requests: true
   endpoint:
     health:
       probes:

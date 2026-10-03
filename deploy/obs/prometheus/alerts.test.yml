@@ -1,0 +1,114 @@
+# promtool unit tests of alerts.yml (phase 7 review R1, R2, T2): each alert fires in its outage and stays quiet in
+# the normal case. Run: promtool test rules alerts.test.yml (scripts/obs-smoke.sh does, in CI).
+rule_files:
+  - alerts.yml
+evaluation_interval: 15s
+tests:
+  # Chat model hangs: each question times out after 90 s, the circuit is open only 15 s of every ~105 s.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_circuit_open{job="verso"}'
+        values: '1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0'
+      - series: 'verso_qa_questions_total{job="verso", outcome="model_unavailable"}'
+        values: '0+0.15x70'
+      - series: 'verso_qa_questions_total{job="verso", outcome="answered"}'
+        values: '5x70'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ModelUnavailable
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations: {summary: "A model (embedding or chat) fails and nothing succeeds.", runbook: docs/runbooks/model-unavailable.md}
+
+  # Low traffic, model refuses at once: one question every 2 minutes, all failing.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_questions_total{job="verso", outcome="circuit_open"}'
+        values: '0+0.125x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ModelUnavailable
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations: {summary: "A model (embedding or chat) fails and nothing succeeds.", runbook: docs/runbooks/model-unavailable.md}
+
+  # Embedding model down: the worker hands documents back and finishes none.
+  - interval: 15s
+    input_series:
+      - series: 'verso_ingestion_documents_total{job="verso", outcome="released"}'
+        values: '0+0.5x120'
+      - series: 'verso_ingestion_documents_total{job="verso", outcome="ready"}'
+        values: '12x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ModelUnavailable
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations: {summary: "A model (embedding or chat) fails and nothing succeeds.", runbook: docs/runbooks/model-unavailable.md}
+
+  # Normal: some questions fail, others are answered; documents finish.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_questions_total{job="verso", outcome="model_unavailable"}'
+        values: '0+0.05x120'
+      - series: 'verso_qa_questions_total{job="verso", outcome="answered"}'
+        values: '0+0.5x120'
+      - series: 'verso_ingestion_paused{job="verso"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ModelUnavailable
+        exp_alerts: []
+
+  # Database down: the queue gauges read NaN.
+  - interval: 15s
+    input_series:
+      - series: 'verso_ingestion_oldest_due_wait_seconds{job="verso"}'
+        values: '0 0 0 0 NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: VersoDatabaseUnavailable
+        exp_alerts:
+          - exp_labels: {severity: page, job: verso}
+            exp_annotations: {summary: "The application cannot read its database.", runbook: docs/runbooks/database-unavailable.md}
+      - eval_time: 9m
+        alertname: IngestionBacklog
+        exp_alerts: []
+
+  # Backlog: the oldest due document waits longer than the lease.
+  - interval: 15s
+    input_series:
+      - series: 'verso_ingestion_oldest_due_wait_seconds{job="verso"}'
+        values: '0+15x100'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IngestionBacklog
+        exp_alerts:
+          - exp_labels: {severity: ticket, job: verso}
+            exp_annotations: {summary: "Uploaded documents wait for processing longer than 10 minutes.", runbook: docs/runbooks/ingestion-backlog.md}
+
+  # The API is not scraped.
+  - interval: 15s
+    input_series:
+      - series: 'up{job="verso", instance="verso-app:8081"}'
+        values: '1 1 0 0 0 0 0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: VersoDown
+        exp_alerts:
+          - exp_labels: {severity: page, job: verso, instance: "verso-app:8081"}
+            exp_annotations: {summary: "The Verso API does not answer the metrics scrape.", runbook: docs/runbooks/verso-down.md}
+
+  # Half of the requests fail at 1 rps.
+  - interval: 15s
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="verso", uri="/v1/questions", status="503"}'
+        values: '0+15x100'
+      - series: 'http_server_requests_seconds_count{job="verso", uri="/v1/questions", status="200"}'
+        values: '0+15x100'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VersoHighErrorRate
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations: {summary: "More than 5% of API requests fail with 5xx.", runbook: docs/runbooks/high-error-rate.md}

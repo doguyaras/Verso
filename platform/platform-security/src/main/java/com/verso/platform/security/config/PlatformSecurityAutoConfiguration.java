@@ -7,6 +7,7 @@ import com.verso.platform.security.web.CurrentAccountParameterCheck;
 import com.verso.platform.security.web.EnvelopeAccessDeniedHandler;
 import com.verso.platform.security.web.EnvelopeAuthenticationEntryPoint;
 import com.verso.platform.security.web.EnvelopeRequestRejectedHandler;
+import com.verso.platform.security.web.ManagementServerPort;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -27,6 +28,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
+import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.HandlerExceptionResolver;
@@ -79,6 +81,11 @@ public class PlatformSecurityAutoConfiguration {
     }
 
     @Bean
+    ManagementServerPort managementServerPort() {
+        return new ManagementServerPort();
+    }
+
+    @Bean
     EnvelopeAccessDeniedHandler envelopeAccessDeniedHandler(
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) {
         return new EnvelopeAccessDeniedHandler(resolver);
@@ -89,14 +96,20 @@ public class PlatformSecurityAutoConfiguration {
     @ConditionalOnMissingBean(name = "versoApiSecurity")
     SecurityFilterChain versoApiSecurity(HttpSecurity http, JwtDecoder decoder,
                                          EnvelopeAuthenticationEntryPoint entryPoint,
-                                         EnvelopeAccessDeniedHandler deniedHandler) throws Exception {
+                                         EnvelopeAccessDeniedHandler deniedHandler,
+                                         ManagementServerPort managementPort) throws Exception {
         http.authorizeHttpRequests(requests -> {
                     // The container's error dispatch renders the envelope of a request that already failed.
                     requests.requestMatchers("/error").permitAll();
-                    // Health probes (compose healthcheck, orchestrators) and the Prometheus scrape carry no token; only
-                    // these two endpoints, only through the actuator's own matcher, which knows the separate management
-                    // port. That port is never published (ADR-0004); metrics carry no account, id or content (ADR-0014).
-                    if (ACTUATOR_PRESENT) requests.requestMatchers(EndpointRequest.to("health", "prometheus")).permitAll();
+                    // Health probes (compose healthcheck, orchestrators) carry no token: only the health endpoint, only
+                    // through the actuator's own matcher.
+                    if (ACTUATOR_PRESENT) {
+                        requests.requestMatchers(EndpointRequest.to("health")).permitAll();
+                        // The Prometheus scrape carries none either, but only on the separate management port, which is
+                        // never published (ADR-0004, ADR-0014); on a shared port it needs a token (phase 7 review B3).
+                        requests.requestMatchers(new AndRequestMatcher(EndpointRequest.to("prometheus"),
+                                managementPort::matches)).permitAll();
+                    }
                     requests.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resource -> resource

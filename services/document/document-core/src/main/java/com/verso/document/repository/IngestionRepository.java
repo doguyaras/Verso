@@ -38,10 +38,15 @@ public class IngestionRepository {
 
     private final JdbcClient jdbc;
     private final JdbcTemplate template;
+    private final JdbcTemplate statsTemplate;
 
     public IngestionRepository(JdbcClient jdbc, JdbcTemplate template) {
         this.jdbc = jdbc;
         this.template = template;
+        // The metrics read runs at scrape time: 2 s at most, well inside Prometheus' 10 s scrape timeout, so a slow
+        // database shows as NaN (alert VersoDatabaseUnavailable) instead of a failed scrape (VersoDown; review R3).
+        this.statsTemplate = template.getDataSource() == null ? template : new JdbcTemplate(template.getDataSource());
+        this.statsTemplate.setQueryTimeout(2);
     }
 
     /**
@@ -49,14 +54,13 @@ public class IngestionRepository {
      * up or is paused (alert IngestionBacklog). One read over the queued rows; no account, no id leaves.
      */
     public QueueStats queueStats() {
-        return jdbc.sql("""
+        return statsTemplate.queryForObject("""
                         SELECT count(*) FILTER (WHERE status = 'PENDING') AS pending,
                                count(*) FILTER (WHERE status = 'PROCESSING') AS processing,
                                COALESCE(EXTRACT(EPOCH FROM now() - min(next_attempt_at)
                                    FILTER (WHERE status = 'PENDING' AND next_attempt_at <= now())), 0) AS oldest
-                        FROM document.document WHERE status IN ('PENDING', 'PROCESSING')""")
-                .query((rs, n) -> new QueueStats(rs.getLong("pending"), rs.getLong("processing"), rs.getDouble("oldest")))
-                .single();
+                        FROM document.document WHERE status IN ('PENDING', 'PROCESSING')""",
+                (rs, n) -> new QueueStats(rs.getLong("pending"), rs.getLong("processing"), rs.getDouble("oldest")));
     }
 
     /**

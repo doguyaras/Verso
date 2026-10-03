@@ -105,7 +105,7 @@ class ComposeConfigTest {
         });
         // The API, the demo IdP (device-flow login, CI token) and Grafana (profile "obs"); only on the loopback interface.
         assertThat(published).hasSize(3);
-        assertThat(published).anyMatch(p -> p.startsWith("grafana 127.0.0.1:") && p.endsWith(":3000"));
+        assertThat(published).anyMatch(p -> p.startsWith("obs-edge 127.0.0.1:") && p.endsWith(":3000"));
         assertThat(published).anyMatch(p -> p.startsWith("edge 127.0.0.1:") && p.endsWith(":8080"));
         assertThat(published).anyMatch(p -> p.startsWith("keycloak 127.0.0.1:") && p.endsWith(":8080"));
     }
@@ -114,7 +114,7 @@ class ComposeConfigTest {
     @Test
     void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
         for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway", "ollama",
-                "ollama-pull", "edge", "prometheus", "alertmanager", "loki", "alloy", "grafana")) {
+                "ollama-pull", "edge", "prometheus", "alertmanager", "loki", "alloy", "grafana", "obs-edge")) {
             Map<String, Object> s = service(name);
             assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
@@ -244,18 +244,25 @@ class ComposeConfigTest {
         Map<String, Object> networks = (Map<String, Object>) new Yaml().<Map<String, Object>>load(read("compose.yaml"))
                 .get("networks");
         assertThat((Map<String, Object>) networks.get("obs")).containsEntry("internal", true);
-        for (String name : List.of("prometheus", "alertmanager", "loki", "alloy", "grafana")) {
+        for (String name : List.of("prometheus", "alertmanager", "loki", "alloy", "grafana", "obs-edge")) {
             assertThat(service(name).get("profiles")).as(name).isEqualTo(List.of("obs"));
         }
         assertThat(service("prometheus").get("networks")).isEqualTo(List.of("backend", "obs"));
-        for (String name : List.of("alertmanager", "loki", "alloy")) {
-            assertThat(service(name).get("networks")).as(name).isEqualTo(List.of("obs"));
+        for (String name : List.of("alertmanager", "loki", "alloy", "grafana")) {
+            assertThat(service(name).get("networks")).as(name + ": no route out (review B1)").isEqualTo(List.of("obs"));
         }
-        assertThat(service("grafana").get("networks")).isEqualTo(List.of("obs", "default"));
+        assertThat(service("obs-edge").get("networks")).isEqualTo(List.of("default", "obs"));
+        assertThat(read("deploy/obs/edge/nginx.conf")).contains("access_log off;", "error_log /dev/stderr crit;",
+                "set $grafana http://grafana:3000;");
+        assertThat(read("deploy/obs/alloy/config.alloy")).as("only services with id-only logs (review B2)")
+                .contains("regex         = \"verso-app|migrate|edge|backup\"", "action        = \"keep\"");
         assertThat((List<String>) service("alloy").get("volumes")).contains("/var/run/docker.sock:/var/run/docker.sock:ro");
         assertThat(environment("grafana")).containsEntry("GF_ANALYTICS_REPORTING_ENABLED", "false")
                 .containsEntry("GF_ANALYTICS_CHECK_FOR_UPDATES", "false").containsEntry("GF_PLUGINS_PREINSTALL_DISABLED", "true")
-                .containsEntry("GF_AUTH_ANONYMOUS_ENABLED", "false");
+                .containsEntry("GF_AUTH_ANONYMOUS_ENABLED", "false").containsEntry("GF_SNAPSHOTS_EXTERNAL_ENABLED", "false")
+                .containsEntry("GF_PUBLIC_DASHBOARDS_ENABLED", "false").containsEntry("GF_PLUGINS_PLUGIN_ADMIN_ENABLED", "false")
+                .containsEntry("GF_USERS_ALLOW_SIGN_UP", "false").containsEntry("GF_NEWS_NEWS_FEED_ENABLED", "false");
+        assertThat((List<String>) service("alloy").get("command")).contains("--disable-reporting");
         assertThat(secrets("grafana")).containsExactly("SECRET_GRAFANA_ADMIN_PASSWORD");
         assertThat(read("deploy/obs/prometheus/prometheus.yml")).contains("verso-app:8081", "/actuator/prometheus");
     }
@@ -267,7 +274,8 @@ class ComposeConfigTest {
         Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
         List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
                 .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
-        assertThat(alerts).hasSize(5);
+        assertThat(alerts).hasSize(6);
+        assertThat(ROOT.resolve("deploy/obs/prometheus/alerts.test.yml")).as("promtool unit tests").exists();
         for (Map<String, Object> alert : alerts) {
             String name = String.valueOf(alert.get("alert"));
             assertThat(((Map<String, Object>) alert.get("labels")).get("severity")).as(name).isIn("page", "ticket");

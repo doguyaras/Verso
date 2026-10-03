@@ -102,6 +102,29 @@ class MetricsTest {
         assertThat(scrape).doesNotContain(account, pending.id().toString(), "Marker");
     }
 
+    /** Phase 7 review SP1/T1: the gauges the ModelUnavailable alert reads move with the outage, they are not NaN. */
+    @Test
+    void outageGauges_whenModelsFail_turnFromZeroToOne() throws Exception {
+        String before = get(managementPort, "/actuator/prometheus", null).body();
+        assertThat(value(before, "verso_ingestion_paused")).isEqualTo(0);
+        assertThat(value(before, "verso_qa_circuit_open")).isEqualTo(0);
+
+        DocumentRow doc = documents.insert(account, "x.pdf", 10, null, Instant.now());
+        documents.insertFile(doc.id(), TestPdfs.pages("topic-leave rules"));
+        TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException("down"));
+        worker.runOnce();
+        assertThat(value(get(managementPort, "/actuator/prometheus", null).body(), "verso_ingestion_paused"))
+                .as("paused after the embedding failure").isEqualTo(1);
+
+        TestEmbeddingModel.INSTANCE.reset();
+        circuit.recordFailure();
+        circuit.recordFailure();
+        String after = get(managementPort, "/actuator/prometheus", null).body();
+        assertThat(value(after, "verso_qa_circuit_open")).isEqualTo(1);
+        assertThat(value(after, "verso_ingestion_documents_total\\{outcome=\"released\"\\}")).isGreaterThanOrEqualTo(1);
+        circuit.reset();
+    }
+
     private HttpResponse<String> ask(String question) throws Exception {
         return http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/questions"))
                 .header("Authorization", TestIdp.bearer(account)).header("Content-Type", "application/json")

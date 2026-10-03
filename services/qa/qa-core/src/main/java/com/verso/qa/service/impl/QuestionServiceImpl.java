@@ -128,6 +128,7 @@ public class QuestionServiceImpl implements QuestionService {
             acquired = chatSlots.tryAcquire(properties.chatWait().toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            metrics.record(Outcome.MODEL_BUSY);
             throw new QaServiceException(QaErrorCode.MODEL_BUSY, "INTERRUPTED");
         }
         if (!acquired) {
