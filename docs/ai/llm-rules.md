@@ -92,5 +92,5 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
   - 1.2: `AnthropicCloudModeTest` (giden gövdede dosya adı yok, eşik altında hiç istek yok), `AiModeCheckTest` (embedding her modda Ollama).
   - 1.3: cloud modda da (`AnthropicCloudModeTest`, `OpenAiCloudModeTest`).
   - 1.4: anahtar yalnız config tree dosyası (`ComposeConfigTest`, `AiModeCheckTest`).
-  - 1.5: `OllamaChatClientTest` (içerik loglama kapalı, OTLP exporter yok).
+  - 1.5: `OllamaChatClientTest` (içerik loglama kapalı, OTLP exporter yok); faz 7'de gözlem çıktıları da: Grafana ve Loki iç ağda, Grafana'nın dış paylaşım yolları kapalı, metriklerde id ve içerik yok (`MetricsTest`), Loki'de soru metni yok (`scripts/obs-smoke.sh`), `ComposeConfigTest.observability_*`.
 - Doğrulaması henüz yazılmamış kurallar: 7.1 (faz 8), 9.1 (faz 9).

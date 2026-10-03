@@ -12,7 +12,7 @@
 
 | Neden | Çözüm |
 |---|---|
-| Veritabanı yok, readiness DOWN | `docker compose ps postgres`; postgres düzelince uygulama kendini toparlar |
+| Veritabanı yok | Bu durumda genellikle metrik ucu cevap verir ve bu alarm değil [database-unavailable.md](database-unavailable.md) çalar. Yine de `docker compose ps postgres` |
 | Mod/sağlayıcı tutarsız (`AiModeCheck`) | Log'daki ayar adını düzelt (ADR-0013), `docker compose up -d verso-app` |
 | Bellek (OOM, `ExitOnOutOfMemoryError`) | `docker inspect verso-verso-app-1 --format '{{.State.OOMKilled}}'`; `VERSO_MEM_LIMIT` |
 

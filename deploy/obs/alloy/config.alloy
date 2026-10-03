@@ -11,6 +11,14 @@ discovery.docker "verso" {
 
 discovery.relabel "verso" {
   targets = []
+  // Only the services whose log lines are known to carry ids, sizes and timings (llm-rules 2.1). Keycloak (user
+  // names and addresses of failed logins), PostgreSQL (statement errors can quote values), Ollama and the
+  // observability services stay out (phase 7 review B2).
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "verso-app|migrate|edge|backup"
+    action        = "keep"
+  }
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "service"

@@ -59,8 +59,8 @@ public class IngestionWorker implements SmartLifecycle {
         this.embeddingModel = embeddingModel;
         this.properties = properties;
         this.clock = clock;
-        this.metrics = metrics;
-        if (metrics != null) metrics.registerPause(this::paused);
+        this.metrics = java.util.Objects.requireNonNull(metrics, "metrics");
+        metrics.registerPause(this::paused);
     }
 
     /** One failure must not stop the next poll (reference 23.4 scheduler wrapper); empty polls are not logged. */

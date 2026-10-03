@@ -315,6 +315,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
     mem_limit: 512m
     pids_limit: 128
     networks: [backend, obs]
@@ -396,10 +397,9 @@ services:
     restart: always
     mem_limit: 256m
     pids_limit: 256
-    # default: the published port only; Grafana itself is kept from calling home (settings below).
-    networks: [obs, default]
-    ports:
-      - "127.0.0.1:${VERSO_GRAFANA_PORT:-3000}:3000"
+    # The internal "obs" network only: nothing Grafana offers (external snapshots, plugin catalogue, news, update checks)
+    # can leave the host (phase 7 review B1). obs-edge publishes it on 127.0.0.1. The settings below say the same.
+    networks: [obs]
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/SECRET_GRAFANA_ADMIN_PASSWORD
@@ -411,6 +411,9 @@ services:
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
       GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
+      GF_PUBLIC_DASHBOARDS_ENABLED: "false"
     secrets:
       - SECRET_GRAFANA_ADMIN_PASSWORD
     volumes:
@@ -428,6 +431,26 @@ services:
       timeout: 3s
       retries: 12
       start_period: 30s
+
+  # Grafana's published port (ADR-0014): the same proxy image as edge, on "default" (the port) and "obs" (Grafana).
+  obs-edge:
+    <<: *hardening
+    profiles: ["obs"]
+    image: nginxinc/nginx-unprivileged:1.29.8-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
+    restart: always
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    mem_limit: 32m
+    pids_limit: 32
+    networks: [default, obs]
+    ports:
+      - "127.0.0.1:${VERSO_GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./deploy/obs/edge/nginx.conf:/etc/nginx/nginx.conf:ro
+    tmpfs:
+      - /tmp:size=16m
+    depends_on:
+      grafana:
+        condition: service_healthy
 
   # ----- restore drill (profile "drill", scripts/restore-drill.sh) -----
   # A throwaway PostgreSQL with roles only; the dump brings schemas, extensions, grants and data.

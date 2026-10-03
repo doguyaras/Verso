@@ -39,11 +39,14 @@ series="$(prom 'count({__name__=~"verso_.+"})' | count 'console.log((j.data.resu
 [ "${series:-0}" -ge 8 ] || die "too few Verso series in Prometheus ($series)"
 rules="$(docker compose exec -T prometheus wget -q -O - http://127.0.0.1:9090/api/v1/rules \
   | count 'console.log(j.data.groups.flatMap(g=>g.rules).filter(r=>r.type==="alerting").length)')"
-[ "$rules" = 5 ] || die "expected 5 alert rules, Prometheus has $rules"
+[ "$rules" = 6 ] || die "expected 6 alert rules, Prometheus has $rules"
 ams="$(docker compose exec -T prometheus wget -q -O - http://127.0.0.1:9090/api/v1/alertmanagers \
   | count 'console.log(j.data.activeAlertmanagers.length)')"
 [ "$ams" -ge 1 ] || die "Prometheus has no active Alertmanager"
-echo "obs-smoke: $series Verso series, $rules alert rules, $ams Alertmanager"
+# The alert rules' unit tests: each alert fires in its outage and stays quiet otherwise (phase 7 review T2).
+docker compose exec -T -w /etc/prometheus prometheus promtool test rules alerts.test.yml >/dev/null \
+  || die "promtool test rules alerts.test.yml failed"
+echo "obs-smoke: $series Verso series, $rules alert rules (unit tests pass), $ams Alertmanager"
 
 [ "$(grafana /api/health | count 'console.log(j.database)')" = ok ] || die "Grafana is not healthy"
 for uid in verso-prometheus verso-loki; do
@@ -67,9 +70,20 @@ lines="$(loki '{service="verso-app"}')"
 leveled="$(loki '{service="verso-app", level=~".+"}')"
 [ "$leveled" -gt 0 ] || die "application log lines carry no level label"
 echo "obs-smoke: Loki holds $lines application lines ($leveled with a level label)"
-for phrase in "annual leave" "planet has the most moons"; do
+# Positive control: the lines of qa-smoke's questions did arrive (otherwise "no question text" would prove nothing).
+answered="$(loki '{service="verso-app"} |= "Question answered"')"
+[ "$answered" -gt 0 ] || die "qa-smoke's question log lines did not reach Loki (run scripts/qa-smoke.sh first)"
+for phrase in "annual leave" "planet has the most moons" "smoke.pdf" "leave policy"; do
   hits="$(loki "{service=~\".+\"} |~ \"(?i)$phrase\"")"
-  [ "$hits" = 0 ] || die "a question reached the logs ($hits lines)"
+  [ "$hits" = 0 ] || die "a question, a file name or document text reached the logs ($hits lines)"
 done
-echo "obs-smoke: no question text in any log"
+echo "obs-smoke: $answered question lines, none with a question, file name or document text"
+# Only the allow-listed services ship logs, labelled by service and level (never the trace id).
+labels="$(grafana "/api/datasources/proxy/uid/verso-loki/loki/api/v1/labels?since=1h" | count 'console.log(j.data.sort().join(" "))')"
+services="$(grafana "/api/datasources/proxy/uid/verso-loki/loki/api/v1/label/service/values?since=1h" | count 'console.log(j.data.sort().join(" "))')"
+for label in $labels; do [ "$label" != trace_id ] || die "trace_id is a Loki label"; done
+for s in $services; do
+  case "$s" in verso-app|migrate|edge|backup) ;; *) die "logs of $s reached Loki (not allow-listed)" ;; esac
+done
+echo "obs-smoke: Loki labels [$labels], services [$services]"
 echo "obs-smoke: OK"
