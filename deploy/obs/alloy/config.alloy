@@ -9,11 +9,12 @@ discovery.docker "verso" {
   }
 }
 
+// Containers whose logs are read at all: only the services whose log lines are known to carry ids, sizes and
+// timings (llm-rules 2.1). Keycloak (user names and addresses of failed logins), PostgreSQL (statement errors can
+// quote values), Ollama and the observability services are not read (phase 7 review B2). The filter works on the
+// discovered targets, so a dropped container's log is never opened.
 discovery.relabel "verso" {
-  targets = []
-  // Only the services whose log lines are known to carry ids, sizes and timings (llm-rules 2.1). Keycloak (user
-  // names and addresses of failed logins), PostgreSQL (statement errors can quote values), Ollama and the
-  // observability services stay out (phase 7 review B2).
+  targets = discovery.docker.verso.targets
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     regex         = "verso-app|migrate|edge|backup"
@@ -26,10 +27,9 @@ discovery.relabel "verso" {
 }
 
 loki.source.docker "verso" {
-  host          = "unix:///var/run/docker.sock"
-  targets       = discovery.docker.verso.targets
-  relabel_rules = discovery.relabel.verso.rules
-  forward_to    = [loki.process.verso.receiver]
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.verso.output
+  forward_to = [loki.process.verso.receiver]
 }
 
 loki.process "verso" {
