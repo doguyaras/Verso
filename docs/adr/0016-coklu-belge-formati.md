@@ -30,7 +30,8 @@ Kısıtlar:
 
 | İlk baytlar / ad | Format |
 |---|---|
-| İlk 1024 baytta `%PDF-` (ad ne olursa olsun) | PDF |
+| `.docx`, `.txt`, `.md` adı ve baytlar o türe uyuyorsa | O tür (PDF'i anlatan bir notta `%PDF-` geçebilir; review K1) |
+| Diğer adlarda ilk 1024 baytta `%PDF-` | PDF |
 | `.docx` adı ve 0. baytta ZIP başlığı (`PK\x03\x04`) | DOCX |
 | `.txt`, `.md`, `.markdown` adı ve ilk 8 KB'ta NUL bayt yok (UTF-16 BOM'u varsa NUL serbest) | TXT / MD |
 | Diğer her şey | 415 `DOCUMENT_TYPE_UNSUPPORTED` (10010; eski adı `DOCUMENT_NOT_PDF`, kod aynı) |
@@ -42,12 +43,13 @@ Parolalı DOCX ve eski `.doc` bir OLE kabıdır, ZIP değildir; yüklemede 415 a
 - **DOCX:** ZIP bellekte akış olarak okunur, hiçbir yere yazılmaz.
   - En çok 1000 parça.
   - Bütün parçalar tek bir bayt bütçesinden açılır (max-content-bytes'ın iki katı): ZIP bombası sınırlı CPU harcar. Atlanan parça da açıldığı için sayılır.
-  - Ana parça (`word/document.xml`) en çok max-content-bytes; aşarsa `TOO_MUCH_TEXT`.
+  - Ana parça (`word/document.xml`, büyük/küçük harf duyarsız) en çok 32 MB ya da max-content-bytes (küçük olanı); aşarsa `TOO_MUCH_TEXT`. Metin olmayan XML (uzun nitelik, yorum) de ayrıştırılırken heap harcar (review B1).
   - İki ana parça varsa Word'ün hangisini gösterdiği belirsizdir: `UNSUPPORTED_FILE`.
-  - XML, JDK'nın StAX okuyucusuyla okunur. DTD ve dış varlıklar kapalıdır (XXE, varlık genişletme), dış DTD ve şema erişimi boştur. Okuyucu yinelemeli değildir; derin iç içelik özyineleme yapmaz.
+  - XML, JDK'nın StAX okuyucusuyla okunur. DTD ve dış varlıklar kapalıdır (XXE, varlık genişletme), dış DTD ve şema erişimi boştur, eleman derinliği açıkça 100'dür (JDK yapılandırmasına bırakılmaz). Okuyucu yinelemeli değildir; derin iç içelik özyineleme yapmaz.
+  - Tablo satırı en çok 1000 hücre; ayraçlar da metin sayımına girer.
   - Okunan: paragraflar, sekme, satır sonu, tablolar (satır başına bir blok, hücreler " | " ile), metin kutuları (dış paragrafa katılır). Başlık stili (Heading n, Başlık n / `Balk` n, Title) ya da anahat düzeyi yeni bölüm başlatır.
-  - Okunmayan: üst ve alt bilgi, dipnot, yorum, silinmiş revizyon, alan kodu.
-- **TXT / MD:** paragraflar boş satırla ayrılır. MD'de kod bloğu dışındaki ATX başlığı (`# Başlık`) yeni bölüm başlatır.
+  - Okunmayan: üst ve alt bilgi, dipnot, yorum, silinmiş ve taşınmış (eski yer) revizyon, alan kodu, gizli metin (`w:vanish`, `w:webHidden`: Word'de görünmeyen bir talimat modele gitmesin) ve çizimlerin yedek kopyası (`mc:Fallback`; Word metin kutusunu iki kez yazar).
+- **TXT / MD:** yükleme yalnız ilk 8 KB'ta NUL arar; çözülmüş metinde NUL varsa worker `INVALID_FILE` verir. Paragraflar boş satırla ayrılır. MD'de kod bloğu dışındaki ATX başlığı (`# Başlık`) yeni bölüm başlatır.
 - **Bölümleme:** başlıkta ya da sonraki paragraf bölümü ~3000 karakterin (yaklaşık bir sayfa) üstüne çıkaracaksa yeni bölüm. Sayfa sınırından (max-page-chars) uzun tek paragraf boşlukta kesilir. PDF sayfasının sınırları bölüme de uygulanır: bölüm sayısı (max-pages), bölüm başına karakter, toplam karakter.
 - Bölüm, PDF sayfasının yerini alır: `document_page` satırı, chunk'ların `page_number`'ı ve atıf aynı kalır; yalnız birimi farklıdır.
 - Yeni kalıcı nedenler: `INVALID_FILE` (okunabilir bir dosya değil), `UNSUPPORTED_FILE` (güvenle işlenmeyen DOCX yapısı). PDF nedenleri değişmedi.
@@ -70,7 +72,21 @@ Parolalı DOCX ve eski `.doc` bir OLE kabıdır, ZIP değildir; yüklemede 415 a
   - Windows-1254 geri dönüşü, UTF-8 olmayan başka bir kodlamayı (ör. Kiril) yanlış okur; dosya reddedilmez.
   - Ayrıştırma hâlâ API ile aynı JVM'de ve süre sınırı yok (ADR-0011'deki risk aynen sürer).
 - **Etkilenen dosyalar:** `document-api` (`DocumentFormat`, `SourceUnit`, `DocumentResponse`, `RetrievedPassage`, `DocumentFailureReason`), `document-core` (`DocumentFormats`, `DocxTextExtractor`, `PlainTextExtractor`, `TextSections`, `TextNormalizer`, `DocumentTextExtractor`, `IngestionWorker`, repository'ler, `V2__document_formats.sql`), `qa-api` (`Citation`, `CitationUnit`), `qa-core` (`CitationExtractor`, `PromptBuilder`), `panel/`, entegrasyon dokümanları.
-- **Geri alma yolu:** `DocumentFormats.detect` yalnız PDF'e döner; mevcut DOCX/TXT/MD belgeleri READY kalır ve aranabilir (sütun ve nedenler kalır).
+- **Geri alma yolu:** ileriye doğru: `DocumentFormats.detect` yalnız PDF'e döner; mevcut DOCX/TXT/MD belgeleri READY kalır ve aranabilir (sütun ve nedenler kalır).
+
+## Kurulum ve geri dönüş sözleşmesi (review D1)
+
+- **Kurulum:** migration önce koşar (compose'ta `migrate` servisi), sonra bütün instance'lar yeni sürüme geçer. Eski bir worker DOCX/TXT/MD satırını claim edip PDF ayrıştırıcısına verirse belge kalıcı olarak `NOT_A_PDF` alır: çok instance'lı bir kurulumda yeni türler, son eski instance kapanana kadar yüklenmemelidir. Tek instance'lı compose kurulumunda bu pencere yoktur.
+- **Uygulamayı eski sürüme döndürmek:** eski sürüm yeni başarısızlık nedenlerini tanımaz; böyle bir belgesi olan hesapta liste 500 döner. Dönmeden önce:
+
+```sql
+UPDATE document.document SET failure_reason = 'NOT_A_PDF' WHERE failure_reason IN ('INVALID_FILE', 'UNSUPPORTED_FILE');
+UPDATE document.document SET status = 'FAILED', failure_reason = 'NOT_A_PDF', claim_token = NULL, locked_until = NULL
+WHERE format <> 'PDF' AND status IN ('PENDING', 'PROCESSING');
+```
+
+  READY durumdaki DOCX/TXT/MD belgeleri eski sürümde de aranabilir (atıf "sayfa" olarak görünür). `format` sütunu kalır; V2 geri alınmaz (Flyway ileriye doğru).
+- V2'deki iki `CHECK` `NOT VALID` olmadan eklenir: tablo kısa süre kilitlenir ve taranır. Belge sayısı hesap başına 200 ile sınırlı; migrate rolünün `lock_timeout`'u 10 sn (review D2, kabul edildi).
 
 ## Yeniden değerlendirme koşulu
 

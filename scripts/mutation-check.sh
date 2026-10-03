@@ -688,7 +688,19 @@ backup $SECTS; sub $SECTS 's/\(block\.heading\(\) \|\| full\)/(full)/' \
   && expect_red "M221 headings no longer start sections" $DCM PlainTextExtractorTest extract_whenMarkdownHasHeadings_startsASectionAtEachOutsideCodeFences; restore $SECTS
 backup $PLAINX; sub $PLAINX 's/return new String\(content, TURKISH_WINDOWS\);/return new String(content, StandardCharsets.ISO_8859_1);/' \
   && expect_red "M222 a Windows-1254 Turkish text file is read as Latin-1 (ş, ğ, ı garbled)" $DCM PlainTextExtractorTest decode_whenTheBytesAreNotUtf8_readsThemAsWindows1254; restore $PLAINX
-backup $QS/service/CitationExtractor.java; sub $QS/service/CitationExtractor.java 's/CitationUnit\.valueOf\(passage\.unit\(\)\.name\(\)\)/CitationUnit.PAGE/' \
+backup $DOCXX; sub $DOCXX 's/if \(MARKUP_COMPATIBILITY\.equals\(namespace\) && name\.equals\("Fallback"\)\) \{/if (false) {/' \
+  && expect_red "M225 a Word text box is read twice (choice and fallback)" $DCM DocxTextExtractorTest extract_whenTextBoxesHaveAFallbackOrTextWasMoved_readsItOnce; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/if \(hiddenRun\) return;/if (false) return;/' \
+  && expect_red "M226 hidden Word text reaches the model" $DCM DocxTextExtractorTest extract_whenARunIsHidden_skipsItButNotAnExplicitlyVisibleOne; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/if \(row\.size\(\) >= MAX_CELLS\) throw rejected\(DocumentFailureReason\.UNSUPPORTED_FILE\);//' \
+  && expect_red "M227 a row of countless empty cells is accepted" $DCM DocxTextExtractorTest extract_whenATableRowHasTooManyCells_failsAsUnsupported; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/factory\.setProperty\("jdk\.xml\.maxElementDepth", MAX_ELEMENT_DEPTH\);/factory.setProperty("jdk.xml.maxElementDepth", 0);/' \
+  && expect_red "M228 the XML depth limit is switched off" $DCM DocxTextExtractorTest extract_whenElementsNestDeeperThanTheLimit_failsAsInvalid; restore $DOCXX
+backup $FORMATS; sub $FORMATS 's/(String name = fileName == null \? "" : fileName\.strip\(\)\.toLowerCase\(Locale\.ROOT\);)/$1\n        if (startsLikePdf(content)) return Optional.of(DocumentFormat.PDF);/' \
+  && expect_red "M229 a note mentioning %PDF- goes to the PDF parser" $DCM DocumentFormatsTest detect_whenATextOrMarkdownMentionsThePdfHeader_staysText; restore $FORMATS
+backup $PLAINX; sub $PLAINX 's/if \(text\.indexOf\(\x27\\u0000\x27\) >= 0\) throw/if (false) throw/' \
+  && expect_red "M230 binary data after the first 8 KB is indexed" $DCM PlainTextExtractorTest extract_whenBinaryDataFollowsTheFirstKilobytes_failsAsInvalid; restore $PLAINX
+backup $QS/service/CitationExtractor.java; sub $QS/service/CitationExtractor.java 's/case SECTION -> CitationUnit\.SECTION;/case SECTION -> CitationUnit.PAGE;/' \
   && expect_red "M223 a DOCX section is cited as a page" verso-app $QAT ask_whenThePassageComesFromADocx_citesASection; restore $QS/service/CitationExtractor.java
 
 # ---------- scripts and hooks ----------

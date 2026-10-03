@@ -39,6 +39,24 @@ class PlainTextExtractorTest {
     void decode_whenAByteOrderMarkLies_failsAsInvalid() {
         byte[] lying = concat(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF}, new byte[] {(byte) 0xC3, (byte) 0x28});
         assertReason(() -> PlainTextExtractor.decode(lying), DocumentFailureReason.INVALID_FILE);
+        // Review T6: a UTF-16 mark followed by a lone surrogate is not text either.
+        byte[] utf16 = {(byte) 0xFF, (byte) 0xFE, 0x00, (byte) 0xD8, 0x41, 0x00};
+        assertReason(() -> PlainTextExtractor.decode(utf16), DocumentFailureReason.INVALID_FILE);
+    }
+
+    /** Review B3: the upload looks at the first 8 KB only; NUL bytes later in the file are refused by the worker. */
+    @Test
+    void extract_whenBinaryDataFollowsTheFirstKilobytes_failsAsInvalid() {
+        byte[] file = concat("metin ".repeat(2000).getBytes(StandardCharsets.UTF_8), new byte[] {0, 1, 2, 0});
+        assertReason(() -> extractor.extract(file, false), DocumentFailureReason.INVALID_FILE);
+    }
+
+    /** Review K5: a hard cut never leaves half of a surrogate pair at the end of a section. */
+    @Test
+    void lastWhitespace_whenTheLimitFallsInsideASurrogatePair_movesBeforeIt() {
+        String text = "a".repeat(9) + "😀" + "b".repeat(10);
+        assertThat(TextSections.lastWhitespace(text, 10)).isEqualTo(9);
+        assertThat(TextSections.lastWhitespace(text, 11)).isEqualTo(11);
     }
 
     @Test

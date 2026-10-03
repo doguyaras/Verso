@@ -18,6 +18,14 @@ class DocumentFormatsTest {
         assertThat(DocumentFormats.detect(null, TestPdfs.pages("x"))).contains(DocumentFormat.PDF);
     }
 
+    /** Review K1: a text about PDFs is still a text; the name decides first, the PDF header only for other names. */
+    @Test
+    void detect_whenATextOrMarkdownMentionsThePdfHeader_staysText() {
+        byte[] note = "PDF dosyaları %PDF-1.7 başlığıyla başlar.".getBytes(StandardCharsets.UTF_8);
+        assertThat(DocumentFormats.detect("notlar.md", note)).contains(DocumentFormat.MD);
+        assertThat(DocumentFormats.detect("notlar.txt", note)).contains(DocumentFormat.TXT);
+    }
+
     @Test
     void detect_whenAZipIsNamedDocx_isDocx() {
         assertThat(DocumentFormats.detect("Sözleşme.DOCX", TestDocx.docx(TestDocx.p("x")))).contains(DocumentFormat.DOCX);

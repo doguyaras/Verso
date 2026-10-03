@@ -1,0 +1,477 @@
+{
+  "measuredAt" : "2026-10-03T16:20:43.640621300Z",
+  "embeddingModel" : "bge-m3:567m",
+  "threshold" : 0.5,
+  "summary" : {
+    "PDF" : {
+      "documentHitAt5" : 1.0,
+      "factInTop5" : 0.96,
+      "answerableAboveThreshold" : 1.0,
+      "unanswerableBelowThreshold" : 0.5
+    },
+    "DOCX" : {
+      "documentHitAt5" : 1.0,
+      "factInTop5" : 1.0,
+      "answerableAboveThreshold" : 1.0,
+      "unanswerableBelowThreshold" : 0.5
+    },
+    "MD" : {
+      "documentHitAt5" : 1.0,
+      "factInTop5" : 1.0,
+      "answerableAboveThreshold" : 1.0,
+      "unanswerableBelowThreshold" : 0.5
+    }
+  },
+  "questions" : {
+    "PDF" : [ {
+      "id" : "izin-1",
+      "bestSimilarity" : 0.65,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-2",
+      "bestSimilarity" : 0.663,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-3",
+      "bestSimilarity" : 0.6,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-4",
+      "bestSimilarity" : 0.738,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-5",
+      "bestSimilarity" : 0.7,
+      "documentInTop5" : true,
+      "factInTop5" : false
+    }, {
+      "id" : "izin-6",
+      "bestSimilarity" : 0.714,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-1",
+      "bestSimilarity" : 0.67,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-2",
+      "bestSimilarity" : 0.595,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-3",
+      "bestSimilarity" : 0.62,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-4",
+      "bestSimilarity" : 0.617,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-5",
+      "bestSimilarity" : 0.644,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-1",
+      "bestSimilarity" : 0.636,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-2",
+      "bestSimilarity" : 0.57,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-3",
+      "bestSimilarity" : 0.654,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-4",
+      "bestSimilarity" : 0.62,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-5",
+      "bestSimilarity" : 0.588,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-1",
+      "bestSimilarity" : 0.649,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-2",
+      "bestSimilarity" : 0.522,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-3",
+      "bestSimilarity" : 0.606,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-1",
+      "bestSimilarity" : 0.706,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-2",
+      "bestSimilarity" : 0.6,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-3",
+      "bestSimilarity" : 0.59,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-1",
+      "bestSimilarity" : 0.601,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-2",
+      "bestSimilarity" : 0.581,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-3",
+      "bestSimilarity" : 0.549,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "yok-1",
+      "bestSimilarity" : 0.526
+    }, {
+      "id" : "yok-2",
+      "bestSimilarity" : 0.563
+    }, {
+      "id" : "yok-3",
+      "bestSimilarity" : 0.458
+    }, {
+      "id" : "yok-4",
+      "bestSimilarity" : 0.508
+    }, {
+      "id" : "yok-5",
+      "bestSimilarity" : 0.547
+    }, {
+      "id" : "yok-6",
+      "bestSimilarity" : 0.431
+    }, {
+      "id" : "yok-7",
+      "bestSimilarity" : 0.467
+    }, {
+      "id" : "yok-8",
+      "bestSimilarity" : 0.468
+    } ],
+    "DOCX" : [ {
+      "id" : "izin-1",
+      "bestSimilarity" : 0.73,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-2",
+      "bestSimilarity" : 0.715,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-3",
+      "bestSimilarity" : 0.663,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-4",
+      "bestSimilarity" : 0.72,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-5",
+      "bestSimilarity" : 0.745,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-6",
+      "bestSimilarity" : 0.719,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-1",
+      "bestSimilarity" : 0.768,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-2",
+      "bestSimilarity" : 0.699,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-3",
+      "bestSimilarity" : 0.648,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-4",
+      "bestSimilarity" : 0.703,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-5",
+      "bestSimilarity" : 0.633,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-1",
+      "bestSimilarity" : 0.744,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-2",
+      "bestSimilarity" : 0.677,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-3",
+      "bestSimilarity" : 0.665,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-4",
+      "bestSimilarity" : 0.723,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-5",
+      "bestSimilarity" : 0.607,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-1",
+      "bestSimilarity" : 0.668,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-2",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-3",
+      "bestSimilarity" : 0.661,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-1",
+      "bestSimilarity" : 0.764,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-2",
+      "bestSimilarity" : 0.642,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-3",
+      "bestSimilarity" : 0.581,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-1",
+      "bestSimilarity" : 0.673,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-2",
+      "bestSimilarity" : 0.624,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-3",
+      "bestSimilarity" : 0.606,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "yok-1",
+      "bestSimilarity" : 0.5
+    }, {
+      "id" : "yok-2",
+      "bestSimilarity" : 0.556
+    }, {
+      "id" : "yok-3",
+      "bestSimilarity" : 0.489
+    }, {
+      "id" : "yok-4",
+      "bestSimilarity" : 0.552
+    }, {
+      "id" : "yok-5",
+      "bestSimilarity" : 0.584
+    }, {
+      "id" : "yok-6",
+      "bestSimilarity" : 0.408
+    }, {
+      "id" : "yok-7",
+      "bestSimilarity" : 0.488
+    }, {
+      "id" : "yok-8",
+      "bestSimilarity" : 0.45
+    } ],
+    "MD" : [ {
+      "id" : "izin-1",
+      "bestSimilarity" : 0.73,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-2",
+      "bestSimilarity" : 0.715,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-3",
+      "bestSimilarity" : 0.663,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-4",
+      "bestSimilarity" : 0.72,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-5",
+      "bestSimilarity" : 0.745,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "izin-6",
+      "bestSimilarity" : 0.719,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-1",
+      "bestSimilarity" : 0.768,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-2",
+      "bestSimilarity" : 0.699,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-3",
+      "bestSimilarity" : 0.648,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-4",
+      "bestSimilarity" : 0.703,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "masraf-5",
+      "bestSimilarity" : 0.633,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-1",
+      "bestSimilarity" : 0.744,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-2",
+      "bestSimilarity" : 0.677,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-3",
+      "bestSimilarity" : 0.665,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-4",
+      "bestSimilarity" : 0.723,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "guvenlik-5",
+      "bestSimilarity" : 0.607,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-1",
+      "bestSimilarity" : 0.668,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-2",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "uzaktan-3",
+      "bestSimilarity" : 0.661,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-1",
+      "bestSimilarity" : 0.764,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-2",
+      "bestSimilarity" : 0.642,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "kvkk-3",
+      "bestSimilarity" : 0.581,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-1",
+      "bestSimilarity" : 0.673,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-2",
+      "bestSimilarity" : 0.624,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "satin-3",
+      "bestSimilarity" : 0.606,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "yok-1",
+      "bestSimilarity" : 0.5
+    }, {
+      "id" : "yok-2",
+      "bestSimilarity" : 0.556
+    }, {
+      "id" : "yok-3",
+      "bestSimilarity" : 0.489
+    }, {
+      "id" : "yok-4",
+      "bestSimilarity" : 0.552
+    }, {
+      "id" : "yok-5",
+      "bestSimilarity" : 0.584
+    }, {
+      "id" : "yok-6",
+      "bestSimilarity" : 0.408
+    }, {
+      "id" : "yok-7",
+      "bestSimilarity" : 0.488
+    }, {
+      "id" : "yok-8",
+      "bestSimilarity" : 0.45
+    } ]
+  }
+}

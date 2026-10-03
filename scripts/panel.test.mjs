@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
   signIn, signOut } from '../panel/js/auth.js';
-import { acceptedFile, answerParts, FAILURES, plainName, sourceLabel } from '../panel/js/render.js';
+import { answerParts, FAILURES, formatLabel, plainName, sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
@@ -172,9 +172,12 @@ test('text: file names lose control and bidi characters; errors name the Retry-A
 });
 
 // ---------- formats (ADR-0016) ----------
-test('formats: the picker and the check accept exactly what the API accepts', () => {
-  for (const name of ['a.pdf', 'B.DOCX', 'notlar.txt', 'README.md', 'x.markdown']) assert.ok(acceptedFile(name), name);
-  for (const name of ['a.doc', 'a.exe', 'a.zip', 'a.pdf.exe', 'a']) assert.ok(!acceptedFile(name), name);
+test('formats: the picker offers the API types; unknown formats are just documents', () => {
+  assert.deepEqual([...UPLOAD_TYPES], ['.pdf', '.docx', '.txt', '.md', '.markdown']);
+  assert.equal(formatLabel('DOCX'), 'Word');
+  assert.equal(formatLabel('MD'), 'Markdown');
+  assert.equal(formatLabel('XLSX'), 'Belge');
+  assert.equal(formatLabel(undefined), 'Belge');
 });
 
 test('formats: a section is cited as a section, a page as a page', () => {

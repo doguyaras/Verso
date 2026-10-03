@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
 import { api, ApiError, lastMode, PAGE_SIZE } from './api.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
-import { acceptedFile, answerParts, el, FAILURES, formatDate, formatSize, plainName, sourceLabel, STATUS, UPLOAD_TYPES } from './render.js';
+import { answerParts, el, FAILURES, formatDate, formatLabel, formatSize, plainName, sourceLabel, STATUS, UPLOAD_TYPES } from './render.js';
 
 const MAX_UPLOAD = 20 * 1024 * 1024;
 const main = document.querySelector('#main');
@@ -58,7 +58,7 @@ function documentRow(doc) {
   const status = STATUS[doc.status] ?? { label: doc.status, tone: 'wait' };
   return el('tr', { 'data-id': doc.id },
     el('td', { class: 'name' }, plainName(doc.fileName)),
-    el('td', {}, el('span', { class: 'chip' }, doc.format ?? 'PDF')),
+    el('td', {}, el('span', { class: 'chip' }, formatLabel(doc.format))),
     el('td', {}, el('span', { class: `chip ${status.tone}` }, status.label),
       doc.failureReason ? el('span', { class: 'hint' }, FAILURES[doc.failureReason] ?? doc.failureReason) : null),
     el('td', { class: 'num' }, doc.pageCount ?? '–'),
@@ -79,7 +79,7 @@ async function removeDocument(doc) {
 
 async function uploadFiles(files) {
   for (const file of files) {
-    if (!acceptedFile(file.name)) { toast(`${plainName(file.name)}: yalnız PDF, DOCX, TXT ya da MD yüklenebilir.`); continue; }
+    // The type is the server's decision (name and first bytes, ADR-0016): an unknown name gets its 415 message.
     if (file.size > MAX_UPLOAD) { toast(`${plainName(file.name)}: 20 MB sınırını aşıyor.`); continue; }
     await guarded(async () => {
       await api.upload(file);

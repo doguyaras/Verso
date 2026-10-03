@@ -57,11 +57,14 @@ final class TextSections {
         current.setLength(0);
     }
 
-    /** The last whitespace before {@code limit}, in its second half; the limit itself when there is none. */
-    private static int lastWhitespace(String text, int limit) {
+    /**
+     * The last whitespace before {@code limit}, in its second half; otherwise the limit itself, moved back by one when
+     * it would split a surrogate pair (review K5: half an emoji is not valid text).
+     */
+    static int lastWhitespace(String text, int limit) {
         for (int i = limit; i > limit / 2; i--) {
             if (Character.isWhitespace(text.charAt(i))) return i;
         }
-        return limit;
+        return Character.isHighSurrogate(text.charAt(limit - 1)) ? limit - 1 : limit;
     }
 }

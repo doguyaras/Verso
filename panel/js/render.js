@@ -57,12 +57,14 @@ export function plainName(name) {
   return String(name).replace(/[\p{Cc}\p{Cf}]/gu, '');
 }
 
-/** Upload types the API accepts (ADR-0016): by name, as the server decides; the browser's media type is a guess. */
+/** What the file picker offers (ADR-0016). Only a hint: the server decides from the name and the first bytes. */
 export const UPLOAD_TYPES = Object.freeze(['.pdf', '.docx', '.txt', '.md', '.markdown']);
 
-export function acceptedFile(name) {
-  const lower = String(name).toLowerCase();
-  return UPLOAD_TYPES.some((type) => lower.endsWith(type));
+const FORMAT_LABELS = Object.freeze({ PDF: 'PDF', DOCX: 'Word', TXT: 'Metin', MD: 'Markdown' });
+
+/** The document type for the table; a value this panel does not know is just "Belge" (integration document). */
+export function formatLabel(format) {
+  return FORMAT_LABELS[format] ?? 'Belge';
 }
 
 /** "dosya.pdf, sayfa 3" or "notlar.docx, bölüm 2": a file without pages is cited by section (ADR-0016). */

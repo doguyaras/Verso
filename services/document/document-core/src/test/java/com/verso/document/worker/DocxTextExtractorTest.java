@@ -59,6 +59,66 @@ class DocxTextExtractorTest {
         assertThat(extractor.extract(TestDocx.document(body)).getFirst()).contains("Önce", "kutu", "sonra");
     }
 
+    /** Review K2: Word writes a text box twice (choice and fallback); a moved paragraph sits at both ends. Read once. */
+    @Test
+    void extract_whenTextBoxesHaveAFallbackOrTextWasMoved_readsItOnce() {
+        String box = "<w:txbxContent>" + p("KUTU") + "</w:txbxContent>";
+        String body = "<w:p xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\"><w:r><w:t>Metin</w:t></w:r>"
+                + "<w:r><mc:AlternateContent><mc:Choice Requires=\"wps\">" + box + "</mc:Choice>"
+                + "<mc:Fallback>" + box + "</mc:Fallback></mc:AlternateContent></w:r></w:p>"
+                + "<w:moveFrom><w:r><w:t>TAŞINAN</w:t></w:r></w:moveFrom><w:p><w:moveTo><w:r><w:t>TAŞINAN</w:t></w:r></w:moveTo></w:p>";
+
+        String text = String.join("\n", extractor.extract(TestDocx.document(body)));
+
+        assertThat(text.split("KUTU", -1)).as("the box once").hasSize(2);
+        assertThat(text).contains("Metin KUTU").doesNotContain("MetinKUTU");
+        assertThat(text.split("TAŞINAN", -1)).as("the moved text once").hasSize(2);
+    }
+
+    /** Review B4: what the reader cannot see in Word must not reach the model (a hidden instruction, for example). */
+    @Test
+    void extract_whenARunIsHidden_skipsItButNotAnExplicitlyVisibleOne() {
+        String body = "<w:p><w:r><w:t>Görünen </w:t></w:r>"
+                + "<w:r><w:rPr><w:vanish/></w:rPr><w:t>GIZLI talimat</w:t></w:r>"
+                + "<w:r><w:rPr><w:webHidden/></w:rPr><w:t>WEB</w:t></w:r>"
+                + "<w:r><w:rPr><w:vanish w:val=\"0\"/></w:rPr><w:t>açık</w:t></w:r></w:p>";
+
+        assertThat(extractor.extract(TestDocx.document(body))).containsExactly("Görünen açık");
+    }
+
+    /** Review K3: outline level 9 is "body text" in Word; 0-8 are headings. */
+    @Test
+    void extract_whenAnOutlineLevelIsSet_onlyLevelsBelowNineStartSections() {
+        String body = p("giriş") + "<w:p><w:pPr><w:outlineLvl w:val=\"9\"/></w:pPr><w:r><w:t>gövde</w:t></w:r></w:p>"
+                + "<w:p><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr><w:r><w:t>Başlık</w:t></w:r></w:p>" + p("içerik");
+
+        assertThat(extractor.extract(TestDocx.document(body))).containsExactly("giriş\n\ngövde", "Başlık\n\niçerik");
+    }
+
+    /** Review K6: part names are case-insensitive in Office Open XML. */
+    @Test
+    void extract_whenTheMainPartNameHasOtherCase_readsIt() {
+        assertThat(extractor.extract(TestDocx.zip(Map.of("Word/Document.xml", TestDocx.documentXml(p("büyük harf"))))))
+                .containsExactly("büyük harf");
+    }
+
+    /** Review B2: the element depth limit is set explicitly, not left to the JDK's configuration. */
+    @Test
+    void extract_whenElementsNestDeeperThanTheLimit_failsAsInvalid() {
+        String deep = "<w:sdt>".repeat(DocxTextExtractor.MAX_ELEMENT_DEPTH + 10) + "</w:sdt>".repeat(DocxTextExtractor.MAX_ELEMENT_DEPTH + 10);
+        String shallow = "<w:sdt>".repeat(50) + "</w:sdt>".repeat(50);
+        assertReason(() -> extractor.extract(TestDocx.document(p("x") + deep)), DocumentFailureReason.INVALID_FILE);
+        assertThat(extractor.extract(TestDocx.document(p("x") + shallow))).containsExactly("x");
+    }
+
+    /** Review B1: a row of countless empty cells costs heap without text; it is refused at the cell limit. */
+    @Test
+    void extract_whenATableRowHasTooManyCells_failsAsUnsupported() {
+        String cells = "<w:tc/>".repeat(DocxTextExtractor.MAX_CELLS + 1);
+        assertReason(() -> extractor.extract(TestDocx.document(p("x") + "<w:tbl><w:tr>" + cells + "</w:tr></w:tbl>")),
+                DocumentFailureReason.UNSUPPORTED_FILE);
+    }
+
     @Test
     void extract_whenTheStrictOoxmlNamespaceIsUsed_readsItToo() {
         String xml = "<w:document xmlns:w=\"http://purl.oclc.org/ooxml/wordprocessingml/main\"><w:body>"
@@ -115,6 +175,12 @@ class DocxTextExtractorTest {
         bomb.put("word/document.xml", TestDocx.documentXml(p("x")).getBytes(StandardCharsets.UTF_8));
 
         assertReason(() -> small.extract(TestDocx.zipBytes(bomb)), DocumentFailureReason.UNSUPPORTED_FILE);
+
+        // Review T1: the budget is shared; parts that each fit can still exceed it together.
+        Map<String, byte[]> many = new LinkedHashMap<>();
+        for (int i = 0; i < 3; i++) many.put("media/zeros" + i + ".bin", new byte[60 * 1024]);
+        many.put("word/document.xml", TestDocx.documentXml(p("x")).getBytes(StandardCharsets.UTF_8));
+        assertReason(() -> small.extract(TestDocx.zipBytes(many)), DocumentFailureReason.UNSUPPORTED_FILE);
     }
 
     @Test

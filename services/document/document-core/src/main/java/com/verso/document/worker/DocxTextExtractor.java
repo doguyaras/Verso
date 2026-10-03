@@ -17,6 +17,8 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
@@ -26,28 +28,41 @@ import org.springframework.stereotype.Component;
  *
  * <ul>
  *   <li>the ZIP is read as a stream from memory, never written anywhere; at most {@link #MAX_ENTRIES} parts, and
- *       every part is inflated through one byte budget (twice max-content-bytes), so a ZIP bomb costs bounded CPU
- *       and the main part cannot exceed max-content-bytes;</li>
+ *       every part is inflated through one byte budget (twice max-content-bytes), so a ZIP bomb costs bounded CPU;
+ *       the main part may inflate to {@link #MAIN_PART_LIMIT} at most (review B1: XML that is not text, such as long
+ *       attributes or comments, still costs heap while it is parsed);</li>
  *   <li>the XML parser is the JDK's StAX reader with DTDs and external entities switched off (XXE, entity
- *       expansion); it reads iteratively, so deep nesting does not recurse;</li>
- *   <li>text is counted while it is collected and refused above max-text-chars.</li>
+ *       expansion) and an explicit element depth limit; it reads iteratively, so deep nesting does not recurse;</li>
+ *   <li>text is counted while it is collected, table separators included, and refused above max-text-chars; a table
+ *       row may have at most {@link #MAX_CELLS} cells.</li>
  * </ul>
  *
- * Read: paragraphs, tabs, line breaks, tables (one block per row, cells joined by " | "); a paragraph styled as a
- * heading (Heading n, Başlık n, Title, or an outline level) starts a section. Not read: headers, footers, footnotes,
- * comments, deleted revisions and field codes. A password-protected DOCX is not a ZIP and is refused at upload.
+ * Read: paragraphs, tabs, line breaks, tables (one block per row, cells joined by " | "), text boxes (joined to the
+ * paragraph they sit in); a paragraph styled as a heading (Heading n, Başlık n, Title, or an outline level 0-8) starts
+ * a section. Not read: headers, footers, footnotes, comments, deleted and moved-away revisions, field codes, hidden
+ * text (review B4: what the reader of the document cannot see must not reach the model), and the fallback copy of
+ * drawings (review K2: Word writes a text box twice, once as a fallback for old readers). A password-protected DOCX
+ * is not a ZIP and is refused at upload.
  */
 @Component
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class DocxTextExtractor {
 
+    private static final Logger log = LoggerFactory.getLogger(DocxTextExtractor.class);
     static final String MAIN_PART = "word/document.xml";
     /** A Word file has a few dozen parts; many images can make it a few hundred. */
     static final int MAX_ENTRIES = 1000;
+    /** The main part's XML of a 500-page document is a few megabytes; images live in other parts. */
+    static final long MAIN_PART_LIMIT = 32L * 1024 * 1024;
+    /** Word itself allows 63 columns; a thousand cells in one row is not a table anyone reads. */
+    static final int MAX_CELLS = 1000;
+    /** Real documents nest tables and text boxes a few levels deep; the JDK default (100) made explicit. */
+    static final int MAX_ELEMENT_DEPTH = 100;
     private static final Set<String> WORD_NAMESPACES = Set.of(
             "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
             "http://purl.oclc.org/ooxml/wordprocessingml/main");
+    private static final String MARKUP_COMPATIBILITY = "http://schemas.openxmlformats.org/markup-compatibility/2006";
     /** Style ids Word writes for heading styles; Turkish Word turns "Başlık 1" into "Balk1". */
     private static final Pattern HEADING_STYLE = Pattern.compile("(?i)(heading|balk|başlık|title|konubal)\\s*\\d*");
 
@@ -63,14 +78,16 @@ public class DocxTextExtractor {
 
     List<Block> blocks(byte[] docx) {
         long budget = properties.maxContentBytes().toBytes() * 2;
+        long mainPartLimit = Math.min(properties.maxContentBytes().toBytes(), MAIN_PART_LIMIT);
         List<Block> blocks = null;
         int entries = 0;
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(docx))) {
             for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
                 if (++entries > MAX_ENTRIES) throw rejected(DocumentFailureReason.UNSUPPORTED_FILE);
-                Budget part = new Budget(zip, budget, MAIN_PART.equals(entry.getName())
-                        ? properties.maxContentBytes().toBytes() : Long.MAX_VALUE);
-                if (MAIN_PART.equals(entry.getName())) {
+                // Part names are case-insensitive in Office Open XML (ISO/IEC 29500-2, review K6).
+                boolean main = MAIN_PART.equalsIgnoreCase(entry.getName());
+                Budget part = new Budget(zip, budget, main ? mainPartLimit : Long.MAX_VALUE);
+                if (main) {
                     // Two main parts would leave it open which one Word shows: refuse instead of guessing.
                     if (blocks != null) throw rejected(DocumentFailureReason.UNSUPPORTED_FILE);
                     blocks = parse(part);
@@ -80,8 +97,12 @@ public class DocxTextExtractor {
             }
         } catch (IngestionRejectedException e) {
             throw e;
-        } catch (IOException | XMLStreamException | RuntimeException e) {
+        } catch (IOException | XMLStreamException e) {
             // Not a ZIP, a damaged or encrypted entry, or XML that is not well formed: never the parser's message.
+            throw rejected(DocumentFailureReason.INVALID_FILE);
+        } catch (RuntimeException e) {
+            // The parser can also fail with an unchecked exception; the type helps tell a parser path from a bug.
+            log.warn("DOCX parsing failed: exceptionType={}", e.getClass().getSimpleName());
             throw rejected(DocumentFailureReason.INVALID_FILE);
         }
         if (blocks == null) throw rejected(DocumentFailureReason.INVALID_FILE);
@@ -94,25 +115,20 @@ public class DocxTextExtractor {
         factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
         factory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
         factory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        factory.setProperty("jdk.xml.maxElementDepth", MAX_ELEMENT_DEPTH);
         XMLStreamReader reader = factory.createXMLStreamReader(xml);
         Collector out = new Collector(properties.maxTextChars());
         try {
             while (reader.hasNext()) {
                 int event = reader.next();
-                if (event == XMLStreamConstants.START_ELEMENT && word(reader)) out.start(reader);
-                else if (event == XMLStreamConstants.END_ELEMENT && word(reader)) out.end(reader.getLocalName());
-                else if ((event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) && out.inText) {
-                    out.text(reader.getText());
-                }
+                if (event == XMLStreamConstants.START_ELEMENT) out.start(reader);
+                else if (event == XMLStreamConstants.END_ELEMENT) out.end(reader);
+                else if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) out.text(reader.getText());
             }
         } finally {
             reader.close();
         }
         return out.blocks;
-    }
-
-    private static boolean word(XMLStreamReader reader) {
-        return WORD_NAMESPACES.contains(reader.getNamespaceURI());
     }
 
     private static IngestionRejectedException rejected(DocumentFailureReason reason) {
@@ -129,24 +145,50 @@ public class DocxTextExtractor {
         private long chars;
         private int tableDepth;
         private int paragraphDepth;
+        private int runDepth;
+        /** Depth inside a subtree whose text is not read (fallback copies, moved-away revisions); 0 = reading. */
+        private int skipDepth;
         private boolean heading;
         private boolean inText;
+        private boolean hiddenRun;
 
         Collector(long maxChars) {
             this.maxChars = maxChars;
         }
 
         void start(XMLStreamReader reader) {
-            switch (reader.getLocalName()) {
+            if (skipDepth > 0) {
+                skipDepth++;
+                return;
+            }
+            String namespace = reader.getNamespaceURI();
+            String name = reader.getLocalName();
+            if (MARKUP_COMPATIBILITY.equals(namespace) && name.equals("Fallback")) {
+                skipDepth = 1;
+                return;
+            }
+            if (!WORD_NAMESPACES.contains(namespace)) return;
+            switch (name) {
+                case "moveFrom" -> skipDepth = 1;
                 case "p" -> {
                     // A text box holds paragraphs inside a paragraph's run: its text joins the outer paragraph.
                     if (paragraphDepth++ == 0) {
                         paragraph.setLength(0);
                         heading = false;
+                    } else {
+                        paragraph.append(' ');
                     }
                 }
                 case "pStyle" -> heading |= HEADING_STYLE.matcher(attribute(reader, "val")).matches();
-                case "outlineLvl" -> heading = true;
+                // Outline level 9 is "body text" in Word; 0-8 are heading levels (review K3).
+                case "outlineLvl" -> heading |= !attribute(reader, "val").equals("9");
+                case "r" -> {
+                    runDepth++;
+                    hiddenRun = false;
+                }
+                case "vanish", "webHidden" -> {
+                    if (runDepth > 0) hiddenRun = !Set.of("0", "false", "off").contains(attribute(reader, "val"));
+                }
                 case "t" -> inText = true;
                 case "tab" -> append("\t");
                 case "br", "cr" -> append("\n");
@@ -155,15 +197,27 @@ public class DocxTextExtractor {
                     if (tableDepth == 1) row.clear();
                 }
                 case "tc" -> {
-                    if (tableDepth == 1) cell.setLength(0);
+                    if (tableDepth == 1) {
+                        if (row.size() >= MAX_CELLS) throw rejected(DocumentFailureReason.UNSUPPORTED_FILE);
+                        cell.setLength(0);
+                    }
                 }
                 default -> { }
             }
         }
 
-        void end(String name) {
-            switch (name) {
+        void end(XMLStreamReader reader) {
+            if (skipDepth > 0) {
+                skipDepth--;
+                return;
+            }
+            if (!WORD_NAMESPACES.contains(reader.getNamespaceURI())) return;
+            switch (reader.getLocalName()) {
                 case "t" -> inText = false;
+                case "r" -> {
+                    runDepth--;
+                    hiddenRun = false;
+                }
                 case "p" -> {
                     if (--paragraphDepth > 0) {
                         paragraph.append(' ');
@@ -183,6 +237,7 @@ public class DocxTextExtractor {
                 }
                 case "tr" -> {
                     if (tableDepth == 1 && row.stream().anyMatch(c -> !c.isEmpty())) {
+                        count(3L * (row.size() - 1));
                         blocks.add(new Block(String.join(" | ", row), false));
                     }
                 }
@@ -192,13 +247,18 @@ public class DocxTextExtractor {
         }
 
         void text(String text) {
-            append(text);
+            if (inText && skipDepth == 0) append(text);
         }
 
         private void append(String text) {
-            chars += text.length();
-            if (chars > maxChars) throw rejected(DocumentFailureReason.TOO_MUCH_TEXT);
+            if (hiddenRun) return;
+            count(text.length());
             paragraph.append(text);
+        }
+
+        private void count(long added) {
+            chars += added;
+            if (chars > maxChars) throw rejected(DocumentFailureReason.TOO_MUCH_TEXT);
         }
 
         private static String attribute(XMLStreamReader reader, String localName) {

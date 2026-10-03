@@ -38,9 +38,9 @@ Tüm yanıtlar `Cache-Control: private, no-store` ve `X-Trace-Id` taşır. Deste
 
 | Tür | Koşul |
 |---|---|
-| PDF | İlk 1024 baytta `%PDF-` |
+| PDF | İlk 1024 baytta `%PDF-` (adı `.docx`/`.txt`/`.md` olan ve o türe uyan dosya o türdür) |
 | DOCX | `.docx` adı ve ZIP dosyası (parolalı DOCX ve eski `.doc` desteklenmez) |
-| TXT, MD | `.txt`, `.md` ya da `.markdown` adı; ikili dosya değil. UTF-8, UTF-16 (BOM ile) ya da Windows-1254 |
+| TXT, MD | `.txt`, `.md` ya da `.markdown` adı ve ilk 8 KB'ta NUL bayt yok (sonrasında NUL varsa işlenirken `INVALID_FILE`). UTF-8, UTF-16 (BOM ile) ya da Windows-1254 |
 
 #### Senaryo: kabul edildi
 `HTTP 201`, ham, `Location: /v1/documents/{id}`:

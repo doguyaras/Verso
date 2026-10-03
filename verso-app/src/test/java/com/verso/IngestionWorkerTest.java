@@ -335,6 +335,11 @@ class IngestionWorkerTest {
     void ingestion_whenSuccessfulOrFailing_logsNoFileNameOrText() {
         upload(TestPdfs.pages(MARKER + " in the text."), MARKER + ".pdf");
         upload(TestPdfs.encrypted(MARKER), MARKER + "-locked.pdf");
+        // ADR-0016 review L4: the new parsers log nothing of the file either, on success or failure.
+        upload(TestDocx.docx(TestDocx.p(MARKER + " in Word.")), MARKER + ".docx", DocumentFormat.DOCX);
+        upload(TestDocx.zip(java.util.Map.of("word/document.xml", "<w:document " + MARKER)), MARKER + "-bad.docx",
+                DocumentFormat.DOCX);
+        upload((MARKER + " in Markdown.").getBytes(StandardCharsets.UTF_8), MARKER + ".md", DocumentFormat.MD);
         worker.runOnce();
         TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException(MARKER + " in a model error"));
         upload(TestPdfs.pages(MARKER + " again."), MARKER + "-2.pdf");

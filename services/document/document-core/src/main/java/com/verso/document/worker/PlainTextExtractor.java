@@ -37,7 +37,10 @@ public class PlainTextExtractor {
     }
 
     public List<String> extract(byte[] content, boolean markdown) {
-        return TextSections.split(blocks(decode(content), markdown), properties);
+        String text = decode(content);
+        // The upload looks for NUL in the first 8 KB only; binary data later in the file is refused here (review B3).
+        if (text.indexOf('\u0000') >= 0) throw new IngestionRejectedException(DocumentFailureReason.INVALID_FILE);
+        return TextSections.split(blocks(text, markdown), properties);
     }
 
     static String decode(byte[] content) {

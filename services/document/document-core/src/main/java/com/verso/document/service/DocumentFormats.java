@@ -11,7 +11,7 @@ import java.util.Optional;
  * is readable. The client's media type is not trusted: it is whatever the browser guessed.
  *
  * <ul>
- *   <li>PDF: "%PDF-" within the first 1024 bytes (ISO 32000), whatever the name;</li>
+ *   <li>PDF: "%PDF-" within the first 1024 bytes (ISO 32000), unless a DOCX, TXT or MD name fits the bytes too;</li>
  *   <li>DOCX: a ZIP local file header at offset 0 and a ".docx" name;</li>
  *   <li>TXT and MD: a ".txt", ".md" or ".markdown" name and no NUL byte in the first 8 KB, unless a UTF-16 byte order
  *       mark explains them (a binary file renamed to .txt is refused).</li>
@@ -26,18 +26,25 @@ public final class DocumentFormats {
 
     private DocumentFormats() {}
 
+    /**
+     * A DOCX, TXT or MD name is checked as that format first: a note about PDFs may well contain "%PDF-" in its first
+     * kilobyte (review K1). Any other name is a PDF exactly when the header is there.
+     */
     public static Optional<DocumentFormat> detect(String fileName, byte[] content) {
-        if (startsLikePdf(content)) return Optional.of(DocumentFormat.PDF);
         String name = fileName == null ? "" : fileName.strip().toLowerCase(Locale.ROOT);
         if (name.endsWith(".docx")) {
-            return startsWith(content, ZIP_MAGIC) ? Optional.of(DocumentFormat.DOCX) : Optional.empty();
+            return startsWith(content, ZIP_MAGIC) ? Optional.of(DocumentFormat.DOCX) : pdfOrNothing(content);
         }
         boolean markdown = name.endsWith(".md") || name.endsWith(".markdown");
         if (markdown || name.endsWith(".txt")) {
-            if (!looksLikeText(content)) return Optional.empty();
-            return Optional.of(markdown ? DocumentFormat.MD : DocumentFormat.TXT);
+            if (looksLikeText(content)) return Optional.of(markdown ? DocumentFormat.MD : DocumentFormat.TXT);
+            return pdfOrNothing(content);
         }
-        return Optional.empty();
+        return pdfOrNothing(content);
+    }
+
+    private static Optional<DocumentFormat> pdfOrNothing(byte[] content) {
+        return startsLikePdf(content) ? Optional.of(DocumentFormat.PDF) : Optional.empty();
     }
 
     private static boolean startsLikePdf(byte[] content) {
