@@ -1,0 +1,12 @@
+baseline      green (353 tests)
+baseline      green (node suites: 8)
+caught        M200 an abandoned chat generation keeps running (QuestionApiTest.ask_whenTheModelHangs_answers503AtTheChatTimeout)
+caught        M201 an abandoned question embedding keeps running (RetrievalTest.search_whenTheEmbeddingTimesOut_interruptsTheModelCall)
+caught        M202 the sample PDFs cannot write a dotted capital I (SamplePdfsTest.samples_whenBuiltFromTheirSources_matchTheCommittedPdfs)
+caught        M212 a cancelled embedding that never started keeps its slot forever (RetrievalTest.search_whenTheCallerIsInterrupted_keepsTheEmbeddingSlots)
+caught        M213 the shipped threshold is not the measured one (ConfigProfilesTest.qaSettings_whenDeployProfile_areTheMeasuredValues)
+caught        M214 the code default runs two chat calls on one model server (ConfigProfilesTest.qaSettings_whenDeployProfile_areTheMeasuredValues)
+--- log of the last step: /tmp/verso-mutation.gpds6Y (failed steps keep a copy as /tmp/verso-mutation.gpds6Y.<id>)
+--- leftovers:
+none
+exit 0

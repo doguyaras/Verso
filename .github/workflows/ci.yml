@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Toplam test sayisi esigi (sessiz kucultme yok). Faz 2 sonunda 160 test; test eklendikce yukseltilir.
-      MIN_TESTS: '340'
+      MIN_TESTS: '345'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }

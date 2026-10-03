@@ -1,9 +1,9 @@
 {
-  "measuredAt" : "2026-10-03T07:42:31.727559300Z",
+  "measuredAt" : "2026-10-03T09:22:40.552245600Z",
   "summary" : {
     "embeddingModel" : "bge-m3:567m",
     "topK" : 5,
-    "threshold" : 0.45,
+    "threshold" : 0.5,
     "answerable" : 25,
     "unanswerable" : 8,
     "recallAt1" : 0.88,
@@ -11,7 +11,7 @@
     "documentRecallAt5" : 1.0,
     "mrr" : 0.94,
     "answerableAboveThreshold" : 1.0,
-    "unanswerableBelowThreshold" : 0.125,
+    "unanswerableBelowThreshold" : 0.5,
     "answerableBestSimilarity" : {
       "min" : 0.522,
       "median" : 0.62,
@@ -34,217 +34,217 @@
     "id" : "izin-2",
     "answerable" : true,
     "bestSimilarity" : 0.663,
-    "searchMs" : 115,
+    "searchMs" : 112,
     "top5" : [ "izin-yonetmeligi.pdf#2 0.663", "izin-yonetmeligi.pdf#1 0.644", "uzaktan-calisma.pdf#1 0.56", "izin-yonetmeligi.pdf#3 0.549", "masraf-politikasi.pdf#1 0.489" ],
     "rank" : 2
   }, {
     "id" : "izin-3",
     "answerable" : true,
     "bestSimilarity" : 0.6,
-    "searchMs" : 97,
+    "searchMs" : 183,
     "top5" : [ "izin-yonetmeligi.pdf#3 0.6", "izin-yonetmeligi.pdf#1 0.586", "izin-yonetmeligi.pdf#2 0.557", "kvkk-aydinlatma.pdf#2 0.468", "masraf-politikasi.pdf#1 0.464" ],
     "rank" : 2
   }, {
     "id" : "izin-4",
     "answerable" : true,
     "bestSimilarity" : 0.738,
-    "searchMs" : 101,
+    "searchMs" : 111,
     "top5" : [ "izin-yonetmeligi.pdf#2 0.738", "izin-yonetmeligi.pdf#1 0.556", "uzaktan-calisma.pdf#1 0.512", "izin-yonetmeligi.pdf#3 0.506", "uzaktan-calisma.pdf#2 0.45" ],
     "rank" : 1
   }, {
     "id" : "izin-5",
     "answerable" : true,
     "bestSimilarity" : 0.7,
-    "searchMs" : 193,
+    "searchMs" : 107,
     "top5" : [ "izin-yonetmeligi.pdf#2 0.7", "izin-yonetmeligi.pdf#1 0.562", "izin-yonetmeligi.pdf#3 0.496", "uzaktan-calisma.pdf#1 0.466", "masraf-politikasi.pdf#1 0.412" ],
     "rank" : 1
   }, {
     "id" : "izin-6",
     "answerable" : true,
     "bestSimilarity" : 0.714,
-    "searchMs" : 200,
+    "searchMs" : 101,
     "top5" : [ "izin-yonetmeligi.pdf#3 0.714", "izin-yonetmeligi.pdf#1 0.612", "izin-yonetmeligi.pdf#2 0.568", "kvkk-aydinlatma.pdf#3 0.499", "kvkk-aydinlatma.pdf#2 0.489" ],
     "rank" : 1
   }, {
     "id" : "masraf-1",
     "answerable" : true,
     "bestSimilarity" : 0.67,
-    "searchMs" : 102,
+    "searchMs" : 96,
     "top5" : [ "masraf-politikasi.pdf#1 0.67", "masraf-politikasi.pdf#2 0.62", "izin-yonetmeligi.pdf#2 0.549", "masraf-politikasi.pdf#3 0.489", "izin-yonetmeligi.pdf#1 0.487" ],
     "rank" : 1
   }, {
     "id" : "masraf-2",
     "answerable" : true,
     "bestSimilarity" : 0.595,
-    "searchMs" : 181,
+    "searchMs" : 103,
     "top5" : [ "masraf-politikasi.pdf#3 0.595", "masraf-politikasi.pdf#1 0.593", "izin-yonetmeligi.pdf#3 0.579", "masraf-politikasi.pdf#2 0.542", "bilgi-guvenligi.pdf#2 0.499" ],
     "rank" : 2
   }, {
     "id" : "masraf-3",
     "answerable" : true,
     "bestSimilarity" : 0.62,
-    "searchMs" : 104,
+    "searchMs" : 299,
     "top5" : [ "masraf-politikasi.pdf#2 0.62", "masraf-politikasi.pdf#1 0.61", "uzaktan-calisma.pdf#2 0.517", "masraf-politikasi.pdf#3 0.479", "izin-yonetmeligi.pdf#2 0.465" ],
     "rank" : 1
   }, {
     "id" : "masraf-4",
     "answerable" : true,
     "bestSimilarity" : 0.617,
-    "searchMs" : 111,
+    "searchMs" : 596,
     "top5" : [ "masraf-politikasi.pdf#2 0.617", "masraf-politikasi.pdf#1 0.477", "masraf-politikasi.pdf#3 0.396", "bilgi-guvenligi.pdf#1 0.392", "izin-yonetmeligi.pdf#1 0.36" ],
     "rank" : 1
   }, {
     "id" : "masraf-5",
     "answerable" : true,
     "bestSimilarity" : 0.644,
-    "searchMs" : 187,
+    "searchMs" : 596,
     "top5" : [ "masraf-politikasi.pdf#3 0.644", "masraf-politikasi.pdf#1 0.549", "satin-alma-proseduru.pdf#2 0.545", "masraf-politikasi.pdf#2 0.501", "satin-alma-proseduru.pdf#1 0.452" ],
     "rank" : 1
   }, {
     "id" : "guvenlik-1",
     "answerable" : true,
     "bestSimilarity" : 0.636,
-    "searchMs" : 108,
+    "searchMs" : 597,
     "top5" : [ "bilgi-guvenligi.pdf#1 0.636", "bilgi-guvenligi.pdf#2 0.434", "masraf-politikasi.pdf#1 0.431", "izin-yonetmeligi.pdf#1 0.427", "uzaktan-calisma.pdf#2 0.41" ],
     "rank" : 1
   }, {
     "id" : "guvenlik-2",
     "answerable" : true,
     "bestSimilarity" : 0.57,
-    "searchMs" : 107,
+    "searchMs" : 206,
     "top5" : [ "bilgi-guvenligi.pdf#1 0.57", "bilgi-guvenligi.pdf#3 0.429", "izin-yonetmeligi.pdf#2 0.426", "izin-yonetmeligi.pdf#1 0.421", "uzaktan-calisma.pdf#2 0.409" ],
     "rank" : 1
   }, {
     "id" : "guvenlik-3",
     "answerable" : true,
     "bestSimilarity" : 0.654,
-    "searchMs" : 102,
+    "searchMs" : 182,
     "top5" : [ "bilgi-guvenligi.pdf#2 0.654", "bilgi-guvenligi.pdf#1 0.558", "uzaktan-calisma.pdf#2 0.53", "kvkk-aydinlatma.pdf#2 0.503", "kvkk-aydinlatma.pdf#3 0.5" ],
     "rank" : 1
   }, {
     "id" : "guvenlik-4",
     "answerable" : true,
     "bestSimilarity" : 0.62,
-    "searchMs" : 183,
+    "searchMs" : 108,
     "top5" : [ "bilgi-guvenligi.pdf#2 0.62", "bilgi-guvenligi.pdf#1 0.525", "kvkk-aydinlatma.pdf#1 0.496", "masraf-politikasi.pdf#1 0.489", "bilgi-guvenligi.pdf#3 0.484" ],
     "rank" : 1
   }, {
     "id" : "guvenlik-5",
     "answerable" : true,
     "bestSimilarity" : 0.588,
-    "searchMs" : 302,
+    "searchMs" : 295,
     "top5" : [ "bilgi-guvenligi.pdf#3 0.588", "izin-yonetmeligi.pdf#1 0.417", "satin-alma-proseduru.pdf#2 0.362", "izin-yonetmeligi.pdf#2 0.361", "kvkk-aydinlatma.pdf#2 0.354" ],
     "rank" : 1
   }, {
     "id" : "uzaktan-1",
     "answerable" : true,
     "bestSimilarity" : 0.649,
-    "searchMs" : 111,
+    "searchMs" : 116,
     "top5" : [ "uzaktan-calisma.pdf#1 0.649", "izin-yonetmeligi.pdf#2 0.589", "uzaktan-calisma.pdf#2 0.573", "izin-yonetmeligi.pdf#1 0.542", "bilgi-guvenligi.pdf#1 0.503" ],
     "rank" : 1
   }, {
     "id" : "uzaktan-2",
     "answerable" : true,
     "bestSimilarity" : 0.522,
-    "searchMs" : 184,
+    "searchMs" : 98,
     "top5" : [ "uzaktan-calisma.pdf#1 0.522", "izin-yonetmeligi.pdf#3 0.42", "izin-yonetmeligi.pdf#1 0.418", "izin-yonetmeligi.pdf#2 0.401", "uzaktan-calisma.pdf#2 0.397" ],
     "rank" : 1
   }, {
     "id" : "uzaktan-3",
     "answerable" : true,
     "bestSimilarity" : 0.606,
-    "searchMs" : 108,
+    "searchMs" : 99,
     "top5" : [ "uzaktan-calisma.pdf#2 0.606", "masraf-politikasi.pdf#1 0.465", "masraf-politikasi.pdf#3 0.461", "masraf-politikasi.pdf#2 0.461", "satin-alma-proseduru.pdf#1 0.457" ],
     "rank" : 1
   }, {
     "id" : "kvkk-1",
     "answerable" : true,
     "bestSimilarity" : 0.706,
-    "searchMs" : 108,
+    "searchMs" : 100,
     "top5" : [ "kvkk-aydinlatma.pdf#2 0.706", "bilgi-guvenligi.pdf#1 0.519", "izin-yonetmeligi.pdf#1 0.493", "bilgi-guvenligi.pdf#2 0.48", "izin-yonetmeligi.pdf#2 0.475" ],
     "rank" : 1
   }, {
     "id" : "kvkk-2",
     "answerable" : true,
     "bestSimilarity" : 0.6,
-    "searchMs" : 100,
+    "searchMs" : 181,
     "top5" : [ "kvkk-aydinlatma.pdf#2 0.6", "bilgi-guvenligi.pdf#2 0.461", "izin-yonetmeligi.pdf#3 0.411", "uzaktan-calisma.pdf#2 0.401", "bilgi-guvenligi.pdf#1 0.391" ],
     "rank" : 1
   }, {
     "id" : "kvkk-3",
     "answerable" : true,
     "bestSimilarity" : 0.59,
-    "searchMs" : 99,
+    "searchMs" : 110,
     "top5" : [ "kvkk-aydinlatma.pdf#3 0.59", "kvkk-aydinlatma.pdf#2 0.576", "izin-yonetmeligi.pdf#3 0.469", "bilgi-guvenligi.pdf#1 0.42", "bilgi-guvenligi.pdf#2 0.413" ],
     "rank" : 1
   }, {
     "id" : "satin-1",
     "answerable" : true,
     "bestSimilarity" : 0.601,
-    "searchMs" : 181,
+    "searchMs" : 495,
     "top5" : [ "satin-alma-proseduru.pdf#1 0.601", "satin-alma-proseduru.pdf#2 0.563", "masraf-politikasi.pdf#2 0.52", "masraf-politikasi.pdf#3 0.514", "masraf-politikasi.pdf#1 0.497" ],
     "rank" : 1
   }, {
     "id" : "satin-2",
     "answerable" : true,
     "bestSimilarity" : 0.581,
-    "searchMs" : 111,
+    "searchMs" : 206,
     "top5" : [ "satin-alma-proseduru.pdf#2 0.581", "satin-alma-proseduru.pdf#1 0.488", "masraf-politikasi.pdf#3 0.439", "masraf-politikasi.pdf#2 0.367", "uzaktan-calisma.pdf#2 0.358" ],
     "rank" : 1
   }, {
     "id" : "satin-3",
     "answerable" : true,
     "bestSimilarity" : 0.549,
-    "searchMs" : 107,
+    "searchMs" : 483,
     "top5" : [ "satin-alma-proseduru.pdf#2 0.549", "satin-alma-proseduru.pdf#1 0.427", "bilgi-guvenligi.pdf#2 0.393", "bilgi-guvenligi.pdf#3 0.393", "masraf-politikasi.pdf#3 0.392" ],
     "rank" : 1
   }, {
     "id" : "yok-1",
     "answerable" : false,
     "bestSimilarity" : 0.526,
-    "searchMs" : 184,
+    "searchMs" : 217,
     "top5" : [ "masraf-politikasi.pdf#1 0.526", "bilgi-guvenligi.pdf#1 0.45", "izin-yonetmeligi.pdf#1 0.446", "kvkk-aydinlatma.pdf#1 0.434", "uzaktan-calisma.pdf#1 0.431" ]
   }, {
     "id" : "yok-2",
     "answerable" : false,
     "bestSimilarity" : 0.563,
-    "searchMs" : 109,
+    "searchMs" : 103,
     "top5" : [ "kvkk-aydinlatma.pdf#1 0.563", "bilgi-guvenligi.pdf#1 0.539", "izin-yonetmeligi.pdf#1 0.533", "satin-alma-proseduru.pdf#1 0.496", "uzaktan-calisma.pdf#1 0.493" ]
   }, {
     "id" : "yok-3",
     "answerable" : false,
     "bestSimilarity" : 0.458,
-    "searchMs" : 184,
+    "searchMs" : 97,
     "top5" : [ "satin-alma-proseduru.pdf#2 0.458", "izin-yonetmeligi.pdf#3 0.457", "izin-yonetmeligi.pdf#2 0.452", "izin-yonetmeligi.pdf#1 0.451", "masraf-politikasi.pdf#1 0.445" ]
   }, {
     "id" : "yok-4",
     "answerable" : false,
     "bestSimilarity" : 0.508,
-    "searchMs" : 109,
+    "searchMs" : 186,
     "top5" : [ "masraf-politikasi.pdf#2 0.508", "masraf-politikasi.pdf#1 0.47", "bilgi-guvenligi.pdf#1 0.449", "bilgi-guvenligi.pdf#2 0.433", "uzaktan-calisma.pdf#1 0.418" ]
   }, {
     "id" : "yok-5",
     "answerable" : false,
     "bestSimilarity" : 0.547,
-    "searchMs" : 108,
+    "searchMs" : 301,
     "top5" : [ "masraf-politikasi.pdf#3 0.547", "masraf-politikasi.pdf#1 0.529", "uzaktan-calisma.pdf#1 0.524", "masraf-politikasi.pdf#2 0.519", "izin-yonetmeligi.pdf#2 0.513" ]
   }, {
     "id" : "yok-6",
     "answerable" : false,
     "bestSimilarity" : 0.431,
-    "searchMs" : 103,
+    "searchMs" : 106,
     "top5" : [ "masraf-politikasi.pdf#2 0.431", "bilgi-guvenligi.pdf#1 0.312", "masraf-politikasi.pdf#1 0.304", "uzaktan-calisma.pdf#2 0.304", "izin-yonetmeligi.pdf#2 0.294" ]
   }, {
     "id" : "yok-7",
     "answerable" : false,
     "bestSimilarity" : 0.467,
-    "searchMs" : 100,
+    "searchMs" : 196,
     "top5" : [ "uzaktan-calisma.pdf#2 0.467", "masraf-politikasi.pdf#1 0.416", "masraf-politikasi.pdf#3 0.414", "satin-alma-proseduru.pdf#1 0.409", "bilgi-guvenligi.pdf#1 0.404" ]
   }, {
     "id" : "yok-8",
     "answerable" : false,
     "bestSimilarity" : 0.468,
-    "searchMs" : 183,
+    "searchMs" : 209,
     "top5" : [ "masraf-politikasi.pdf#1 0.468", "masraf-politikasi.pdf#3 0.446", "bilgi-guvenligi.pdf#1 0.442", "masraf-politikasi.pdf#2 0.427", "izin-yonetmeligi.pdf#1 0.422" ]
   } ]
 }

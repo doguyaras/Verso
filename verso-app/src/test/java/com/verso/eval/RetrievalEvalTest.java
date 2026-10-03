@@ -7,6 +7,7 @@ import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.worker.IngestionWorker;
+import com.verso.qa.config.QaProperties;
 import com.verso.support.TestChatModel;
 import com.verso.support.TestIdp;
 import com.verso.support.VersoPostgres;
@@ -19,7 +20,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -55,7 +55,9 @@ import tools.jackson.databind.json.JsonMapper;
 class RetrievalEvalTest {
 
     private static final Path ROOT = VersoPostgres.repoRoot();
-    private static final double THRESHOLD = 0.50;
+    @Autowired
+    QaProperties qa;
+
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Autowired
@@ -81,6 +83,7 @@ class RetrievalEvalTest {
         List<Map<String, Object>> rows = new ArrayList<>();
         int answerable = 0, hit1 = 0, hit5 = 0, docHit5 = 0, aboveThreshold = 0, unanswerable = 0, belowThreshold = 0;
         double reciprocal = 0;
+        double threshold = qa.minSimilarity(); // the shipped threshold, not a copy (phase 8 review L1)
         for (JsonNode q : set.get("questions")) {
             long started = System.nanoTime();
             List<RetrievedPassage> found = retrieval.search(account, q.get("question").asString(), 5);
@@ -111,18 +114,18 @@ class RetrievalEvalTest {
                     reciprocal += 1.0 / rank;
                 }
                 if (docFound) docHit5++;
-                if (best >= THRESHOLD) aboveThreshold++;
+                if (best >= threshold) aboveThreshold++;
                 row.put("rank", rank);
             } else {
                 unanswerable++;
-                if (best < THRESHOLD) belowThreshold++;
+                if (best < threshold) belowThreshold++;
             }
             rows.add(row);
         }
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("embeddingModel", "bge-m3:567m");
         summary.put("topK", 5);
-        summary.put("threshold", THRESHOLD);
+        summary.put("threshold", threshold);
         summary.put("answerable", answerable);
         summary.put("unanswerable", unanswerable);
         summary.put("recallAt1", ratio(hit1, answerable));
@@ -145,6 +148,8 @@ class RetrievalEvalTest {
 
         // Regression guard at the measured level (eval/README.md); a change that drops below it needs a decision.
         assertThat((double) summary.get("recallAt5")).as("recall@5").isGreaterThanOrEqualTo(0.8);
+        // The threshold must never turn an answerable question into "bulunamadı" (the margin is thin: 0.522 vs 0.50).
+        assertThat((double) summary.get("answerableAboveThreshold")).as("answerable above the threshold").isEqualTo(1.0);
     }
 
     private void ingestSamples() throws IOException, InterruptedException {
@@ -181,10 +186,5 @@ class RetrievalEvalTest {
 
     private static double round(double v) {
         return Math.round(v * 1000) / 1000.0;
-    }
-
-    @SuppressWarnings("unused")
-    private static String lower(String s) {
-        return s.toLowerCase(Locale.forLanguageTag("tr"));
     }
 }

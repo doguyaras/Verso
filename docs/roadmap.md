@@ -11,6 +11,6 @@ Fazlar sırayla yapılır. Her faz kendi dalında geliştirilir, review'lardan v
 | 5 | Soru-cevap (local): retrieval, Ollama sohbet modeli, atıflar, `X-Rag-Mode` (ADR-0012) | Bitti (PR #7) |
 | 6 | Cloud modu: Anthropic (varsayılan) ve OpenAI uyumlu sağlayıcı, egress kuralları (ADR-0006, ADR-0013) | Bitti (PR #8) |
 | 7 | Gözlem: Alloy → Loki, Prometheus + Alertmanager, Grafana; alarmlar ve runbook (ADR-0014) | Bitti (PR #9) |
-| 8 | Ölçüm: Türkçe eval seti, yük testi, kapasite (`eval/`, `docs/capacity.md`) | Devam ediyor |
+| 8 | Ölçüm: Türkçe eval seti, yük testi, kapasite (`eval/`, `docs/capacity.md`) | Bitti (PR #10) |
 | 9 | Teslim: README (Türkçe + İngilizce özet, KVKK md. 9 açıklaması, ≤5 komutla kurulum, curl örnekleri), `samples/` sentetik PDF'ler ve demo script'i, image yayını | Planlı |
 | 10 | **Yönetim paneli** (backoffice): kullanıcının "plate app" projesindeki panel tarzında. Referans 17: React/TS, token yalnız bellekte, rol matrisi tek dosyada. Başlamadan önce kullanıcıdan plate app paneli (ekranlar, yığın) öğrenilir. ADR-0007 #10'daki "panel yok" kararı bu fazda kalkar | Planlı (en son; kullanıcı isteği 2026-10-02) |
