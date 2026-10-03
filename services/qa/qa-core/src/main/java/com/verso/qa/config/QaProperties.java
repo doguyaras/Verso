@@ -14,6 +14,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param chatWait         how long a question waits for a free chat slot before 503 MODEL_BUSY
  * @param circuitFailures  consecutive chat failures that open the circuit (ADR-0008)
  * @param circuitOpen      how long an open circuit answers 503 MODEL_UNAVAILABLE without asking the model
+ * @param localChatTimeout one chat call in local mode, whatever the client says (ADR-0008: 90 s)
+ * @param cloudChatTimeout one chat call in cloud mode (ADR-0008: 30 s)
  */
 @ConfigurationProperties("verso.qa")
 public record QaProperties(
@@ -23,7 +25,9 @@ public record QaProperties(
         @DefaultValue("2") int chatConcurrency,
         @DefaultValue("5s") Duration chatWait,
         @DefaultValue("2") int circuitFailures,
-        @DefaultValue("15s") Duration circuitOpen) {
+        @DefaultValue("15s") Duration circuitOpen,
+        @DefaultValue("90s") Duration localChatTimeout,
+        @DefaultValue("30s") Duration cloudChatTimeout) {
 
     public QaProperties {
         if (topK < 1 || topK > 20) throw new IllegalStateException("verso.qa.top-k must be between 1 and 20");
@@ -33,5 +37,8 @@ public record QaProperties(
         if (chatWait.isNegative()) throw new IllegalStateException("verso.qa.chat-wait must not be negative");
         if (circuitFailures < 1) throw new IllegalStateException("verso.qa.circuit-failures must be positive");
         if (!circuitOpen.isPositive()) throw new IllegalStateException("verso.qa.circuit-open must be positive");
+        if (!localChatTimeout.isPositive() || !cloudChatTimeout.isPositive()) {
+            throw new IllegalStateException("verso.qa.*-chat-timeout must be positive");
+        }
     }
 }

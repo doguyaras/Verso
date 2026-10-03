@@ -74,10 +74,13 @@ class AnthropicCloudModeTest extends CloudModeTestSupport {
         assertThat(request.path()).isEqualTo("/v1/messages");
         assertThat(request.header("x-api-key")).isEqualTo("test-anthropic-key");
         assertThat(request.body().replace(" ", ""))
-                .contains("\"model\":\"claude-test\"", "\"max_tokens\":512", "\"temperature\":0.1", "\"system\"")
+                .contains("\"model\":\"claude-test\"", "\"max_tokens\":2048", "\"system\"")
+                .as("no sampling override (review F2)").doesNotContain("\"temperature\"")
                 .contains("[[BELGE1]](sayfa1)", "Soru:topic-leaveYillikizinkacgun?")
                 .as("no tools are offered (llm-rules 3.2)").doesNotContain("\"tools\"");
         assertThat(request.body()).as("the file name stays home (ADR-0006 decision 2)").doesNotContain("maas-bordrosu");
+        assertThat(request.header("X-Stainless-Timeout")).as("30 s per call (ADR-0008)").isIn(null, "30");
+        assertNoLogContains("Yillik izin", "twenty working days", "test-anthropic-key", "maas-bordrosu");
         assertThat(chatModel).isNotInstanceOf(OllamaChatModel.class);
     }
 

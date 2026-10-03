@@ -232,6 +232,31 @@ class QuestionApiTest {
         }
     }
 
+    /** ADR-0008, phase 6 review L2: a hanging model is cut at the service's bound, whatever the client's timeout. */
+    @Test
+    void ask_whenTheModelHangs_answers503AtTheChatTimeout() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        CountDownLatch release = new CountDownLatch(1);
+        TestChatModel.INSTANCE.answer(prompt -> {
+            try {
+                release.await(60, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return TestChatModel.DEFAULT_ANSWER;
+        });
+        try {
+            long started = System.nanoTime();
+            HttpResponse<String> response = ask("topic-leave izin?");
+            Duration took = Duration.ofNanos(System.nanoTime() - started);
+            assertThat(response.statusCode()).isEqualTo(503);
+            assertThat(response.body()).contains("\"code\":11001");
+            assertThat(took).as("verso.qa.local-chat-timeout=8s in tests").isBetween(Duration.ofSeconds(7), Duration.ofSeconds(20));
+        } finally {
+            release.countDown();
+        }
+    }
+
     /** ADR-0012, review T5: an empty answer is a failure, never an empty 200. */
     @Test
     void ask_whenTheModelAnswersBlank_answers503() throws Exception {

@@ -91,8 +91,10 @@ spring:
       timeout: 30s
       chat:
         model: ${CLOUD_CHAT_MODEL}
-        temperature: 0.1
-        max-tokens: 512
+        # No temperature: current Claude models answer 400 to non-default sampling values. Adaptive thinking is on by
+        # default and its tokens count against max-tokens, hence more room than the 512 of the local model
+        # (docs: platform.claude.com, models/sonnet-5-5; phase 6 review F2).
+        max-tokens: 2048
     openai:
       # Any OpenAI-compatible endpoint (ADR-0006); https://api.openai.com/v1 for OpenAI itself.
       base-url: ${OPENAI_BASE_URL}
@@ -102,6 +104,11 @@ spring:
         timeout: 30s
         temperature: 0.1
         max-tokens: 512
+        # The chat model puts its default options on every request; their timeout (60 s by default) wins over the
+        # client's (phase 6 review L2). The service's own bound (verso.qa.cloud-chat-timeout) holds either way.
+        options:
+          timeout: 30s
+          max-retries: 0
   # Model and other outbound HTTP calls (llm-rules 5.2): Boot's builders apply these to the Ollama client.
   http:
     clients:
@@ -139,6 +146,9 @@ verso:
     # Circuit breaker on the chat model (ADR-0008): 2 failures in a row, then 15 s of fast 503s.
     circuit-failures: 2
     circuit-open: 15s
+    # One chat call at most (ADR-0008), enforced by the service for every provider.
+    local-chat-timeout: 90s
+    cloud-chat-timeout: 30s
     chat-wait: 5s
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
