@@ -69,6 +69,9 @@ const { error } = await res.json();
 if (res.status === 503) retryLater(error.code);
 ```
 
+### Servis bilgisi (faz 10)
+`GET /v1/info` (token gerekir): `{"mode":"local","chatModel":"gemma4:e2b","embeddingModel":"bge-m3:567m"}`, `Cache-Control: no-store, private`. Panelin sistem ekranı ve "hangi model cevaplıyor" göstergeleri içindir.
+
 ## Hata kodları ve ekran davranışı
 | code | HTTP | Anlam | Ekran aksiyonu | Retry? |
 |---|---|---|---|---|

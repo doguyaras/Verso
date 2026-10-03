@@ -69,6 +69,29 @@ Soru: Şirketin borsa kodu nedir?
 
 CPU'da bir cevap 20–60 sn sürer. Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde bu tür hata oranı %4'tür. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
+## Panel
+
+Tarayıcıdan: `http://localhost:8080/panel/`. Kullanıcı `demo`, parola `secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD` dosyasında.
+
+- **Belgeler:** sürükle-bırak yükleme, işlenme durumu, silme.
+- **Soru sor:** atıflı cevaplar.
+- **Sistem:** mod, modeller, oturum; yalnız operatör rolüne görünür.
+
+Panelin özellikleri:
+
+- Bağımlılıksızdır; derleme adımı yoktur.
+- Token yalnız bellekte durur.
+- Model çıktısı sayfaya yalnız metin olarak girer.
+- Rol matrisi tek dosyadadır (`panel/js/roles.js`).
+
+Kararlar: [ADR-0015](docs/adr/0015-panel.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
+
+Faz 10'dan önce kurulmuş bir yığında panelin IdP istemcisi yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Bir kez şunu çalıştırın; yalnız demo IdP'nin verisini sıfırlar:
+
+```bash
+bash scripts/keycloak-reimport.sh
+```
+
 ## curl ile
 
 Token (paketteki demo Keycloak'ın CI istemcisi; üretimde kurumun IdP'si):
@@ -122,7 +145,7 @@ Set küçüktür (33 soru, 6 belge). Sonuçlar yön gösterir, istatistiksel gü
 ## Mimari
 
 ```text
- tarayıcı / istemci ──► edge (nginx, 127.0.0.1:8080) ──► verso-app (Spring Boot, modüler monolit)
+ tarayıcı (panel) / istemci ──► edge (nginx, 127.0.0.1:8080: /panel/ + API) ──► verso-app (Spring Boot, modüler monolit)
                                                               │  document modülü: yükleme, PDF, worker, embedding, arama
                                                               │  qa modülü: eşik, prompt, chat, atıf
                           keycloak (OIDC, 127.0.0.1:8180) ◄────┤  platform: hata zarfı, güvenlik, log temizleyici
@@ -131,7 +154,7 @@ Set küçüktür (33 soru, 6 belge). Sonuçlar yön gösterir, istatistiksel gü
  isteğe bağlı: prometheus · alertmanager · loki ◄ alloy · grafana (obs profili) · yedek ve restore provası
 ```
 
-Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0014). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
+Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0015). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
 
 ---
 

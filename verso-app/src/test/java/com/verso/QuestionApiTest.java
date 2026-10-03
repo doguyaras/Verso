@@ -311,6 +311,19 @@ class QuestionApiTest {
         assertThat(missing.headers().firstValue("X-Rag-Mode")).hasValue("local");
     }
 
+    /** ADR-0015: /v1/info gives the panel the mode and model names; a token is required, the answer is not cached. */
+    @Test
+    void info_whenSignedIn_namesTheModeAndModels() throws Exception {
+        HttpResponse<String> info = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
+                .header("Authorization", TestIdp.bearer(account)).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(info.statusCode()).isEqualTo(200);
+        assertThat(info.body()).isEqualTo("{\"mode\":\"local\",\"chatModel\":\"test-chat\",\"embeddingModel\":\"test-embedding\"}");
+        assertThat(info.headers().firstValue("Cache-Control")).hasValue("no-store, private");
+        HttpResponse<String> anonymous = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
+                .GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(anonymous.statusCode()).isEqualTo(401);
+    }
+
     /** ADR-0006: /actuator/info (management port, token required like every non-health endpoint) names mode and models. */
     @Test
     void actuatorInfo_whenAsked_namesTheModeAndModels() throws Exception {
