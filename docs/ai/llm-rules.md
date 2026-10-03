@@ -87,4 +87,10 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
 - Spring AI 2.0.x'te prompt/completion içerik loglamasını kontrol eden property adları: faz 5'te kaynak koddan doğrulanacak.
 - Kısmen doğrulanan: 2.1. Global handler ve hata sayfası yalnız istisna tiplerini loglar; ham path hiçbir framework log'una düşmez (`GlobalServiceExceptionHandlerTest`, `VersoAppSmokeTest`, mutasyonlar M12, M29). Belge/soru/cevap içeriği için testler faz 4–5'te.
 - Faz 5 itibarıyla doğrulananlar: 1.3 (`QuestionApiTest`: 200/401/404/503'te `X-Rag-Mode`), 2.1 (worker, yükleme ve soru-cevap log testleri), 2.2 (ArchUnit: `SimpleLoggerAdvisor` yok), 2.3 (503, sağlayıcı metni yok), 3.1–3.5 (`PromptBuilderTest`, `CitationExtractorTest`, `QuestionApiTest`), 4.1–4.2 (`RetrievalTest`: iki hesap, silme), 5.1 (`TransactionBoundaryRulesTest`), 6.1 (`RetrievalTest`: başka model → 409), 6.3–6.4 (`PageChunkerTest`), 8.1–8.2 (`ollama-pull.test.js`, `ComposeConfigTest`).
-- Doğrulaması henüz yazılmamış kurallar: 1.1, 1.2, 1.4, 1.5 (faz 6), 7.1 (faz 8), 9.1 (faz 9).
+- Faz 6 itibarıyla doğrulananlar (ADR-0013):
+  - 1.1: `ComposeConfigTest.networks_*` (uygulama yalnız iç ağlarda), `OllamaChatClientTest` (filtre dış adresi reddeder, local modda bulut istemcisi yok), `AiModeCheckTest` (açılış kontrolü), `scripts/prove-local-mode.sh` (CI'da).
+  - 1.2: `AnthropicCloudModeTest` (giden gövdede dosya adı yok, eşik altında hiç istek yok), `AiModeCheckTest` (embedding her modda Ollama).
+  - 1.3: cloud modda da (`AnthropicCloudModeTest`, `OpenAiCloudModeTest`).
+  - 1.4: anahtar yalnız config tree dosyası (`ComposeConfigTest`, `AiModeCheckTest`).
+  - 1.5: `OllamaChatClientTest` (içerik loglama kapalı, OTLP exporter yok).
+- Doğrulaması henüz yazılmamış kurallar: 7.1 (faz 8), 9.1 (faz 9).

@@ -32,6 +32,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.util.ClassUtils;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -132,6 +133,18 @@ class OllamaChatClientTest {
         assertThat(context.getBeanNamesForType(AnthropicChatModel.class)).isEmpty();
         assertThat(context.getBeanNamesForType(OpenAiChatModel.class)).isEmpty();
         assertThat(context.getBeanNamesForType(OllamaChatModel.class)).hasSize(1);
+    }
+
+    /** llm-rules 1.5: no prompt or completion in observations, no exporter that could ship them anywhere. */
+    @Test
+    void observations_whenConfigured_carryNoContentAndExportNowhere() {
+        for (String setting : List.of("spring.ai.chat.observations.log-prompt", "spring.ai.chat.observations.log-completion",
+                "spring.ai.chat.observations.include-error-logging", "spring.ai.chat.client.observations.log-prompt",
+                "spring.ai.chat.client.observations.log-completion")) {
+            assertThat(context.getEnvironment().getProperty(setting, Boolean.class, false)).as(setting).isFalse();
+        }
+        assertThat(ClassUtils.isPresent("io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter", null)).isFalse();
+        assertThat(ClassUtils.isPresent("io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter", null)).isFalse();
     }
 
     private static Prompt prompt() {

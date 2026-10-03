@@ -108,6 +108,24 @@ bash scripts/ingest-smoke.sh
 bash scripts/qa-smoke.sh
 ```
 
+**Local mod kanıtı** (ADR-0006, ADR-0013). Uygulama, veritabanı ve model sunucusu yalnız iç ağlardadır; API'ye kenar proxy (`edge`, nginx) üzerinden ulaşılır. Script, uygulamanın kendi ağından internete bağlanılamadığını ve isim çözülemediğini, her yanıtın `X-Rag-Mode: local` taşıdığını gösterir (CI'da da çalışır):
+
+```bash
+bash scripts/prove-local-mode.sh
+```
+
+**Cloud modu** (isteğe bağlı; ADR-0013). Yalnız chat çağrısı sağlayıcıya gider: sistem kuralları, soru ve en fazla 5 pasaj. Belgeler, tam metin ve vektörler yerelde kalır. Varsayılan sağlayıcı Anthropic'tir; `.env`'de `VERSO_CLOUD_PROVIDER=openai` ve `VERSO_OPENAI_BASE_URL` ile OpenAI uyumlu bir API seçilebilir. Anahtar yalnız dosyadır, ortam değişkeni değildir:
+
+```bash
+printf '%s' "<API anahtarı>" > secrets/SECRET_CLOUD_API_KEY
+```
+
+```bash
+docker compose -f compose.yaml -f deploy/compose.cloud.yaml up -d --build --wait
+```
+
+> **KVKK md. 9:** cloud modda pasajlar (kişisel veri içerebilir) yurt dışındaki bir sağlayıcıya aktarılabilir. Bu modu açma kararı ve hukuki dayanağı veri sorumlusunundur; bu not hukuki tavsiye değildir. Mod ve sağlayıcı tutarsızsa (ör. local modda bulut sağlayıcısı, cloud modda anahtar yok) uygulama başlamaz.
+
 **Faz 2'den yükseltme.** Init script'leri yalnız boş veri volume'ünde çalışır; faz 3'ten önce oluşmuş bir volume'de Keycloak'ın veritabanı yoktur ve `keycloak` sağlıklı olmaz. Bir kez şu adımlar (secret'ları üretir, postgres'i yeni secret'la yeniden oluşturur, idempotent script'i çalıştırır):
 
 ```bash
@@ -126,8 +144,8 @@ docker compose up -d --build --wait
 
 **Kaynaklar.**
 
-- **Bellek:** container sınırlarının toplamı yaklaşık 10,5 GB'dır (uygulama 1,5 GB, Ollama 6 GB (embedding ve chat modeli birlikte yüklü), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
-- **Disk ve ağ:** ilk açılış yaklaşık 8,5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB, gemma4:e2b modeli 3,5 GB). Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
+- **Bellek:** container sınırlarının toplamı yaklaşık 10,6 GB'dır (uygulama 1,5 GB, kenar proxy 64 MB, Ollama 6 GB (embedding ve chat modeli birlikte yüklü), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
+- **Disk ve ağ:** ilk açılış yaklaşık 8,5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB, gemma4:e2b modeli 3,5 GB, nginx imajı 23 MB). Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
 - **Embedding:** CPU'da yapılır; Ollama 2 CPU ile sınırlıdır (`OLLAMA_CPUS`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.

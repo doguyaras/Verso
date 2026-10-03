@@ -56,6 +56,8 @@ jobs:
         run: bash scripts/ingest-smoke.sh
       - name: question-answering smoke (real embedding and chat model; citations point at the upload; unrelated → not found)
         run: bash scripts/qa-smoke.sh
+      - name: local mode proof (app and model server on internal networks only; no route, no DNS out; X-Rag-Mode local)
+        run: bash scripts/prove-local-mode.sh
       - name: backup + restore drill self-test (passes on real data, fails on every tampering)
         run: bash scripts/restore-drill-selftest.sh
       - name: drill on the newest backup (what the weekly run is for)

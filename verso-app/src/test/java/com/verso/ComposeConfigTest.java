@@ -67,7 +67,7 @@ class ComposeConfigTest {
     @Test
     void composeSettings_whenReferenced_areDocumentedInEnvExample() throws IOException {
         Set<String> used = new TreeSet<>();
-        for (String file : List.of("compose.yaml", "deploy/compose.local.yaml")) {
+        for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml")) {
             Matcher m = COMPOSE_VAR.matcher(read(file));
             while (m.find()) used.add(m.group(1));
         }
@@ -95,7 +95,7 @@ class ComposeConfigTest {
         assertThat(String.valueOf(dependsOn.get("migrate"))).contains("service_completed_successfully");
     }
 
-    /** Only the API and the demo IdP are published, and only on the loopback interface (reference 18.2). */
+    /** Only the API (through the edge proxy) and the demo IdP are published, only on the loopback interface (18.2). */
     @Test
     void ports_whenComposed_publishOnlyTheApiAndTheIdpOnLoopback() {
         List<String> published = new ArrayList<>();
@@ -105,7 +105,7 @@ class ComposeConfigTest {
         });
         // The API and the demo IdP (device-flow login, CI token); both only on the loopback interface.
         assertThat(published).hasSize(2);
-        assertThat(published).anyMatch(p -> p.startsWith("verso-app 127.0.0.1:") && p.endsWith(":8080"));
+        assertThat(published).anyMatch(p -> p.startsWith("edge 127.0.0.1:") && p.endsWith(":8080"));
         assertThat(published).anyMatch(p -> p.startsWith("keycloak 127.0.0.1:") && p.endsWith(":8080"));
     }
 
@@ -113,7 +113,7 @@ class ComposeConfigTest {
     @Test
     void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
         for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway", "ollama",
-                "ollama-pull")) {
+                "ollama-pull", "edge")) {
             Map<String, Object> s = service(name);
             assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
@@ -187,6 +187,41 @@ class ComposeConfigTest {
         assertThat((Map<String, Object>) service("verso-app").get("depends_on")).doesNotContainKey("ollama");
         assertThat((List<String>) service("migrate").get("command"))
                 .contains("--spring.ai.model.embedding=none", "--spring.ai.model.chat=none");
+    }
+
+    /**
+     * ADR-0006 decision 1.1, ADR-0013: in local mode nothing of Verso has a route out. The application, its database
+     * and the model server are on internal networks only; the edge proxy and the IdP join "default" for their published
+     * ports, the one-shot model download for the internet. Only the cloud overlay gives the application a gateway,
+     * together with cloud mode and the key file, which reaches no other service.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void networks_whenComposed_keepTheApplicationWithoutARouteOutUnlessCloud() throws IOException {
+        Map<String, Object> networks = (Map<String, Object>) new Yaml().<Map<String, Object>>load(read("compose.yaml"))
+                .get("networks");
+        assertThat((Map<String, Object>) networks.get("backend")).containsEntry("internal", true);
+        assertThat((Map<String, Object>) networks.get("models")).containsEntry("internal", true);
+        assertThat(service("verso-app").get("networks")).isEqualTo(List.of("backend", "models"));
+        for (String name : List.of("postgres", "migrate", "backup")) {
+            assertThat(service(name).get("networks")).as(name).isEqualTo(List.of("backend"));
+        }
+        assertThat(service("ollama").get("networks")).isEqualTo(List.of("models"));
+        assertThat(service("edge").get("networks")).isEqualTo(List.of("default", "backend"));
+        assertThat(service("keycloak").get("networks")).isEqualTo(List.of("default", "backend"));
+        assertThat(environment("verso-app")).containsEntry("VERSO_AI_MODE", "local").containsEntry("VERSO_CHAT_PROVIDER", "ollama");
+
+        Map<String, Object> cloud = new Yaml().load(read("deploy/compose.cloud.yaml"));
+        Map<String, Object> cloudApp = (Map<String, Object>) ((Map<String, Object>) cloud.get("services")).get("verso-app");
+        assertThat(((Map<String, Object>) cloud.get("services")).keySet()).as("the overlay touches the application only")
+                .containsExactly("verso-app");
+        assertThat((List<String>) cloudApp.get("networks")).containsExactly("backend", "models", "egress");
+        assertThat((Map<String, Object>) cloudApp.get("environment")).containsEntry("VERSO_AI_MODE", "cloud");
+        assertThat(String.valueOf(cloudApp.get("secrets"))).contains("source=SECRET_CLOUD_API_KEY")
+                .contains("target=spring.ai.${VERSO_CLOUD_PROVIDER:-anthropic}.api-key");
+        assertThat((Map<String, Object>) ((Map<String, Object>) cloud.get("networks")).get("egress")).doesNotContainKey("internal");
+        services().forEach((name, definition) -> assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets")))
+                .as(name).doesNotContain("SECRET_CLOUD_API_KEY"));
     }
 
     @SuppressWarnings("unchecked")

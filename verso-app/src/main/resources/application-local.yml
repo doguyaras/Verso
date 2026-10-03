@@ -24,7 +24,7 @@ spring:
     openai:
       base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
       chat:
-        model: ${CLOUD_CHAT_MODEL:gpt-5-mini}
+        model: ${CLOUD_CHAT_MODEL}
     ollama:
       # The compose ollama published on 127.0.0.1 by deploy/compose.local.yaml (or a host Ollama with this model).
       base-url: http://localhost:11434
