@@ -58,4 +58,4 @@ Bu fazda yeni mutasyon yok: değişen dosyalar belge, betik ve workflow. Davran�
 
 ## 6. CI
 
-CI_RESULT
+PR #11: ilk koşu (`9a9efb6`) **failure**. Faz 8'de eklenen `RetrievalTest.search_whenTheCallerIsInterrupted_keepsTheEmbeddingSlots` her kesilmiş aramanın hata vermesini şart koşuyordu; CI'da model anında cevap verince arama sonucu alabildi (yarış). Aynı test, PR #10 birleştikten sonra `develop` push'unda da (`57d5bb1`) kırmızı oldu. Düzeltme (`e54a9cd`): test, her çağrının sonucundan bağımsız olarak slotların korunduğunu kontrol eder, 64 çağrı yapar; yerelde 3/3 yeşil, M212 hâlâ yakalanıyor. Sonra `ci` ve `restore-drill` **success** (run 37121010481, 37121010522). Birleştirme: `55e7b0d`.

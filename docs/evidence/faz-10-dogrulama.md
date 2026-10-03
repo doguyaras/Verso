@@ -17,7 +17,7 @@
 
 | Kontrol | Komut | Sonuç |
 |---|---|---|
-| Build ve testler | `./mvnw -B -ntp verify` | **PASS**: 356 Java testi |
+| Build ve testler | `./mvnw -B -ntp verify` | **PASS**: 358 Java testi, faz 8 ve 9 ile birleştikten sonra (mutasyon baseline'ı birleşmeden önce 356) |
 | Panel testleri | `node --test scripts/panel.test.mjs` | **PASS**: 14 test. Rol matrisi, PKCE (RFC 7636 vektörü), JWT okuma, atıf ayrıştırma, hata metinleri, güvenlik kuralları, giriş akışı (state, verifier, URL temizliği), paylaşılan refresh, çıkış, dosya adı temizliği |
 | Realm ve compose | `KeycloakRealmTest`, `ComposeConfigTest` | **PASS**: istemcinin tam ayarı, CSP'nin tamamı, `absolute_redirect off` |
 | Mutasyon | `bash scripts/mutation-check.sh` | Bölüm 5 |
