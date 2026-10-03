@@ -13,6 +13,7 @@ import com.verso.qa.service.ModelCircuitBreaker;
 import com.verso.support.TestChatModel;
 import com.verso.support.TestEmbeddingModel;
 import com.verso.support.TestIdp;
+import com.verso.support.VersoPostgres;
 import com.verso.support.VersoTestEnvironment;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
@@ -21,8 +22,17 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -96,7 +106,7 @@ class QuestionApiTest {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("X-Rag-Mode")).hasValue("local");
-        assertThat(response.headers().firstValue("Cache-Control").orElse("")).contains("no-store");
+        assertThat(response.headers().firstValue("Cache-Control")).as("phase 5 review T6").hasValue("no-store, private");
         assertThat(response.body())
                 .contains("\"found\":true", "\"mode\":\"local\"", "\"model\":\"test-chat\"")
                 .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1}]")
@@ -187,6 +197,72 @@ class QuestionApiTest {
     void ask_whenTheQuestionIsBlankOrTooLong_isRejectedWith400() throws Exception {
         assertThat(ask("   ").statusCode()).isEqualTo(400);
         assertThat(ask("x".repeat(1001)).statusCode()).isEqualTo(400);
+        assertThat(TestChatModel.INSTANCE.calls()).isZero();
+        assertThat(ask("x".repeat(1000)).statusCode()).as("the limit itself is allowed (review T9)").isEqualTo(200);
+    }
+
+    /** ADR-0008, review T4: two chat calls per instance; a third question waits chat-wait, then 503 MODEL_BUSY. */
+    @Test
+    void ask_whenBothChatSlotsAreTaken_answers503ModelBusy() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        CountDownLatch release = new CountDownLatch(1);
+        TestChatModel.INSTANCE.answer(prompt -> {
+            try {
+                release.await(30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return TestChatModel.DEFAULT_ANSWER;
+        });
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<HttpResponse<String>>> busy = List.of(pool.submit(() -> ask("topic-leave izin?")),
+                    pool.submit(() -> ask("topic-leave izin?")));
+            while (TestChatModel.INSTANCE.calls() < 2) Thread.sleep(20);
+
+            HttpResponse<String> third = ask("topic-leave izin?");
+
+            assertThat(third.statusCode()).isEqualTo(503);
+            assertThat(third.body()).contains("\"code\":11002");
+            assertThat(third.headers().firstValue("Retry-After")).hasValue("5");
+            assertThat(TestChatModel.INSTANCE.calls()).isEqualTo(2);
+            release.countDown();
+            for (Future<HttpResponse<String>> f : busy) assertThat(f.get().statusCode()).isEqualTo(200);
+        } finally {
+            release.countDown();
+        }
+    }
+
+    /** ADR-0012, review T5: an empty answer is a failure, never an empty 200. */
+    @Test
+    void ask_whenTheModelAnswersBlank_answers503() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        TestChatModel.INSTANCE.answer("   ");
+        HttpResponse<String> response = ask("topic-leave izin?");
+        assertThat(response.statusCode()).isEqualTo(503);
+        assertThat(response.body()).contains("\"code\":11001");
+    }
+
+    /** Review T7: the document module's codes reach the client with their HTTP status. */
+    @Test
+    void ask_whenTheEmbeddingModelIsDownOrTheIndexIsStale_answersWithTheDocumentCodes() throws Exception {
+        UUID id = ready("topic-leave Annual leave rules.");
+        TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException("down"));
+        HttpResponse<String> down = ask("topic-leave izin?");
+        assertThat(down.statusCode()).isEqualTo(503);
+        assertThat(down.body()).contains("\"code\":10030");
+        assertThat(down.headers().firstValue("Retry-After")).hasValue("5");
+
+        TestEmbeddingModel.INSTANCE.reset();
+        try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
+                VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
+             PreparedStatement update = admin.prepareStatement(
+                     "UPDATE document.document_chunk SET embedding_model = 'old-model' WHERE document_id = ?")) {
+            update.setObject(1, id);
+            update.executeUpdate();
+        }
+        HttpResponse<String> stale = ask("topic-leave izin?");
+        assertThat(stale.statusCode()).isEqualTo(409);
+        assertThat(stale.body()).contains("\"code\":10031");
         assertThat(TestChatModel.INSTANCE.calls()).isZero();
     }
 

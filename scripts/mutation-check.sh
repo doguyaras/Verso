@@ -560,7 +560,7 @@ backup $RREPO; sub $RREPO "s/ AND d\.status = 'READY'//" \
   && expect_red "M165 documents that are not READY are searched" verso-app $RTT search_whenADocumentIsNotReady_ignoresIt; restore $RREPO
 backup $RSVC; sub $RSVC 's/if \(repository\.hasChunksOfAnotherModel\(accountId, model\)\) \{/if (false) {/' \
   && expect_red "M166 vectors of another model are compared" verso-app $RTT search_whenChunksCameFromAnotherModel_failsClosed; restore $RSVC
-backup $RSVC; sub $RSVC 's/return call\.get\(timeout\.toMillis\(\), TimeUnit\.MILLISECONDS\);/return call.get();/' \
+backup $RSVC; sub $RSVC 's/return call\.get\(timeout\.toMillis\(\), TimeUnit\.MILLISECONDS\);/return call.get(600_000L, TimeUnit.MILLISECONDS);/' \
   && expect_red "M167 a hanging embedding model holds the question" verso-app $RTT search_whenTheEmbeddingModelHangs_givesUpAfterTheTimeout; restore $RSVC
 backup $RSVC; sub $RSVC 's/if \(!embeddingSlots\.tryAcquire\(\)\) \{/if (false) {/' \
   && expect_red "M168 unbounded question embeddings" verso-app $RTT search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel; restore $RSVC
