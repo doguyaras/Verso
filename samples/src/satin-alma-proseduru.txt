@@ -1,0 +1,15 @@
+Örnek Teknoloji A.Ş. — Satın Alma Prosedürü (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+
+1. Talep
+Her satın alma, talep eden bölüm tarafından satın alma portalında açılan bir taleple başlar. Talepte ihtiyacın gerekçesi, tahmini tutar ve teslim tarihi belirtilir.
+
+2. Teklif toplama
+50.000 TL'nin altındaki alımlarda tek teklif yeterlidir. 50.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır. 500.000 TL'yi aşan alımlar ihale komitesi tarafından değerlendirilir.
+Teklifler satın alma birimine kapalı zarf veya portal üzerinden iletilir; talep eden bölüm tedarikçiyle doğrudan fiyat görüşmesi yapamaz.
+---
+3. Onay matrisi
+100.000 TL'ye kadar olan alımları Satın Alma Müdürü onaylar. 100.000 TL ile 1.000.000 TL arasındaki alımlar Finans Direktörü onayına gider. 1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır.
+
+4. Tedarikçi değerlendirmesi
+Yeni tedarikçiler çalışmaya başlamadan önce vergi levhası, imza sirküleri ve bilgi güvenliği taahhütnamesi verir. Mevcut tedarikçiler yılda bir kez kalite, teslim süresi ve fiyat ölçütleriyle puanlanır; yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez.

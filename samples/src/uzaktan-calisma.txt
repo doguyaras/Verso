@@ -1,0 +1,16 @@
+Örnek Teknoloji A.Ş. — Uzaktan ve Esnek Çalışma Esasları (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+
+1. Hibrit çalışma modeli
+Çalışanlar haftada en fazla iki gün uzaktan çalışabilir. Salı ve perşembe günleri tüm ekiplerin ofiste bulunduğu ortak günlerdir. Uzaktan çalışılacak günler bir hafta önceden takım takviminde belirtilir.
+Deneme süresindeki çalışanlar ilk üç ay boyunca uzaktan çalışmaz.
+
+2. Çalışma saatleri
+Esnek çalışma kapsamında mesai sabah 07.30 ile 10.00 arasında başlayabilir. Tüm çalışanların 10.00 ile 16.00 arasındaki çekirdek saatlerde ulaşılabilir olması gerekir. Günlük çalışma süresi dokuz saati geçemez.
+---
+3. Ekipman ve destek
+Uzaktan çalışan her çalışana dizüstü bilgisayar, kulaklık ve bir harici monitör verilir. Ev internet gideri için aylık 500 TL destek ödenir. Ergonomik sandalye için çalışan, işe girişinde bir kez 6.000 TL'ye kadar harcama yapabilir.
+Arızalı ekipman IT destek portalına bildirilir; değişim en geç üç iş günü içinde yapılır.
+
+4. Güvenlik ve gizlilik
+Uzaktan çalışırken Bilgi Güvenliği Politikası aynen uygulanır. Ekran başkalarının göreceği ortamlarda kilitlenir; gizli görüşmeler kalabalık yerlerde yapılmaz.
