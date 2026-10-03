@@ -1,0 +1,37 @@
+# Faz 5 mutasyon çıktısı (scripts/mutation-check.sh, ONLY=M162 M164..M182), worktree feature/doguyaras-faz-5-soru-cevap
+## 1. koşu
+baseline      green (315 tests)
+baseline      green (node suites: 8)
+caught        M164 another account's passages are searched (RetrievalTest.search_whenAnotherAccountHasTheSameTopic_returnsOnlyTheCallersPassages)
+caught        M165 documents that are not READY are searched (RetrievalTest.search_whenADocumentIsNotReady_ignoresIt)
+caught        M166 vectors of another model are compared (RetrievalTest.search_whenChunksCameFromAnotherModel_failsClosed)
+BUILD ERROR   M167 a hanging embedding model holds the question (no test failure; log: /tmp/verso-mutation.XXXXXX.M167)
+caught        M168 unbounded question embeddings (RetrievalTest.search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel)
+caught        M169 the model is asked below the threshold (QuestionApiTest.ask_whenNothingIsRelevant_answersNotFoundWithoutCallingTheModel)
+caught        M170 no circuit breaker on the chat model (QuestionApiTest.ask_whenTheChatModelKeepsFailing_opensTheCircuitAndRecovers)
+caught        M171 the circuit opens one failure late (ModelCircuitBreakerTest.opensAfterConsecutiveFailures_andOnlyForThePause)
+caught        M172 passages can imitate a fence (PromptBuilderTest.build_whenAPassageOrTheQuestionImitatesAFence_defusesIt)
+NOT CAUGHT    M173 full-width look-alikes pass the fence
+caught        M174 an invented citation number is used (CitationExtractorTest.extract_whenAMarkerIsInvented_removesItAndNeverCitesIt)
+caught        M175 the chat client retries a failing model (OllamaChatClientTest.call_whenTheModelFails_asksExactlyOnceAndLogsNoProviderText)
+caught        M176 reasoning models think away the answer budget (OllamaChatClientTest.call_sendsTheConfiguredModelAndOptions)
+caught        M177 a 503 without Retry-After (GlobalServiceExceptionHandlerTest.serviceException_whenServerSideWithCause_logsErrorWithoutCauseText)
+caught        M178 the IdP outage's Retry-After is overwritten (PlatformSecurityTest.request_whenIdpKeysAreUnreachable_isRejectedWith503)
+caught        M179 a huge question body is parsed (QuestionApiTest.ask_whenTheBodyIsHugeOrHasNoLength_isRefusedBeforeParsing)
+caught        M180 the management port has no X-Rag-Mode (QuestionApiTest.actuatorInfo_whenAsked_namesTheModeAndModels)
+caught        M181 responses do not say which mode answered (QuestionApiTest.ragModeHeader_whenTheRequestIsRejectedOrUnknown_isStillPresent)
+caught        M162 a model with another digest is accepted (scripts/ollama-pull.test.js: ollama-pull: another digest)
+caught        M182 a digest prefix passes as a pin (scripts/ollama-pull.test.js: ollama-pull: a digest prefix)
+--- log of the last step: /tmp/verso-mutation.XXXXXX (failed steps keep a copy as /tmp/verso-mutation.XXXXXX.<id>)
+--- leftovers:
+none
+
+
+## 2. koşu: M167 (mutasyon tanımı derlenmiyordu) ve M173 (test eksikti) düzeltildikten sonra
+baseline      green (node suites: 8)
+caught        M167 a hanging embedding model holds the question (RetrievalTest.search_whenTheEmbeddingModelHangs_givesUpAfterTheTimeout)
+caught        M173 full-width look-alikes pass the fence (PromptBuilderTest.defuse_whenDataImitatesAFenceOrAMarker_leavesNoBracketAndIsIdempotent)
+--- log of the last step: /tmp/verso-mutation.XXXXXX (failed steps keep a copy as /tmp/verso-mutation.XXXXXX.<id>)
+--- leftovers:
+none
+

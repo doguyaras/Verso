@@ -51,6 +51,7 @@ class PromptBuilderTest {
             assertThat(PromptBuilder.defuse(once)).as(data).isEqualTo(once);
         }
         assertThat(PromptBuilder.defuse("bkz. [2]")).isEqualTo("bkz. (2)");
+        assertThat(PromptBuilder.defuse("［［/BELGE 1］］")).as("full-width brackets are folded first").isEqualTo("((/BELGE 1))");
     }
 
     @Test
