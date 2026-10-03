@@ -6,8 +6,12 @@
 //   3. retrieval: questions below the similarity threshold, CONCURRENCY parallel (embedding + vector search only; the
 //                 question-embedding bulkhead answers 503 10030 above 4 in flight). Clients behave: on a 503 they wait
 //                 the Retry-After seconds before the next question, as docs/api-questions-integration-v1.md asks;
-//   4. chat:      CHAT_QUESTIONS answerable questions, CHAT_CONCURRENCY parallel (the chat bulkhead of 2 answers
-//                 503 11002 after 5 s of waiting), after the model server has drained the previous scenario.
+//   4. chat:      CHAT_QUESTIONS answerable questions, CHAT_CONCURRENCY parallel (the chat bulkhead,
+//                 verso.qa.chat-concurrency, answers 503 11002 after 5 s of waiting), after the model server has
+//                 drained the previous scenario.
+// The load is closed-loop: each client waits for its answer before the next request, so latencies under overload
+// look better than an open arrival rate would make them. The read scenario lists the account as it is: run it on an
+// account with documents (eval.mjs empties the CI account) to measure a realistic page.
 // Writes eval/results/<OUT>. Removes its uploads at the end.
 //
 //   node scripts/load-test.mjs      # after: docker compose up -d --build --wait
@@ -18,6 +22,7 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cpus } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const API = `http://localhost:${process.env.VERSO_HTTP_PORT ?? 8080}`;
@@ -32,6 +37,13 @@ const SCENARIOS = (process.env.SCENARIOS ?? 'read,upload,retrieval,chat').split(
 const OUT = process.env.OUT ?? 'load.json';
 const MISSES = ['Mars kaç uydusu var?', 'Bugün hava nasıl?', 'Futbol maçı kaç kaç bitti?', 'En iyi pizza tarifi nedir?'];
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+function gitCommit() {
+  try {
+    return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd: ROOT }).toString().trim();
+  } catch {
+    return 'unknown';
+  }
+}
 
 let token = { value: null, until: 0 };
 async function bearer() {
@@ -48,7 +60,8 @@ async function timed(path, init = {}) {
   const body = await res.text();
   let code;
   try { code = JSON.parse(body)?.error?.code; } catch { code = undefined; }
-  return { status: res.status, code, ms: performance.now() - started, body };
+  return { status: res.status, code, ms: performance.now() - started, body,
+    retryAfter: Number(res.headers.get('Retry-After')) || undefined };
 }
 const question = (text) => timed('/v1/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ question: text }) });
@@ -77,7 +90,10 @@ async function pool(count, task) {
 
 const report = { measuredAt: new Date().toISOString(), host: { cpus: cpus().length },
   settings: { CONCURRENCY, DURATION, UPLOADS, CHAT_QUESTIONS, CHAT_CONCURRENCY, SCENARIOS,
-    ollamaCpus: process.env.OLLAMA_CPUS ?? '2 (compose default)' } };
+    ollamaCpus: process.env.OLLAMA_CPUS ?? '2 (compose default)', commit: gitCommit(),
+    // What the server ran with: set them when the stack was started differently from config/verso.yml.
+    serverChatConcurrency: process.env.VERSO_QA_CHAT_CONCURRENCY ?? '1 (config/verso.yml)',
+    serverMinSimilarity: process.env.VERSO_QA_MIN_SIMILARITY ?? '0.50 (config/verso.yml)' } };
 const uploaded = [];
 try {
   if (SCENARIOS.includes('read')) {
@@ -117,7 +133,7 @@ try {
     const retrievals = await pool(CONCURRENCY, async (w) => {
       if (Date.now() >= until) return null;
       const r = await question(MISSES[w % MISSES.length]);
-      if (r.status === 503) await sleep(5000); // Retry-After: 5
+      if (r.status === 503) await sleep((r.retryAfter ?? 5) * 1000); // as the integration document asks
       return r;
     });
     report.retrieval = { concurrency: CONCURRENCY, seconds: DURATION, ...summarize(retrievals, DURATION) };

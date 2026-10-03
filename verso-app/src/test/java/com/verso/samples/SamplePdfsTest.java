@@ -48,8 +48,9 @@ class SamplePdfsTest {
             assertThat(pages).as(source.getFileName().toString()).hasSize(text.split("\n---\n").length);
             String all = String.join(" ", pages).replaceAll("\\s+", " ");
             for (String sentence : text.split("\n")) {
-                if (sentence.length() < 40 || sentence.equals("---")) continue;
-                String probe = sentence.substring(0, 40).replaceAll("\\s+", " ");
+                // The whole line, not a prefix: a fact at the end of a line must survive too (phase 8 review T4).
+                if (sentence.isBlank() || sentence.equals("---")) continue;
+                String probe = sentence.replaceAll("\\s+", " ").strip();
                 assertThat(all).as(source.getFileName() + ": " + probe).contains(probe);
             }
         }
