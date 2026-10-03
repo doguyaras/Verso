@@ -1,12 +1,14 @@
 // The panel's pure logic (ADR-0015): role matrix, PKCE, token reading, answer and citation splitting, error texts.
-// The browser flows (sign-in, upload, question) are checked against the running stack (docs/evidence/faz-10-*.md).
+// The sign-in flow runs here with the browser globals stubbed; the screens are checked against the running stack
+// (docs/evidence/faz-10-dogrulama.md).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
-import { base64Url, challengeOf, claimsOf, randomString } from '../panel/js/auth.js';
-import { answerParts } from '../panel/js/render.js';
-import { MESSAGES } from '../panel/js/api.js';
+import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
+  signIn, signOut } from '../panel/js/auth.js';
+import { answerParts, plainName } from '../panel/js/render.js';
+import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
@@ -62,4 +64,109 @@ test('safety: the panel never writes HTML from data and never stores tokens', ()
   }
   const auth = readFileSync('panel/js/auth.js', 'utf8');
   for (const m of auth.matchAll(/sessionStorage\.setItem\(([^,]+),/g)) assert.equal(m[1], 'PENDING');
+});
+
+// ---------- sign-in flow, with the browser globals stubbed (phase 10 review: completeSignIn and refresh untested) ----------
+function browser({ search = '', pending } = {}) {
+  const store = new Map(pending ? [['verso.panel.pkce', JSON.stringify(pending)]] : []);
+  const calls = { assigned: [], replaced: [], tokenForms: [] };
+  globalThis.location = { search, origin: 'http://localhost:8080', assign: (url) => calls.assigned.push(url) };
+  globalThis.history = { replaceState: (_s, _t, url) => calls.replaced.push(url) };
+  globalThis.sessionStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v),
+    removeItem: (k) => store.delete(k) };
+  return { store, calls };
+}
+
+function jwt(claims) {
+  return `h.${base64Url(new TextEncoder().encode(JSON.stringify(claims)))}.s`;
+}
+
+function tokenEndpoint(calls, { status = 200, expiresIn = 300, delayMs = 0 } = {}) {
+  let n = 0;
+  globalThis.fetch = async (url, init) => {
+    calls.tokenForms.push(Object.fromEntries(new URLSearchParams(init.body)));
+    await new Promise((r) => setTimeout(r, delayMs));
+    n += 1;
+    return { ok: status === 200, status, json: async () => ({ access_token: jwt({ n, realm_access: { roles: [] } }),
+      refresh_token: `refresh-${n}`, id_token: jwt({ preferred_username: 'demo' }), expires_in: expiresIn }) };
+  };
+}
+
+test('sign-in: a redirect with the right state exchanges the code with the verifier and cleans the URL', async () => {
+  const { store, calls } = browser({ search: '?code=c1&state=s1', pending: { verifier: 'v1', state: 's1' } });
+  tokenEndpoint(calls);
+  assert.equal(await completeSignIn(), true);
+  assert.deepEqual(calls.tokenForms[0], { client_id: 'verso-panel', grant_type: 'authorization_code', code: 'c1',
+    redirect_uri: 'http://localhost:8080/panel/', code_verifier: 'v1' });
+  assert.deepEqual(calls.replaced, ['http://localhost:8080/panel/']);
+  assert.equal(store.size, 0, 'the verifier is gone');
+  assert.equal(currentIdentity().preferred_username, 'demo');
+});
+
+test('sign-in: a wrong state, a missing pending record or an IdP error establish no session', async () => {
+  for (const [search, pending] of [['?code=c&state=evil', { verifier: 'v', state: 's' }], ['?code=c&state=s', undefined],
+    ['?error=access_denied&state=s', { verifier: 'v', state: 's' }]]) {
+    const { store, calls } = browser({ search, pending });
+    tokenEndpoint(calls);
+    assert.equal(await completeSignIn(), false, search);
+    assert.equal(calls.tokenForms.length, 0, `${search}: no code exchange`);
+    assert.equal(store.size, 0, `${search}: the pending record is removed`);
+    assert.equal(calls.replaced.length, 1, `${search}: the URL is cleaned`);
+  }
+  const { calls } = browser({ search: '' });
+  assert.equal(await completeSignIn(), false);
+  assert.equal(calls.replaced.length, 0, 'a plain visit is left alone');
+});
+
+test('sign-in: the redirect to the IdP asks for a code with an S256 challenge and stores only the verifier and state', async () => {
+  const { store, calls } = browser();
+  await signIn();
+  const url = new URL(calls.assigned[0]);
+  assert.equal(url.origin + url.pathname, 'http://localhost:8180/realms/verso/protocol/openid-connect/auth');
+  const { verifier, state } = JSON.parse(store.get('verso.panel.pkce'));
+  assert.equal(url.searchParams.get('state'), state);
+  assert.equal(url.searchParams.get('code_challenge'), await challengeOf(verifier));
+  assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
+  assert.equal(url.searchParams.get('scope'), 'openid');
+  assert.equal(url.searchParams.has('prompt'), false);
+});
+
+test('refresh: concurrent callers near expiry share one refresh (the realm revokes a used refresh token)', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls, { expiresIn: 10, delayMs: 20 }); // inside the 30 s refresh window
+  await completeSignIn();
+  const tokens = await Promise.all([accessToken(), accessToken(), accessToken()]);
+  const refreshes = calls.tokenForms.filter((f) => f.grant_type === 'refresh_token');
+  assert.equal(refreshes.length, 1);
+  assert.equal(refreshes[0].refresh_token, 'refresh-1');
+  assert.equal(new Set(tokens).size, 1);
+  assert.equal(claimsOf(tokens[0]).n, 2);
+});
+
+test('refresh: a failed refresh signs out instead of sending an expired token', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls, { expiresIn: 10 });
+  await completeSignIn();
+  tokenEndpoint(calls, { status: 400 });
+  assert.equal(await accessToken(), null);
+  assert.equal(currentClaims(), null);
+});
+
+test('sign-out: the IdP logout gets the client, the panel as the way back and the ID token as the hint', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  signOut();
+  const url = new URL(calls.assigned.at(-1));
+  assert.equal(url.pathname, '/realms/verso/protocol/openid-connect/logout');
+  assert.equal(url.searchParams.get('post_logout_redirect_uri'), 'http://localhost:8080/panel/');
+  assert.ok(url.searchParams.get('id_token_hint'));
+  assert.equal(currentClaims(), null);
+});
+
+test('text: file names lose control and bidi characters; errors name the Retry-After', () => {
+  assert.equal(plainName('fatura‮fdp.exe\u0007'), 'faturafdp.exe');
+  assert.equal(messageOf(503, 11002, 5), 'Asistan meşgul; birkaç saniye sonra tekrar deneyin. (5 sn sonra tekrar deneyebilirsiniz.)');
+  assert.equal(messageOf(503, 12345), 'Beklenmeyen bir sunucu hatası oluştu.');
+  assert.equal(PAGE_SIZE, 100, 'the API maximum, so the 200-document quota fits in two pages');
 });

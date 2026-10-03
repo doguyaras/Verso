@@ -2,18 +2,22 @@
 // build step; ES modules served by the edge proxy. Screens are hash routes (#/documents, #/ask, #/system).
 import { CONFIG } from './config.js';
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
-import { api, ApiError, lastMode } from './api.js';
+import { api, ApiError, lastMode, PAGE_SIZE } from './api.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
-import { answerParts, el, FAILURES, formatDate, formatSize, STATUS } from './render.js';
+import { answerParts, el, FAILURES, formatDate, formatSize, plainName, STATUS } from './render.js';
 
 const MAX_UPLOAD = 20 * 1024 * 1024;
 const main = document.querySelector('#main');
 const nav = document.querySelector('#nav');
 const user = document.querySelector('#user');
 const modeBadge = document.querySelector('#mode');
+// One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
+// audience, clock skew) must not bounce the browser between the panel and the IdP forever.
+const AUTO_SIGN_IN = 'verso.panel.auto';
 let roles = [];
-let documentsCache = [];
 let poll = null;
+let view = 0; // bumped on every navigation: a late answer for a screen the user left is dropped
+let documentsPage = 0;
 
 function toast(message, tone = 'bad') {
   const node = el('div', { class: `toast ${tone}`, role: 'status' }, message);
@@ -33,9 +37,15 @@ function showMode() {
 
 async function guarded(action) {
   try {
-    return await action();
+    const result = await action();
+    sessionStorage.removeItem(AUTO_SIGN_IN);
+    return result;
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) return signIn();
+    if (error instanceof ApiError && error.status === 401) {
+      if (sessionStorage.getItem(AUTO_SIGN_IN)) return showSignIn('Oturum açılamadı: servis girişinizi kabul etmedi. Yöneticinize bildirin.');
+      sessionStorage.setItem(AUTO_SIGN_IN, '1');
+      return signIn();
+    }
     toast(error instanceof ApiError ? error.message : 'Bağlantı kurulamadı.');
     return undefined;
   } finally {
@@ -47,7 +57,7 @@ async function guarded(action) {
 function documentRow(doc) {
   const status = STATUS[doc.status] ?? { label: doc.status, tone: 'wait' };
   return el('tr', { 'data-id': doc.id },
-    el('td', { class: 'name' }, doc.fileName),
+    el('td', { class: 'name' }, plainName(doc.fileName)),
     el('td', {}, el('span', { class: `chip ${status.tone}` }, status.label),
       doc.failureReason ? el('span', { class: 'hint' }, FAILURES[doc.failureReason] ?? doc.failureReason) : null),
     el('td', { class: 'num' }, doc.pageCount ?? '–'),
@@ -58,7 +68,7 @@ function documentRow(doc) {
 }
 
 async function removeDocument(doc) {
-  if (!confirm(`"${doc.fileName}" belgesi, sayfaları ve vektörleriyle birlikte kalıcı olarak silinsin mi?`)) return;
+  if (!confirm(`"${plainName(doc.fileName)}" belgesi, sayfaları ve vektörleriyle birlikte kalıcı olarak silinsin mi?`)) return;
   await guarded(async () => {
     await api.deleteDocument(doc.id);
     toast('Belge silindi.', 'ok');
@@ -68,20 +78,26 @@ async function removeDocument(doc) {
 
 async function uploadFiles(files) {
   for (const file of files) {
-    if (file.type && file.type !== 'application/pdf') { toast(`${file.name}: yalnız PDF yüklenebilir.`); continue; }
-    if (file.size > MAX_UPLOAD) { toast(`${file.name}: 20 MB sınırını aşıyor.`); continue; }
+    if (file.type && file.type !== 'application/pdf') { toast(`${plainName(file.name)}: yalnız PDF yüklenebilir.`); continue; }
+    if (file.size > MAX_UPLOAD) { toast(`${plainName(file.name)}: 20 MB sınırını aşıyor.`); continue; }
     await guarded(async () => {
       await api.upload(file);
-      toast(`${file.name} yüklendi; işleniyor.`, 'ok');
+      toast(`${plainName(file.name)} yüklendi; işleniyor.`, 'ok');
     });
   }
   await renderDocuments();
 }
 
 async function renderDocuments() {
-  const page = await guarded(() => api.listDocuments());
-  if (!page) return;
-  documentsCache = page.data;
+  const shown = view;
+  clearInterval(poll);
+  const page = await guarded(() => api.listDocuments(documentsPage));
+  if (shown !== view) return;
+  if (!page) return; // the poll stays stopped after a failure; navigating again retries
+  if (documentsPage > 0 && documentsPage >= page.page.totalPages) {
+    documentsPage = Math.max(0, page.page.totalPages - 1);
+    return renderDocuments();
+  }
   const input = el('input', { type: 'file', accept: 'application/pdf', multiple: true, hidden: true,
     onchange: (e) => uploadFiles([...e.target.files]) });
   const drop = el('div', { class: 'drop', tabindex: 0, role: 'button',
@@ -97,10 +113,19 @@ async function renderDocuments() {
     : el('p', { class: 'empty' }, 'Henüz belge yok. Örnekler: samples/ klasöründeki PDF\'ler.');
   main.replaceChildren(el('h1', {}, 'Belgeler'),
     el('p', { class: 'lead' }, 'Belgeleriniz bu sunucuda işlenir; orijinal PDF işlendikten sonra silinir, sayfa metinleri ve vektörler kalır.'),
-    drop, table,
-    el('p', { class: 'meta' }, `${page.page.totalElements} belge`));
-  clearInterval(poll);
+    drop, table, pager(page.page));
   if (page.data.some((d) => d.status === 'PENDING' || d.status === 'PROCESSING')) poll = setInterval(renderDocuments, 4000);
+}
+
+function pager({ number, totalPages, totalElements }) {
+  const go = (to) => () => { documentsPage = to; renderDocuments(); };
+  return el('div', { class: 'row pager' },
+    el('p', { class: 'meta' }, totalPages > 1
+      ? `${totalElements} belge · sayfa ${number + 1}/${totalPages} (sayfa başına ${PAGE_SIZE})` : `${totalElements} belge`),
+    totalPages > 1 ? el('span', {},
+      el('button', { class: 'ghost', type: 'button', disabled: number === 0, onclick: go(number - 1) }, 'Önceki'),
+      el('button', { class: 'ghost', type: 'button', disabled: number + 1 >= totalPages, onclick: go(number + 1) }, 'Sonraki'))
+      : null);
 }
 
 // ---------- questions ----------
@@ -114,15 +139,14 @@ function answerCard(question, result) {
   const sources = result.citations.length
     ? el('ol', { class: 'sources' }, result.citations.map((c) => el('li', {}, el('strong', {}, c.fileName), `, sayfa ${c.page}`)))
     : null;
-  const note = result.found ? null : el('p', { class: 'hint' }, result.citations.length === 0 && result.answer
-    ? 'Kaynak gösterilemedi: bu cevap belgelerinize dayanmıyor olabilir.' : 'Belgelerinizde bu sorunun cevabı bulunamadı.');
+  const note = result.outcome === 'UNCITED'
+    ? el('p', { class: 'hint' }, 'Kaynak gösterilemedi: bu cevap belgelerinize dayanmıyor olabilir.') : null;
   return el('article', { class: `card ${result.found ? '' : 'muted'}` },
     el('p', { class: 'question' }, question), body, note, sources,
     el('p', { class: 'meta' }, `${result.mode === 'local' ? 'Yerel' : 'Bulut'} model: ${result.model}`));
 }
 
 function renderAsk() {
-  clearInterval(poll);
   const history = el('section', { class: 'history', 'aria-live': 'polite' });
   const field = el('textarea', { rows: 3, maxlength: 1000, placeholder: 'Örnek: Yıllık izin kaç gün?', required: true });
   const button = el('button', { type: 'submit' }, 'Sor');
@@ -148,8 +172,9 @@ function renderAsk() {
 
 // ---------- system (operators) ----------
 async function renderSystem() {
-  clearInterval(poll);
+  const shown = view;
   const info = await guarded(() => api.info());
+  if (shown !== view) return;
   const left = Math.max(0, Math.round((expiresAt() - Date.now()) / 1000));
   const identity = currentIdentity();
   main.replaceChildren(el('h1', {}, 'Sistem'),
@@ -170,10 +195,26 @@ function route() {
   const wanted = location.hash.replace(/^#\//, '') || 'documents';
   const screen = canOpen(wanted, roles) ? wanted : screensFor(roles)[0];
   for (const link of nav.querySelectorAll('a')) link.classList.toggle('active', link.dataset.screen === screen);
+  view += 1;
+  clearInterval(poll);
   RENDER[screen]();
 }
 
+function showSignIn(problem) {
+  view += 1;
+  clearInterval(poll);
+  main.replaceChildren(el('section', { class: 'signin' }, el('h1', {}, 'Verso'),
+    el('p', { class: 'lead' }, 'Kendi belgelerinize kaynak gösteren sorular sorun. Belgeler bu sunucuda kalır.'),
+    problem ? el('p', { class: 'hint bad', role: 'alert' }, problem) : null,
+    el('button', { type: 'button', onclick: () => { sessionStorage.removeItem(AUTO_SIGN_IN); signIn(); } }, 'Giriş yap')));
+}
+
 async function start() {
+  // The client's redirect URI and web origin name localhost (verso-realm.json); 127.0.0.1 is the same host.
+  if (location.hostname === '127.0.0.1') {
+    location.replace(`${location.protocol}//localhost:${location.port}${location.pathname}${location.hash}`);
+    return;
+  }
   let signedIn = false;
   try {
     signedIn = await completeSignIn();
@@ -181,9 +222,7 @@ async function start() {
     signedIn = false;
   }
   if (!signedIn) {
-    main.replaceChildren(el('section', { class: 'signin' }, el('h1', {}, 'Verso'),
-      el('p', { class: 'lead' }, 'Kendi belgelerinize kaynak gösteren sorular sorun. Belgeler bu sunucuda kalır.'),
-      el('button', { type: 'button', onclick: () => signIn() }, 'Giriş yap')));
+    showSignIn();
     return;
   }
   const claims = currentClaims();

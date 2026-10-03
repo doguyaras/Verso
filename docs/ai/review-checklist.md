@@ -26,7 +26,7 @@
 node scripts/flyway-immutability.js check --base origin/<hedef>
 node scripts/config-lint.js <değişen *.yml / *.properties / *.env* dosyaları>   # secret key'de ${ENV:literal} fallback ve local dışı düz secret yok (0/1/3)
 bash scripts/gitleaks-check.sh all .                   # gitleaks 8.24.3: tüm geçmiş (git) + çalışma ağacı (dir), --redact (0/1/3)
-# panel/frontend yok (ADR-0007 #10)
+node --test scripts/panel.test.mjs                     # panel (ADR-0015): rol matrisi, PKCE, oturum akışı, güvenlik kuralları
 ```
 
 ## 3. Öz-kontrol (skill'lerden bağımsız)

@@ -29,16 +29,16 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 #### Senaryo: cevap bulundu
 `HTTP 200`, ham, `X-Rag-Mode: local`:
 ```json
-{ "answer": "Yıllık izin yirmi iş günüdür [1].", "found": true,
+{ "answer": "Yıllık izin yirmi iş günüdür [1].", "found": true, "outcome": "ANSWERED",
   "citations": [ { "number": 1, "documentId": "01a0fe8e-…", "fileName": "izin-yonetmeligi.pdf", "page": 3 } ],
   "mode": "local", "model": "gemma4:e2b" }
 ```
 
 #### Senaryo: belgelerde yok
-`HTTP 200`: `{"answer":"Belgelerde bu sorunun cevabı bulunamadı.","found":false,"citations":[],"mode":"local","model":"gemma4:e2b"}`
+`HTTP 200`: `{"answer":"Belgelerde bu sorunun cevabı bulunamadı.","found":false,"outcome":"NOT_FOUND","citations":[],"mode":"local","model":"gemma4:e2b"}`. Model pasajları okuyup aynı cümleyi yazdığında da `outcome` `NOT_FOUND` olur.
 
 #### Senaryo: model atıf yazmadı
-`HTTP 200`, `found: false`, `citations: []`, ama `answer` modelin metnidir (sabit "bulunamadı" cümlesi değil). "Kaynak gösterilemedi" uyarısıyla gösterilir.
+`HTTP 200`, `found: false`, `outcome: "UNCITED"`, `citations: []`, ama `answer` modelin metnidir (sabit "bulunamadı" cümlesi değil). "Kaynak gösterilemedi" uyarısıyla gösterilir.
 
 #### Senaryo: model kapalı
 `HTTP 503`, zarflı, `"code": 11001`, `Retry-After: 5`. Bu kadar bekleyip tekrar dene. Model art arda hata verirse sunucu 15 sn boyunca modeli hiç denemeden aynı yanıtı verir.
@@ -47,7 +47,8 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | Alan | Tip | Not |
 |---|---|---|
 | `answer` | string | Düz metin; `[n]` işaretleri `citations`'a göre bağlantıya çevrilir |
-| `found` | boolean | false ise "bulunamadı" görünümü |
+| `found` | boolean | Yalnız `ANSWERED`'da true |
+| `outcome` | `ANSWERED` \| `NOT_FOUND` \| `UNCITED` | Görünümü bu seçer: `NOT_FOUND` "bulunamadı", `UNCITED` "kaynak gösterilemedi" uyarısı. Faz 10'da eklendi (geriye uyumlu); bilinmeyen değer `found`'a göre gösterilir |
 | `citations[].number` | number | Metindeki `[n]` |
 | `citations[].documentId` | UUID | `GET /v1/documents/{id}` ile açılır |
 | `citations[].fileName`, `page` | string, number | "izin-yonetmeligi.pdf, s. 3" |

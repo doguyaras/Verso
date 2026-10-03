@@ -116,6 +116,10 @@ class KeycloakRealmTest {
     void panelClient_whenImported_isAnExactPkceBrowserClient() throws IOException {
         Map<String, Object> panel = client("verso-panel");
         assertThat(panel.get("publicClient")).isEqualTo(true);
+        assertThat(panel.get("implicitFlowEnabled")).isEqualTo(false);
+        assertThat(panel.get("directAccessGrantsEnabled")).isEqualTo(false);
+        assertThat(panel.get("consentRequired")).isEqualTo(false);
+        assertThat(map(panel.get("attributes")).get("pkce.code.challenge.method")).isEqualTo("S256");
         assertThat(panel.get("redirectUris")).isEqualTo(List.of("http://localhost:8080/panel/"));
         assertThat(panel.get("webOrigins")).isEqualTo(List.of("http://localhost:8080"));
         assertThat(map(panel.get("attributes")).get("post.logout.redirect.uris")).isEqualTo("http://localhost:8080/panel/");
@@ -125,7 +129,9 @@ class KeycloakRealmTest {
         assertThat(mappers).anySatisfy(m -> {
             assertThat(m.get("protocolMapper")).isEqualTo("oidc-usermodel-realm-role-mapper");
             assertThat(map(m.get("config")).get("access.token.claim")).isEqualTo("true");
+            assertThat(map(m.get("config")).get("id.token.claim")).as("roles stay out of the ID token").isEqualTo("false");
         });
+        assertThat(list(map(realm().get("roles")).get("realm"))).anySatisfy(r -> assertThat(r.get("name")).isEqualTo("verso-operator"));
         assertThat(mappers).anySatisfy(m -> {
             assertThat(map(m.get("config")).get("claim.name")).isEqualTo("preferred_username");
             assertThat(map(m.get("config")).get("access.token.claim")).as("no name in the access token").isEqualTo("false");

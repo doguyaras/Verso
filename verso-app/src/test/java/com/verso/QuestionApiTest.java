@@ -108,7 +108,7 @@ class QuestionApiTest {
         assertThat(response.headers().firstValue("X-Rag-Mode")).hasValue("local");
         assertThat(response.headers().firstValue("Cache-Control")).as("phase 5 review T6").hasValue("no-store, private");
         assertThat(response.body())
-                .contains("\"found\":true", "\"mode\":\"local\"", "\"model\":\"test-chat\"")
+                .contains("\"found\":true", "\"outcome\":\"ANSWERED\"", "\"mode\":\"local\"", "\"model\":\"test-chat\"")
                 .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1}]")
                 .contains("yirmi iş günüdür [1].").doesNotContain("[7]");
         assertThat(TestChatModel.INSTANCE.calls()).isOne();
@@ -138,8 +138,21 @@ class QuestionApiTest {
         HttpResponse<String> response = ask("topic-mars How many moons does Mars have?");
 
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"found\":false", "\"citations\":[]", "Belgelerde bu sorunun cevabı bulunamadı.");
+        assertThat(response.body()).contains("\"found\":false", "\"outcome\":\"NOT_FOUND\"", "\"citations\":[]",
+                "Belgelerde bu sorunun cevabı bulunamadı.");
         assertThat(TestChatModel.INSTANCE.calls()).isZero();
+    }
+
+    /** Phase 10 review C1: the model's own not-found sentence and an uncited text are told apart by outcome. */
+    @Test
+    void ask_whenTheModelCitesNothing_tellsNotFoundFromUncited() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        TestChatModel.INSTANCE.answer("  Belgelerde bu sorunun cevabı bulunamadı  ");
+        assertThat(ask("topic-leave izin?").body()).contains("\"found\":false", "\"outcome\":\"NOT_FOUND\"", "\"citations\":[]");
+
+        TestChatModel.INSTANCE.answer("Bence yirmi gündür.");
+        assertThat(ask("topic-leave izin?").body()).contains("\"found\":false", "\"outcome\":\"UNCITED\"",
+                "Bence yirmi gündür.");
     }
 
     /** llm-rules 2.3 / ADR-0008: a failing model is a 503 with a fixed code; provider text never leaves. */
@@ -319,6 +332,10 @@ class QuestionApiTest {
         assertThat(info.statusCode()).isEqualTo(200);
         assertThat(info.body()).isEqualTo("{\"mode\":\"local\",\"chatModel\":\"test-chat\",\"embeddingModel\":\"test-embedding\"}");
         assertThat(info.headers().firstValue("Cache-Control")).hasValue("no-store, private");
+    }
+
+    @Test
+    void info_whenAnonymous_answers401() throws Exception {
         HttpResponse<String> anonymous = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
                 .GET().build(), HttpResponse.BodyHandlers.ofString());
         assertThat(anonymous.statusCode()).isEqualTo(401);

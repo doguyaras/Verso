@@ -1,11 +1,12 @@
 // Sign-in with the authorization code flow and PKCE (RFC 7636) against the realm's OIDC endpoints (ADR-0010). The
 // tokens live in this module's memory only: never in localStorage, sessionStorage or a cookie (reference 17). A
-// reload signs in again (silently while the IdP session lasts). Only the one-time PKCE verifier and the state cross
-// the redirect, in sessionStorage, and are removed as soon as the code is exchanged.
+// reload asks the user to sign in again (one click while the IdP session lasts). Only the one-time PKCE verifier and
+// the state cross the redirect, in sessionStorage, and are removed as soon as the redirect comes back.
 import { CONFIG } from './config.js';
 
 const PENDING = 'verso.panel.pkce';
 let session = null; // { accessToken, refreshToken, idToken, expiresAt, claims, identity }
+let refreshing = null; // the one refresh in flight: the realm revokes a refresh token on use (verso-realm.json)
 
 export function base64Url(bytes) {
   let binary = '';
@@ -31,7 +32,7 @@ export function claimsOf(jwt) {
 
 const endpoint = (name) => `${CONFIG.issuer}/protocol/openid-connect/${name}`;
 
-export async function signIn({ silent = false } = {}) {
+export async function signIn() {
   const verifier = randomString(48);
   const state = randomString(16);
   sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state }));
@@ -39,15 +40,14 @@ export async function signIn({ silent = false } = {}) {
     client_id: CONFIG.clientId, response_type: 'code', scope: 'openid', redirect_uri: CONFIG.redirectUri, state,
     code_challenge: await challengeOf(verifier), code_challenge_method: 'S256',
   });
-  if (silent) params.set('prompt', 'none');
   location.assign(`${endpoint('auth')}?${params}`);
 }
 
 /** Completes a redirect from the IdP; returns true when a session was established. */
 export async function completeSignIn() {
   const query = new URLSearchParams(location.search);
-  const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null');
   if (!query.has('code') && !query.has('error')) return false;
+  const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null');
   sessionStorage.removeItem(PENDING);
   history.replaceState(null, '', CONFIG.redirectUri);
   if (query.has('error') || !pending || query.get('state') !== pending.state) return false;
@@ -63,23 +63,21 @@ async function tokenRequest(form) {
   const json = await res.json();
   session = { accessToken: json.access_token, refreshToken: json.refresh_token, idToken: json.id_token,
     expiresAt: Date.now() + json.expires_in * 1000, claims: claimsOf(json.access_token),
-    // Display data (the user name) comes from the ID token, which never leaves the browser; the access token sent to
-    // the API carries no name (deploy/keycloak/realm/verso-realm.json, client verso-panel).
+    // Display data (the user name) comes from the ID token, which goes only back to the IdP (as the logout hint);
+    // the access token sent to the API carries no name (deploy/keycloak/realm/verso-realm.json, client verso-panel).
     identity: json.id_token ? claimsOf(json.id_token) : (session?.identity ?? {}) };
 }
 
-/** A valid access token, refreshed 30 s before it expires; null when signed out. */
+/** A valid access token, refreshed 30 s before it expires; null when signed out. Concurrent callers share a refresh. */
 export async function accessToken() {
   if (!session) return null;
   if (Date.now() > session.expiresAt - 30_000) {
-    try {
-      await tokenRequest({ grant_type: 'refresh_token', refresh_token: session.refreshToken });
-    } catch {
-      session = null;
-      return null;
-    }
+    refreshing ??= tokenRequest({ grant_type: 'refresh_token', refresh_token: session.refreshToken })
+      .catch(() => { session = null; })
+      .finally(() => { refreshing = null; });
+    await refreshing;
   }
-  return session.accessToken;
+  return session?.accessToken ?? null;
 }
 
 export function currentClaims() {

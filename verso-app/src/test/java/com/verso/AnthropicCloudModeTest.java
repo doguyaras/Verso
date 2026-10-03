@@ -7,6 +7,8 @@ import com.verso.support.TestEmbeddingModel;
 import com.verso.support.TestIdp;
 import com.verso.support.VersoPostgres;
 import com.verso.support.VersoTestEnvironment;
+import java.net.URI;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -117,6 +119,16 @@ class AnthropicCloudModeTest extends CloudModeTestSupport {
         assertThat(info.body()).contains("\"mode\":\"cloud\"", "\"chatModel\":\"claude-test\"",
                 "\"embeddingModel\":\"test-embedding\"");
         assertThat(info.headers().firstValue("X-Rag-Mode")).hasValue("cloud");
+    }
+
+    /** Phase 10 review: the panel's system screen reads the cloud mode from /v1/info. */
+    @Test
+    void info_whenCloud_namesTheProviderModelForThePanel() throws Exception {
+        HttpResponse<String> info = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
+                .header("Authorization", TestIdp.bearer(account)).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(info.statusCode()).isEqualTo(200);
+        assertThat(info.body()).isEqualTo(
+                "{\"mode\":\"cloud\",\"chatModel\":\"claude-test\",\"embeddingModel\":\"test-embedding\"}");
     }
 
     private static String message(String text) {

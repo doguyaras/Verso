@@ -315,8 +315,8 @@ class ComposeConfigTest {
         // ADR-0015: the panel, read-only, with a CSP that allows no inline script and no other origin but the IdP.
         assertThat(String.valueOf(service("edge").get("volumes"))).contains("./panel:/usr/share/verso-panel:ro");
         assertThat(nginx).contains("location /panel/ {", "alias /usr/share/verso-panel/;",
-                "add_header Content-Security-Policy \"default-src 'none'; script-src 'self'; style-src 'self'",
-                "frame-ancestors 'none'", "add_header X-Content-Type-Options nosniff always;");
+                "add_header Content-Security-Policy \"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http://localhost:8180; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types 'none'\" always;",
+                "add_header X-Content-Type-Options nosniff always;", "absolute_redirect off;");
         assertThat(read("deploy/edge/mode-cloud.conf")).contains("default cloud;");
     }
 

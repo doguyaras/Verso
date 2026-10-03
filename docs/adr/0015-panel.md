@@ -45,13 +45,18 @@ Plate app panelinin ekranları ve yığını sorulamadı: kullanıcı faz aralar
   - Authorization code + PKCE (S256).
   - Tek ve tam bir redirect URI, tek web origin.
   - Password grant, implicit flow ve device flow kapalı.
-- Access token'a yalnız audience ve realm rolleri girer. Kullanıcı adı yalnız ID token'dadır; ID token tarayıcıdan çıkmaz.
+- Access token'a yalnız audience ve realm rolleri girer. Kullanıcı adı yalnız ID token'dadır. ID token API'ye gitmez; yalnız çıkışta IdP'ye `id_token_hint` olarak döner. Bu yüzden çıkış URL'si (kullanıcı adıyla birlikte) tarayıcı geçmişine düşer; demo için kabul edildi.
 - Token'lar yalnız modül belleğindedir (localStorage, sessionStorage ya da çerez yok). Redirect boyunca yalnız tek seferlik PKCE verifier ve state `sessionStorage`'da durur ve kod değiş tokuşunda silinir.
-- Sayfa yenilenince yeniden giriş gerekir (IdP oturumu sürüyorsa tek tık). Süre dolmadan refresh token ile yenilenir.
+- Sayfa yenilenince yeniden giriş gerekir (IdP oturumu sürüyorsa tek tık). Süre dolmadan refresh token ile yenilenir; aynı anda gelen çağrılar tek yenilemeyi paylaşır, çünkü realm refresh token'ı kullanımda iptal eder.
+- API bir token'ı 401 ile reddederse panel bir kez kendiliğinden yeniden girişe yönlendirir; ikinci 401'de durur ve mesaj gösterir (yanlış issuer ya da saat kayması sonsuz yönlendirme döngüsü yapmaz).
+- `127.0.0.1` ile açılan panel `localhost`'a yönlenir: istemcinin redirect URI'si ve web origin'i `localhost` adını taşır. Panel varsayılan portlarla çalışır; port değişirse `config.js`, realm istemcisi ve CSP birlikte değişir.
 
 **Güvenlik:**
 
-- Model çıktısı, dosya adı ve hata metni sayfaya yalnız metin düğümü olarak girer; `innerHTML` yoktur. Bunu `scripts/panel.test.mjs` sabitler.
+- Model çıktısı, dosya adı ve hata metni sayfaya yalnız metin düğümü olarak girer; `innerHTML` yoktur. Bunu `scripts/panel.test.mjs` sabitler, tarayıcı da CSP'deki Trusted Types (`require-trusted-types-for 'script'; trusted-types 'none'`) ile zorlar.
+- Dosya adları onay penceresinde ve tabloda kontrol ve biçim karakterleri (bidi override gibi) ayıklanarak gösterilir.
+- Cevabın türü yanıttaki `outcome` alanından okunur (`ANSWERED`, `NOT_FOUND`, `UNCITED`); "kaynak gösterilemedi" uyarısı yalnız `UNCITED`'da çıkar.
+- Belge listesi sayfalıdır (sayfa başına 100, API'nin üst sınırı); kota 200 olduğu için her belge panelden görülebilir ve silinebilir.
 - Konsola log yazılmaz.
 - CSP: `default-src 'none'`. Script ve stil yalnız `'self'`. Bağlantı yalnız `'self'` ve IdP. Inline script yok, frame yok. Ek başlıklar: `nosniff`, `no-referrer`.
 

@@ -654,6 +654,10 @@ backup $NGX; sub $NGX 's/\n\s*add_header Content-Security-Policy "[^"]*" always;
   && expect_red "M205 the panel is served without a CSP" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
 backup $REALM; sub $REALM 's/("clientId": "verso-cli",(?:(?!"clientId")[\s\S])*?"standardFlowEnabled": )false/$1true/' \
   && expect_red "M206 the device-flow client also accepts the browser code flow" verso-app KeycloakRealmTest clients_whenDeclared_useOnlyDeviceFlowClientCredentialsOrThePanelsCodeFlow; restore $REALM
+backup $QSVC; sub $QSVC 's/: PromptBuilder\.saysNotFound\(extracted\.answer\(\)\) \? AnswerOutcome\.NOT_FOUND : AnswerOutcome\.UNCITED/: AnswerOutcome.UNCITED/' \
+  && expect_red "M207 the model's own not-found sentence is reported as an uncited answer" verso-app $QAT ask_whenTheModelCitesNothing_tellsNotFoundFromUncited; restore $QSVC
+backup $NGX; sub $NGX 's/; require-trusted-types-for \x27script\x27; trusted-types \x27none\x27//' \
+  && expect_red "M208 the panel's CSP leaves HTML sinks to the tests alone (no Trusted Types)" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
@@ -702,6 +706,12 @@ backup $PANEL/render.js; sub $PANEL/render.js 's/(const node = document\.createE
   && node_red "M203 the panel writes HTML" scripts/panel.test.mjs "safety: the panel never writes HTML"; restore $PANEL/render.js
 backup $PANEL/roles.js; sub $PANEL/roles.js 's/system: \{ title: .Sistem., roles: \[ROLES\.OPERATOR\] \}/system: { title: "Sistem", roles: [ROLES.USER, ROLES.OPERATOR] }/' \
   && node_red "M204 every user sees the system screen" scripts/panel.test.mjs "roles: a user without Verso roles"; restore $PANEL/roles.js
+backup $PANEL/auth.js; sub $PANEL/auth.js 's/refreshing \?\?= tokenRequest\(/refreshing = tokenRequest(/' \
+  && node_red "M209 concurrent callers each refresh (the second gets a revoked refresh token)" scripts/panel.test.mjs "refresh: concurrent callers"; restore $PANEL/auth.js
+backup $PANEL/auth.js; sub $PANEL/auth.js 's/ \|\| query\.get\(.state.\) !== pending\.state//' \
+  && node_red "M210 the sign-in redirect is accepted with any state (login CSRF)" scripts/panel.test.mjs "sign-in: a wrong state"; restore $PANEL/auth.js
+backup $PANEL/render.js; sub $PANEL/render.js 's/return String\(name\)\.replace\(/return String(name); void String(name).replace(/' \
+  && node_red "M211 file names keep bidi overrides in the delete prompt" scripts/panel.test.mjs "text: file names lose control"; restore $PANEL/render.js
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

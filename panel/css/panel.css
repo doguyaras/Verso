@@ -91,6 +91,8 @@ h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; }
 .lead { color: var(--muted); margin: 0 0 1.5rem; max-width: 70ch; }
 .meta, .hint { color: var(--muted); font-size: .85rem; }
 .hint { margin: .3rem 0 0; display: block; }
+.hint.bad { color: var(--bad); margin-bottom: 1rem; }
+.pager button + button { margin-left: .5rem; }
 .empty { color: var(--muted); padding: 2rem 0; }
 
 .drop {

@@ -4,6 +4,7 @@ import com.verso.document.api.DocumentRetrieval;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.platform.core.exception.ServiceException;
 import com.verso.platform.security.web.AccountId;
+import com.verso.qa.api.dto.AnswerOutcome;
 import com.verso.qa.api.dto.AnswerResponse;
 import com.verso.qa.config.AiMode;
 import com.verso.qa.config.QaProperties;
@@ -105,7 +106,8 @@ public class QuestionServiceImpl implements QuestionService {
             log.info("Question answered: passages={} relevant=0 retrievalMs={} chatMs=0 totalMs={} outcome=not_found",
                     passages.size(), retrievalMs, elapsedMs(started));
             metrics.record(Outcome.NOT_FOUND);
-            return new AnswerResponse(PromptBuilder.NOT_FOUND, false, List.of(), ai.mode().header(), ai.chatModel());
+            return new AnswerResponse(PromptBuilder.NOT_FOUND, false, AnswerOutcome.NOT_FOUND, List.of(), ai.mode().header(),
+                    ai.chatModel());
         }
         BuiltPrompt prompt = promptBuilder.build(question, relevant);
         long chatStarted = System.nanoTime();
@@ -113,13 +115,15 @@ public class QuestionServiceImpl implements QuestionService {
         long chatMs = elapsedMs(chatStarted);
         metrics.chatTook(chatMs);
         Extracted extracted = citations.extract(raw, relevant);
-        boolean found = !extracted.citations().isEmpty();
+        AnswerOutcome outcome = !extracted.citations().isEmpty() ? AnswerOutcome.ANSWERED
+                : PromptBuilder.saysNotFound(extracted.answer()) ? AnswerOutcome.NOT_FOUND : AnswerOutcome.UNCITED;
         log.info("Question answered: passages={} relevant={} citations={} promptChars={} answerChars={} retrievalMs={} "
                         + "chatMs={} totalMs={} outcome={}", passages.size(), relevant.size(), extracted.citations().size(),
                 prompt.system().length() + prompt.user().length(), extracted.answer().length(), retrievalMs, chatMs,
-                elapsedMs(started), found ? "answered" : "uncited");
-        metrics.record(found ? Outcome.ANSWERED : Outcome.UNCITED);
-        return new AnswerResponse(extracted.answer(), found, extracted.citations(), ai.mode().header(), ai.chatModel());
+                elapsedMs(started), outcome.name().toLowerCase(java.util.Locale.ROOT));
+        metrics.record(Outcome.valueOf(outcome.name()));
+        return new AnswerResponse(extracted.answer(), outcome == AnswerOutcome.ANSWERED, outcome, extracted.citations(),
+                ai.mode().header(), ai.chatModel());
     }
 
     private String chat(BuiltPrompt prompt) {

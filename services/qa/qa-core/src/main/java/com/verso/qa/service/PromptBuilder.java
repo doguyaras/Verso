@@ -33,6 +33,16 @@ public class PromptBuilder {
             5. Kısa, açık ve doğrudan cevap ver.
             """.formatted(NOT_FOUND);
 
+    /** True when an uncited model answer is the not-found sentence of rule 4 (spacing and the final dot aside). */
+    public static boolean saysNotFound(String answer) {
+        return withoutFinalDot(answer).equals(withoutFinalDot(NOT_FOUND));
+    }
+
+    private static String withoutFinalDot(String text) {
+        String stripped = text.strip();
+        return stripped.endsWith(".") ? stripped.substring(0, stripped.length() - 1).strip() : stripped;
+    }
+
     /** The two messages sent to the chat model. */
     public record BuiltPrompt(String system, String user) {
     }
