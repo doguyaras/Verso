@@ -79,4 +79,9 @@ Not: `parser-memory` (PDFBox akış önbelleği) `byte[]`'tan yüklenen belgede 
 
 ## 6. CI
 
-CI_RESULTS
+PR [doguyaras/Verso#6](https://github.com/doguyaras/Verso/pull/6), commit `bcb48bd`:
+
+| Workflow | Koşu | Sonuç |
+|---|---|---|
+| `ci` (backend: `mvn verify`, `MIN_TESTS` 270; scripts-and-hooks: 8 node suite) | 37102150037 | **success** |
+| `restore-drill` (temiz Linux: yığın + Ollama/bge-m3 indirme → `auth-smoke` → `ingest-smoke` → yedek/restore öz-testi → prova) | 37102150084 | **success** |
