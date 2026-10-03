@@ -394,7 +394,7 @@ backup $VY; sub $VY 's/\n\s*type-header: at\+jwt//' \
   && expect_red "M96 application config does not require at+jwt" verso-app $SMK api_whenTokenIsNotAnAccessTokenForVerso_isRefused; restore $VY
 backup $H; sub $H 's/\n\s*if \(ErrorClassifier\.isSecurityException\(ex\)\) throw ex;//' \
   && expect_red "M97 access denied becomes a 500" $PSM $PST request_whenControllerDeniesAccess_isRejectedWith403EnvelopeNot500; restore $H
-backup $PSA; sub $PSA 's/if \(ACTUATOR_PRESENT\) requests/if (false) requests/' \
+backup $PSA; sub $PSA 's/if \(ACTUATOR_PRESENT\) \{/if (false) {/' \
   && expect_red "M98 health probes need a token" verso-app $SMK probesAndApi_whenCalledWithoutToken_probesAnswerAndApiRefuses; restore $PSA
 backup $PSA; sub $PSA 's/EnvelopeRequestRejectedHandler envelopeRequestRejectedHandler\(/org.springframework.security.web.firewall.RequestRejectedHandler envelopeRequestRejectedHandler(/' \
   && sub $PSA 's/return new EnvelopeRequestRejectedHandler\(resolver\);/return new org.springframework.security.web.firewall.DefaultRequestRejectedHandler();/' \
@@ -566,7 +566,7 @@ backup $RSVC; sub $RSVC 's/if \(!embeddingSlots\.tryAcquire\(\)\) \{/if (false) 
   && expect_red "M168 unbounded question embeddings" verso-app $RTT search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel; restore $RSVC
 backup $QSVC; sub $QSVC 's/\.filter\(p -> p\.similarity\(\) >= properties\.minSimilarity\(\)\)/.filter(p -> true)/' \
   && expect_red "M169 the model is asked below the threshold" verso-app $QAT ask_whenNothingIsRelevant_answersNotFoundWithoutCallingTheModel; restore $QSVC
-backup $QSVC; sub $QSVC 's/\n\s*if \(circuit\.isOpen\(\)\) throw new QaServiceException\(QaErrorCode\.MODEL_UNAVAILABLE, "CIRCUIT_OPEN"\);//' \
+backup $QSVC; sub $QSVC 's/if \(circuit\.isOpen\(\)\) \{/if (false) {/' \
   && expect_red "M170 no circuit breaker on the chat model" verso-app $QAT ask_whenTheChatModelKeepsFailing_opensTheCircuitAndRecovers; restore $QSVC
 backup $QS/service/ModelCircuitBreaker.java; sub $QS/service/ModelCircuitBreaker.java 's/consecutiveFailures >= properties\.circuitFailures\(\)/consecutiveFailures > properties.circuitFailures()/' \
   && expect_red "M171 the circuit opens one failure late" $QCM ModelCircuitBreakerTest opensAfterConsecutiveFailures_andOnlyForThePause; restore $QS/service/ModelCircuitBreaker.java
