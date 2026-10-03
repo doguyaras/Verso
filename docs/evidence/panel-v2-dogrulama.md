@@ -47,4 +47,4 @@
 
 ## 5. CI
 
-CI_RESULT
+PR #17 (`7262285`): `ci` **success** (run 37140240584; panel ve betik testleri dahil), `restore-drill` **success** (run 37140240597; temiz Linux'ta yeni secret ile Keycloak açılışı dahil). Birleştirme: `00cb41f`.
