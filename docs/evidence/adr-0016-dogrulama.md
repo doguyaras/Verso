@@ -91,4 +91,4 @@ Kabul edilen açıklar:
 
 ## 6. CI
 
-CI_RESULT
+PR #15 (`8e466f9`): `ci` **success** (run 37137070435), `restore-drill` **success** (run 37137070374; gerçek modellerle smoke'lar ve local mod kanıtı dahil). Birleştirme: `7d347b0`.
