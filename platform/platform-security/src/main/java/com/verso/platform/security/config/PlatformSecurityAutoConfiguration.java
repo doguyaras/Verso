@@ -93,9 +93,10 @@ public class PlatformSecurityAutoConfiguration {
         http.authorizeHttpRequests(requests -> {
                     // The container's error dispatch renders the envelope of a request that already failed.
                     requests.requestMatchers("/error").permitAll();
-                    // Health probes (compose healthcheck, orchestrators) carry no token; only the health endpoint,
-                    // only through the actuator's own matcher, which knows the separate management port.
-                    if (ACTUATOR_PRESENT) requests.requestMatchers(EndpointRequest.to("health")).permitAll();
+                    // Health probes (compose healthcheck, orchestrators) and the Prometheus scrape carry no token; only
+                    // these two endpoints, only through the actuator's own matcher, which knows the separate management
+                    // port. That port is never published (ADR-0004); metrics carry no account, id or content (ADR-0014).
+                    if (ACTUATOR_PRESENT) requests.requestMatchers(EndpointRequest.to("health", "prometheus")).permitAll();
                     requests.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resource -> resource

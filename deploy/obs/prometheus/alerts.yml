@@ -1,0 +1,59 @@
+# The five basic alerts (reference 8.7; ADR-0014). Each names its runbook under docs/runbooks/. Severity "page" is
+# user-facing (wake someone), "ticket" is next working day. Thresholds are starting values; phase 8 measures them.
+groups:
+  - name: verso
+    rules:
+      - alert: VersoDown
+        expr: up{job="verso"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: The Verso API does not answer the metrics scrape.
+          runbook: docs/runbooks/verso-down.md
+
+      # Server errors among API requests (the management port excluded), only with real traffic.
+      - alert: VersoHighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{job="verso", status=~"5..", uri!~"/actuator.*"}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{job="verso", uri!~"/actuator.*"}[5m]))
+          ) > 0.05
+          and sum(rate(http_server_requests_seconds_count{job="verso", uri!~"/actuator.*"}[5m])) > 0.02
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: More than 5% of API requests fail with 5xx.
+          runbook: docs/runbooks/high-error-rate.md
+
+      # A due document has waited longer than the worker lease (10 min): the worker is stuck, paused or too slow.
+      - alert: IngestionBacklog
+        expr: verso_ingestion_oldest_due_wait_seconds > 600
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Uploaded documents wait for processing longer than 10 minutes.
+          runbook: docs/runbooks/ingestion-backlog.md
+
+      # The embedding model paused ingestion, or the chat model circuit is open, most of the last 10 minutes.
+      - alert: ModelUnavailable
+        expr: avg_over_time(verso_ingestion_paused[10m]) > 0.5 or avg_over_time(verso_qa_circuit_open[10m]) > 0.5
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: A model (embedding or chat) has been unavailable for 10 minutes or more.
+          runbook: docs/runbooks/model-unavailable.md
+
+      # p95 of one chat call above the local CPU budget (ADR-0008: 60 s).
+      - alert: QaSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(verso_qa_chat_duration_seconds_bucket{job="verso"}[15m]))) > 60
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: The 95th percentile of chat model calls is above 60 seconds.
+          runbook: docs/runbooks/qa-slow.md

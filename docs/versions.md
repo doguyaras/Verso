@@ -10,6 +10,8 @@
 | Spring AI | 2.0.1 (`spring-ai-bom`; `spring-ai-model`, `spring-ai-starter-model-ollama`, `-anthropic`, `-openai`) | – | spring.io/blog 2026-06-12 (2.0.0 GA); Maven Central 2026-10-02 | 2.x Boot 4.0/4.1 ister; 2.1.0-M1 milestone, kullanılmaz |
 | Anthropic Java SDK / OpenAI Java SDK | 2.52.0 / 4.49.0 (Spring AI 2.0.1 starter'larının altında; OkHttp 4.12.0, Kotlin stdlib 2.3.21, Jackson 2.21.5 ile) | – | Maven Central 2026-10-03 (Spring AI 2.0.1 bağımlılığı) | yalnız cloud modda kullanılır; kullanıcı onayı bekliyor (ADR-0013) |
 | nginx (kenar proxy) | 1.29.8 (`nginxinc/nginx-unprivileged:1.29.8-alpine@sha256:0c79d56a…7fbe6`) | – | Docker Hub 2026-10-03 | root'suz, salt okunur; kullanıcı onayı bekliyor (ADR-0013) |
+| Gözlem yığını (`obs` profili) | Prometheus 3.15.0, Alertmanager 0.34.1, Loki 3.7.8, Alloy 1.20.1, Grafana 13.2.3 (hepsi `@sha256` pinli, compose.yaml) | – | Docker Hub 2026-10-03 | Promtail EOL 2026-03-02, yerine Alloy (referans 25); kullanıcı onayı bekliyor (ADR-0014) |
+| Micrometer Prometheus registry | Boot 4.1.1 BOM | – | Boot 4.1.1 BOM | `/actuator/prometheus` (ADR-0014) |
 | Apache PDFBox | 3.0.8 (`pdfbox`, `pdfbox-io`, `fontbox`) | – | Maven Central 2026-10-02 | Apache 2.0; kullanıcı onayı 2026-10-02 (ADR-0011) |
 | Ollama | 0.35.1 (`ollama/ollama:0.35.1@sha256:292ee794…278c`) | – | Docker Hub 2026-10-02 | ~3,8 GB; CPU (ADR-0011) |
 | ArchUnit | 1.5.1 | – | Maven Central 2026-10-02 | düz `@Test` ile (Ek B ders 2) |

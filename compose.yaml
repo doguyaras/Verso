@@ -300,6 +300,133 @@ services:
       verso-app:
         condition: service_healthy
 
+  # ----- observability (profile "obs", ADR-0014): docker compose --profile obs up -d --wait -----
+  # Metrics: Prometheus scrapes the management port, Alertmanager routes the five basic alerts. Logs: Alloy reads the
+  # project's container logs (JSON) into Loki. Grafana shows both on 127.0.0.1:VERSO_GRAFANA_PORT. All of it on the
+  # internal "obs" network (Prometheus also on "backend" to reach the application); only Grafana is published.
+  prometheus:
+    <<: *hardening
+    profiles: ["obs"]
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    restart: always
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    mem_limit: 512m
+    pids_limit: 128
+    networks: [backend, obs]
+    volumes:
+      - ./deploy/obs/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  alertmanager:
+    <<: *hardening
+    profiles: ["obs"]
+    image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
+    restart: always
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    mem_limit: 64m
+    pids_limit: 64
+    networks: [obs]
+    volumes:
+      - ./deploy/obs/alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  loki:
+    <<: *hardening
+    profiles: ["obs"]
+    image: grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
+    restart: always
+    command: ["-config.file=/etc/loki/loki.yml"]
+    mem_limit: 512m
+    pids_limit: 128
+    networks: [obs]
+    volumes:
+      - ./deploy/obs/loki:/etc/loki:ro
+      - loki-data:/loki
+    tmpfs:
+      - /tmp:size=64m
+
+  # Reads container logs through the Docker socket (read-only mount; the socket still grants control of the Docker
+  # daemon, so Alloy has no published port, no capabilities and no route out). ADR-0014.
+  alloy:
+    <<: *hardening
+    profiles: ["obs"]
+    image: grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
+    restart: always
+    command:
+      - run
+      - --server.http.listen-addr=127.0.0.1:12345
+      # A root-owned path: the image's /var/lib/alloy belongs to its alloy user, which cannot read the Docker socket.
+      - --storage.path=/alloy-data
+      - --disable-reporting
+      - /etc/alloy/config.alloy
+    mem_limit: 256m
+    pids_limit: 128
+    networks: [obs]
+    volumes:
+      - ./deploy/obs/alloy:/etc/alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/alloy-data
+    tmpfs:
+      - /tmp:size=32m
+    depends_on:
+      loki:
+        condition: service_started
+
+  grafana:
+    <<: *hardening
+    profiles: ["obs"]
+    image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
+    restart: always
+    mem_limit: 256m
+    pids_limit: 256
+    # default: the published port only; Grafana itself is kept from calling home (settings below).
+    networks: [obs, default]
+    ports:
+      - "127.0.0.1:${VERSO_GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/SECRET_GRAFANA_ADMIN_PASSWORD
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+    secrets:
+      - SECRET_GRAFANA_ADMIN_PASSWORD
+    volumes:
+      - ./deploy/obs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/obs/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    tmpfs:
+      - /tmp:size=32m
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
   # ----- restore drill (profile "drill", scripts/restore-drill.sh) -----
   # A throwaway PostgreSQL with roles only; the dump brings schemas, extensions, grants and data.
   restore-db:
@@ -391,6 +518,8 @@ secrets:
     file: ./secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET
   SECRET_KEYCLOAK_DEMO_USER_PASSWORD:
     file: ./secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD
+  SECRET_GRAFANA_ADMIN_PASSWORD:
+    file: ./secrets/SECRET_GRAFANA_ADMIN_PASSWORD
 
 networks:
   # Application ↔ ollama only; internal: no gateway to the outside (llm-rules 1.1, 8.2; ADR-0011).
@@ -400,8 +529,16 @@ networks:
   # carries only the published ports and the one-shot model download.
   backend:
     internal: true
+  # Observability (profile "obs", ADR-0014); internal as well.
+  obs:
+    internal: true
 
 volumes:
+  prometheus-data:
+  alertmanager-data:
+  loki-data:
+  alloy-data:
+  grafana-data:
   pgdata:
   ollama-models:
   backups:

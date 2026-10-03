@@ -50,7 +50,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus: scraped by the "obs" compose profile over the internal network, without a token (ADR-0014).
+        include: health,info,prometheus
   endpoint:
     health:
       probes:

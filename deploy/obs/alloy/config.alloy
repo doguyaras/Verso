@@ -1,0 +1,45 @@
+// Grafana Alloy (ADR-0014, reference 8.7): the JSON stdout of the compose project's containers → Loki. Labels: the
+// compose service and the log level only; the trace id goes to structured metadata, never a label (reference 8.4).
+
+discovery.docker "verso" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=verso"]
+  }
+}
+
+discovery.relabel "verso" {
+  targets = []
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "verso" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.verso.targets
+  relabel_rules = discovery.relabel.verso.rules
+  forward_to    = [loki.process.verso.receiver]
+}
+
+loki.process "verso" {
+  // ECS JSON of the Java services (config/verso.yml); other services' lines pass through without these fields.
+  stage.json {
+    expressions = { level = "log.level", trace_id = "trace.id" }
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  stage.structured_metadata {
+    values = { trace_id = "" }
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

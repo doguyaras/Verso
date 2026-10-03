@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 /** Phase 4 test review T13: the retry delay doubles from 30 s and is capped at 10 min (ADR-0011). */
 class IngestionBackoffTest {
 
-    private final IngestionWorker worker = new IngestionWorker(null, null, null, null, TestPdfs.properties(), null);
+    private final IngestionWorker worker = new IngestionWorker(null, null, null, null, TestPdfs.properties(), null, null);
 
     @Test
     void backoff_whenAttemptsGrow_doublesAndCaps() {

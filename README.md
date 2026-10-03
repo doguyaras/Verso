@@ -108,6 +108,16 @@ bash scripts/ingest-smoke.sh
 bash scripts/qa-smoke.sh
 ```
 
+**Gözlem** (isteğe bağlı; ADR-0014). Prometheus, Alertmanager, Loki, Alloy ve Grafana `obs` profiliyle açılır (yaklaşık 1,6 GB ek bellek). Grafana `http://127.0.0.1:3000` adresindedir; kullanıcı `admin`, parola `secrets/SECRET_GRAFANA_ADMIN_PASSWORD` dosyasındadır. Alarmlar ve runbook'ları: [`docs/runbooks/`](docs/runbooks/README.md).
+
+```bash
+docker compose --profile obs up -d --wait
+```
+
+```bash
+bash scripts/obs-smoke.sh
+```
+
 **Local mod kanıtı** (ADR-0006, ADR-0013). Uygulama, veritabanı ve model sunucusu yalnız iç ağlardadır; API'ye kenar proxy (`edge`, nginx) üzerinden ulaşılır. Script, uygulamanın kendi ağından internete bağlanılamadığını ve isim çözülemediğini, her yanıtın `X-Rag-Mode: local` taşıdığını gösterir (CI'da da çalışır):
 
 ```bash

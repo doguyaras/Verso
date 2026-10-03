@@ -103,8 +103,9 @@ class ComposeConfigTest {
             Object ports = ((Map<?, ?>) definition).get("ports");
             if (ports instanceof List<?> list) list.forEach(p -> published.add(name + " " + p));
         });
-        // The API and the demo IdP (device-flow login, CI token); both only on the loopback interface.
-        assertThat(published).hasSize(2);
+        // The API, the demo IdP (device-flow login, CI token) and Grafana (profile "obs"); only on the loopback interface.
+        assertThat(published).hasSize(3);
+        assertThat(published).anyMatch(p -> p.startsWith("grafana 127.0.0.1:") && p.endsWith(":3000"));
         assertThat(published).anyMatch(p -> p.startsWith("edge 127.0.0.1:") && p.endsWith(":8080"));
         assertThat(published).anyMatch(p -> p.startsWith("keycloak 127.0.0.1:") && p.endsWith(":8080"));
     }
@@ -113,7 +114,7 @@ class ComposeConfigTest {
     @Test
     void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
         for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway", "ollama",
-                "ollama-pull", "edge")) {
+                "ollama-pull", "edge", "prometheus", "alertmanager", "loki", "alloy", "grafana")) {
             Map<String, Object> s = service(name);
             assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
@@ -222,6 +223,50 @@ class ComposeConfigTest {
         assertThat((Map<String, Object>) ((Map<String, Object>) cloud.get("networks")).get("egress")).doesNotContainKey("internal");
         services().forEach((name, definition) -> assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets")))
                 .as(name).doesNotContain("SECRET_CLOUD_API_KEY"));
+    }
+
+    /**
+     * ADR-0014: the observability stack is opt-in (profile "obs"), on the internal "obs" network; Prometheus also on
+     * "backend" (it scrapes the application), Grafana also on "default" (its published port). Alloy reads the Docker
+     * socket read-only and has no published port. Grafana does not call home.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void observability_whenComposed_isOptInInternalAndQuiet() throws IOException {
+        Map<String, Object> networks = (Map<String, Object>) new Yaml().<Map<String, Object>>load(read("compose.yaml"))
+                .get("networks");
+        assertThat((Map<String, Object>) networks.get("obs")).containsEntry("internal", true);
+        for (String name : List.of("prometheus", "alertmanager", "loki", "alloy", "grafana")) {
+            assertThat(service(name).get("profiles")).as(name).isEqualTo(List.of("obs"));
+        }
+        assertThat(service("prometheus").get("networks")).isEqualTo(List.of("backend", "obs"));
+        for (String name : List.of("alertmanager", "loki", "alloy")) {
+            assertThat(service(name).get("networks")).as(name).isEqualTo(List.of("obs"));
+        }
+        assertThat(service("grafana").get("networks")).isEqualTo(List.of("obs", "default"));
+        assertThat((List<String>) service("alloy").get("volumes")).contains("/var/run/docker.sock:/var/run/docker.sock:ro");
+        assertThat(environment("grafana")).containsEntry("GF_ANALYTICS_REPORTING_ENABLED", "false")
+                .containsEntry("GF_ANALYTICS_CHECK_FOR_UPDATES", "false").containsEntry("GF_PLUGINS_PREINSTALL_DISABLED", "true")
+                .containsEntry("GF_AUTH_ANONYMOUS_ENABLED", "false");
+        assertThat(secrets("grafana")).containsExactly("SECRET_GRAFANA_ADMIN_PASSWORD");
+        assertThat(read("deploy/obs/prometheus/prometheus.yml")).contains("verso-app:8081", "/actuator/prometheus");
+    }
+
+    /** Reference 8.7: every alert has a severity that routes (page | ticket) and a runbook that exists. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void alerts_whenDefined_haveASeverityAndAnExistingRunbook() throws IOException {
+        Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
+        List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
+                .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
+        assertThat(alerts).hasSize(5);
+        for (Map<String, Object> alert : alerts) {
+            String name = String.valueOf(alert.get("alert"));
+            assertThat(((Map<String, Object>) alert.get("labels")).get("severity")).as(name).isIn("page", "ticket");
+            String runbook = String.valueOf(((Map<String, Object>) alert.get("annotations")).get("runbook"));
+            assertThat(ROOT.resolve(runbook)).as(name).exists();
+            assertThat(read("docs/runbooks/README.md")).as(name).contains("`" + name + "`");
+        }
     }
 
     @SuppressWarnings("unchecked")

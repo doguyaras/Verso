@@ -1,0 +1,23 @@
+# Prometheus (ADR-0014, reference 8.7): scrapes the application's management port over the internal network and
+# evaluates the alert rules; Alertmanager routes them. Retention: 15 days (command line in compose.yaml).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # /actuator/prometheus answers without a token on the management port only; that port is never published.
+  - job_name: verso
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["verso-app:8081"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

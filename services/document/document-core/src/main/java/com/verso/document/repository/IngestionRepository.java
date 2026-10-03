@@ -30,6 +30,10 @@ public class IngestionRepository {
     public record StoredChunk(int pageNumber, int chunkIndex, String content, float[] embedding) {
     }
 
+    /** The ingestion queue across all accounts (no account in it): for metrics and alerts (ADR-0014). */
+    public record QueueStats(long pending, long processing, double oldestDueWaitSeconds) {
+    }
+
     private static final int INSERT_BATCH = 100;
 
     private final JdbcClient jdbc;
@@ -38,6 +42,21 @@ public class IngestionRepository {
     public IngestionRepository(JdbcClient jdbc, JdbcTemplate template) {
         this.jdbc = jdbc;
         this.template = template;
+    }
+
+    /**
+     * Queue size and how long the oldest due document has been waiting: a growing wait means the worker does not keep
+     * up or is paused (alert IngestionBacklog). One read over the queued rows; no account, no id leaves.
+     */
+    public QueueStats queueStats() {
+        return jdbc.sql("""
+                        SELECT count(*) FILTER (WHERE status = 'PENDING') AS pending,
+                               count(*) FILTER (WHERE status = 'PROCESSING') AS processing,
+                               COALESCE(EXTRACT(EPOCH FROM now() - min(next_attempt_at)
+                                   FILTER (WHERE status = 'PENDING' AND next_attempt_at <= now())), 0) AS oldest
+                        FROM document.document WHERE status IN ('PENDING', 'PROCESSING')""")
+                .query((rs, n) -> new QueueStats(rs.getLong("pending"), rs.getLong("processing"), rs.getDouble("oldest")))
+                .single();
     }
 
     /**
