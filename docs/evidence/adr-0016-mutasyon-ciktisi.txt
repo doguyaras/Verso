@@ -1,0 +1,28 @@
+baseline      green (395 tests)
+baseline      green (node suites: 9)
+caught        M135 any file is accepted as a PDF (DocumentApiTest.upload_whenFileIsNotAPdfOrEmpty_isRejectedWithDocumentCodes)
+caught        M145 NUL and control characters reach the database (PdfTextExtractorTest.normalize_whenTextHasControlCharactersAndRuns_cleansThem)
+caught        M215 the DOCX parser expands DTD entities (billion laughs) (DocxTextExtractorTest.extract_whenTheXmlDeclaresExternalOrExpandingEntities_refusesWithoutReadingThem)
+caught        M216 a ZIP bomb part inflates without a budget (DocxTextExtractorTest.extract_whenAPartInflatesBeyondTheBudget_stopsAtTheBudget)
+caught        M217 a DOCX may have any number of parts (DocxTextExtractorTest.extract_whenTheStructureIsAmbiguousOrHuge_failsAsUnsupported)
+caught        M218 a second main part silently replaces the first (DocxTextExtractorTest.extract_whenTheStructureIsAmbiguousOrHuge_failsAsUnsupported)
+caught        M219 a binary file named .txt is accepted (DocumentFormatsTest.detect_whenTextIsNamedTxtOrMd_isTextUnlessItHasNulBytes)
+SETUP FAILED  services/document/document-core/src/main/java/com/verso/document/service/DocumentFormats.java: s/return startsWith\(content, ZIP_MAGIC\) \? Optional\.of\(DocumentFormat\.DOCX\) : Optional\.empty\(\);/return Optional.of(DocumentFormat.DOCX);/
+caught        M221 headings no longer start sections (PlainTextExtractorTest.extract_whenMarkdownHasHeadings_startsASectionAtEachOutsideCodeFences)
+caught        M222 a Windows-1254 Turkish text file is read as Latin-1 (ş, ğ, ı garbled) (PlainTextExtractorTest.decode_whenTheBytesAreNotUtf8_readsThemAsWindows1254)
+caught        M225 a Word text box is read twice (choice and fallback) (DocxTextExtractorTest.extract_whenTextBoxesHaveAFallbackOrTextWasMoved_readsItOnce)
+caught        M226 hidden Word text reaches the model (DocxTextExtractorTest.extract_whenARunIsHidden_skipsItButNotAnExplicitlyVisibleOne)
+caught        M227 a row of countless empty cells is accepted (DocxTextExtractorTest.extract_whenATableRowHasTooManyCells_failsAsUnsupported)
+caught        M228 the XML depth limit is switched off (DocxTextExtractorTest.extract_whenElementsNestDeeperThanTheLimit_failsAsInvalid)
+caught        M229 a note mentioning %PDF- goes to the PDF parser (DocumentFormatsTest.detect_whenATextOrMarkdownMentionsThePdfHeader_staysText)
+caught        M230 binary data after the first 8 KB is indexed (PlainTextExtractorTest.extract_whenBinaryDataFollowsTheFirstKilobytes_failsAsInvalid)
+caught        M223 a DOCX section is cited as a page (QuestionApiTest.ask_whenThePassageComesFromADocx_citesASection)
+caught        M224 the panel cites a DOCX section as a page (scripts/panel.test.mjs: formats: a section is cited)
+UNKNOWN ID    M220
+--- log of the last step: /tmp/verso-mutation.URy1s3 (failed steps keep a copy as /tmp/verso-mutation.URy1s3.<id>)
+--- leftovers:
+none
+exit 1
+
+# M220 redefined after the format precedence change (review K1) and rerun alone:
+caught        M220 any bytes named .docx are accepted (DocumentFormatsTest.detect_whenAZipIsNamedDocx_isDocx)

@@ -1,6 +1,7 @@
 package com.verso.document.repository;
 
 import com.verso.document.api.enums.DocumentFailureReason;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.api.enums.DocumentStatus;
 import java.time.Instant;
 import java.util.UUID;
@@ -10,6 +11,7 @@ public record DocumentRow(
         UUID id,
         String accountId,
         String fileName,
+        DocumentFormat format,
         long sizeBytes,
         DocumentStatus status,
         DocumentFailureReason failureReason,

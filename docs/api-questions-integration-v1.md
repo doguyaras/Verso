@@ -30,7 +30,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 `HTTP 200`, ham, `X-Rag-Mode: local`:
 ```json
 { "answer": "Yıllık izin yirmi iş günüdür [1].", "found": true, "outcome": "ANSWERED",
-  "citations": [ { "number": 1, "documentId": "01a0fe8e-…", "fileName": "izin-yonetmeligi.pdf", "page": 3 } ],
+  "citations": [ { "number": 1, "documentId": "01a0fe8e-…", "fileName": "izin-yonetmeligi.pdf", "page": 3, "unit": "PAGE" } ],
   "mode": "local", "model": "gemma4:e2b" }
 ```
 
@@ -52,6 +52,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `citations[].number` | number | Metindeki `[n]` |
 | `citations[].documentId` | UUID | `GET /v1/documents/{id}` ile açılır |
 | `citations[].fileName`, `page` | string, number | "izin-yonetmeligi.pdf, s. 3" |
+| `citations[].unit` | `PAGE` \| `SECTION` | DOCX, TXT ve MD sayfasızdır: `page` bölüm numarasıdır, "notlar.docx, bölüm 2" diye gösterilir (ADR-0016). Eksik ya da bilinmeyen → sayfa |
 | `mode` | `local` \| `cloud` | Bilinmeyen → "AI" |
 | `model` | string | Bilgi amaçlı |
 

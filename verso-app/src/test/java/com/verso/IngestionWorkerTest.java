@@ -6,16 +6,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.repository.IngestionRepository.Claim;
 import com.verso.document.repository.IngestionRepository.StoredChunk;
+import com.verso.document.testing.TestDocx;
 import com.verso.document.testing.TestPdfs;
 import com.verso.document.worker.IngestionTransactionService;
 import com.verso.document.worker.IngestionTransactionService.LostClaimException;
 import com.verso.document.worker.IngestionWorker;
 import com.verso.support.TestEmbeddingModel;
 import com.verso.support.VersoTestEnvironment;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,6 +109,42 @@ class IngestionWorkerTest {
         assertThat(jdbc.queryForObject("SELECT claim_token IS NULL AND locked_until IS NULL FROM document.document WHERE id = ?",
                 Boolean.class, id)).isTrue();
         assertThat(worker.runOnce()).as("nothing left").isZero();
+    }
+
+    /** ADR-0016: DOCX, TXT and MD become READY with sections in place of pages; the file is dropped the same way. */
+    @Test
+    void runOnce_whenDocxTxtOrMd_storesSectionsAndDropsTheFile() {
+        UUID docx = upload(TestDocx.docx(TestDocx.heading("Heading1", "İzin"), TestDocx.p("On dört gün."),
+                TestDocx.heading("Heading1", "Masraf"), TestDocx.p("Fatura gerekir.")), "a.docx", DocumentFormat.DOCX);
+        UUID txt = upload("Düz metin paragrafı.".getBytes(StandardCharsets.UTF_8), "a.txt", DocumentFormat.TXT);
+        UUID md = upload("# Bir\nbirinci\n# İki\nikinci\n# Üç\nüçüncü".getBytes(StandardCharsets.UTF_8), "a.md",
+                DocumentFormat.MD);
+
+        assertThat(worker.runOnce()).isEqualTo(3);
+
+        Map<UUID, Integer> sections = Map.of(docx, 2, txt, 1, md, 3);
+        sections.forEach((id, expected) -> {
+            DocumentRow row = documents.find(account, id).orElseThrow();
+            assertThat(row.status().name()).as(row.format().name()).isEqualTo("READY");
+            assertThat(row.pageCount()).as(row.format() + " sections").isEqualTo(expected);
+            assertThat(count("document_page", id)).isEqualTo(expected);
+            assertThat(count("document_file", id)).as("the file is gone").isZero();
+        });
+        assertThat(jdbc.queryForObject("SELECT content FROM document.document_page WHERE document_id = ? AND page_number = 2",
+                String.class, docx)).isEqualTo("Masraf\n\nFatura gerekir.");
+    }
+
+    /** ADR-0016: the new reasons pass the database check and fail at once, like the PDF ones. */
+    @Test
+    void runOnce_whenADocxIsBrokenOrUnsafe_failsWithTheNewReasons() {
+        UUID broken = upload("PK not really".getBytes(StandardCharsets.UTF_8), "a.docx", DocumentFormat.DOCX);
+        UUID twoParts = upload(TestDocx.twoMainParts(TestDocx.p("a"), TestDocx.p("b")), "b.docx", DocumentFormat.DOCX);
+
+        assertThat(worker.runOnce()).isEqualTo(2);
+
+        assertFailed(broken, "INVALID_FILE");
+        assertFailed(twoParts, "UNSUPPORTED_FILE");
+        assertThat(TestEmbeddingModel.INSTANCE.calls()).isZero();
     }
 
     /** Permanent reasons are not retried, the model is never called, and no content stays behind. */
@@ -296,6 +335,11 @@ class IngestionWorkerTest {
     void ingestion_whenSuccessfulOrFailing_logsNoFileNameOrText() {
         upload(TestPdfs.pages(MARKER + " in the text."), MARKER + ".pdf");
         upload(TestPdfs.encrypted(MARKER), MARKER + "-locked.pdf");
+        // ADR-0016 review L4: the new parsers log nothing of the file either, on success or failure.
+        upload(TestDocx.docx(TestDocx.p(MARKER + " in Word.")), MARKER + ".docx", DocumentFormat.DOCX);
+        upload(TestDocx.zip(java.util.Map.of("word/document.xml", "<w:document " + MARKER)), MARKER + "-bad.docx",
+                DocumentFormat.DOCX);
+        upload((MARKER + " in Markdown.").getBytes(StandardCharsets.UTF_8), MARKER + ".md", DocumentFormat.MD);
         worker.runOnce();
         TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException(MARKER + " in a model error"));
         upload(TestPdfs.pages(MARKER + " again."), MARKER + "-2.pdf");
@@ -322,8 +366,12 @@ class IngestionWorkerTest {
     }
 
     private UUID upload(byte[] pdf, String fileName) {
-        DocumentRow row = documents.insert(account, fileName, pdf.length, null, Instant.now());
-        documents.insertFile(row.id(), pdf);
+        return upload(pdf, fileName, DocumentFormat.PDF);
+    }
+
+    private UUID upload(byte[] file, String fileName, DocumentFormat format) {
+        DocumentRow row = documents.insert(account, fileName, format, file.length, null, Instant.now());
+        documents.insertFile(row.id(), file);
         return row.id();
     }
 

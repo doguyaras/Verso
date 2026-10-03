@@ -14,3 +14,4 @@ Fazlar sırayla yapılır. Her faz kendi dalında geliştirilir, review'lardan v
 | 8 | Ölçüm: Türkçe eval seti, yük testi, kapasite (`eval/`, `docs/capacity.md`) | Bitti (PR #10) |
 | 9 | Teslim: README (Türkçe + İngilizce özet, KVKK md. 9 açıklaması, ≤5 komutla kurulum, curl örnekleri), `samples/` sentetik PDF'ler ve demo script'i, image yayını | Bitti (PR #11) |
 | 10 | **Panel** (ADR-0015): belgeler, soru-cevap, sistem; bağımlılıksız tarayıcı uygulaması, `verso-panel` istemcisi (code + PKCE), token yalnız bellekte, rol matrisi tek dosyada; backoffice mantığında yönetim arayüzü | Bitti (PR #12) |
+| + | Belge türleri: DOCX, TXT, MD (ADR-0016); kanıt `docs/evidence/adr-0016-dogrulama.md` | Bitti (PR #15) |

@@ -7,7 +7,7 @@ import { accessToken } from './auth.js';
 
 export const MESSAGES = Object.freeze({
   10001: 'Belge bulunamadı.',
-  10010: 'Bu dosya bir PDF değil.',
+  10010: 'Bu dosya türü desteklenmiyor: PDF, DOCX, TXT ya da MD yükleyin.',
   10011: 'Dosya boş.',
   10013: 'Belge kotası dolu (200). Önce eski belgeleri silin.',
   10014: 'Şu an çok fazla yükleme var; birkaç saniye sonra tekrar deneyin.',

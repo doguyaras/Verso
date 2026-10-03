@@ -46,3 +46,19 @@ node scripts/eval.mjs
 - **Kolay retrieval:** 16 sayfada belge düzeyinde recall@5 neredeyse kendiliğinden 1'dir; anlamlı olan sayfa düzeyidir. Örnek PDF'lerin sayfa altbilgisi dosya adını taşır ("izin", "masraf" gibi), bu da soruyla sözcük örtüşmesi yaratıp retrieval'ı kolaylaştırır.
 - **Eşik aynı veriyle ayarlandı** (ADR-0012'deki takas). Sete eklenecekler: aynı sorunun farklı söylenişleri ve "konusu belgede var ama cevabı yok" türü sorular.
 - **Belirsiz sorular:** izin-1 "beş yıldan az" diyor, belge "bir yıldan beş yıla kadar" diyor. uzaktan-2'de beklenen "10.00", esnek başlangıç saati ("07.30 ile 10.00") cevabıyla da eşleşir.
+
+## Belge türleri (ADR-0016)
+
+`FormatEvalTest` (tag `eval`) aynı altı örnek belgeyi PDF, DOCX ve Markdown olarak ayrı hesaplara yükler ve 33 soruyu her birinde arar. Sayfa ile bölüm örtüşmediği için sayfa recall'u yerine, ilk 5 sonuçta beklenen belge ve ilk 5 pasajda beklenen bilgi ölçülür (`results/retrieval-formats.json`):
+
+| Tür | Belge ilk 5'te | Bilgi ilk 5 pasajda | Cevaplanabilir eşik üstü | Cevaplanamaz eşik altı |
+|---|---|---|---|---|
+| PDF | 1,00 | 0,96 | 1,00 | 0,50 |
+| DOCX | 1,00 | 1,00 | 1,00 | 0,50 |
+| MD | 1,00 | 1,00 | 1,00 | 0,50 |
+
+Başlıklara göre kesilen bölümler bu sette PDF sayfalarından kötü değil. Test, DOCX ve MD'nin PDF'in 0,05 altına düşmesini kırmızı sayar.
+
+```bash
+./mvnw -pl verso-app -am test -Dverso.excludedGroups=none -Dgroups=eval -Dtest=FormatEvalTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false
+```

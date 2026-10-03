@@ -2,6 +2,7 @@ package com.verso;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.verso.document.testing.TestDocx;
 import com.verso.document.testing.TestPdfs;
 import com.verso.document.worker.IngestionWorker;
 import com.verso.platform.observability.tracing.TraceIds;
@@ -13,7 +14,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -69,6 +72,39 @@ class DocumentApiTest {
         assertThat(response.body()).contains("\"status\":\"PENDING\"").contains("\"fileName\":\"Kira Sözleşmesi.pdf\"");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document_file WHERE document_id = ?::uuid",
                 Integer.class, id)).as("the PDF waits for the worker").isOne();
+    }
+
+    /** ADR-0016: DOCX, TXT and MD are accepted and keep their format; the media type the client sends is ignored. */
+    @Test
+    void upload_whenDocxTxtOrMd_returns201WithTheFormat() throws Exception {
+        Map<String, byte[]> files = Map.of(
+                "İzin.docx", TestDocx.docx(TestDocx.p("Yıllık izin on dört gündür.")),
+                "notlar.txt", "Yıllık izin on dört gündür.".getBytes(StandardCharsets.UTF_8),
+                "README.md", "# İzin\nOn dört gün.".getBytes(StandardCharsets.UTF_8));
+        for (Map.Entry<String, byte[]> file : files.entrySet()) {
+            HttpResponse<String> response = upload(owner, file.getKey(), file.getValue(), null);
+            assertThat(response.statusCode()).as(file.getKey()).isEqualTo(201);
+            String format = file.getKey().substring(file.getKey().lastIndexOf('.') + 1).toUpperCase(java.util.Locale.ROOT);
+            assertThat(response.body()).contains("\"format\":\"" + format + "\"");
+            assertThat(jdbc.queryForObject("SELECT format FROM document.document WHERE id = ?::uuid", String.class,
+                    id(response))).isEqualTo(format);
+        }
+    }
+
+    /** ADR-0016: other names, a ZIP that is not named .docx, and binary bytes named .txt stay 415 10010. */
+    @Test
+    void upload_whenTheTypeIsNotSupported_isRejectedWith10010() throws Exception {
+        Map<String, byte[]> files = Map.of(
+                "setup.exe", "MZ program".getBytes(StandardCharsets.UTF_8),
+                "arsiv.zip", TestDocx.docx(TestDocx.p("x")),
+                "ikili.txt", new byte[] {'M', 'Z', 0, 0, 1},
+                "eski.docx", new byte[] {(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, 0, 0});
+        for (Map.Entry<String, byte[]> file : files.entrySet()) {
+            HttpResponse<String> response = upload(owner, file.getKey(), file.getValue(), null);
+            assertThat(response.statusCode()).as(file.getKey()).isEqualTo(415);
+            assertThat(response.body()).contains("\"code\":10010");
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document", Integer.class)).isZero();
     }
 
     @Test
@@ -285,7 +321,7 @@ class DocumentApiTest {
             assertThat(upload(owner, marker + ".pdf", TestPdfs.pages(marker), null).statusCode()).isEqualTo(201);
             assertThat(upload(owner, marker + ".pdf", (marker + " not a pdf").getBytes(), null).statusCode()).isEqualTo(415);
             assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("outcome=accepted"))
-                    .anyMatch(e -> e.getFormattedMessage().contains("code=DOCUMENT_NOT_PDF"));
+                    .anyMatch(e -> e.getFormattedMessage().contains("code=DOCUMENT_TYPE_UNSUPPORTED"));
             for (var event : appender.list) {
                 StringBuilder text = new StringBuilder(event.getFormattedMessage()).append(event.getMDCPropertyMap());
                 if (event.getArgumentArray() != null) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.verso.document.api.DocumentRetrieval;
 import com.verso.document.api.dto.RetrievedPassage;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.worker.IngestionWorker;
@@ -55,10 +56,10 @@ import tools.jackson.databind.json.JsonMapper;
 class RetrievalEvalTest {
 
     private static final Path ROOT = VersoPostgres.repoRoot();
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
     @Autowired
     QaProperties qa;
-
-    private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Autowired
     DocumentRetrieval retrieval;
@@ -157,7 +158,7 @@ class RetrievalEvalTest {
         try (Stream<Path> pdfs = Files.list(ROOT.resolve("samples"))) {
             for (Path pdf : pdfs.filter(p -> p.toString().endsWith(".pdf")).sorted().toList()) {
                 byte[] bytes = Files.readAllBytes(pdf);
-                DocumentRow row = documents.insert(account, pdf.getFileName().toString(), bytes.length, null, Instant.now());
+                DocumentRow row = documents.insert(account, pdf.getFileName().toString(), DocumentFormat.PDF, bytes.length, null, Instant.now());
                 documents.insertFile(row.id(), bytes);
                 ids.add(row.id());
             }

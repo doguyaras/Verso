@@ -2,6 +2,7 @@ package com.verso.document.repository;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import com.verso.document.api.enums.DocumentFailureReason;
+import com.verso.document.api.enums.DocumentFormat;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ import org.springframework.stereotype.Repository;
 public class IngestionRepository {
 
     /** A claimed document: what the worker needs, nothing more. */
-    public record Claim(UUID documentId, String accountId, UUID token, int attempts) {
+    public record Claim(UUID documentId, String accountId, DocumentFormat format, UUID token, int attempts) {
     }
 
     /** One chunk ready to store: its page, position, text and vector. */
@@ -81,10 +82,11 @@ public class IngestionRepository {
                         SET status = 'PROCESSING', claim_token = :token, locked_until = :until,
                             attempts = d.attempts + 1, updated_at = :now
                         FROM candidate WHERE d.id = candidate.id
-                        RETURNING d.id, d.account_id, d.attempts
+                        RETURNING d.id, d.account_id, d.format, d.attempts
                         """)
                 .param("now", Timestamp.from(now)).param("until", Timestamp.from(lockedUntil)).param("token", token)
-                .query((rs, n) -> new Claim(rs.getObject("id", UUID.class), rs.getString("account_id"), token,
+                .query((rs, n) -> new Claim(rs.getObject("id", UUID.class), rs.getString("account_id"),
+                        DocumentFormat.valueOf(rs.getString("format")), token,
                         rs.getInt("attempts")))
                 .optional();
     }

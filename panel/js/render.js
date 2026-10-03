@@ -29,8 +29,10 @@ export const STATUS = Object.freeze({
 
 export const FAILURES = Object.freeze({
   NOT_A_PDF: 'PDF değil',
+  INVALID_FILE: 'Dosya okunamadı (bozuk ya da türü yanlış)',
+  UNSUPPORTED_FILE: 'Desteklenmeyen Word yapısı',
   ENCRYPTED: 'Parolalı PDF',
-  TOO_MANY_PAGES: 'Çok fazla sayfa (en çok 500)',
+  TOO_MANY_PAGES: 'Çok fazla sayfa ya da bölüm (en çok 500)',
   TOO_MUCH_TEXT: 'Çok fazla metin',
   UNSUPPORTED_PDF: 'Desteklenmeyen PDF',
   NO_TEXT: 'Metin yok (taranmış olabilir)',
@@ -53,6 +55,21 @@ export function formatDate(iso) {
  */
 export function plainName(name) {
   return String(name).replace(/[\p{Cc}\p{Cf}]/gu, '');
+}
+
+/** What the file picker offers (ADR-0016). Only a hint: the server decides from the name and the first bytes. */
+export const UPLOAD_TYPES = Object.freeze(['.pdf', '.docx', '.txt', '.md', '.markdown']);
+
+const FORMAT_LABELS = Object.freeze({ PDF: 'PDF', DOCX: 'Word', TXT: 'Metin', MD: 'Markdown' });
+
+/** The document type for the table; a value this panel does not know is just "Belge" (integration document). */
+export function formatLabel(format) {
+  return FORMAT_LABELS[format] ?? 'Belge';
+}
+
+/** "dosya.pdf, sayfa 3" or "notlar.docx, bölüm 2": a file without pages is cited by section (ADR-0016). */
+export function sourceLabel(citation) {
+  return `${citation.fileName}, ${citation.unit === 'SECTION' ? 'bölüm' : 'sayfa'} ${citation.page}`;
 }
 
 /** Builds an element: el('div', {class: 'x'}, 'text', child). Strings become text nodes, never HTML. */

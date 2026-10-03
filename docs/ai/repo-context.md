@@ -7,7 +7,7 @@
 - **Şekil:** **modüler monolit (A).** Tek deploy birimi `verso-app`; domain modülleri Spring Modulith modülleridir ve `*-api`/`*-core` Maven çiftleri olarak tutulur. Profil: **P0**.
 - **Modüller:**
   - `platform-observability`, `platform-core`, `platform-security` (OIDC resource server, `@CurrentAccount`; faz 3): kodda var.
-  - `document`: kodda var (faz 4, ADR-0011). Yükleme, PDF ayrıştırma, chunk, embedding, ingestion worker; retrieval faz 5.
+  - `document`: kodda var (faz 4, ADR-0011). Yükleme, PDF / DOCX / TXT / MD ayrıştırma (ADR-0016), chunk, embedding, ingestion worker; retrieval faz 5.
   - `qa`: kodda var (faz 5, ADR-0012). Retrieval `document-api` üzerinden, prompt, chat modeli, sunucuda atıf; kendi tablosu yok.
 - **Yeniden değerlendirme eşiği:** ADR-0001.
 - **Repo:** Maven multi-module monorepo; `platform/*` starter'ları, `verso-app`, (planlı) `services/<domain>/<domain>-api|core`.

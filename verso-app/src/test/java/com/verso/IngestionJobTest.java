@@ -3,6 +3,7 @@ package com.verso;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.repository.IngestionRepository.Claim;
@@ -180,7 +181,7 @@ class IngestionJobTest {
     }
 
     private UUID upload(byte[] pdf) {
-        DocumentRow row = documents.insert(account, "job.pdf", pdf.length, null, Instant.now());
+        DocumentRow row = documents.insert(account, "job.pdf", DocumentFormat.PDF, pdf.length, null, Instant.now());
         documents.insertFile(row.id(), pdf);
         return row.id();
     }

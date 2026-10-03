@@ -1,6 +1,7 @@
 package com.verso.qa.service;
 
 import com.verso.document.api.dto.RetrievedPassage;
+import com.verso.document.api.enums.SourceUnit;
 import com.verso.qa.config.QaProperties;
 import java.text.Normalizer;
 import java.util.List;
@@ -58,7 +59,8 @@ public class PromptBuilder {
         for (int i = 0; i < passages.size(); i++) {
             RetrievedPassage passage = passages.get(i);
             int number = i + 1;
-            user.append("[[BELGE ").append(number).append("]] (sayfa ").append(passage.pageNumber()).append(")\n")
+            String unit = passage.unit() == SourceUnit.SECTION ? "bölüm " : "sayfa ";
+            user.append("[[BELGE ").append(number).append("]] (").append(unit).append(passage.pageNumber()).append(")\n")
                     .append(defuse(truncate(passage.content())))
                     .append("\n[[/BELGE ").append(number).append("]]\n\n");
         }

@@ -3,7 +3,9 @@ package com.verso.qa.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.verso.document.api.dto.RetrievedPassage;
+import com.verso.document.api.enums.SourceUnit;
 import com.verso.qa.api.dto.Citation;
+import com.verso.qa.api.dto.CitationUnit;
 import com.verso.qa.service.CitationExtractor.Extracted;
 import java.util.List;
 import java.util.UUID;
@@ -15,15 +17,16 @@ class CitationExtractorTest {
     private static final UUID DOC_A = UUID.fromString("00000000-0000-7000-8000-00000000000a");
     private static final UUID DOC_B = UUID.fromString("00000000-0000-7000-8000-00000000000b");
     private static final List<RetrievedPassage> PASSAGES = List.of(
-            new RetrievedPassage(DOC_A, "a.pdf", 3, "first", 0.9),
-            new RetrievedPassage(DOC_B, "b.pdf", 7, "second", 0.8));
+            new RetrievedPassage(DOC_A, "a.pdf", 3, SourceUnit.PAGE, "first", 0.9),
+            new RetrievedPassage(DOC_B, "b.docx", 7, SourceUnit.SECTION, "second", 0.8));
 
     private final CitationExtractor extractor = new CitationExtractor();
 
     @Test
     void extract_whenMarkersReferToRetrievedPassages_mapsThemInOrderOfFirstUse() {
         Extracted result = extractor.extract("B says so [2]. A agrees [1]. Again [2].", PASSAGES);
-        assertThat(result.citations()).containsExactly(new Citation(2, DOC_B, "b.pdf", 7), new Citation(1, DOC_A, "a.pdf", 3));
+        assertThat(result.citations()).containsExactly(new Citation(2, DOC_B, "b.docx", 7, CitationUnit.SECTION),
+                new Citation(1, DOC_A, "a.pdf", 3, CitationUnit.PAGE));
         assertThat(result.answer()).isEqualTo("B says so [2]. A agrees [1]. Again [2].");
     }
 

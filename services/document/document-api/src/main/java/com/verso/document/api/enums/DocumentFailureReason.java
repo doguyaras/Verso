@@ -15,6 +15,10 @@ public enum DocumentFailureReason {
     TOO_MUCH_TEXT,
     /** Uses a structure Verso does not process safely, e.g. an unusual content stream encoding. */
     UNSUPPORTED_PDF,
+    /** A DOCX, TXT or MD upload whose bytes are not a readable file of that kind (ADR-0016). */
+    INVALID_FILE,
+    /** A DOCX that uses a structure Verso does not process safely, e.g. too many parts (ADR-0016). */
+    UNSUPPORTED_FILE,
     /** No extractable text, e.g. a scanned PDF (OCR is out of scope). */
     NO_TEXT,
     /** A temporary failure (embedding model, database) persisted through every retry, or the worker kept dying. */

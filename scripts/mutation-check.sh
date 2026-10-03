@@ -486,7 +486,7 @@ backup $DREPO; sub $DREPO 's/DELETE FROM document\.document WHERE account_id = :
   && expect_red "M133 another account's document can be deleted" verso-app $DAT documents_whenAccessedByAnotherAccount_doNotExistForIt; restore $DREPO
 backup $DREPO; sub $DREPO 's/FROM document\.document WHERE account_id = :account "\n(\s*)\+ "ORDER BY/FROM document.document WHERE (true OR account_id = :account) "\n$1+ "ORDER BY/' \
   && expect_red "M134 the list shows every account's documents" verso-app $DAT documents_whenAccessedByAnotherAccount_doNotExistForIt; restore $DREPO
-backup $DSVC; sub $DSVC 's/\n\s*if \(!startsLikePdf\(content\)\) throw rejected\(DocumentErrorCode\.DOCUMENT_NOT_PDF\);//' \
+backup $DSVC; sub $DSVC 's/\.orElseThrow\(\(\) -> rejected\(DocumentErrorCode\.DOCUMENT_TYPE_UNSUPPORTED\)\)/.orElse(DocumentFormat.PDF)/' \
   && expect_red "M135 any file is accepted as a PDF" verso-app $DAT upload_whenFileIsNotAPdfOrEmpty_isRejectedWithDocumentCodes; restore $DSVC
 backup $DSVC; sub $DSVC 's/\n\s*if \(earlier\.isPresent\(\)\) return replayed\(earlier\.get\(\)\);//' \
   && sub $DSVC 's/return replayed\(repository\.findByIdempotencyKey\(account\.value\(\), idempotencyKey\)\.orElseThrow\(\(\) -> e\)\);/throw e;/' \
@@ -507,8 +507,9 @@ backup $PDFX; sub $PDFX 's/if \(getGraphicsStackSize\(\) > MAX_GRAPHICS_STACK\)/
   && expect_red "M143 the graphics state stack grows without a limit" $DCM $PXT extract_whenGraphicsStatesPileUp_isRejectedAsUnsupported; restore $PDFX
 backup $PDFX; sub $PDFX 's/\} else \{\n\s*throw rejected\(DocumentFailureReason\.UNSUPPORTED_PDF\);\n\s*\}\n\s*if \(!flate\)/} else {\n            flate = false;\n        }\n        if (!flate)/' \
   && expect_red "M144 unmeasurable stream encodings are trusted" $DCM $PXT extract_whenAContentStreamUsesAnUnmeasurableEncoding_isRejectedAsUnsupported; restore $PDFX
-backup $PDFX; sub $PDFX 's/CONTROL\.matcher\(text\.replace\("\\r\\n", "\\n"\)\.replace\(\x27\\r\x27, \x27\\n\x27\)\)\.replaceAll\(" "\)/text.replace("\\r\\n", "\\n").replace(\x27\\r\x27, \x27\\n\x27)/' \
-  && expect_red "M145 NUL and control characters reach the database" $DCM $PXT normalize_whenTextHasControlCharactersAndRuns_cleansThem; restore $PDFX
+TNORM=$DOC/worker/TextNormalizer.java
+backup $TNORM; sub $TNORM 's/CONTROL\.matcher\(text\.replace\("\\r\\n", "\\n"\)\.replace\(\x27\\r\x27, \x27\\n\x27\)\)\.replaceAll\(" "\)/text.replace("\\r\\n", "\\n").replace(\x27\\r\x27, \x27\\n\x27)/' \
+  && expect_red "M145 NUL and control characters reach the database" $DCM $PXT normalize_whenTextHasControlCharactersAndRuns_cleansThem; restore $TNORM
 backup $IWK; sub $IWK 's/            pause\(e\);\n\s*release\(claim, e\.misconfigured \? "MODEL_MISCONFIGURED" : "MODEL_UNAVAILABLE", started\);/            retryOrFail(claim, e, started);/' \
   && expect_red "M146 a model outage spends the document's attempts" verso-app $IWT runOnce_whenTheModelIsUnavailable_releasesWithoutAnAttemptAndPauses; restore $IWK
 backup $IWK; sub $IWK 's/\n\s*pausedUntil = clock\.instant\(\)\.plus\(pause\);//' \
@@ -666,6 +667,42 @@ backup $QSVC; sub $QSVC 's/: PromptBuilder\.saysNotFound\(extracted\.answer\(\)\
 backup $NGX; sub $NGX 's/; require-trusted-types-for \x27script\x27; trusted-types \x27none\x27//' \
   && expect_red "M208 the panel's CSP leaves HTML sinks to the tests alone (no Trusted Types)" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
 
+# ---------- ADR-0016: DOCX, TXT and MD ----------
+DOCXX=$DOC/worker/DocxTextExtractor.java
+PLAINX=$DOC/worker/PlainTextExtractor.java
+SECTS=$DOC/worker/TextSections.java
+FORMATS=$DOC/service/DocumentFormats.java
+backup $DOCXX; sub $DOCXX 's/\n\s*factory\.setProperty\(XMLInputFactory\.SUPPORT_DTD, false\);//' \
+  && expect_red "M215 the DOCX parser expands DTD entities (billion laughs)" $DCM DocxTextExtractorTest extract_whenTheXmlDeclaresExternalOrExpandingEntities_refusesWithoutReadingThem; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/\n\s*if \(read > total\) throw rejected\(DocumentFailureReason\.UNSUPPORTED_FILE\);//' \
+  && expect_red "M216 a ZIP bomb part inflates without a budget" $DCM DocxTextExtractorTest extract_whenAPartInflatesBeyondTheBudget_stopsAtTheBudget; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/if \(\+\+entries > MAX_ENTRIES\) throw rejected\(DocumentFailureReason\.UNSUPPORTED_FILE\);/++entries;/' \
+  && expect_red "M217 a DOCX may have any number of parts" $DCM DocxTextExtractorTest extract_whenTheStructureIsAmbiguousOrHuge_failsAsUnsupported; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/\n\s*if \(blocks != null\) throw rejected\(DocumentFailureReason\.UNSUPPORTED_FILE\);//' \
+  && expect_red "M218 a second main part silently replaces the first" $DCM DocxTextExtractorTest extract_whenTheStructureIsAmbiguousOrHuge_failsAsUnsupported; restore $DOCXX
+backup $FORMATS; sub $FORMATS 's/for \(int i = 0; i < window; i\+\+\) if \(content\[i\] == 0\) return false;/window = 0;/' \
+  && expect_red "M219 a binary file named .txt is accepted" $DCM DocumentFormatsTest detect_whenTextIsNamedTxtOrMd_isTextUnlessItHasNulBytes; restore $FORMATS
+backup $FORMATS; sub $FORMATS 's/return startsWith\(content, ZIP_MAGIC\) \? Optional\.of\(DocumentFormat\.DOCX\) : pdfOrNothing\(content\);/return Optional.of(DocumentFormat.DOCX);/' \
+  && expect_red "M220 any bytes named .docx are accepted" $DCM DocumentFormatsTest detect_whenAZipIsNamedDocx_isDocx; restore $FORMATS
+backup $SECTS; sub $SECTS 's/\(block\.heading\(\) \|\| full\)/(full)/' \
+  && expect_red "M221 headings no longer start sections" $DCM PlainTextExtractorTest extract_whenMarkdownHasHeadings_startsASectionAtEachOutsideCodeFences; restore $SECTS
+backup $PLAINX; sub $PLAINX 's/return new String\(content, TURKISH_WINDOWS\);/return new String(content, StandardCharsets.ISO_8859_1);/' \
+  && expect_red "M222 a Windows-1254 Turkish text file is read as Latin-1 (ş, ğ, ı garbled)" $DCM PlainTextExtractorTest decode_whenTheBytesAreNotUtf8_readsThemAsWindows1254; restore $PLAINX
+backup $DOCXX; sub $DOCXX 's/if \(MARKUP_COMPATIBILITY\.equals\(namespace\) && name\.equals\("Fallback"\)\) \{/if (false) {/' \
+  && expect_red "M225 a Word text box is read twice (choice and fallback)" $DCM DocxTextExtractorTest extract_whenTextBoxesHaveAFallbackOrTextWasMoved_readsItOnce; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/if \(hiddenRun\) return;/if (false) return;/' \
+  && expect_red "M226 hidden Word text reaches the model" $DCM DocxTextExtractorTest extract_whenARunIsHidden_skipsItButNotAnExplicitlyVisibleOne; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/if \(row\.size\(\) >= MAX_CELLS\) throw rejected\(DocumentFailureReason\.UNSUPPORTED_FILE\);//' \
+  && expect_red "M227 a row of countless empty cells is accepted" $DCM DocxTextExtractorTest extract_whenATableRowHasTooManyCells_failsAsUnsupported; restore $DOCXX
+backup $DOCXX; sub $DOCXX 's/factory\.setProperty\("jdk\.xml\.maxElementDepth", MAX_ELEMENT_DEPTH\);/factory.setProperty("jdk.xml.maxElementDepth", 0);/' \
+  && expect_red "M228 the XML depth limit is switched off" $DCM DocxTextExtractorTest extract_whenElementsNestDeeperThanTheLimit_failsAsInvalid; restore $DOCXX
+backup $FORMATS; sub $FORMATS 's/(String name = fileName == null \? "" : fileName\.strip\(\)\.toLowerCase\(Locale\.ROOT\);)/$1\n        if (startsLikePdf(content)) return Optional.of(DocumentFormat.PDF);/' \
+  && expect_red "M229 a note mentioning %PDF- goes to the PDF parser" $DCM DocumentFormatsTest detect_whenATextOrMarkdownMentionsThePdfHeader_staysText; restore $FORMATS
+backup $PLAINX; sub $PLAINX 's/if \(text\.indexOf\(\x27\\u0000\x27\) >= 0\) throw/if (false) throw/' \
+  && expect_red "M230 binary data after the first 8 KB is indexed" $DCM PlainTextExtractorTest extract_whenBinaryDataFollowsTheFirstKilobytes_failsAsInvalid; restore $PLAINX
+backup $QS/service/CitationExtractor.java; sub $QS/service/CitationExtractor.java 's/case SECTION -> CitationUnit\.SECTION;/case SECTION -> CitationUnit.PAGE;/' \
+  && expect_red "M223 a DOCX section is cited as a page" verso-app $QAT ask_whenThePassageComesFromADocx_citesASection; restore $QS/service/CitationExtractor.java
+
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
 # suites passed in the baseline, so a red run here comes from the mutation, not from a missing node or gitleaks.
@@ -719,6 +756,8 @@ backup $PANEL/auth.js; sub $PANEL/auth.js 's/ \|\| query\.get\(.state.\) !== pen
   && node_red "M210 the sign-in redirect is accepted with any state (login CSRF)" scripts/panel.test.mjs "sign-in: a wrong state"; restore $PANEL/auth.js
 backup $PANEL/render.js; sub $PANEL/render.js 's/return String\(name\)\.replace\(/return String(name); void String(name).replace(/' \
   && node_red "M211 file names keep bidi overrides in the delete prompt" scripts/panel.test.mjs "text: file names lose control"; restore $PANEL/render.js
+backup $PANEL/render.js; sub $PANEL/render.js "s/citation\.unit === 'SECTION' \? 'bölüm' : 'sayfa'/'sayfa'/" \
+  && node_red "M224 the panel cites a DOCX section as a page" scripts/panel.test.mjs "formats: a section is cited"; restore $PANEL/render.js
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

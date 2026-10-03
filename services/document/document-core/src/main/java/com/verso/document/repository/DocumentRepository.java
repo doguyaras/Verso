@@ -2,6 +2,7 @@ package com.verso.document.repository;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import com.verso.document.api.enums.DocumentFailureReason;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.api.enums.DocumentStatus;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,7 +26,8 @@ import org.springframework.stereotype.Repository;
 public class DocumentRepository {
 
     static final String COLUMNS = """
-            id, account_id, file_name, size_bytes, status, failure_reason, page_count, chunk_count, created_at, updated_at
+            id, account_id, file_name, format, size_bytes, status, failure_reason, page_count, chunk_count, created_at,
+            updated_at
             """;
     static final RowMapper<DocumentRow> ROW = DocumentRepository::map;
 
@@ -36,11 +38,13 @@ public class DocumentRepository {
     }
 
     /** Inserts the document as PENDING; the id comes from the database (uuidv7, reference 10.3). */
-    public DocumentRow insert(String accountId, String fileName, long sizeBytes, UUID idempotencyKey, Instant now) {
-        return jdbc.sql("INSERT INTO document.document (account_id, file_name, size_bytes, idempotency_key, "
-                        + "next_attempt_at, created_at, updated_at) VALUES (:account, :fileName, :size, :key, :now, :now, :now) "
+    public DocumentRow insert(String accountId, String fileName, DocumentFormat format, long sizeBytes, UUID idempotencyKey,
+                              Instant now) {
+        return jdbc.sql("INSERT INTO document.document (account_id, file_name, format, size_bytes, idempotency_key, "
+                        + "next_attempt_at, created_at, updated_at) "
+                        + "VALUES (:account, :fileName, :format, :size, :key, :now, :now, :now) "
                         + "RETURNING " + COLUMNS)
-                .param("account", accountId).param("fileName", fileName).param("size", sizeBytes)
+                .param("account", accountId).param("fileName", fileName).param("format", format.name()).param("size", sizeBytes)
                 .param("key", idempotencyKey).param("now", Timestamp.from(now))
                 .query(ROW).single();
     }
@@ -107,6 +111,7 @@ public class DocumentRepository {
                 rs.getObject("id", UUID.class),
                 rs.getString("account_id"),
                 rs.getString("file_name"),
+                DocumentFormat.valueOf(rs.getString("format")),
                 rs.getLong("size_bytes"),
                 DocumentStatus.valueOf(rs.getString("status")),
                 failure == null ? null : DocumentFailureReason.valueOf(failure),

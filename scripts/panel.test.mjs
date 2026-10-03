@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
   signIn, signOut } from '../panel/js/auth.js';
-import { answerParts, plainName } from '../panel/js/render.js';
+import { answerParts, FAILURES, formatLabel, plainName, sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
@@ -169,4 +169,26 @@ test('text: file names lose control and bidi characters; errors name the Retry-A
   assert.equal(messageOf(503, 11002, 5), 'Asistan meşgul; birkaç saniye sonra tekrar deneyin. (5 sn sonra tekrar deneyebilirsiniz.)');
   assert.equal(messageOf(503, 12345), 'Beklenmeyen bir sunucu hatası oluştu.');
   assert.equal(PAGE_SIZE, 100, 'the API maximum, so the 200-document quota fits in two pages');
+});
+
+// ---------- formats (ADR-0016) ----------
+test('formats: the picker offers the API types; unknown formats are just documents', () => {
+  assert.deepEqual([...UPLOAD_TYPES], ['.pdf', '.docx', '.txt', '.md', '.markdown']);
+  assert.equal(formatLabel('DOCX'), 'Word');
+  assert.equal(formatLabel('MD'), 'Markdown');
+  assert.equal(formatLabel('XLSX'), 'Belge');
+  assert.equal(formatLabel(undefined), 'Belge');
+});
+
+test('formats: a section is cited as a section, a page as a page', () => {
+  assert.equal(sourceLabel({ fileName: 'izin.docx', page: 2, unit: 'SECTION' }), 'izin.docx, bölüm 2');
+  assert.equal(sourceLabel({ fileName: 'izin.pdf', page: 3, unit: 'PAGE' }), 'izin.pdf, sayfa 3');
+  assert.equal(sourceLabel({ fileName: 'eski.pdf', page: 1 }), 'eski.pdf, sayfa 1', 'an answer without unit is a page');
+});
+
+test('formats: every failure reason of the API has a Turkish text', () => {
+  const source = readFileSync('services/document/document-api/src/main/java/com/verso/document/api/enums/DocumentFailureReason.java', 'utf8');
+  const reasons = [...source.matchAll(/^\s+([A-Z_]+),?\s*$/gm)].map((m) => m[1]);
+  assert.ok(reasons.length >= 9, reasons.join());
+  for (const reason of reasons) assert.ok(FAILURES[reason], `no text for ${reason}`);
 });

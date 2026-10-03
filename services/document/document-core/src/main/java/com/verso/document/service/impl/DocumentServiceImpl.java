@@ -3,18 +3,19 @@ package com.verso.document.service.impl;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import com.verso.document.api.dto.DocumentResponse;
 import com.verso.document.api.dto.PageResponse;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.config.DocumentProperties;
 import com.verso.document.exception.DocumentErrorCode;
 import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
+import com.verso.document.service.DocumentFormats;
 import com.verso.document.service.DocumentMapper;
 import com.verso.document.service.DocumentService;
 import com.verso.document.service.FileNames;
 import com.verso.platform.core.exception.CommonErrorCode;
 import com.verso.platform.core.exception.ServiceException;
 import com.verso.platform.security.web.AccountId;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
@@ -37,9 +38,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class DocumentServiceImpl implements DocumentService {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentServiceImpl.class);
-    /** ISO 32000: the header is "%PDF-"; readers accept it within the first 1024 bytes. */
-    private static final byte[] PDF_MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
-    private static final int MAGIC_WINDOW = 1024;
     /** Longer than the worker's longest transaction (storing the chunks of a document at the text limit, ~6 s). */
     private static final Duration DELETE_LOCK_WAIT = Duration.ofSeconds(15);
 
@@ -67,7 +65,8 @@ public class DocumentServiceImpl implements DocumentService {
             // The multipart limit (same value) normally answers first; one code for one rule (review P2).
             throw new ServiceException(CommonErrorCode.PAYLOAD_TOO_LARGE, "DOCUMENT_TOO_LARGE");
         }
-        if (!startsLikePdf(content)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_PDF);
+        DocumentFormat format = DocumentFormats.detect(fileName, content)
+                .orElseThrow(() -> rejected(DocumentErrorCode.DOCUMENT_TYPE_UNSUPPORTED));
         String name = FileNames.sanitize(fileName);
         DocumentRow created;
         try {
@@ -80,7 +79,8 @@ public class DocumentServiceImpl implements DocumentService {
                 if (repository.countQueued(account.value()) >= properties.maxQueuedPerAccount()) {
                     throw rejected(DocumentErrorCode.DOCUMENT_QUEUE_FULL);
                 }
-                DocumentRow row = repository.insert(account.value(), name, content.length, idempotencyKey, clock.instant());
+                DocumentRow row = repository.insert(account.value(), name, format, content.length, idempotencyKey,
+                        clock.instant());
                 repository.insertFile(row.id(), content);
                 return row;
             });
@@ -88,8 +88,8 @@ public class DocumentServiceImpl implements DocumentService {
             // Two uploads with the same key at once: the first one won (reference 6.4).
             return replayed(repository.findByIdempotencyKey(account.value(), idempotencyKey).orElseThrow(() -> e));
         }
-        log.info("Document upload accepted: documentId={} sizeBytes={} operation=upload outcome=accepted",
-                created.id(), created.sizeBytes());
+        log.info("Document upload accepted: documentId={} format={} sizeBytes={} operation=upload outcome=accepted",
+                created.id(), created.format(), created.sizeBytes());
         return DocumentMapper.toResponse(created);
     }
 
@@ -119,16 +119,6 @@ public class DocumentServiceImpl implements DocumentService {
     private DocumentResponse replayed(DocumentRow row) {
         log.info("Document upload replayed: documentId={} operation=upload outcome=replayed", row.id());
         return DocumentMapper.toResponse(row);
-    }
-
-    private static boolean startsLikePdf(byte[] content) {
-        int window = Math.min(content.length, MAGIC_WINDOW) - PDF_MAGIC.length;
-        for (int offset = 0; offset <= window; offset++) {
-            boolean match = true;
-            for (int i = 0; i < PDF_MAGIC.length && match; i++) match = content[offset + i] == PDF_MAGIC[i];
-            if (match) return true;
-        }
-        return false;
     }
 
     /** The global handler logs the rejection (code and reason) once; nothing is logged here (reference 7.4). */

@@ -1,7 +1,9 @@
 package com.verso.qa.service;
 
 import com.verso.document.api.dto.RetrievedPassage;
+import com.verso.document.api.enums.SourceUnit;
 import com.verso.qa.api.dto.Citation;
+import com.verso.qa.api.dto.CitationUnit;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,7 +50,7 @@ public class CitationExtractor {
                     valid.add(number);
                     RetrievedPassage passage = passages.get(number - 1);
                     used.putIfAbsent(number, new Citation(number, passage.documentId(), passage.fileName(),
-                            passage.pageNumber()));
+                            passage.pageNumber(), unit(passage.unit())));
                 }
             }
             String replacement = valid.isEmpty() ? "" : valid.stream().map(n -> "[" + n + "]")
@@ -58,5 +60,13 @@ public class CitationExtractor {
         matcher.appendTail(answer);
         String cleaned = SPACE_BEFORE_PUNCTUATION.matcher(answer.toString()).replaceAll("$1").strip();
         return new Extracted(cleaned, List.copyOf(used.values()));
+    }
+
+    /** Exhaustive on purpose: a new SourceUnit must not reach clients as a 500 (review L3). */
+    private static CitationUnit unit(SourceUnit unit) {
+        return switch (unit) {
+            case PAGE -> CitationUnit.PAGE;
+            case SECTION -> CitationUnit.SECTION;
+        };
     }
 }

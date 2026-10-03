@@ -10,7 +10,6 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 import org.apache.pdfbox.Loader;
@@ -56,10 +55,6 @@ import org.springframework.stereotype.Component;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class PdfTextExtractor {
 
-    /** Control characters except tab and newline; PostgreSQL text cannot hold NUL at all. */
-    private static final Pattern CONTROL = Pattern.compile("[\\p{Cntrl}&&[^\\t\\n]]");
-    private static final Pattern SPACES = Pattern.compile("[ \\t\\x0B\\f\\u00A0]+");
-    private static final Pattern BLANK_LINES = Pattern.compile("\\n\\s*\\n+");
     /** Form XObjects may nest; deeper nesting than this is not a real document. */
     private static final int MAX_FORM_DEPTH = 10;
     /** Real documents nest a few dozen saved graphics states at most. */
@@ -156,10 +151,7 @@ public class PdfTextExtractor {
     }
 
     static String normalize(String text) {
-        String cleaned = CONTROL.matcher(text.replace("\r\n", "\n").replace('\r', '\n')).replaceAll(" ");
-        cleaned = SPACES.matcher(cleaned).replaceAll(" ");
-        cleaned = BLANK_LINES.matcher(cleaned).replaceAll("\n\n");
-        return cleaned.strip();
+        return TextNormalizer.normalize(text);
     }
 
     private static IngestionRejectedException rejected(DocumentFailureReason reason) {
