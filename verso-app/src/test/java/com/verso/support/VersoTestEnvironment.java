@@ -5,6 +5,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Map;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -24,10 +25,22 @@ import org.springframework.test.context.ContextConfiguration;
 @Import({TestEmbeddingModel.Config.class, TestChatModel.Config.class})
 public @interface VersoTestEnvironment {
 
-    /** The two deployment inputs compose gives the application for models (prod.env.example), plus the poll switch. */
+    /**
+     * The deployment inputs compose gives the application for models (prod.env.example), plus the poll switch. The AI
+     * mode settings default to local mode; a cloud mode test sets its own first (they are kept).
+     */
     final class Models implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+        private static final Map<String, String> AI_DEFAULTS = Map.of(
+                "VERSO_AI_MODE", "local",
+                "VERSO_CHAT_PROVIDER", "ollama",
+                "CLOUD_CHAT_MODEL", "test-cloud",
+                "OPENAI_BASE_URL", "http://127.0.0.1:1/v1");
+
         @Override
         public void initialize(ConfigurableApplicationContext context) {
+            AI_DEFAULTS.forEach((name, value) -> {
+                if (!context.getEnvironment().containsProperty(name)) TestPropertyValues.of(name + "=" + value).applyTo(context);
+            });
             TestPropertyValues.of(
                     "OLLAMA_BASE_URL=http://127.0.0.1:1",
                     "OLLAMA_EMBEDDING_MODEL=test-embedding",

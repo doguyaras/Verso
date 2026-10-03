@@ -6,22 +6,45 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.actuate.info.InfoContributor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.http.client.InetAddressFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.core.env.Environment;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Question answering wiring, the X-Rag-Mode header and the model info of /actuator/info (ADR-0006, llm-rules 1.3). */
+/**
+ * Question answering wiring: the mode check, the outbound address filter, the X-Rag-Mode header and the model info of
+ * /actuator/info (ADR-0006, ADR-0013, llm-rules 1.1/1.3).
+ */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties({QaProperties.class, VersoAiProperties.class})
 public class QaConfiguration {
 
     public static final String MODE_HEADER = "X-Rag-Mode";
+
+    /** The application does not start when its model settings contradict verso.ai.mode (AiModeCheck). */
+    @Bean
+    InitializingBean aiModeCheck(VersoAiProperties ai, Environment environment) {
+        return () -> AiModeCheck.verify(ai.mode(), environment);
+    }
+
+    /**
+     * Every HTTP client Boot builds (the Ollama client among them) connects to internal addresses only: loopback,
+     * link-local and private ranges (ADR-0006 decision 1.2). A model server that resolves to a public address is
+     * refused on connect, in both modes. The cloud providers' SDKs bring their own HTTP stack and are not affected;
+     * in local mode they are not created at all (AiModeCheck, spring.ai.model.chat=ollama).
+     */
+    @Bean
+    InetAddressFilter outboundAddressFilter() {
+        return InetAddressFilter.internalAddresses();
+    }
 
     /**
      * Every response says which mode answered (llm-rules 1.3), errors and security rejections included: the filter runs

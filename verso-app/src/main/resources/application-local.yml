@@ -15,6 +15,16 @@ spring:
     url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
     user: svc_document_migrate
   ai:
+    model:
+      # Local mode (ADR-0006); an IDE run in cloud mode sets VERSO_AI_MODE, VERSO_CHAT_PROVIDER and the key file.
+      chat: ${VERSO_CHAT_PROVIDER:ollama}
+    anthropic:
+      chat:
+        model: ${CLOUD_CHAT_MODEL:claude-sonnet-5-5}
+    openai:
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      chat:
+        model: ${CLOUD_CHAT_MODEL:gpt-5-mini}
     ollama:
       # The compose ollama published on 127.0.0.1 by deploy/compose.local.yaml (or a host Ollama with this model).
       base-url: http://localhost:11434
@@ -23,6 +33,8 @@ spring:
       chat:
         model: gemma4:e2b
 verso:
+  ai:
+    mode: ${VERSO_AI_MODE:local}
   security:
     jwt:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).

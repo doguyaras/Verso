@@ -133,6 +133,34 @@
         <type>test-jar</type>
         <scope>test</scope>
       </dependency>
+      <!-- Convergence (ADR-0013): the Anthropic and OpenAI SDKs under the cloud starters ask for older versions of
+           these than Spring AI itself; Spring AI's versions win. The SDKs use the JSON schema modules only for
+           structured outputs and tools, which Verso does not use (llm-rules 3.2). -->
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-generator</artifactId>
+        <version>5.0.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-jackson</artifactId>
+        <version>5.0.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-swagger-2</artifactId>
+        <version>5.0.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.errorprone</groupId>
+        <artifactId>error_prone_annotations</artifactId>
+        <version>2.50.0</version>
+      </dependency>
+      <dependency>
+        <groupId>io.swagger.core.v3</groupId>
+        <artifactId>swagger-annotations</artifactId>
+        <version>2.2.50</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

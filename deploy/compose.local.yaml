@@ -5,6 +5,8 @@
 #   docker compose -f compose.yaml -f deploy/compose.local.yaml up -d postgres ollama
 services:
   postgres:
+    # The published port needs a network with a gateway; production keeps the database on "backend" alone.
+    networks: [backend, default]
     ports:
       - "127.0.0.1:${VERSO_DB_LOCAL_PORT:-5432}:5432"
   # The IDE run's embedding model (application-local.yml: localhost:11434). Local development only: here ollama also
