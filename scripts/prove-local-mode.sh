@@ -69,8 +69,12 @@ check() { # check <label> <expected status> <expected code or -> <curl arguments
   pass "$label: $status, X-Rag-Mode local"
 }
 check "application 401" 401 -
-check "edge proxy 413 (23 MB body)" 413 90014 -X POST -H "Content-Type: application/octet-stream" \
-  --data-binary @<(head -c 24117248 /dev/zero)
+# A 23 MB file in the working directory: a native Windows curl (Git Bash) can read neither /c/... nor <(...) paths.
+body=prove-local-mode-413.tmp
+trap 'rm -f "$body"' EXIT
+head -c 24117248 /dev/zero > "$body"
+check "edge proxy 413 (23 MB body)" 413 90014 -X POST -H "Content-Type: application/octet-stream" --data-binary "@$body"
+rm -f "$body"
 check "edge proxy 400 (oversized header)" 400 90004 -H "X-Probe: $(head -c 20000 /dev/zero | tr '\0' 'a')"
 
 [ "$failed" = 0 ] && echo "prove-local-mode: OK" || { echo "prove-local-mode: FAILED" >&2; exit 1; }
