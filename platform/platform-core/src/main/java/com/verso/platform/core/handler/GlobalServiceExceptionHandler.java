@@ -64,6 +64,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalServiceExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalServiceExceptionHandler.class);
+    /** Seconds a client should wait after a 503: a pool or lock wait, not a long outage. */
+    static final String RETRY_AFTER_SECONDS = "5";
 
     private final Clock clock;
 
@@ -119,6 +121,17 @@ public class GlobalServiceExceptionHandler extends ResponseEntityExceptionHandle
                     name(CommonErrorCode.REQUEST_NOT_READABLE), ex.getClass().getSimpleName(), traceId);
             return envelope(HttpStatus.BAD_REQUEST, CommonErrorCode.REQUEST_NOT_READABLE, List.of(), traceId, request,
                     null);
+        }
+        // Database unreachable, pool exhausted, lock or statement timeout: a temporary condition of the server, not a
+        // bug. 503 with Retry-After tells the client to come back (phase 4 reviews C4/R4/D2; repo-context section 3).
+        if (ErrorClassifier.isTemporarilyUnavailable(ex)) {
+            log.error("Request failed: code={} status=503 exceptionType={} rootCauseType={} traceId={}",
+                    name(CommonErrorCode.SERVICE_UNAVAILABLE), ex.getClass().getSimpleName(),
+                    SensitiveLogSanitizer.rootCauseType(ex), traceId);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS);
+            return envelope(HttpStatus.SERVICE_UNAVAILABLE, CommonErrorCode.SERVICE_UNAVAILABLE, List.of(), traceId,
+                    request, headers);
         }
         log.error("Request failed: code={} status=500 exceptionType={} rootCauseType={} traceId={}",
                 name(CommonErrorCode.INTERNAL_ERROR), ex.getClass().getSimpleName(),

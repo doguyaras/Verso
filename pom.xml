@@ -14,6 +14,7 @@
     <module>platform/platform-core</module>
     <module>platform/platform-observability</module>
     <module>platform/platform-security</module>
+    <module>services/document/document-api</module>
     <module>services/document/document-core</module>
     <module>verso-app</module>
   </modules>
@@ -32,6 +33,10 @@
     <spring-boot.version>4.1.1</spring-boot.version>
     <spring-modulith.version>2.1.1</spring-modulith.version>
     <archunit.version>1.5.1</archunit.version>
+    <!-- Stack (README): Spring AI 2.0.x is the Boot 4 line; 2.1.0-M1 is a milestone and not used (docs/versions.md). -->
+    <spring-ai.version>2.0.1</spring-ai.version>
+    <!-- PDF text extraction, page by page (ADR-0011; approved by the user 2026-10-02). -->
+    <pdfbox.version>3.0.8</pdfbox.version>
 
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
@@ -58,6 +63,18 @@
         <version>${spring-modulith.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.pdfbox</groupId>
+        <artifactId>pdfbox</artifactId>
+        <version>${pdfbox.version}</version>
       </dependency>
       <dependency>
         <groupId>com.tngtech.archunit</groupId>
@@ -89,8 +106,20 @@
       </dependency>
       <dependency>
         <groupId>com.verso</groupId>
+        <artifactId>document-api</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
         <artifactId>document-core</artifactId>
         <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>document-core</artifactId>
+        <version>${revision}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

@@ -112,7 +112,8 @@ class ComposeConfigTest {
     /** Reference 18.2 hardening of every container that does not need root to start (phase 2 test review T8). */
     @Test
     void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
-        for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway")) {
+        for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway", "ollama",
+                "ollama-pull")) {
             Map<String, Object> s = service(name);
             assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
@@ -152,6 +153,33 @@ class ComposeConfigTest {
     void dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth() throws IOException {
         List<String> patterns = read(".dockerignore").lines().map(String::trim).toList();
         assertThat(patterns).contains("**/.env", "**/.env.*", "**/secrets/", "**/target", ".git");
+    }
+
+    /**
+     * llm-rules 1.1/8.2, ADR-0011: the running model server has no route out (only the internal "models" network), no
+     * cloud models, reads the models read-only and serves the model the pull container verified; the application does
+     * not wait for it (review E1) and the one-shot migrate run builds no model client.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void ollama_whenComposed_isIsolatedReadOnlyAndServesThePulledModel() throws IOException {
+        Map<String, Object> compose = new Yaml().load(read("compose.yaml"));
+        Map<String, Object> networks = (Map<String, Object>) compose.get("networks");
+        assertThat((Map<String, Object>) networks.get("models")).containsEntry("internal", true);
+
+        Map<String, Object> ollama = service("ollama");
+        assertThat(ollama.get("networks")).isEqualTo(List.of("models"));
+        assertThat(ollama).doesNotContainKey("ports");
+        assertThat((List<String>) ollama.get("volumes")).singleElement().asString().endsWith(":ro");
+        assertThat(environment("ollama")).containsEntry("OLLAMA_NO_CLOUD", "true");
+        String pulled = String.valueOf(environment("ollama-pull").get("OLLAMA_MODEL"));
+        assertThat((List<Object>) ((Map<String, Object>) ollama.get("healthcheck")).get("test")).contains(pulled);
+        assertThat(environment("verso-app")).containsEntry("OLLAMA_EMBEDDING_MODEL", pulled);
+        assertThat(String.valueOf(environment("ollama-pull").get("OLLAMA_MODEL_DIGEST"))).matches("sha256:[0-9a-f]{64}");
+
+        assertThat((List<String>) service("verso-app").get("networks")).contains("models");
+        assertThat((Map<String, Object>) service("verso-app").get("depends_on")).doesNotContainKey("ollama");
+        assertThat((List<String>) service("migrate").get("command")).contains("--spring.ai.model.embedding=none");
     }
 
     @SuppressWarnings("unchecked")

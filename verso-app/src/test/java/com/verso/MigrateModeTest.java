@@ -42,6 +42,9 @@ class MigrateModeTest {
         try (ConfigurableApplicationContext context = SpringApplication.run(VersoApp.class, args.toArray(String[]::new))) {
             assertThat(context.getBeanNamesForType(DataSource.class)).as("application DataSource").isEmpty();
             assertThat(context.getBeanNamesForType(org.flywaydb.core.Flyway.class)).hasSize(1);
+            // Phase 4: no ingestion worker may run in the one-shot migrate container, and no model client is built.
+            assertThat(context.getBeanNamesForType(com.verso.document.worker.IngestionWorker.class)).isEmpty();
+            assertThat(context.getBeanNamesForType(org.springframework.ai.embedding.EmbeddingModel.class)).isEmpty();
         }
         try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
                 VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());

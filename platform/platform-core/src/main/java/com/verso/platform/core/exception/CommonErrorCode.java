@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus;
 
 /**
  * Service-independent codes (reference 7.2): validation block 90000-90099, security block 90100-90199, system block
- * 99998-99999.
+ * 99997-99999.
  * The global handler maps standard MVC failures to these (reference 7.3). Values mirror the reference skeleton so
  * clients see the same codes across projects built from the reference.
  */
@@ -33,6 +33,8 @@ public enum CommonErrorCode implements ErrorCode {
     /** The token could not be checked: the identity provider's keys are unreachable (ADR-0010). */
     IDP_UNAVAILABLE(90103, "security", "Identity provider is unavailable.", HttpStatus.SERVICE_UNAVAILABLE),
     // --- system
+    /** Database or pool temporarily unavailable, lock or statement timeout (phase 4); the client retries later. */
+    SERVICE_UNAVAILABLE(99997, "system", "Service is temporarily unavailable.", HttpStatus.SERVICE_UNAVAILABLE),
     UPSTREAM_ERROR(99998, "system", "Upstream service failed.", HttpStatus.BAD_GATEWAY),
     INTERNAL_ERROR(99999, "system", "Unexpected error.", HttpStatus.INTERNAL_SERVER_ERROR);
 

@@ -7,7 +7,9 @@
 | Java (derleme, CI, image) | 25 LTS (Temurin 25.0.4.1) | – (LTS) | endoflife.date/oracle-jdk; adoptium.net API (2026-10-02) | 21 LTS de destekli; referans tek sürüm ister |
 | Spring Boot | 4.1.1 | 2027-07-31 | referans Ek A/B (spring.io support policy); Maven Central metadata 2026-10-02 | 3.x OSS 2026-06-30'da bitti |
 | Spring Modulith (şekil A) | 2.1.1 (`spring-modulith-api` compile, `spring-modulith-core` test) | – | Maven Central metadata 2026-10-02 | referans: 2.1.1 `withMinAge` hatası (Bölüm 11.2) |
-| Spring AI (planlı, faz 4) | 2.0.1 | – | spring.io/blog 2026-06-12 (2.0.0 GA); Maven Central 2026-10-02 | 2.x Boot 4.0/4.1 ister; 2.1.0-M1 milestone, kullanılmaz |
+| Spring AI | 2.0.1 (`spring-ai-bom`; `spring-ai-model`, `spring-ai-starter-model-ollama`) | – | spring.io/blog 2026-06-12 (2.0.0 GA); Maven Central 2026-10-02 | 2.x Boot 4.0/4.1 ister; 2.1.0-M1 milestone, kullanılmaz |
+| Apache PDFBox | 3.0.8 (`pdfbox`, `pdfbox-io`, `fontbox`) | – | Maven Central 2026-10-02 | Apache 2.0; kullanıcı onayı 2026-10-02 (ADR-0011) |
+| Ollama | 0.35.1 (`ollama/ollama:0.35.1@sha256:292ee794…278c`) | – | Docker Hub 2026-10-02 | ~3,8 GB; CPU (ADR-0011) |
 | ArchUnit | 1.5.1 | – | Maven Central 2026-10-02 | düz `@Test` ile (Ek B ders 2) |
 | Maven / Maven Wrapper | 3.9.16 / 3.3.4 | – | Maven Central 2026-10-02 | dağıtım SHA-256'sı `.mvn/wrapper/maven-wrapper.properties`'te |
 | maven-compiler / surefire / enforcer / flatten | 3.16.0 / 3.5.6 / 3.6.3 / 1.8.0 | – | Maven Central 2026-10-02 | flatten: `${revision}` çözümü (ADR-0007 #22) |
@@ -24,7 +26,12 @@
 
 **Lombok:** faz 1'de yok; ilk kullanımda eklenir (ADR-0007 #27).
 
-**Modeller (planlı, `llm-rules.md` 8.1):** embedding `bge-m3` (1024 boyut); chat varsayılanı bir Gemma 4 küçük modeli. Ollama etiketi, digest ve lisans faz 5'te eklenir.
+**Modeller (`llm-rules.md` 8.1):**
+
+| Model | Etiket | Model katmanı digest'i | Boyut | Lisans | Kaynak |
+|---|---|---|---|---|---|
+| Embedding | `bge-m3:567m` | `sha256:daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c` | 1,16 GB, 1024 boyut | MIT | registry.ollama.ai manifest 2026-10-02; `ollama-pull` doğrular |
+| Chat (planlı, faz 5) | bir Gemma 4 küçük modeli | – | – | – | faz 5 |
 
 **Bilinen CVE tetikleyicileri** (yaması yalnız ticari sürümde olan → upgrade): yok (2026-10-02).
 

@@ -14,6 +14,12 @@ spring:
   flyway:
     url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
     user: svc_document_migrate
+  ai:
+    ollama:
+      # The compose ollama published on 127.0.0.1 by deploy/compose.local.yaml (or a host Ollama with this model).
+      base-url: http://localhost:11434
+      embedding:
+        model: bge-m3:567m
 verso:
   security:
     jwt:

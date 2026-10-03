@@ -33,6 +33,43 @@ spring:
     clean-disabled: true
     # Off on purpose: it removes the check that stops migrations on a wrong, non-empty database (reference 10.2).
     baseline-on-migrate: false
+  # PDF uploads (ADR-0011). Held in memory: the container is read-only and has no disk for spooling. The request limit
+  # leaves room for the multipart envelope; verso.document.max-file-size may not exceed max-file-size (checked).
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+      file-size-threshold: 21MB
+      # Parsed when the controller asks for the part, after the upload limiter let the request in.
+      resolve-lazily: true
+  # Minor API versions through a header (ADR-0004): optional, 1.0 by default, unknown values are 400.
+  mvc:
+    apiversion:
+      use:
+        header: API-Version
+      required: false
+      default: "1.0"
+      supported: "1.0"
+  # Models (ADR-0006, ADR-0011). Embeddings always come from the local Ollama (llm-rules 1.2); the chat model joins in
+  # phase 5. The runtime never pulls a model (llm-rules 8.2): compose's one-shot ollama-pull container does that.
+  ai:
+    model:
+      embedding: ollama
+      chat: none
+    ollama:
+      base-url: ${OLLAMA_BASE_URL}
+      init:
+        pull-model-strategy: never
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL}
+    # No client retry for embeddings: Spring AI 2.0's Ollama embedding client has none (phase 4 reviews C5/L1), and
+    # the ingestion worker pauses and retries on its own (ADR-0011).
+  # Model and other outbound HTTP calls (llm-rules 5.2): Boot's builders apply these to the Ollama client.
+  http:
+    clients:
+      connect-timeout: 2s
+      # An embedding batch on a CPU-only host; the worker's lease is renewed after every batch.
+      read-timeout: 60s
 
 # Access tokens (ADR-0005, reference 9.2): ES256 only, exact issuer, the API audience, sub as the account. The issuer
 # is the public URL inside the tokens; the keys come from the IdP's internal address (no discovery at startup).
@@ -48,6 +85,40 @@ verso:
       # Connect and read timeout of the key fetch; keys are cached, so this is paid only on a cache miss (ADR-0010).
       jwks-timeout: 2s
       allow-http: ${OIDC_JWKS_ALLOW_HTTP:false}
+  # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
+  document:
+    max-file-size: 20MB
+    max-pages: 500
+    max-text-chars: 2000000
+    max-page-chars: 50000
+    max-content-bytes: 64MB
+    max-documents-per-account: 200
+    max-queued-per-account: 20
+    # Each upload is held in memory (20 MB, twice): this bounds that memory per instance (ADR-0011).
+    max-concurrent-uploads: 4
+    parser-memory: 256MB
+    chunk-size: 1000
+    chunk-overlap: 150
+    # Stored with every chunk (llm-rules 6.1): read from the Ollama client's own setting, so the two cannot differ.
+    embedding-model: ${spring.ai.ollama.embedding.model}
+    embedding-dimensions: 1024
+    ingestion:
+      enabled: true
+      poll-interval-ms: 5000
+      lease: 10m
+      max-attempts: 5
+      retry-backoff: 30s
+      max-retry-backoff: 10m
+      embedding-batch: 16
+      max-documents-per-poll: 10
+      # Circuit breaker of the embedding model (review R1/R2): no claims while it is down or misconfigured.
+      model-unavailable-pause: 30s
+      model-misconfigured-pause: 5m
+logging:
+  level:
+    # The PDF parser warns about fonts and broken objects; its messages can quote document content (llm-rules 2.1).
+    org.apache.pdfbox: ERROR
+    org.apache.fontbox: ERROR
 ---
 # Structured (JSON) logs outside the local profile (reference 8.1): Loki/OTLP read fields, not regexes.
 spring:

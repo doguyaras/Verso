@@ -27,6 +27,27 @@ final class ErrorClassifier {
             "org.springframework.security.access.AccessDeniedException",
             "org.springframework.security.core.AuthenticationException");
 
+    /**
+     * Spring's data access exceptions for a server that is temporarily unable to answer: no connection, lock or
+     * statement timeout, serialization failure. By name, like the security ones: platform-core has no spring-tx.
+     */
+    static final List<String> TEMPORARILY_UNAVAILABLE = List.of(
+            "org.springframework.dao.DataAccessResourceFailureException",
+            "org.springframework.dao.TransientDataAccessException");
+
+    /** True when the exception (or a cause) is one of {@link #TEMPORARILY_UNAVAILABLE}, subclasses included. */
+    static boolean isTemporarilyUnavailable(Throwable t) {
+        Throwable current = t;
+        for (int depth = 0; current != null && depth < MAX_DEPTH; depth++) {
+            for (Class<?> type = current.getClass(); type != null; type = type.getSuperclass()) {
+                if (TEMPORARILY_UNAVAILABLE.contains(type.getName())) return true;
+            }
+            if (current.getCause() == current) break;
+            current = current.getCause();
+        }
+        return false;
+    }
+
     /** True for Spring Security's denial and authentication exceptions (subclasses included). */
     static boolean isSecurityException(Throwable t) {
         for (Class<?> type = t == null ? null : t.getClass(); type != null; type = type.getSuperclass()) {

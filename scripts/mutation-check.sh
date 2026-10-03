@@ -98,7 +98,7 @@ baseline_tests=$(grep -E '^\[INFO\] Tests run: [0-9]+, Failures: 0, Errors: 0, S
 results+=("baseline      green (${baseline_tests} tests)")
 # The node suites are a baseline too: without gitleaks or node every one of them is red, and a mutation judged by
 # them would look "caught" (third-round review N4).
-NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js"
+NODE_SUITES="scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js"
 for suite in $NODE_SUITES; do
   if ! GITLEAKS="${GITLEAKS:-gitleaks}" node --test "$suite" > "$LOG" 2>&1; then
     echo "BASELINE RED: $suite (log: $LOG)"; exit 2
@@ -291,8 +291,11 @@ backup $CL; sub $CL 's/\n\s*\|\| TOMCAT_BAD_REQUEST\.equals\(current\.getClass\(
   && expect_red "M64 broken chunked body ends as VALIDATION" verso-app $CEP chunkedBody_whenMalformed_returnsRequestNotReadable; restore $CL
 backup $EC; sub $EC 's/if \(exception instanceof ServiceException se\) \{/if (false \&\& exception instanceof ServiceException se) {/' \
   && expect_red "M35 filter ServiceException loses its code" verso-app $CEP filterException_whenServiceException_keepsItsStatusAndCode; restore $EC
-backup verso-app/pom.xml; sub verso-app/pom.xml 's/\s*<dependency>\s*<groupId>org\.springframework\.boot<\/groupId>\s*<artifactId>spring-boot-starter-validation<\/artifactId>\s*<\/dependency>//' \
-  && expect_red "M36 no Bean Validation provider" verso-app $SMK beanValidation_whenAppStarts_hasARealProvider; restore verso-app/pom.xml
+# Since phase 4 the validation starter also arrives through document-core: both have to go for the provider to go.
+DCPOM=services/document/document-core/pom.xml
+VALIDATION_STARTER='s/\s*<dependency>\s*<groupId>org\.springframework\.boot<\/groupId>\s*<artifactId>spring-boot-starter-validation<\/artifactId>\s*<\/dependency>//'
+backup verso-app/pom.xml; backup $DCPOM; sub verso-app/pom.xml "$VALIDATION_STARTER" && sub $DCPOM "$VALIDATION_STARTER" \
+  && expect_red "M36 no Bean Validation provider" verso-app $SMK beanValidation_whenAppStarts_hasARealProvider; restore verso-app/pom.xml; restore $DCPOM
 backup $EC; sub $EC 's/return exception != null \? 500 : 404;/return 404;/' \
   && expect_red "M48 failure after commit reported as 404 WARN" verso-app $CEP filterException_whenResponseAlreadyCommitted_logsServerErrorAndWritesNothingMore; restore $EC
 backup $EC; sub $EC 's/if \(response\.isCommitted\(\)\) \{/if (false) {/' \
@@ -439,7 +442,7 @@ backup $JP; sub $JP 's/if \("http"\.equals\(scheme\) && !allowHttp && !isLoopbac
   && expect_red "M117 plain-HTTP JWKS to a remote host" $PSM $SUT properties_whenIncompleteOrUnsafe_failAtStartup; restore $JP
 backup $JP; sub $JP 's/!jwksTimeout\.isPositive\(\) \|\| jwksTimeout\.compareTo\(Duration\.ofSeconds\(10\)\) > 0/false/' \
   && expect_red "M118 JWKS timeout zero or unbounded" $PSM $SUT properties_whenIncompleteOrUnsafe_failAtStartup; restore $JP
-backup $CL; sub $CL 's/type = type\.getSuperclass\(\)/type = null/' \
+backup $CL; sub $CL 's/(t == null \? null : t\.getClass\(\); type != null; )type = type\.getSuperclass\(\)/$1type = null/' \
   && expect_red "M119 @PreAuthorize denial becomes a 500" $PSM $PST request_whenControllerThrowsAuthorizationDeniedException_isRejectedWith403EnvelopeNot500; restore $CL
 backup $ADH; sub $ADH 's/\n\s*response\.setHeader\("WWW-Authenticate", "Bearer error=\\"insufficient_scope\\""\);//' \
   && expect_red "M120 403 without insufficient_scope" $PSM $PST request_whenControllerDeniesAccess_isRejectedWith403EnvelopeNot500; restore $ADH
@@ -455,6 +458,91 @@ backup $REALM; sub $REALM 's/"failureFactor": 5/"failureFactor": 100000/' \
   && expect_red "M125 unlimited login attempts" verso-app KeycloakRealmTest realm_whenImported_limitsLoginAttemptsAndSessions; restore $REALM
 backup compose.yaml; sub compose.yaml 's/(      - SECRET_KEYCLOAK_DEMO_USER_PASSWORD\n)/$1      - SECRET_DB_DOCUMENT_PASSWORD\n/' \
   && expect_red "M126 IdP container gets a Verso database password" verso-app ComposeConfigTest migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService; restore compose.yaml
+
+# ---------- phase 4: document ingestion (ADR-0011) ----------
+DOC=services/document/document-core/src/main/java/com/verso/document
+DCM=services/document/document-core
+DSVC=$DOC/service/impl/DocumentServiceImpl.java
+DREPO=$DOC/repository/DocumentRepository.java
+IREPO=$DOC/repository/IngestionRepository.java
+IWK=$DOC/worker/IngestionWorker.java
+PDFX=$DOC/worker/PdfTextExtractor.java
+DAT=DocumentApiTest
+IWT=IngestionWorkerTest
+DLT=DocumentLimitsTest
+PXT=PdfTextExtractorTest
+backup $IREPO; sub $IREPO 's/\n\s*OR \(status = \x27PROCESSING\x27 AND locked_until <= :now\)//' \
+  && expect_red "M128 expired leases are never taken over" verso-app $IWT claim_whenLeaseExpired_isTakenOverAndTheOldWorkerCannotComplete; restore $IREPO
+backup $IREPO; sub $IREPO 's/SET updated_at = :now WHERE id = :id AND claim_token = :token/SET updated_at = :now WHERE id = :id/' \
+  && expect_red "M129 a stale worker can still write" verso-app $IWT claim_whenLeaseExpired_isTakenOverAndTheOldWorkerCannotComplete; restore $IREPO
+backup $IREPO; sub $IREPO 's/\n\s*for \(String table : List\.of\("document_chunk", "document_page", "document_file"\)\) \{\n[^\n]*\n\s*\}//' \
+  && expect_red "M130 FAILED documents keep their content" verso-app $IWT runOnce_whenPdfIsUnusable_failsAtOnceWithItsReasonAndKeepsNoContent; restore $IREPO
+backup $IREPO; sub $IREPO 's/\n\s*jdbc\.sql\("DELETE FROM document\.document_file WHERE document_id = :id"\)\.param\("id", documentId\)\.update\(\);\n    \}/\n    }/' \
+  && expect_red "M131 the PDF is kept after parsing" verso-app $IWT runOnce_whenPdfHasText_storesPagesChunksAndVectorsAndDropsThePdf; restore $IREPO
+backup $DREPO; sub $DREPO 's/FROM document\.document WHERE account_id = :account AND id = :id/FROM document.document WHERE (true OR account_id = :account) AND id = :id/' \
+  && expect_red "M132 another account's document can be read" verso-app $DAT documents_whenAccessedByAnotherAccount_doNotExistForIt; restore $DREPO
+backup $DREPO; sub $DREPO 's/DELETE FROM document\.document WHERE account_id = :account AND id = :id/DELETE FROM document.document WHERE (true OR account_id = :account) AND id = :id/' \
+  && expect_red "M133 another account's document can be deleted" verso-app $DAT documents_whenAccessedByAnotherAccount_doNotExistForIt; restore $DREPO
+backup $DREPO; sub $DREPO 's/FROM document\.document WHERE account_id = :account "\n(\s*)\+ "ORDER BY/FROM document.document WHERE (true OR account_id = :account) "\n$1+ "ORDER BY/' \
+  && expect_red "M134 the list shows every account's documents" verso-app $DAT documents_whenAccessedByAnotherAccount_doNotExistForIt; restore $DREPO
+backup $DSVC; sub $DSVC 's/\n\s*if \(!startsLikePdf\(content\)\) throw rejected\(DocumentErrorCode\.DOCUMENT_NOT_PDF\);//' \
+  && expect_red "M135 any file is accepted as a PDF" verso-app $DAT upload_whenFileIsNotAPdfOrEmpty_isRejectedWithDocumentCodes; restore $DSVC
+backup $DSVC; sub $DSVC 's/\n\s*if \(earlier\.isPresent\(\)\) return replayed\(earlier\.get\(\)\);//' \
+  && sub $DSVC 's/return replayed\(repository\.findByIdempotencyKey\(account\.value\(\), idempotencyKey\)\.orElseThrow\(\(\) -> e\)\);/throw e;/' \
+  && expect_red "M136 a retried upload is not idempotent" verso-app $DAT upload_whenRepeatedWithTheSameIdempotencyKey_returnsTheFirstDocument; restore $DSVC
+backup $DSVC; sub $DSVC 's/>= properties\.maxDocumentsPerAccount\(\)/>= Integer.MAX_VALUE/' \
+  && expect_red "M137 no document quota" verso-app $DLT upload_whenQueueOrQuotaIsFull_isRejectedUntilItFreesUp; restore $DSVC
+backup $DSVC; sub $DSVC 's/>= properties\.maxQueuedPerAccount\(\)/>= Integer.MAX_VALUE/' \
+  && expect_red "M138 one account can fill the queue" verso-app $DLT upload_whenQueueOrQuotaIsFull_isRejectedUntilItFreesUp; restore $DSVC
+backup $DSVC; sub $DSVC 's/\n\s*repository\.lockAccount\(account\.value\(\)\);//' \
+  && expect_red "M139 parallel uploads race the quota" verso-app $DLT upload_whenSentInParallel_neverExceedsTheLimits; restore $DSVC
+backup $DSVC; sub $DSVC 's/\n\s*repository\.waitForLocksUpTo\(DELETE_LOCK_WAIT\);//' \
+  && expect_red "M140 KVKK delete fails behind the worker's lock" verso-app $DAT delete_whenTheRowIsLockedForSeconds_waitsAndSucceeds; restore $DSVC
+backup $PDFX; sub $PDFX 's/\+\+pageGlyphs > maxPageGlyphs \|\| //' \
+  && expect_red "M141 glyphs of one page are not bounded" $DCM $PXT extract_whenAPageHoldsMoreGlyphsThanAllowed_isRejectedWhileCollecting; restore $PDFX
+backup $PDFX; sub $PDFX 's/\n\s*measureContent\(document\);//' \
+  && expect_red "M142 content inflates without a limit" $DCM $PXT extract_whenContentInflatesBeyondTheLimit_isRejectedBeforeDecoding; restore $PDFX
+backup $PDFX; sub $PDFX 's/if \(getGraphicsStackSize\(\) > MAX_GRAPHICS_STACK\)/if (false)/' \
+  && expect_red "M143 the graphics state stack grows without a limit" $DCM $PXT extract_whenGraphicsStatesPileUp_isRejectedAsUnsupported; restore $PDFX
+backup $PDFX; sub $PDFX 's/\} else \{\n\s*throw rejected\(DocumentFailureReason\.UNSUPPORTED_PDF\);\n\s*\}\n\s*if \(!flate\)/} else {\n            flate = false;\n        }\n        if (!flate)/' \
+  && expect_red "M144 unmeasurable stream encodings are trusted" $DCM $PXT extract_whenAContentStreamUsesAnUnmeasurableEncoding_isRejectedAsUnsupported; restore $PDFX
+backup $PDFX; sub $PDFX 's/CONTROL\.matcher\(text\.replace\("\\r\\n", "\\n"\)\.replace\(\x27\\r\x27, \x27\\n\x27\)\)\.replaceAll\(" "\)/text.replace("\\r\\n", "\\n").replace(\x27\\r\x27, \x27\\n\x27)/' \
+  && expect_red "M145 NUL and control characters reach the database" $DCM $PXT normalize_whenTextHasControlCharactersAndRuns_cleansThem; restore $PDFX
+backup $IWK; sub $IWK 's/            pause\(e\);\n\s*release\(claim, e\.misconfigured \? "MODEL_MISCONFIGURED" : "MODEL_UNAVAILABLE", started\);/            retryOrFail(claim, e, started);/' \
+  && expect_red "M146 a model outage spends the document's attempts" verso-app $IWT runOnce_whenTheModelIsUnavailable_releasesWithoutAnAttemptAndPauses; restore $IWK
+backup $IWK; sub $IWK 's/\n\s*pausedUntil = clock\.instant\(\)\.plus\(pause\);//' \
+  && expect_red "M147 no circuit breaker: claims go on while the model is down" verso-app $IWT runOnce_whenTheModelIsUnavailable_releasesWithoutAnAttemptAndPauses; restore $IWK
+backup $IWK; sub $IWK 's/if \(NON_TRANSIENT_AI\.equals\(type\.getName\(\)\)\) return true;/if (false) return true;/' \
+  && expect_red "M148 a misconfigured model is treated as an outage" verso-app $IWT runOnce_whenTheModelIsMisconfigured_pausesWithAnErrorAndSpendsNoAttempt; restore $IWK
+backup $IWK; sub $IWK 's/if \(!running\) throw new Stopping\(\);/if (false) throw new Stopping();/g' \
+  && expect_red "M149 shutdown does not hand the document back" verso-app $IWT runOnce_whenShutdownBeginsDuringEmbedding_releasesTheDocument; restore $IWK
+backup $IWK; sub $IWK 's/if \(vector\.length != properties\.embeddingDimensions\(\)\) throw new ModelFailure\(true, "WRONG_DIMENSIONS"\);//' \
+  && expect_red "M150 vectors of another dimension are not caught" verso-app $IWT runOnce_whenTheModelAnswersWithOtherDimensions_storesNothingAndPauses; restore $IWK
+backup $IREPO; sub $IREPO 's/attempts = GREATEST\(attempts - 1, 0\)/attempts = attempts/' \
+  && expect_red "M151 a released document loses an attempt" verso-app $IWT runOnce_whenTheModelIsUnavailable_releasesWithoutAnAttemptAndPauses; restore $IREPO
+backup $CL; sub $CL 's/(current\.getClass\(\); type != null; )type = type\.getSuperclass\(\)/$1type = null/' \
+  && expect_red "M163 a lock timeout (a DataAccess subclass) answers 500" verso-app DatabaseUnavailableTest request_whenALockCannotBeTaken_answers503WithRetryAfter; restore $CL
+backup $H; sub $H 's/if \(ErrorClassifier\.isTemporarilyUnavailable\(ex\)\) \{/if (false) {/' \
+  && expect_red "M152 database outage answers 500" verso-app DatabaseUnavailableTest request_whenTheDatabaseIsUnreachable_answers503WithRetryAfter; restore $H
+backup $DOC/controller/UploadLimiter.java; sub $DOC/controller/UploadLimiter.java 's/if \(!permits\.tryAcquire\(\)\)/if (false)/' \
+  && expect_red "M153 unbounded uploads in memory" $DCM UploadLimiterTest preHandle_whenAllPermitsAreTaken_rejectsWithRetryAfterAndFreesThemAfterCompletion; restore $DOC/controller/UploadLimiter.java
+backup $DOC/service/FileNames.java; sub $DOC/service/FileNames.java 's/\n\s*if \(slash >= 0\) name = name\.substring\(slash \+ 1\);//' \
+  && expect_red "M154 file names keep their path" $DCM FileNamesTest sanitize_whenNameCarriesAPath_keepsOnlyTheLastSegment; restore $DOC/service/FileNames.java
+backup $DOC/worker/PageChunker.java; sub $DOC/worker/PageChunker.java 's/\n\s*if \(space > start\) end = space;//' \
+  && expect_red "M155 chunks split words" $DCM PageChunkerTest chunk_whenWordsFitTheWindow_cutsAtWhitespaceAndOverlaps; restore $DOC/worker/PageChunker.java
+backup $DOC/controller/DocumentController.java; sub $DOC/controller/DocumentController.java 's/ResponseEntity\.created\(URI\.create\("\/v1\/documents\/" \+ created\.id\(\)\)\)\.cacheControl\(PRIVATE\)/ResponseEntity.created(URI.create("\/v1\/documents\/" + created.id()))/' \
+  && expect_red "M156 uploaded file names cached by proxies" verso-app $DAT upload_whenPdf_returns201WithLocationAndAPendingPrivateDocument; restore $DOC/controller/DocumentController.java
+backup $VY; sub $VY 's/supported: "1\.0"/supported: "1.0, 2.0"/' \
+  && expect_red "M157 unknown API versions accepted" verso-app $DAT apiVersion_whenAbsentOrSupportedOrUnknown_isAcceptedOrRejected; restore $VY
+backup compose.yaml; sub compose.yaml 's/\n\s*- --spring\.ai\.model\.embedding=none//' \
+  && expect_red "M158 migrate run builds a model client" verso-app MigrateModeTest migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/(  models:\n)    internal: true/$1    internal: false/' \
+  && expect_red "M159 the model server can reach the internet" verso-app ComposeConfigTest ollama_whenComposed_isIsolatedReadOnlyAndServesThePulledModel; restore compose.yaml
+backup $DOC/worker/IngestionWorker.java; sub $DOC/worker/IngestionWorker.java 's/\@ConditionalOnWebApplication\(type = ConditionalOnWebApplication\.Type\.SERVLET\)\npublic class IngestionWorker/public class IngestionWorker/' \
+  && expect_red "M160 the worker would run in the migrate container" verso-app MigrateModeTest migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource; restore $DOC/worker/IngestionWorker.java
+V1=$DCM/src/main/resources/db/migration/document/V1__document_tables.sql
+backup $V1; sub $V1 's/\nREVOKE UPDATE ON document\.document_chunk FROM svc_document;//' \
+  && expect_red "M161 application role may rewrite stored chunks" verso-app $DRT documentTables_whenMigrated_giveTheApplicationRoleNoUpdateOnStoredContent; restore $V1
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node
@@ -492,6 +580,9 @@ backup scripts/config-lint.pathspec; sub scripts/config-lint.pathspec 's/\n[^\n]
 KS=deploy/keycloak/start.sh
 backup $KS; sub $KS 's/  if \[ ! -r "\$SECRETS\/\$1" \] \|\| \[ ! -s "\$SECRETS\/\$1" \]; then/  if false; then/' \
   && node_red "M127 IdP starts with a missing secret" scripts/keycloak-start.test.js "start.sh: missing SECRET_DB_KEYCLOAK_PASSWORD"; restore $KS
+PULL=deploy/ollama/pull.sh
+backup $PULL; sub $PULL 's/if ! grep -q "\$OLLAMA_MODEL_DIGEST" "\$manifest"; then/if false; then/' \
+  && node_red "M162 a model with another digest is accepted" scripts/ollama-pull.test.js "ollama-pull: another digest"; restore $PULL
 
 # ---------- zero tests must fail the build ----------
 if want M30; then

@@ -22,8 +22,8 @@ import org.springframework.modulith.core.Violations;
  */
 class ModuleStructureTest {
 
-    /** Application modules expected today; phase 4 adds "document", phase 5 "qa" (ADR-0001). */
-    private static final Set<String> EXPECTED_MODULES = Set.of();
+    /** Application modules expected today; phase 5 adds "qa" (ADR-0001). */
+    private static final Set<String> EXPECTED_MODULES = Set.of("document");
 
     static ApplicationModules productionModules() {
         return ApplicationModules.of(VersoApp.class, resideInAPackage("com.verso.platform.."));
@@ -68,5 +68,27 @@ class ModuleStructureTest {
         assertThat(modules.detectViolations().getMessages())
                 .isNotEmpty()
                 .allSatisfy(m -> assertThat(m).contains("LeakyAlpha"));
+    }
+
+    /**
+     * ADR-0007 #24 (phase 4 architecture review A2): a named interface covers its own package only. Every api
+     * sub-package needs its own @NamedInterface, otherwise another module using it is a violation; this pins that
+     * Modulith reports it, so the rule "mark every api sub-package" is not a superstition.
+     */
+    @Test
+    void verify_whenModuleUsesAnUnmarkedApiSubPackage_reportsIt() {
+        ImportOption withFixtures = location -> !location.contains("/com/verso/platform/")
+                && (!location.contains("/test-classes/")
+                        || location.contains("/test-classes/com/verso/fixturegamma/")
+                        || location.contains("/test-classes/com/verso/fixturedelta/"));
+        ApplicationModules modules = ApplicationModules.of(VersoApp.class, withFixtures);
+        assertThat(modules.stream().map(ApplicationModule::getIdentifier).map(Object::toString))
+                .contains("fixturegamma", "fixturedelta");
+
+        assertThat(modules.detectViolations().getMessages())
+                .isNotEmpty()
+                .allSatisfy(m -> assertThat(m).contains("DeltaUsesGamma"))
+                .anySatisfy(m -> assertThat(m).contains("com.verso.fixturegamma.api.extra.GammaExtra"))
+                .noneSatisfy(m -> assertThat(m).contains("com.verso.fixturegamma.api.GammaApi "));
     }
 }

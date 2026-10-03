@@ -105,6 +105,24 @@ class DatabaseRolesTest {
         assertThat(VersoPostgres.POSTGRES.getLogs()).doesNotContain(VersoPostgres.secret("SECRET_DB_KEYCLOAK_PASSWORD"));
     }
 
+    /**
+     * V1 (phase 4 db review D6): files, pages and chunks are written and deleted, never updated, so the application role
+     * has no UPDATE on them; the job table itself is updated by the worker.
+     */
+    @Test
+    void documentTables_whenMigrated_giveTheApplicationRoleNoUpdateOnStoredContent() {
+        for (String table : new String[]{"document_file", "document_page", "document_chunk"}) {
+            for (String privilege : new String[]{"SELECT", "INSERT", "DELETE"}) {
+                assertThat(jdbc.queryForObject("select has_table_privilege('svc_document', ?, ?)", Boolean.class,
+                        "document." + table, privilege)).as(table + " " + privilege).isTrue();
+            }
+            assertThat(jdbc.queryForObject("select has_table_privilege('svc_document', ?, 'UPDATE')", Boolean.class,
+                    "document." + table)).as(table + " UPDATE").isFalse();
+        }
+        assertThat(jdbc.queryForObject("select has_table_privilege('svc_document', 'document.document', 'UPDATE')",
+                Boolean.class)).isTrue();
+    }
+
     @Test
     void flyway_whenApplicationStarted_ranAsTheMigrationRoleAndOwnsTheHistory() {
         assertThat(jdbc.queryForObject(

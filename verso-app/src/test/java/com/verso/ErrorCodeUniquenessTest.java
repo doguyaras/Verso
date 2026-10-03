@@ -26,7 +26,7 @@ class ErrorCodeUniquenessTest {
     private static final Map<String, int[]> BLOCKS = Map.of(
             "validation", new int[]{90000, 90099},
             "security", new int[]{90100, 90199},
-            "system", new int[]{99998, 99999},
+            "system", new int[]{99997, 99999},
             "document", new int[]{10000, 10999},
             "qa", new int[]{11000, 11999});
 

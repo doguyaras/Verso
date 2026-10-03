@@ -42,7 +42,7 @@ class ServiceExceptionTest {
             int[] block = switch (code.getService()) {
                 case "validation" -> new int[]{90000, 90099};
                 case "security" -> new int[]{90100, 90199};
-                case "system" -> new int[]{99998, 99999};
+                case "system" -> new int[]{99997, 99999};
                 default -> throw new AssertionError("unexpected service " + code.getService());
             };
             assertThat(code.getCode()).isBetween(block[0], block[1]);
