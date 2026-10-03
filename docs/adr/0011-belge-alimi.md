@@ -1,6 +1,6 @@
 # ADR-0011: Belge alımı (yükleme, ayrıştırma, chunking, embedding)
 
-- **Durum:** Kabul edildi (faz 4)
+- **Durum:** Kabul edildi (faz 4). Format kapsamı ADR-0016 ile genişledi (DOCX, TXT, MD; 10010'un adı `DOCUMENT_TYPE_UNSUPPORTED` oldu).
 - **Tarih:** 2026-10-02
 - **Karar verenler:** doguyaras
 - **İlgili eşik (referans Bölüm 24):** Mesajlaşma/iş kuyruğu satırı (ADR-0003); arama satırı (ADR-0002).

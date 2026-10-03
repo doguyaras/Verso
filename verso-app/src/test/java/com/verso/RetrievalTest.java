@@ -3,6 +3,8 @@ package com.verso;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.verso.document.api.enums.DocumentFormat;
+import com.verso.document.api.enums.SourceUnit;
 import com.verso.document.api.DocumentRetrieval;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.exception.DocumentErrorCode;
@@ -14,6 +16,7 @@ import com.verso.document.worker.IngestionWorker;
 import com.verso.support.TestEmbeddingModel;
 import com.verso.support.VersoPostgres;
 import com.verso.support.VersoTestEnvironment;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -72,6 +75,7 @@ class RetrievalTest {
         assertThat(found.getFirst().similarity()).isGreaterThan(0.9);
         assertThat(found.getFirst().pageNumber()).isEqualTo(1);
         assertThat(found.getFirst().fileName()).isEqualTo("test.pdf");
+        assertThat(found.getFirst().unit()).as("a PDF passage is cited by page (ADR-0016)").isEqualTo(SourceUnit.PAGE);
         assertThat(retrieval.search(bob, "topic-leave", 10)).hasSize(6)
                 .noneSatisfy(p -> assertThat(p.documentId()).isEqualTo(mine));
     }
@@ -271,8 +275,22 @@ class RetrievalTest {
         assertThat(retrieval.search(alice, "topic-leave", 5)).hasSize(3);
     }
 
+    /** ADR-0016: a passage of a file without pages carries its section number and says so. */
+    @Test
+    void search_whenTheDocumentHasNoPages_citesASection() {
+        DocumentRow row = documents.insert(alice, "notlar.txt", DocumentFormat.TXT, 10, null, Instant.now());
+        documents.insertFile(row.id(), "topic-leave yıllık izin on dört gündür.".getBytes(StandardCharsets.UTF_8));
+        worker.runOnce();
+
+        RetrievedPassage found = retrieval.search(alice, "topic-leave", 5).getFirst();
+
+        assertThat(found.documentId()).isEqualTo(row.id());
+        assertThat(found.unit()).isEqualTo(SourceUnit.SECTION);
+        assertThat(found.pageNumber()).isEqualTo(1);
+    }
+
     private UUID ready(String account, String text) {
-        DocumentRow row = documents.insert(account, "test.pdf", 10, null, Instant.now());
+        DocumentRow row = documents.insert(account, "test.pdf", DocumentFormat.PDF, 10, null, Instant.now());
         documents.insertFile(row.id(), TestPdfs.pages(text));
         worker.runOnce();
         assertThat(documents.find(account, row.id()).orElseThrow().status().name()).isEqualTo("READY");

@@ -1,6 +1,6 @@
 # API istemcisi belge yükleme entegrasyonu [v1]
 
-Verso'ya PDF belge yükleme, listeleme ve silme uçları. Yüklenen belge arka planda sayfa sayfa okunur ve arama için hazırlanır; soru sorma faz 5'te gelir. İstemci (müşteri sistemi, demo betiği, ileride yönetim paneli) belgeyi yükler ve durumunu `PENDING → READY` ya da `FAILED` olana kadar izler.
+Verso'ya belge (PDF, DOCX, TXT, MD; ADR-0016) yükleme, listeleme ve silme uçları. Yüklenen belge arka planda sayfa sayfa (PDF) ya da bölüm bölüm (diğerleri) okunur ve arama için hazırlanır; soru sorma faz 5'te gelir. İstemci (müşteri sistemi, demo betiği, ileride yönetim paneli) belgeyi yükler ve durumunu `PENDING → READY` ya da `FAILED` olana kadar izler.
 
 > **OpenAPI doğrulanmadı:** projede henüz OpenAPI üretimi yok (ADR-0004, P1). Uç ve alan listesi `DocumentController` imzalarından ve `document-api` DTO'larından çıkarıldı. Generated client paketi: yok.
 
@@ -34,21 +34,27 @@ Tüm yanıtlar `Cache-Control: private, no-store` ve `X-Trace-Id` taşır. Deste
 ## API sözleşmesi
 
 ### Belge yükleme
-`multipart/form-data`, tek parça `file`. Dosya en fazla 20 MB, PDF.
+`multipart/form-data`, tek parça `file`. Dosya en fazla 20 MB. Tür, dosya adı ve ilk baytlardan anlaşılır; gönderilen media type'a bakılmaz:
+
+| Tür | Koşul |
+|---|---|
+| PDF | İlk 1024 baytta `%PDF-` |
+| DOCX | `.docx` adı ve ZIP dosyası (parolalı DOCX ve eski `.doc` desteklenmez) |
+| TXT, MD | `.txt`, `.md` ya da `.markdown` adı; ikili dosya değil. UTF-8, UTF-16 (BOM ile) ya da Windows-1254 |
 
 #### Senaryo: kabul edildi
 `HTTP 201`, ham, `Location: /v1/documents/{id}`:
 ```json
-{ "id": "01a0fe8e-333d-71db-a698-635e9161ce9a", "fileName": "izin-yonetmeligi.pdf", "status": "PENDING",
+{ "id": "01a0fe8e-333d-71db-a698-635e9161ce9a", "fileName": "izin-yonetmeligi.pdf", "format": "PDF", "status": "PENDING",
   "sizeBytes": 1212, "pageCount": null, "chunkCount": null, "failureReason": null,
   "createdAt": "2026-10-03T09:00:00Z", "updatedAt": "2026-10-03T09:00:00Z" }
 ```
 Aynı `X-Idempotency-Key` ile tekrar: yine `201` ve **ilk** belgenin güncel hali; ikinci dosya yok sayılır (ilk istek kazanır).
 
-#### Senaryo: PDF değil
+#### Senaryo: desteklenmeyen tür
 `HTTP 415`, zarflı:
 ```json
-{ "ok": false, "data": null, "error": { "code": 10010, "message": "The file is not a PDF document.", "service": "document",
+{ "ok": false, "data": null, "error": { "code": 10010, "message": "The file is not a supported document (PDF, DOCX, TXT or MD).", "service": "document",
   "path": "/v1/documents", "timestamp": 1790935200000, "traceId": "…", "details": [] } }
 ```
 
@@ -60,11 +66,12 @@ Aynı `X-Idempotency-Key` ile tekrar: yine `201` ve **ilk** belgenin güncel hal
 |---|---|---|---|
 | `id` | UUID | evet | Belge kimliği |
 | `fileName` | string | evet | Yüklenen ad; yol parçaları ve görünmez karakterler atılmış, en çok 255 karakter |
+| `format` | enum | evet | `PDF`, `DOCX`, `TXT`, `MD` (ADR-0016'da eklendi); **bilinmeyen → "belge"** |
 | `status` | enum | evet | `PENDING`, `PROCESSING`, `READY`, `FAILED`; **bilinmeyen → "işleniyor"** |
 | `sizeBytes` | number | evet | |
-| `pageCount` | number \| null | hayır | `READY`'den önce null |
+| `pageCount` | number \| null | hayır | `READY`'den önce null. PDF'te sayfa, diğer türlerde bölüm sayısı |
 | `chunkCount` | number \| null | hayır | `READY`'den önce null |
-| `failureReason` | enum \| null | yalnız `FAILED`'da | `NOT_A_PDF`, `ENCRYPTED`, `TOO_MANY_PAGES`, `TOO_MUCH_TEXT`, `UNSUPPORTED_PDF`, `NO_TEXT`, `PROCESSING_FAILED`; **bilinmeyen → "belge işlenemedi"** |
+| `failureReason` | enum \| null | yalnız `FAILED`'da | `NOT_A_PDF`, `ENCRYPTED`, `TOO_MANY_PAGES`, `TOO_MUCH_TEXT`, `UNSUPPORTED_PDF`, `INVALID_FILE`, `UNSUPPORTED_FILE`, `NO_TEXT`, `PROCESSING_FAILED`; **bilinmeyen → "belge işlenemedi"** |
 | `createdAt`, `updatedAt` | ISO-8601 | evet | UTC |
 
 #### fetch örneği
@@ -101,7 +108,7 @@ const label = STATUS[doc.status] ?? 'İşleniyor';           // bilinmeyen enum 
 | code | HTTP | Anlam | Ekran aksiyonu | Retry? |
 |---|---|---|---|---|
 | 10001 | 404 | Belge yok (ya da başka hesabın) | "Belge bulunamadı", listeye dön | hayır |
-| 10010 | 415 | PDF değil | "Yalnız PDF yükleyebilirsiniz" | hayır |
+| 10010 | 415 | Desteklenmeyen tür | "PDF, DOCX, TXT ya da MD yükleyebilirsiniz" | hayır |
 | 10011 | 400 | Boş dosya | "Dosya boş" | hayır |
 | 10013 | 409 | Hesabın belge sınırı (200) | "Belge sınırına ulaştınız, eski belgeleri silin" | hayır |
 | 10014 | 503 | Aynı anda çok yükleme | Sessizce `Retry-After` kadar bekle, tekrar dene | evet |
@@ -115,7 +122,7 @@ const label = STATUS[doc.status] ?? 'İşleniyor';           // bilinmeyen enum 
 | 99997 | 503 | Veritabanı geçici olarak kullanılamıyor | "Geçici sorun" | evet, `Retry-After` |
 | 99999 | 500 | Beklenmeyen hata | "Bir sorun oluştu", `traceId` göster | hayır |
 
-`FAILED` belgede `failureReason` → mesaj: `ENCRYPTED` "Parolalı PDF desteklenmiyor", `NO_TEXT` "Belgede okunabilir metin yok (taranmış PDF olabilir)", `TOO_MANY_PAGES` "En fazla 500 sayfa", `TOO_MUCH_TEXT` "Belge çok büyük", `UNSUPPORTED_PDF`/`NOT_A_PDF` "Belge okunamadı", `PROCESSING_FAILED` "Belge işlenemedi, tekrar yükleyin".
+`FAILED` belgede `failureReason` → mesaj: `ENCRYPTED` "Parolalı PDF desteklenmiyor", `NO_TEXT` "Belgede okunabilir metin yok (taranmış PDF olabilir)", `TOO_MANY_PAGES` "En fazla 500 sayfa", `TOO_MUCH_TEXT` "Belge çok büyük", `UNSUPPORTED_PDF`/`NOT_A_PDF`/`INVALID_FILE` "Belge okunamadı", `UNSUPPORTED_FILE` "Bu Word dosyasının yapısı desteklenmiyor", `PROCESSING_FAILED` "Belge işlenemedi, tekrar yükleyin".
 
 ## Güvenlik ve log kuralları
 - Dosya adı ve belge içeriği kişisel veri olabilir: istemci log'una, analitiğe ve hata raporuna yazılmaz (llm-rules 2.1). Loglanabilenler: belge id'si, durum, `traceId`.

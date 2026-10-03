@@ -2,6 +2,7 @@ package com.verso.qa.service;
 
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.qa.api.dto.Citation;
+import com.verso.qa.api.dto.CitationUnit;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,7 +49,7 @@ public class CitationExtractor {
                     valid.add(number);
                     RetrievedPassage passage = passages.get(number - 1);
                     used.putIfAbsent(number, new Citation(number, passage.documentId(), passage.fileName(),
-                            passage.pageNumber()));
+                            passage.pageNumber(), CitationUnit.valueOf(passage.unit().name())));
                 }
             }
             String replacement = valid.isEmpty() ? "" : valid.stream().map(n -> "[" + n + "]")

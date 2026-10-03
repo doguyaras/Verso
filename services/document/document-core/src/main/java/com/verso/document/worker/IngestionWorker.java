@@ -21,7 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Turns PENDING documents into READY ones (ADR-0003, ADR-0011): claim → pages (parsed once, then the PDF is dropped)
+ * Turns PENDING documents into READY ones (ADR-0003, ADR-0011): claim → pages or sections (parsed once by the format's parser, then the file is dropped; ADR-0016)
  * → chunks → embeddings in batches, renewing the lease after each → store. Runs on every instance; SKIP LOCKED and the
  * claim token make that safe (reference 11.1). Logs carry ids, counts, durations and fixed reasons only, never text or
  * file names (llm-rules 2.1).
@@ -41,7 +41,7 @@ public class IngestionWorker implements SmartLifecycle {
     static final String NON_TRANSIENT_AI = "org.springframework.ai.retry.NonTransientAiException";
 
     private final IngestionTransactionService tx;
-    private final PdfTextExtractor extractor;
+    private final DocumentTextExtractor extractor;
     private final PageChunker chunker;
     private final EmbeddingModel embeddingModel;
     private final DocumentProperties properties;
@@ -50,7 +50,7 @@ public class IngestionWorker implements SmartLifecycle {
     private volatile boolean running;
     private volatile Instant pausedUntil = Instant.MIN;
 
-    public IngestionWorker(IngestionTransactionService tx, PdfTextExtractor extractor, PageChunker chunker,
+    public IngestionWorker(IngestionTransactionService tx, DocumentTextExtractor extractor, PageChunker chunker,
                            EmbeddingModel embeddingModel, DocumentProperties properties, Clock clock,
                            IngestionMetrics metrics) {
         this.tx = tx;
@@ -98,8 +98,9 @@ public class IngestionWorker implements SmartLifecycle {
             }
             List<String> pages = tx.loadPages(claim);
             if (pages.isEmpty()) {
-                byte[] pdf = tx.loadFile(claim).orElseThrow(() -> new IngestionRejectedException(DocumentFailureReason.NOT_A_PDF));
-                pages = extractor.extract(pdf);
+                byte[] file = tx.loadFile(claim).orElseThrow(
+                        () -> new IngestionRejectedException(DocumentTextExtractor.unreadable(claim.format())));
+                pages = extractor.extract(claim.format(), file);
                 tx.storePages(claim, pages, clock.instant());
             }
             List<Chunk> chunks = chunker.chunk(pages);

@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
 import { api, ApiError, lastMode, PAGE_SIZE } from './api.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
-import { answerParts, el, FAILURES, formatDate, formatSize, plainName, STATUS } from './render.js';
+import { acceptedFile, answerParts, el, FAILURES, formatDate, formatSize, plainName, sourceLabel, STATUS, UPLOAD_TYPES } from './render.js';
 
 const MAX_UPLOAD = 20 * 1024 * 1024;
 const main = document.querySelector('#main');
@@ -58,6 +58,7 @@ function documentRow(doc) {
   const status = STATUS[doc.status] ?? { label: doc.status, tone: 'wait' };
   return el('tr', { 'data-id': doc.id },
     el('td', { class: 'name' }, plainName(doc.fileName)),
+    el('td', {}, el('span', { class: 'chip' }, doc.format ?? 'PDF')),
     el('td', {}, el('span', { class: `chip ${status.tone}` }, status.label),
       doc.failureReason ? el('span', { class: 'hint' }, FAILURES[doc.failureReason] ?? doc.failureReason) : null),
     el('td', { class: 'num' }, doc.pageCount ?? '–'),
@@ -68,7 +69,7 @@ function documentRow(doc) {
 }
 
 async function removeDocument(doc) {
-  if (!confirm(`"${plainName(doc.fileName)}" belgesi, sayfaları ve vektörleriyle birlikte kalıcı olarak silinsin mi?`)) return;
+  if (!confirm(`"${plainName(doc.fileName)}" belgesi, metni ve vektörleriyle birlikte kalıcı olarak silinsin mi?`)) return;
   await guarded(async () => {
     await api.deleteDocument(doc.id);
     toast('Belge silindi.', 'ok');
@@ -78,7 +79,7 @@ async function removeDocument(doc) {
 
 async function uploadFiles(files) {
   for (const file of files) {
-    if (file.type && file.type !== 'application/pdf') { toast(`${plainName(file.name)}: yalnız PDF yüklenebilir.`); continue; }
+    if (!acceptedFile(file.name)) { toast(`${plainName(file.name)}: yalnız PDF, DOCX, TXT ya da MD yüklenebilir.`); continue; }
     if (file.size > MAX_UPLOAD) { toast(`${plainName(file.name)}: 20 MB sınırını aşıyor.`); continue; }
     await guarded(async () => {
       await api.upload(file);
@@ -98,21 +99,21 @@ async function renderDocuments() {
     documentsPage = Math.max(0, page.page.totalPages - 1);
     return renderDocuments();
   }
-  const input = el('input', { type: 'file', accept: 'application/pdf', multiple: true, hidden: true,
+  const input = el('input', { type: 'file', accept: UPLOAD_TYPES.join(','), multiple: true, hidden: true,
     onchange: (e) => uploadFiles([...e.target.files]) });
   const drop = el('div', { class: 'drop', tabindex: 0, role: 'button',
     onclick: () => input.click(), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') input.click(); },
     ondragover: (e) => { e.preventDefault(); drop.classList.add('over'); },
     ondragleave: () => drop.classList.remove('over'),
     ondrop: (e) => { e.preventDefault(); drop.classList.remove('over'); uploadFiles([...e.dataTransfer.files]); } },
-  el('strong', {}, 'PDF yükle'), el('span', {}, 'Sürükleyip bırakın ya da tıklayın · en çok 20 MB, 500 sayfa'), input);
+  el('strong', {}, 'Belge yükle'), el('span', {}, 'PDF, Word (DOCX), TXT ya da Markdown · sürükleyip bırakın ya da tıklayın · en çok 20 MB'), input);
   const rows = page.data.map(documentRow);
   const table = rows.length
-    ? el('table', {}, el('thead', {}, el('tr', {}, ['Ad', 'Durum', 'Sayfa', 'Boyut', 'Yüklenme', ''].map((h) => el('th', {}, h)))),
+    ? el('table', {}, el('thead', {}, el('tr', {}, ['Ad', 'Tür', 'Durum', 'Sayfa / bölüm', 'Boyut', 'Yüklenme', ''].map((h) => el('th', {}, h)))),
       el('tbody', {}, rows))
     : el('p', { class: 'empty' }, 'Henüz belge yok. Örnekler: samples/ klasöründeki PDF\'ler.');
   main.replaceChildren(el('h1', {}, 'Belgeler'),
-    el('p', { class: 'lead' }, 'Belgeleriniz bu sunucuda işlenir; orijinal PDF işlendikten sonra silinir, sayfa metinleri ve vektörler kalır.'),
+    el('p', { class: 'lead' }, 'Belgeleriniz bu sunucuda işlenir; orijinal dosya işlendikten sonra silinir, metni ve vektörleri kalır. Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.'),
     drop, table, pager(page.page));
   if (page.data.some((d) => d.status === 'PENDING' || d.status === 'PROCESSING')) poll = setInterval(renderDocuments, 4000);
 }
@@ -130,14 +131,14 @@ function pager({ number, totalPages, totalElements }) {
 
 // ---------- questions ----------
 function citationChip(citation) {
-  return el('span', { class: 'cite', title: `${citation.fileName}, sayfa ${citation.page}` }, String(citation.number));
+  return el('span', { class: 'cite', title: sourceLabel(citation) }, String(citation.number));
 }
 
 function answerCard(question, result) {
   const body = el('p', { class: 'answer' }, answerParts(result.answer, result.citations)
     .map((part) => (part.citation ? citationChip(part.citation) : part.text)));
   const sources = result.citations.length
-    ? el('ol', { class: 'sources' }, result.citations.map((c) => el('li', {}, el('strong', {}, c.fileName), `, sayfa ${c.page}`)))
+    ? el('ol', { class: 'sources' }, result.citations.map((c) => el('li', {}, el('strong', {}, c.fileName), sourceLabel(c).slice(c.fileName.length))))
     : null;
   const note = result.outcome === 'UNCITED'
     ? el('p', { class: 'hint' }, 'Kaynak gösterilemedi: bu cevap belgelerinize dayanmıyor olabilir.') : null;

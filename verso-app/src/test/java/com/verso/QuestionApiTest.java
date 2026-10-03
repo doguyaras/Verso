@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
+import com.verso.document.testing.TestDocx;
 import com.verso.document.testing.TestPdfs;
 import com.verso.document.worker.IngestionWorker;
 import com.verso.qa.service.ModelCircuitBreaker;
@@ -110,7 +112,7 @@ class QuestionApiTest {
         assertThat(response.headers().firstValue("Cache-Control")).as("phase 5 review T6").hasValue("no-store, private");
         assertThat(response.body())
                 .contains("\"found\":true", "\"outcome\":\"ANSWERED\"", "\"mode\":\"local\"", "\"model\":\"test-chat\"")
-                .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1}]")
+                .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1,\"unit\":\"PAGE\"}]")
                 .contains("yirmi iş günüdür [1].").doesNotContain("[7]");
         assertThat(TestChatModel.INSTANCE.calls()).isOne();
     }
@@ -376,8 +378,22 @@ class QuestionApiTest {
         }
     }
 
+    /** ADR-0016: a Word file has no pages; the prompt and the citation name a section instead. */
+    @Test
+    void ask_whenThePassageComesFromADocx_citesASection() throws Exception {
+        DocumentRow row = documents.insert(account, "izin.docx", DocumentFormat.DOCX, 10, null, Instant.now());
+        documents.insertFile(row.id(), TestDocx.docx(TestDocx.p("topic-leave Yıllık izin on dört gündür.")));
+        worker.runOnce();
+        TestChatModel.INSTANCE.answer("On dört gün [1].");
+
+        HttpResponse<String> response = ask("topic-leave Yıllık izin kaç gün?");
+
+        assertThat(response.body()).contains("\"fileName\":\"izin.docx\",\"page\":1,\"unit\":\"SECTION\"");
+        assertThat(TestChatModel.INSTANCE.lastPrompt().getInstructions().get(1).getText()).contains("[[BELGE 1]] (bölüm 1)");
+    }
+
     private UUID ready(String text) {
-        DocumentRow row = documents.insert(account, "izin.pdf", 10, null, Instant.now());
+        DocumentRow row = documents.insert(account, "izin.pdf", DocumentFormat.PDF, 10, null, Instant.now());
         documents.insertFile(row.id(), TestPdfs.pages(text));
         worker.runOnce();
         assertThat(documents.find(account, row.id()).orElseThrow().status().name()).isEqualTo("READY");

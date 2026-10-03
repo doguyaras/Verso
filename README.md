@@ -29,7 +29,7 @@ Verso answers questions about your own PDF documents in Turkish and cites every 
 
 Kurumlar yapay zekâ ile belgelerine soru sormak istiyor, ama belgeleri, soruları ve cevapları kendi altyapılarının dışına çıkarmak istemiyor. Bunun ardında KVKK md. 9 kapsamındaki yurt dışına aktarım soruları ve kurum politikaları var. Verso, bunun mevcut Java sistemlerine veri dışarı çıkmadan eklenebileceğini gösterir:
 
-- PDF yüklersin; Verso sayfa sayfa okur ve yerel bir embedding modeliyle indeksler. Orijinal dosya işlendikten sonra silinir.
+- PDF, Word (DOCX), TXT ya da Markdown yüklersin; Verso metni okur ve yerel bir embedding modeliyle indeksler. Orijinal dosya işlendikten sonra silinir.
 - Türkçe soru sorarsın; cevap yalnız senin belgelerinden gelir ve her bilginin yanında kaynağı (belge, sayfa) durur.
 - Belgelerde cevap yoksa "bulunamadı" der; uydurmaz.
 - Her hesap yalnız kendi belgelerini görür; sahiplik sorgunun içinde uygulanır.
@@ -231,7 +231,7 @@ Token'sız istek `401` döner. Kimlik zincirinin uçtan uca kontrolü (CI'da da 
 bash scripts/auth-smoke.sh
 ```
 
-**Belgeler** (ADR-0011; istemci sözleşmesi: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md)). PDF yükle; belge `PENDING` olarak döner, worker sayfa sayfa okuyup yerel bge-m3 modeliyle vektörleştirir ve birkaç saniye içinde `READY` olur. Orijinal PDF işlendikten sonra silinir; sayfa metinleri ve vektörler kalır.
+**Belgeler** (ADR-0011, ADR-0016; istemci sözleşmesi: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md)). PDF, DOCX, TXT ya da MD yükle; belge `PENDING` olarak döner, worker okuyup yerel bge-m3 modeliyle vektörleştirir ve birkaç saniye içinde `READY` olur. PDF sayfa sayfa okunur; sayfası olmayan türler başlıklara göre bölümlere ayrılır ve cevaplarda "bölüm n" diye kaynak gösterilir. Orijinal dosya işlendikten sonra silinir; metin ve vektörler kalır.
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" -F "file=@scripts/fixtures/smoke.pdf;type=application/pdf" http://127.0.0.1:8080/v1/documents

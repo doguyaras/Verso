@@ -6,6 +6,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.testing.TestPdfs;
@@ -76,7 +77,7 @@ abstract class CloudModeTestSupport {
     }
 
     UUID ready(String fileName, String text) {
-        DocumentRow row = documents.insert(account, fileName, 10, null, Instant.now());
+        DocumentRow row = documents.insert(account, fileName, DocumentFormat.PDF, 10, null, Instant.now());
         documents.insertFile(row.id(), TestPdfs.pages(text));
         worker.runOnce();
         assertThat(documents.find(account, row.id()).orElseThrow().status().name()).isEqualTo("READY");

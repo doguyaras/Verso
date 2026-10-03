@@ -2,6 +2,7 @@ package com.verso;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.testing.TestPdfs;
@@ -80,7 +81,7 @@ class MetricsTest {
 
     @Test
     void metrics_afterIngestionAndQuestions_countOutcomesAndCarryNoIdentifiersOrContent() throws Exception {
-        DocumentRow pending = documents.insert(account, "MarkerFileName.pdf", 10, null, Instant.now());
+        DocumentRow pending = documents.insert(account, "MarkerFileName.pdf", DocumentFormat.PDF, 10, null, Instant.now());
         documents.insertFile(pending.id(), TestPdfs.pages("topic-leave MarkerPassage annual leave rules"));
         jdbc.update("UPDATE document.document SET next_attempt_at = now() - interval '2 minutes' WHERE id = ?", pending.id());
         Thread.sleep(5100); // the queue is read at most every 5 s
@@ -109,7 +110,7 @@ class MetricsTest {
         assertThat(value(before, "verso_ingestion_paused")).isEqualTo(0);
         assertThat(value(before, "verso_qa_circuit_open")).isEqualTo(0);
 
-        DocumentRow doc = documents.insert(account, "x.pdf", 10, null, Instant.now());
+        DocumentRow doc = documents.insert(account, "x.pdf", DocumentFormat.PDF, 10, null, Instant.now());
         documents.insertFile(doc.id(), TestPdfs.pages("topic-leave rules"));
         TestEmbeddingModel.INSTANCE.failWith(new IllegalStateException("down"));
         worker.runOnce();

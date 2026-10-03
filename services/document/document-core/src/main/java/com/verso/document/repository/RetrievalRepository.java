@@ -1,6 +1,7 @@
 package com.verso.document.repository;
 
 import com.verso.document.api.dto.RetrievedPassage;
+import com.verso.document.api.enums.DocumentFormat;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -37,7 +38,7 @@ public class RetrievalRepository {
     public List<RetrievedPassage> nearest(String accountId, String model, float[] question, int topK) {
         String vector = IngestionRepository.vectorLiteral(question);
         return jdbc.sql("""
-                        SELECT c.document_id, d.file_name, c.page_number, c.content,
+                        SELECT c.document_id, d.file_name, d.format, c.page_number, c.content,
                                1 - (c.embedding <=> CAST(:q AS extensions.vector)) AS similarity
                         FROM document.document_chunk c
                         JOIN document.document d ON d.id = c.document_id
@@ -47,7 +48,8 @@ public class RetrievalRepository {
                         """)
                 .param("q", vector).param("account", accountId).param("model", model).param("k", topK)
                 .query((rs, n) -> new RetrievedPassage(rs.getObject("document_id", UUID.class), rs.getString("file_name"),
-                        rs.getInt("page_number"), rs.getString("content"), rs.getDouble("similarity")))
+                        rs.getInt("page_number"), DocumentFormat.valueOf(rs.getString("format")).unit(), rs.getString("content"),
+                        rs.getDouble("similarity")))
                 .list();
     }
 

@@ -10,7 +10,9 @@ public enum DocumentErrorCode implements ErrorCode {
     /** Also for another account's document: existence is not revealed (reference 9, IDOR). */
     DOCUMENT_NOT_FOUND(10001, "Document not found.", HttpStatus.NOT_FOUND),
     // --- upload (10010-10029); 10012 was never released (too large is the common 90014)
-    DOCUMENT_NOT_PDF(10010, "The file is not a PDF document.", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    // ADR-0016: one code for every unsupported file; it was DOCUMENT_NOT_PDF while PDF was the only format
+    DOCUMENT_TYPE_UNSUPPORTED(10010, "The file is not a supported document (PDF, DOCX, TXT or MD).",
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     DOCUMENT_EMPTY(10011, "The file is empty.", HttpStatus.BAD_REQUEST),
     DOCUMENT_LIMIT_REACHED(10013, "The document limit of the account is reached.", HttpStatus.CONFLICT),
     /** Too many uploads are being received at once; each one is held in memory (review E2). */
