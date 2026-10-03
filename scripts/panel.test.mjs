@@ -4,6 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
   signIn, signOut } from '../panel/js/auth.js';
@@ -13,13 +15,13 @@ import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
   assert.deepEqual(roles, [ROLES.USER]);
-  assert.deepEqual(screensFor(roles), ['documents', 'ask']);
+  assert.deepEqual(screensFor(roles), ['overview', 'documents', 'ask']);
   assert.equal(canOpen('system', roles), false);
 });
 
 test('roles: an operator also sees the system screen; unknown screens are closed', () => {
   const roles = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(roles), ['documents', 'ask', 'system']);
+  assert.deepEqual(screensFor(roles), ['overview', 'documents', 'ask', 'system']);
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
 });
@@ -56,7 +58,7 @@ test('errors: every code of the integration documents has a Turkish message', ()
 });
 
 test('safety: the panel never writes HTML from data and never stores tokens', () => {
-  for (const file of readdirSync('panel/js')) {
+  for (const file of readdirSync('panel/js', { recursive: true }).filter((f) => String(f).endsWith('.js'))) {
     const source = readFileSync(`panel/js/${file}`, 'utf8');
     assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|document\.write/, file);
     assert.doesNotMatch(source, /localStorage\.|document\.cookie\s*=/, file);
@@ -191,4 +193,21 @@ test('formats: every failure reason of the API has a Turkish text', () => {
   const reasons = [...source.matchAll(/^\s+([A-Z_]+),?\s*$/gm)].map((m) => m[1]);
   assert.ok(reasons.length >= 9, reasons.join());
   for (const reason of reasons) assert.ok(FAILURES[reason], `no text for ${reason}`);
+});
+
+// ---------- structure (panel v2) ----------
+test('modules: every panel module parses as an ES module (a syntax error blanks the whole panel)', () => {
+  for (const file of readdirSync('panel/js', { recursive: true }).filter((f) => String(f).endsWith('.js'))) {
+    const result = spawnSync(process.execPath, ['--check', '--input-type=module'], { input: readFileSync(`panel/js/${file}`, 'utf8') });
+    assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+  }
+});
+
+test('icons: every icon the screens and the menu use is drawn', () => {
+  for (const screen of Object.values(SCREENS)) assert.ok(ICON_NAMES.includes(screen.icon), screen.icon);
+  for (const file of readdirSync('panel/js', { recursive: true }).filter((f) => String(f).endsWith('.js'))) {
+    for (const m of readFileSync(`panel/js/${file}`, 'utf8').matchAll(/icon\('([a-zA-Z]+)'/g)) {
+      assert.ok(ICON_NAMES.includes(m[1]), `${file}: unknown icon ${m[1]}`);
+    }
+  }
 });

@@ -1,0 +1,14 @@
+baseline      green (395 tests)
+baseline      green (node suites: 9)
+caught        M203 the panel writes HTML (scripts/panel.test.mjs: safety: the panel never writes HTML)
+caught        M204 every user sees the system screen (scripts/panel.test.mjs: roles: a user without Verso roles)
+caught        M209 concurrent callers each refresh (the second gets a revoked refresh token) (scripts/panel.test.mjs: refresh: concurrent callers)
+caught        M210 the sign-in redirect is accepted with any state (login CSRF) (scripts/panel.test.mjs: sign-in: a wrong state)
+caught        M211 file names keep bidi overrides in the delete prompt (scripts/panel.test.mjs: text: file names lose control)
+caught        M224 the panel cites a DOCX section as a page (scripts/panel.test.mjs: formats: a section is cited)
+caught        M231 a syntax error in one screen module blanks the panel (scripts/panel.test.mjs: modules: every panel module parses)
+caught        M232 a menu icon that is not drawn (scripts/panel.test.mjs: icons: every icon)
+--- log of the last step: /tmp/verso-mutation.sd4zNd (failed steps keep a copy as /tmp/verso-mutation.sd4zNd.<id>)
+--- leftovers:
+none
+exit 0

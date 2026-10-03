@@ -65,5 +65,5 @@ ask "Beş yıldan az hizmeti olan bir çalışan yılda kaç gün yıllık izin 
 ask "Şirket laptopu kaybolursa ne kadar süre içinde bildirmem gerekir?"
 ask "30.000 TL'lik bir masrafı kim onaylar?"
 ask "Şirketin borsa kodu nedir?"
-echo; echo "demo: panel http://localhost:${VERSO_HTTP_PORT:-8080}/panel/ : kullanıcı demo, parola secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD."
+echo; echo "demo: panel http://localhost:${VERSO_HTTP_PORT:-8080}/panel/ : kullanıcı admin (parola secrets/SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD) ya da demo (secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD)."
 echo "demo: belgeler hesaba aittir; bu betiğin yükledikleri CI istemcisinin hesabındadır. Panelde samples/ PDF'lerini sürükleyip bırakın."

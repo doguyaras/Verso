@@ -140,6 +140,12 @@ class KeycloakRealmTest {
                 .findFirst().orElseThrow();
         assertThat(demo.get("realmRoles")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
                 .contains("verso-operator");
+        // The panel's operator account (user request 2026-10-03): permanent, with its own secret.
+        Map<String, Object> admin = list(realm().get("users")).stream().filter(u -> "admin".equals(u.get("username")))
+                .findFirst().orElseThrow();
+        assertThat(admin.get("realmRoles")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .containsExactly("verso-operator");
+        assertThat(list(admin.get("credentials")).getFirst().get("value")).isEqualTo("${VERSO_PANEL_ADMIN_PASSWORD}");
     }
 
     /** The repository is public: every secret in the realm is a placeholder that start.sh fills from /run/secrets. */

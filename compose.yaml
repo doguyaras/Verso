@@ -168,6 +168,7 @@ services:
       - SECRET_KEYCLOAK_ADMIN_PASSWORD
       - SECRET_KEYCLOAK_CI_CLIENT_SECRET
       - SECRET_KEYCLOAK_DEMO_USER_PASSWORD
+      - SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD
     volumes:
       - ./deploy/keycloak/start.sh:/opt/verso/start.sh:ro
       - ./deploy/keycloak/realm:/opt/keycloak/data/import:ro
@@ -551,6 +552,8 @@ secrets:
     file: ./secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET
   SECRET_KEYCLOAK_DEMO_USER_PASSWORD:
     file: ./secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD
+  SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD:
+    file: ./secrets/SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD
   SECRET_GRAFANA_ADMIN_PASSWORD:
     file: ./secrets/SECRET_GRAFANA_ADMIN_PASSWORD
 

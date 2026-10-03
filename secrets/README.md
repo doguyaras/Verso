@@ -17,6 +17,7 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_KEYCLOAK_ADMIN_PASSWORD` | keycloak | master realm'in açılış yöneticisi `admin` (`127.0.0.1:8180/admin`) |
 | `SECRET_KEYCLOAK_CI_CLIENT_SECRET` | keycloak, `scripts/auth-smoke.sh` | `verso-ci` istemcisinin secret'ı (client credentials) |
 | `SECRET_KEYCLOAK_DEMO_USER_PASSWORD` | keycloak | `verso` realm'indeki `demo` kullanıcısının parolası |
+| `SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD` | keycloak | `verso` realm'indeki `admin` kullanıcısının (panel operatörü) parolası |
 | `SECRET_GRAFANA_ADMIN_PASSWORD` | grafana (`obs` profili) | Grafana'nın `admin` kullanıcısı (`127.0.0.1:3000`, ADR-0014) |
 | `SECRET_CLOUD_API_KEY` | uygulama, yalnız cloud overlay'i | Bulut sağlayıcısının API anahtarı; script üretmez, sen yazarsın (ADR-0013) |
 

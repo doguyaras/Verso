@@ -9,9 +9,10 @@ export const ROLES = Object.freeze({
 });
 
 export const SCREENS = Object.freeze({
-  documents: { title: 'Belgeler', roles: [ROLES.USER, ROLES.OPERATOR] },
-  ask: { title: 'Soru sor', roles: [ROLES.USER, ROLES.OPERATOR] },
-  system: { title: 'Sistem', roles: [ROLES.OPERATOR] },
+  overview: { title: 'Genel bakış', icon: 'home', roles: [ROLES.USER, ROLES.OPERATOR] },
+  documents: { title: 'Belgeler', icon: 'files', roles: [ROLES.USER, ROLES.OPERATOR] },
+  ask: { title: 'Soru sor', icon: 'chat', roles: [ROLES.USER, ROLES.OPERATOR] },
+  system: { title: 'Sistem', icon: 'server', roles: [ROLES.OPERATOR] },
 });
 
 /** The roles of a decoded access token payload; every authenticated user is at least a verso-user. */
