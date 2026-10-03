@@ -78,4 +78,4 @@ Ayrıca faz 2'nin M76 tanımı (uygulamaya migration parolası) yeni compose'a u
 
 ## 6. CI
 
-CI_RESULT
+PR #8 (`1f5a979`): `ci` **success** (run 37107022844), `restore-drill` **success** (run 37107022736; local mod kanıtı `prove-local-mode.sh` dahil). Birleştirme sonrası develop push: success (run 37107303473, `4b89113`).

@@ -78,4 +78,4 @@ Kabul edilen açıklar:
 
 ## 6. CI
 
-CI_RESULT
+PR #12 (`4cf5c5c`): `ci` **success** (run 37121329939; `panel.test.mjs` dahil), `restore-drill` **success** (run 37121329924). Birleştirme: `949dff6`.
