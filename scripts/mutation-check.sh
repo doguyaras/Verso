@@ -27,7 +27,8 @@ failed=0
 # ---------- one run per working tree ----------
 # Two concurrent runs on the same tree overwrite each other's .bak copies, and the "restore" then writes mutated
 # content back (seen in phase 2: 22 files left mutated). mkdir is atomic; only the owner removes the lock.
-LOCK_DIR="$ROOT/.git/mutation-check.lock"
+# The per-tree git dir: in a linked worktree .git is a file, and mkdir under it always failed ("another run").
+LOCK_DIR="$(git rev-parse --absolute-git-dir)/mutation-check.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   echo "mutation-check: another run holds $LOCK_DIR (started $(cat "$LOCK_DIR/started" 2>/dev/null || echo '?'))." >&2
   echo "mutation-check: wait for it, or remove the folder if that run is gone." >&2
