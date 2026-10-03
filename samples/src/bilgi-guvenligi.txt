@@ -1,0 +1,20 @@
+Örnek Teknoloji A.Ş. — Bilgi Güvenliği Politikası (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+
+1. Parola kuralları
+Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalı; büyük harf, küçük harf, rakam ve özel karakter içermelidir. Parolalar doksan günde bir değiştirilir ve son beş parola yeniden kullanılamaz.
+Tüm kurumsal hesaplarda iki aşamalı doğrulama zorunludur. Parolalar e-posta, anlık mesaj veya kâğıt üzerinde paylaşılamaz.
+
+2. Uzaktan erişim
+Şirket ağına dışarıdan yalnız kurumsal VPN ile bağlanılır. VPN oturumu sekiz saat sonra kendiliğinden kapanır. Halka açık kablosuz ağlarda VPN olmadan kurumsal sistemlere erişmek yasaktır.
+---
+3. Cihaz kaybı ve olay bildirimi
+Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir. Bildirim güvenlik@ornek.example adresine veya 4444 numaralı iç hatta yapılır.
+Şüpheli e-postalar açılmadan "Oltalama Bildir" düğmesiyle iletilir. Bilgi güvenliği olayları yirmi dört saat içinde kayıt altına alınır.
+
+4. Veri sınıflandırma
+Şirket verileri dört sınıfa ayrılır: Kamuya Açık, İç Kullanım, Gizli ve Çok Gizli. Gizli ve Çok Gizli veriler yalnız şifreli kanallarla paylaşılır ve kişisel bulut depolama hizmetlerine yüklenemez.
+---
+5. Eğitim ve denetim
+Her çalışan işe başladığı ilk ay içinde ve sonrasında yılda bir kez bilgi güvenliği eğitimini tamamlar. Yılda iki kez habersiz oltalama tatbikatı yapılır.
+Bu politikaya uymayan çalışanlar hakkında disiplin süreci başlatılır. Politika her yıl Bilgi Güvenliği Komitesi tarafından gözden geçirilir.

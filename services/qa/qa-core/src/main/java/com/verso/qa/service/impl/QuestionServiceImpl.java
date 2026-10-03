@@ -20,13 +20,14 @@ import com.verso.qa.service.QaMetrics.Outcome;
 import com.verso.qa.service.QuestionService;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -56,7 +57,7 @@ import org.springframework.stereotype.Service;
 public class QuestionServiceImpl implements QuestionService {
 
     private static final Logger log = LoggerFactory.getLogger(QuestionServiceImpl.class);
-    private static final Executor VIRTUAL = Executors.newVirtualThreadPerTaskExecutor();
+    private static final ExecutorService VIRTUAL = Executors.newVirtualThreadPerTaskExecutor();
 
     private final DocumentRetrieval retrieval;
     private final ChatModel chatModel;
@@ -138,25 +139,40 @@ public class QuestionServiceImpl implements QuestionService {
         // No runtime options: Spring AI 2.0 providers accept only their own options type, so temperature and the
         // answer length are provider settings (spring.ai.<provider>.chat.*, config/verso.yml).
         Prompt request = new Prompt(List.of(new SystemMessage(prompt.system()), new UserMessage(prompt.user())));
-        CompletableFuture<ChatResponse> call;
+        Future<ChatResponse> call;
+        // The slot is freed when the call really ends, not when the question gives up (bulkhead). Whoever claims
+        // "started" owns the release: the task when it runs, the caller when it cancels a task that never started
+        // (a cancelled FutureTask never runs its body, so its finally would never free the slot; phase 8 review RS1).
+        AtomicBoolean started = new AtomicBoolean();
         try {
-            call = CompletableFuture.supplyAsync(() -> chatModel.call(request), VIRTUAL);
+            call = VIRTUAL.submit(() -> {
+                if (!started.compareAndSet(false, true)) return null;
+                try {
+                    return chatModel.call(request);
+                } finally {
+                    chatSlots.release();
+                }
+            });
         } catch (RuntimeException e) {
             chatSlots.release();
             throw failure(e.getClass().getSimpleName());
         }
-        // The slot is freed when the call really ends: an abandoned call still occupies the model (bulkhead).
-        call.whenComplete((response, error) -> chatSlots.release());
         ChatResponse response;
         try {
             // One bound for every provider (ADR-0008: local 90 s, cloud 30 s), whatever the client's own timeout says.
             response = call.get(chatTimeout().toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
+            // Interrupt the call: the Ollama client (Reactor Netty) cancels the request and Ollama stops generating
+            // (measured). An abandoned generation kept a CPU host busy for minutes and starved every question after it
+            // (phase 8, docs/capacity.md). The cloud SDKs (OkHttp) are interrupted too; that the provider stops is
+            // not verified.
+            cancel(call, started);
             throw failure("TIMEOUT");
         } catch (ExecutionException e) {
             // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
             throw failure(e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName());
         } catch (InterruptedException e) {
+            cancel(call, started);
             Thread.currentThread().interrupt();
             throw failure("INTERRUPTED");
         }
@@ -164,6 +180,11 @@ public class QuestionServiceImpl implements QuestionService {
         if (text == null || text.isBlank()) throw failure("EMPTY_ANSWER");
         circuit.recordSuccess();
         return text;
+    }
+
+    private void cancel(Future<?> call, AtomicBoolean started) {
+        call.cancel(true);
+        if (started.compareAndSet(false, true)) chatSlots.release();
     }
 
     private Duration chatTimeout() {

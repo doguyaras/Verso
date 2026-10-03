@@ -48,6 +48,7 @@
     <maven-install-plugin.version>3.2.0</maven-install-plugin.version>
     <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
     <flatten-maven-plugin.version>1.8.0</flatten-maven-plugin.version>
+    <verso.excludedGroups>eval</verso.excludedGroups>
   </properties>
 
   <dependencyManagement>
@@ -289,6 +290,9 @@
             <include>**/*Test.java</include>
             <include>**/*IT.java</include>
           </includes>
+          <!-- Tag "eval": measurements against a real model (eval/README.md), not part of the build.
+               Run them with -Dverso.excludedGroups=none -Dgroups=eval. -->
+          <excludedGroups>${verso.excludedGroups}</excludedGroups>
         </configuration>
       </plugin>
     </plugins>

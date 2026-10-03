@@ -93,4 +93,9 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
   - 1.3: cloud modda da (`AnthropicCloudModeTest`, `OpenAiCloudModeTest`).
   - 1.4: anahtar yalnız config tree dosyası (`ComposeConfigTest`, `AiModeCheckTest`).
   - 1.5: `OllamaChatClientTest` (içerik loglama kapalı, OTLP exporter yok); faz 7'de gözlem çıktıları da: Grafana ve Loki iç ağda, Grafana'nın dış paylaşım yolları kapalı, metriklerde id ve içerik yok (`MetricsTest`), Loki'de soru metni yok (`scripts/obs-smoke.sh`), `ComposeConfigTest.observability_*`.
-- Doğrulaması henüz yazılmamış kurallar: 7.1 (faz 8), 9.1 (faz 9).
+- Faz 8 itibarıyla 7.1: eval seti `eval/eval-set.json` (33 soru, 6 sentetik belge). Ölçümler:
+  - `RetrievalEvalTest` (tag `eval`): recall@1 0,88, recall@5 1,00, MRR 0,94.
+  - `scripts/eval.mjs`, gemma4:e2b ile (review sonrası sıkı tanımlarla): atıf isabeti 1,00, sayfa düzeyinde atıf kesinliği 1,00, cevapta doğru bilgi 0,96, "bulunamadı" doğruluğu 0,875 (eşiğin durdurduğu 4/4, modelin karar verdiği 3/4; kaçan soruda model doğru bir reddi kendi cümlesiyle yazdı).
+  - Sınırlar: set küçük, eşik aynı veriyle ayarlandı (`eval/README.md` "Sınırlar").
+  - Sonuçlar `eval/results/` altında; komutlar `eval/README.md`'de.
+- Doğrulaması henüz yazılmamış kurallar: 9.1 (faz 9).

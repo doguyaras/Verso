@@ -8,14 +8,15 @@ import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.RetrievalRepository;
 import java.time.Duration;
 import java.util.Comparator;
-import java.util.concurrent.CompletableFuture;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
 
-    private static final Executor VIRTUAL = Executors.newVirtualThreadPerTaskExecutor();
+    private static final ExecutorService VIRTUAL = Executors.newVirtualThreadPerTaskExecutor();
 
     private final RetrievalRepository repository;
     private final EmbeddingModel embeddingModel;
@@ -51,30 +52,49 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
 
     /**
      * Bounded in concurrency and time (ADR-0008: 10 s; phase 5 review R2/R3): a hanging model answers 503 quickly
-     * instead of holding the request for the 90 s HTTP read timeout the ingestion batches need. The abandoned call
-     * keeps its slot until it really ends, so a hanging model cannot pile up more calls than the bulkhead allows.
+     * instead of holding the request for the 90 s HTTP read timeout the ingestion batches need. On timeout the call is
+     * interrupted, which cancels the HTTP request (phase 8, docs/capacity.md); it keeps its slot until it really ends,
+     * so a hanging model cannot pile up more calls than the bulkhead allows.
      */
     private float[] embedQuestion(String question) {
         Duration timeout = properties.retrieval().embeddingTimeout();
         if (!embeddingSlots.tryAcquire()) {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
-        CompletableFuture<float[]> call;
+        Future<float[]> call;
+        // Whoever claims "started" owns the release: the task when it runs, the caller when it cancels a task that
+        // never started (a cancelled FutureTask never runs its body; phase 8 review RS1).
+        AtomicBoolean started = new AtomicBoolean();
         try {
-            call = CompletableFuture.supplyAsync(() -> embeddingModel.embed(question), VIRTUAL);
+            call = VIRTUAL.submit(() -> {
+                if (!started.compareAndSet(false, true)) return null;
+                try {
+                    return embeddingModel.embed(question);
+                } finally {
+                    embeddingSlots.release();
+                }
+            });
         } catch (RuntimeException e) {
             embeddingSlots.release();
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
-        call.whenComplete((result, error) -> embeddingSlots.release());
         try {
             return call.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
+            cancel(call, started);
             Thread.currentThread().interrupt();
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (TimeoutException e) {
+            cancel(call, started);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+        } catch (ExecutionException e) {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
+    }
+
+    private void cancel(Future<?> call, AtomicBoolean started) {
+        call.cancel(true);
+        if (started.compareAndSet(false, true)) embeddingSlots.release();
     }
 
     @Override

@@ -1,0 +1,17 @@
+Örnek Teknoloji A.Ş. — Çalışan Kişisel Verileri Aydınlatma Metni (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir ve hukuki görüş içermez.
+
+1. Veri sorumlusu
+6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında veri sorumlusu Örnek Teknoloji A.Ş.'dir. Şirketin kişisel verilerden sorumlu birimi İnsan Kaynakları Direktörlüğüdür.
+
+2. İşlenen veriler ve amaçlar
+Kimlik, iletişim, özlük, bordro ve performans verileri; iş sözleşmesinin kurulması ve ifası, yasal yükümlülüklerin yerine getirilmesi ve bordro işlemleri amacıyla işlenir. Sağlık verileri yalnız iş sağlığı ve güvenliği mevzuatının gerektirdiği ölçüde, iş yeri hekimi tarafından işlenir.
+---
+3. Saklama süreleri
+Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır. Kamera kayıtları otuz gün sonra kendiliğinden silinir. İşe alım sürecinde olumsuz sonuçlanan adayların başvuruları altı ay saklanır.
+
+4. Aktarım
+Kişisel veriler; bordro hizmet sağlayıcısına, özel sağlık sigortası şirketine ve yasal olarak yetkili kamu kurumlarına aktarılabilir. Yurt dışına veri aktarımı yapılmaz.
+---
+5. İlgili kişinin hakları
+Çalışanlar, Kanun'un 11. maddesindeki haklarını kullanmak için kvkk@ornek.example adresine veya şirket merkezine yazılı olarak başvurabilir. Başvurular en geç otuz gün içinde ücretsiz olarak sonuçlandırılır.

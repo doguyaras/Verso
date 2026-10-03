@@ -140,9 +140,14 @@ verso:
   # Question answering (ADR-0008, llm-rules 3.4/3.5). Starting values; the eval set (phase 8) measures them.
   qa:
     top-k: 5
-    min-similarity: 0.45
+    # Measured on the Turkish eval set with bge-m3 (phase 8, eval/results/retrieval.json): every answerable question
+    # scored >= 0.522, half of the unanswerable ones < 0.50. The chat model handles the rest ("bulunamadı").
+    min-similarity: 0.50
     max-passage-chars: 1500
-    chat-concurrency: 2
+    # One chat call at a time per instance: Ollama runs one request per model anyway, and on a CPU host a second
+    # concurrent answer only doubles both waits and starves the question embeddings (phase 8, docs/capacity.md).
+    # Raise it with a GPU or several Ollama instances.
+    chat-concurrency: 1
     # Circuit breaker on the chat model (ADR-0008): 2 failures in a row, then 15 s of fast 503s.
     circuit-failures: 2
     circuit-open: 15s

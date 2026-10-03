@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -217,7 +218,11 @@ class QuestionApiTest {
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<HttpResponse<String>>> busy = List.of(pool.submit(() -> ask("topic-leave izin?")),
                     pool.submit(() -> ask("topic-leave izin?")));
-            while (TestChatModel.INSTANCE.calls() < 2) Thread.sleep(20);
+            long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+            while (TestChatModel.INSTANCE.calls() < 2) {
+                assertThat(System.nanoTime()).as("both chat calls started (review T2: no endless wait)").isLessThan(deadline);
+                Thread.sleep(20);
+            }
 
             HttpResponse<String> third = ask("topic-leave izin?");
 
@@ -237,11 +242,13 @@ class QuestionApiTest {
     void ask_whenTheModelHangs_answers503AtTheChatTimeout() throws Exception {
         ready("topic-leave Annual leave rules.");
         CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean interrupted = new AtomicBoolean();
         TestChatModel.INSTANCE.answer(prompt -> {
             try {
                 release.await(60, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                // Phase 8 (docs/capacity.md): the abandoned call is interrupted, which cancels the HTTP request.
+                interrupted.set(true);
             }
             return TestChatModel.DEFAULT_ANSWER;
         });
@@ -252,6 +259,9 @@ class QuestionApiTest {
             assertThat(response.statusCode()).isEqualTo(503);
             assertThat(response.body()).contains("\"code\":11001");
             assertThat(took).as("verso.qa.local-chat-timeout=8s in tests").isBetween(Duration.ofSeconds(7), Duration.ofSeconds(20));
+            long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
+            while (!interrupted.get() && System.nanoTime() < deadline) Thread.sleep(20);
+            assertThat(interrupted).as("the abandoned chat call was interrupted").isTrue();
         } finally {
             release.countDown();
         }

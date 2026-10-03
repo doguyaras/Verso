@@ -1,0 +1,72 @@
+{
+  "measuredAt": "2026-10-03T08:03:14.327Z",
+  "host": {
+    "cpus": 8
+  },
+  "read": {
+    "concurrency": 20,
+    "seconds": 30,
+    "requests": 25227,
+    "perSecond": 840.9,
+    "byStatus": {
+      "200": 25227
+    },
+    "okLatencyMs": {
+      "p50": 14,
+      "p95": 49,
+      "p99": 55,
+      "max": 91
+    }
+  },
+  "upload": {
+    "parallel": 12,
+    "requests": 12,
+    "byStatus": {
+      "201": 7,
+      "503/10014": 5
+    },
+    "okLatencyMs": {
+      "p50": 34,
+      "p95": 41,
+      "p99": 41,
+      "max": 41
+    },
+    "accepted": 7,
+    "ready": 7,
+    "secondsUntilAllReady": 14,
+    "documentsPerMinute": 29.2
+  },
+  "retrieval": {
+    "concurrency": 20,
+    "seconds": 30,
+    "requests": 321,
+    "perSecond": 10.7,
+    "byStatus": {
+      "200": 225,
+      "503/10030": 96
+    },
+    "okLatencyMs": {
+      "p50": 493,
+      "p95": 999,
+      "p99": 1588,
+      "max": 2093
+    }
+  },
+  "chat": {
+    "concurrency": 3,
+    "requests": 6,
+    "perSecond": 0.1,
+    "byStatus": {
+      "200": 1,
+      "503/11002": 2,
+      "503/10030": 2,
+      "503/11001": 1
+    },
+    "okLatencyMs": {
+      "p50": 87800,
+      "p95": 87800,
+      "p99": 87800,
+      "max": 87800
+    }
+  }
+}
