@@ -16,7 +16,7 @@ class PromptBuilderTest {
     private static final UUID DOC = UUID.fromString("00000000-0000-7000-8000-000000000001");
 
     private final PromptBuilder builder = new PromptBuilder(
-            new QaProperties(5, 0.45, 100, 512, 0.1, 2, Duration.ofSeconds(5)));
+            new QaProperties(5, 0.45, 100, 2, Duration.ofSeconds(5)));
 
     @Test
     void build_whenPassagesAreGiven_fencesAndNumbersThemAfterTheRules() {

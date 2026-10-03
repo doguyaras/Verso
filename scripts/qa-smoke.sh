@@ -28,6 +28,9 @@ created="$(call --form "file=@scripts/fixtures/smoke.pdf;type=application/pdf" -
 [ "${created##*$'\n'}" = 201 ] || die "upload: expected 201, got ${created##*$'\n'}"
 id="$(printf '%s' "${created%$'\n'*}" | field id)"
 echo "qa-smoke: uploaded documentId=$id"
+# Always remove the upload, also when a check fails: a leftover copy would be cited by the next run.
+cleanup() { rm -f qa-headers.tmp; call --output /dev/null -X DELETE "$API/v1/documents/$id" || true; }
+trap cleanup EXIT
 
 deadline=$(( $(date +%s) + TIMEOUT ))
 status=PENDING
@@ -40,16 +43,16 @@ done
 
 ask() { call --header 'Content-Type: application/json' --dump-header qa-headers.tmp --data "{\"question\":\"$1\"}" \
   --write-out '\n%{http_code}' "$API/v1/questions"; }
-trap 'rm -f qa-headers.tmp' EXIT
 
 answer="$(ask 'How many days of annual leave does the leave policy grant per year?')"
 code="${answer##*$'\n'}"; body="${answer%$'\n'*}"
 [ "$code" = 200 ] || die "question: expected 200, got $code"
 grep -qi '^x-rag-mode: local' qa-headers.tmp || die "question: X-Rag-Mode local missing"
 printf '%s' "$body" | grep -q '"mode":"local"' || die "question: mode is not local"
-cited="$(printf '%s' "$body" | grep -o '"documentId":"[^"]*"' | sort -u || true)"
-if [ -n "$cited" ] && [ "$cited" != "\"documentId\":\"$id\"" ]; then die "question: a citation points elsewhere"; fi
-echo "qa-smoke: related question found=$(printf '%s' "$body" | field found) citations=$(printf '%s' "$cited" | grep -c . || true)"
+# Every citation names the uploaded fixture (the CI account owns nothing else after cleanup).
+cited="$(printf '%s' "$body" | grep -o '"fileName":"[^"]*"' | sort -u || true)"
+if [ -n "$cited" ] && [ "$cited" != '"fileName":"smoke.pdf"' ]; then die "question: a citation points elsewhere"; fi
+echo "qa-smoke: related question found=$(printf '%s' "$body" | field found) citations=$(printf '%s' "$body" | grep -o '"number":' | grep -c . || true)"
 
 unrelated="$(ask 'Which planet has the most moons in the solar system?')"
 code="${unrelated##*$'\n'}"; body="${unrelated%$'\n'*}"
@@ -59,4 +62,5 @@ printf '%s' "$body" | grep -q '"citations":\[\]' || die "unrelated question: exp
 
 code="$(call --output /dev/null --write-out '%{http_code}' -X DELETE "$API/v1/documents/$id")"
 [ "$code" = 204 ] || die "delete: expected 204, got $code"
+trap 'rm -f qa-headers.tmp' EXIT
 echo "qa-smoke: OK"

@@ -67,6 +67,9 @@ spring:
         model: ${OLLAMA_CHAT_MODEL}
         # Reasoning models (qwen3, gemma4) would spend the token budget on hidden thinking; Verso wants the answer.
         think: false
+        # Answers follow the passages (low temperature) and stay short (llm-rules 3.5).
+        temperature: 0.1
+        num-predict: 512
     # No client retry for embeddings: Spring AI 2.0's Ollama embedding client has none (phase 4 reviews C5/L1), and
     # the ingestion worker pauses and retries on its own (ADR-0011).
   # Model and other outbound HTTP calls (llm-rules 5.2): Boot's builders apply these to the Ollama client.
@@ -101,8 +104,6 @@ verso:
     top-k: 5
     min-similarity: 0.45
     max-passage-chars: 1500
-    max-answer-tokens: 512
-    temperature: 0.1
     chat-concurrency: 2
     chat-wait: 5s
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.

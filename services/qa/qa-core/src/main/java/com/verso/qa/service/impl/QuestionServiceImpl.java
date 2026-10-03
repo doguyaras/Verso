@@ -22,7 +22,6 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Service;
@@ -100,10 +99,10 @@ public class QuestionServiceImpl implements QuestionService {
         }
         if (!acquired) throw new QaServiceException(QaErrorCode.MODEL_BUSY, "NO_CHAT_SLOT");
         try {
-            ChatOptions options = ChatOptions.builder().temperature(properties.temperature())
-                    .maxTokens(properties.maxAnswerTokens()).build();
+            // No runtime options: Spring AI 2.0 providers accept only their own options type, so temperature and the
+            // answer length are provider settings (spring.ai.<provider>.chat.*, config/verso.yml).
             ChatResponse response = chatModel.call(new Prompt(
-                    List.of(new SystemMessage(prompt.system()), new UserMessage(prompt.user())), options));
+                    List.of(new SystemMessage(prompt.system()), new UserMessage(prompt.user()))));
             String text = response == null || response.getResult() == null ? null
                     : response.getResult().getOutput().getText();
             if (text == null || text.isBlank()) throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, "EMPTY_ANSWER");
