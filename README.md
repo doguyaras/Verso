@@ -1,16 +1,141 @@
 # Verso
 
 > **Private document Q&A with source citations. Spring AI + local LLMs.**
->
-> Verso answers questions about your PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your own infrastructure and the application makes no outbound connections. `cloud` mode swaps only the chat model for an external LLM API, behind the same Spring AI interface, through configuration alone. Every response carries `X-Rag-Mode` so a demo can prove which mode answered. Built with Java 25, Spring Boot 4.1, Spring AI 2.0, PostgreSQL 18 + pgvector, following a strict architecture reference with machine-enforced rules.
 
-**Durum:** Faz 4 / 10: belge alımı (PDF yükleme, sayfa sayfa ayrıştırma, chunking, yerel bge-m3 embedding; ADR-0011). Faz 3 kimliği ekledi (OIDC resource server, compose'ta demo Keycloak). Önceki faz veri altyapısını kurdu (PostgreSQL 18 + pgvector, roller, Flyway, şifreli yedek ve otomatik restore provası). Soru-cevap faz 5'te gelir. Fazlar: [`docs/roadmap.md`](docs/roadmap.md); kararlar: [`docs/decisions.md`](docs/decisions.md).
+Verso answers questions about your own PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your infrastructure and nothing of Verso can reach the internet: the application, its database and the model server sit on internal networks only, and a script proves it on the running stack. `cloud` mode swaps only the chat model for Anthropic or an OpenAI-compatible API, by configuration; documents, full texts and vectors stay home. Every response says which mode answered (`X-Rag-Mode`).
 
-## Neden
+**English summary**
 
-Kurumsal müşteriler yapay zekâ özelliği istiyor; ama belgeleri, soruları ve cevapları kendi altyapılarının dışına çıkarmak istemiyorlar. Bunun ardında hem KVKK md. 9 kapsamındaki yurt dışına aktarım soruları hem de kurum politikaları var. Verso, bunun mevcut Java sistemlerine veri dışarı çıkmadan eklenebileceğini gösterir.
+- **Stack:** Java 25, Spring Boot 4.1, Spring AI 2.0, PostgreSQL 18 + pgvector, Flyway, Ollama (bge-m3, gemma4:e2b), Keycloak (OIDC), an nginx edge proxy, Docker Compose. Optional: Prometheus, Alertmanager, Loki, Alloy, Grafana.
+- **Answers:**
+  - Retrieval with the ownership filter inside the vector query.
+  - No model call below a measured similarity threshold.
+  - A fenced prompt, and citations mapped on the server.
+- **Turkish eval set** (33 questions, synthetic documents), gemma4:e2b on CPU:
+  - retrieval recall@5 1.00;
+  - citation hit rate 1.00;
+  - correct fact in the answer 0.96;
+  - "not found" accuracy 1.00;
+  - median answer time 28 s.
+- **Engineering:**
+  - A modular monolith with machine-checked architecture rules.
+  - About 350 tests on a real PostgreSQL, and 200 mutation checks that prove the tests catch what they claim to.
+  - An ADR for every decision.
+  - Encrypted backups with an automated restore drill in CI.
+- **Run it:** the four commands below, then `bash scripts/demo.sh`.
+- **Disclaimer:** this is a portfolio project. The KVKK notes describe design choices; they are not legal advice.
 
-Ayrıntılı açıklama, kurulum ve demo faz 9'da bu dosyaya eklenecek. Bu metin hukuki tavsiye değildir.
+## Ne yapar
+
+Kurumlar yapay zekâ ile belgelerine soru sormak istiyor, ama belgeleri, soruları ve cevapları kendi altyapılarının dışına çıkarmak istemiyor. Bunun ardında KVKK md. 9 kapsamındaki yurt dışına aktarım soruları ve kurum politikaları var. Verso, bunun mevcut Java sistemlerine veri dışarı çıkmadan eklenebileceğini gösterir:
+
+- PDF yüklersin; Verso sayfa sayfa okur ve yerel bir embedding modeliyle indeksler. Orijinal dosya işlendikten sonra silinir.
+- Türkçe soru sorarsın; cevap yalnız senin belgelerinden gelir ve her bilginin yanında kaynağı (belge, sayfa) durur.
+- Belgelerde cevap yoksa "bulunamadı" der; uydurmaz.
+- Her hesap yalnız kendi belgelerini görür; sahiplik sorgunun içinde uygulanır.
+
+## Hızlı başlangıç
+
+Gereksinim: Docker (Compose v2) ve Node 24 (demo betiği için). İlk açılış yaklaşık 8,5 GB indirir; host'ta en az 12 GB boş RAM önerilir.
+
+```bash
+git clone https://github.com/doguyaras/Verso.git && cd Verso
+```
+
+```bash
+bash scripts/dev-secrets.sh
+```
+
+```bash
+docker compose up -d --build --wait
+```
+
+```bash
+bash scripts/demo.sh
+```
+
+Demo, `samples/` altındaki sentetik belgeleri (kurgusal bir şirketin altı yönetmeliği) yükler. Ardından dört soru sorar: üçünün cevabı belgelerdedir, biri belgelerde yoktur. Her cevabın kaynakları ve modu gösterilir. Gerçek bir koşudan (2026-10-03, CPU):
+
+```text
+Soru: Şirket laptopu kaybolursa ne kadar süre içinde bildirmem gerekir?
+  Cevap: Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir [1].
+  [1] bilgi-guvenligi.pdf, sayfa 2
+  (kaynaklı, local / gemma4:e2b)
+
+Soru: Şirketin borsa kodu nedir?
+  Cevap: Belgelerde bu sorunun cevabı bulunamadı.
+  (kaynak yok, local / gemma4:e2b)
+```
+
+CPU'da bir cevap 20–60 sn sürer. Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde bu tür hata oranı %4'tür. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
+
+## curl ile
+
+Token (paketteki demo Keycloak'ın CI istemcisi; üretimde kurumun IdP'si):
+
+```bash
+TOKEN="$(curl -s http://localhost:8180/realms/verso/protocol/openid-connect/token -d grant_type=client_credentials -d client_id=verso-ci --data-urlencode client_secret@secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token')"
+```
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -F "file=@samples/izin-yonetmeligi.pdf;type=application/pdf" http://localhost:8080/v1/documents
+```
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"question":"Doğum izni toplam kaç haftadır?"}' http://localhost:8080/v1/questions
+```
+
+Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md).
+
+## Modlar ve KVKK md. 9
+
+| | `local` (varsayılan) | `cloud` (isteğe bağlı) |
+|---|---|---|
+| Embedding | Yerel (Ollama, bge-m3) | Yerel (Ollama, bge-m3) |
+| Chat | Yerel (Ollama, gemma4:e2b) | Anthropic ya da OpenAI uyumlu API |
+| Host'tan çıkan | Hiçbir şey | Yalnız sistem kuralları, soru ve en fazla 5 pasaj |
+| Kanıt | `scripts/prove-local-mode.sh` (CI'da koşar) | `X-Rag-Mode: cloud` her yanıtta |
+| Açma | `docker compose up` | `deploy/compose.cloud.yaml` + anahtar dosyası |
+
+- **Local mod üç katmanda zorlanır:**
+  - Uygulama, veritabanı ve model sunucusu yalnız iç Docker ağlarındadır. API'ye bir kenar proxy üzerinden ulaşılır.
+  - Uygulamanın HTTP istemcileri yalnız iç adreslere bağlanabilir.
+  - Mod ile model ayarları tutarsızsa uygulama başlamaz.
+- **Cloud modda** pasajlar (kişisel veri içerebilir) yurt dışındaki bir sağlayıcıya aktarılabilir. Bu modu açma kararı ve hukuki dayanağı veri sorumlusunundur.
+- **Log'lar** belge içeriği, soru, cevap ya da dosya adı taşımaz; yalnız id, süre ve sayı taşır. Bu, test edilir ve gözlem yığınında uçtan uca kontrol edilir.
+- Bu bölüm tasarım kararlarını anlatır; hukuki tavsiye değildir.
+
+## Ölçümler
+
+| Ölçüm | Sonuç | Kaynak |
+|---|---|---|
+| Retrieval: doğru sayfa ilk 5 pasajda | 1,00 (ilk sırada 0,88) | `eval/results/retrieval.json` |
+| Cevapta doğru belge ve sayfaya atıf | 1,00 | `eval/results/e2e-gemma4_e2b.json` |
+| Cevapta beklenen bilgi | 0,96 | aynı |
+| Belgelerde olmayan soruya "bulunamadı" | 1,00 | aynı |
+| Cevap süresi (CPU, 2 çekirdek) | p50 28 sn, p95 45 sn | aynı |
+| Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
+| Eşzamanlı soru | 1 (ikincisi "meşgul" alır ve yeniden dener) | `docs/capacity.md` |
+
+Set küçüktür (33 soru, 6 belge). Sonuçlar yön gösterir, istatistiksel güvence vermez. Komutlar: [`eval/README.md`](eval/README.md).
+
+## Mimari
+
+```text
+ tarayıcı / istemci ──► edge (nginx, 127.0.0.1:8080) ──► verso-app (Spring Boot, modüler monolit)
+                                                              │  document modülü: yükleme, PDF, worker, embedding, arama
+                                                              │  qa modülü: eşik, prompt, chat, atıf
+                          keycloak (OIDC, 127.0.0.1:8180) ◄────┤  platform: hata zarfı, güvenlik, log temizleyici
+                                                              ├──► postgres 18 + pgvector (iç ağ)
+                                                              └──► ollama: bge-m3 + gemma4:e2b (iç ağ, internetsiz)
+ isteğe bağlı: prometheus · alertmanager · loki ◄ alloy · grafana (obs profili) · yedek ve restore provası
+```
+
+Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0014). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
+
+---
+
+# Ayrıntılar
 
 ## Servis kimlik tablosu
 
