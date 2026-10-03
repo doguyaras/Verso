@@ -80,7 +80,7 @@ Kabul edilen açıklar:
 - **`InterruptedException` yolundaki iptal** yalnız embedding tarafında test ediliyor (RS1 testi bu yoldan geçer); chat tarafı kod incelemesiyle.
 - **Bulut SDK'larında iptal:** sağlayıcının üretimi bıraktığı doğrulanmadı; etkisi maliyet, yerel CPU değil.
 - **Set küçük ve eşik aynı veriyle ayarlandı:** sonuçlar yön gösterir (`eval/README.md`).
-- **PDFBox glif kontrolü sistem fontuna bakıyor:** Linux CI'da `SamplePdfsTest`'in geçtiği PR CI'ında görülecek.
+- **PDFBox glif kontrolü sistem fontuna bakıyor:** Linux CI'da da `SamplePdfsTest` geçti (Bölüm 6).
 
 ## 5. Mutasyonlar
 
@@ -88,4 +88,4 @@ Kabul edilen açıklar:
 
 ## 6. CI
 
-CI_RESULT
+PR #10 (`31be2fb`): `ci` **success** (run 37118653309; `SamplePdfsTest` Linux'ta da geçti, PDFBox'ın glif kontrolünde sistem fontuna bakması sorun olmadı), `restore-drill` **success** (run 37118653310). Birleştirme: `57d5bb1`.
