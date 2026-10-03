@@ -27,6 +27,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -139,9 +140,13 @@ public class QuestionServiceImpl implements QuestionService {
         // answer length are provider settings (spring.ai.<provider>.chat.*, config/verso.yml).
         Prompt request = new Prompt(List.of(new SystemMessage(prompt.system()), new UserMessage(prompt.user())));
         Future<ChatResponse> call;
+        // The slot is freed when the call really ends, not when the question gives up (bulkhead). Whoever claims
+        // "started" owns the release: the task when it runs, the caller when it cancels a task that never started
+        // (a cancelled FutureTask never runs its body, so its finally would never free the slot; phase 8 review RS1).
+        AtomicBoolean started = new AtomicBoolean();
         try {
-            // The slot is freed when the call really ends, not when the question gives up (bulkhead).
             call = VIRTUAL.submit(() -> {
+                if (!started.compareAndSet(false, true)) return null;
                 try {
                     return chatModel.call(request);
                 } finally {
@@ -157,16 +162,17 @@ public class QuestionServiceImpl implements QuestionService {
             // One bound for every provider (ADR-0008: local 90 s, cloud 30 s), whatever the client's own timeout says.
             response = call.get(chatTimeout().toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
-            // Interrupt the call: the HTTP client cancels the request and the model server stops generating. An
-            // abandoned generation kept a CPU host busy for minutes and starved every question after it (phase 8,
-            // docs/capacity.md).
-            call.cancel(true);
+            // Interrupt the call: the Ollama client (Reactor Netty) cancels the request and Ollama stops generating
+            // (measured). An abandoned generation kept a CPU host busy for minutes and starved every question after it
+            // (phase 8, docs/capacity.md). The cloud SDKs (OkHttp) are interrupted too; that the provider stops is
+            // not verified.
+            cancel(call, started);
             throw failure("TIMEOUT");
         } catch (ExecutionException e) {
             // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
             throw failure(e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName());
         } catch (InterruptedException e) {
-            call.cancel(true);
+            cancel(call, started);
             Thread.currentThread().interrupt();
             throw failure("INTERRUPTED");
         }
@@ -174,6 +180,11 @@ public class QuestionServiceImpl implements QuestionService {
         if (text == null || text.isBlank()) throw failure("EMPTY_ANSWER");
         circuit.recordSuccess();
         return text;
+    }
+
+    private void cancel(Future<?> call, AtomicBoolean started) {
+        call.cancel(true);
+        if (started.compareAndSet(false, true)) chatSlots.release();
     }
 
     private Duration chatTimeout() {

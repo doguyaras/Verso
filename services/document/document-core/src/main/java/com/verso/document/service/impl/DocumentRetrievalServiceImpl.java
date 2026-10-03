@@ -8,7 +8,7 @@ import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.RetrievalRepository;
 import java.time.Duration;
 import java.util.Comparator;
-
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,7 +16,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Service;
@@ -62,8 +62,12 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
         Future<float[]> call;
+        // Whoever claims "started" owns the release: the task when it runs, the caller when it cancels a task that
+        // never started (a cancelled FutureTask never runs its body; phase 8 review RS1).
+        AtomicBoolean started = new AtomicBoolean();
         try {
             call = VIRTUAL.submit(() -> {
+                if (!started.compareAndSet(false, true)) return null;
                 try {
                     return embeddingModel.embed(question);
                 } finally {
@@ -77,15 +81,20 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         try {
             return call.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
-            call.cancel(true);
+            cancel(call, started);
             Thread.currentThread().interrupt();
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         } catch (TimeoutException e) {
-            call.cancel(true);
+            cancel(call, started);
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         } catch (ExecutionException e) {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
+    }
+
+    private void cancel(Future<?> call, AtomicBoolean started) {
+        call.cancel(true);
+        if (started.compareAndSet(false, true)) embeddingSlots.release();
     }
 
     @Override

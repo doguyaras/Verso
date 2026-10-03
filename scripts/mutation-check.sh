@@ -640,12 +640,19 @@ backup compose.yaml; sub compose.yaml 's/(can leave the host \(phase 7 review B1
 
 # ---------- phase 8: measurement findings (docs/capacity.md) ----------
 SPDF=$APP/test/java/com/verso/samples/SamplePdfs.java
-backup $QSVC; sub $QSVC 's/(            call\.cancel\(true\);\n)(            throw failure\("TIMEOUT"\);)/$2/' \
+backup $QSVC; sub $QSVC 's/(    private void cancel\(Future<\?> call, AtomicBoolean started\) \{\n)        call\.cancel\(true\);\n/$1/' \
   && expect_red "M200 an abandoned chat generation keeps running" verso-app $QAT ask_whenTheModelHangs_answers503AtTheChatTimeout; restore $QSVC
-backup $RSVC; sub $RSVC 's/(        \} catch \(TimeoutException e\) \{\n)            call\.cancel\(true\);\n/$1/' \
+backup $RSVC; sub $RSVC 's/(    private void cancel\(Future<\?> call, AtomicBoolean started\) \{\n)        call\.cancel\(true\);\n/$1/' \
   && expect_red "M201 an abandoned question embedding keeps running" verso-app $RTT search_whenTheEmbeddingTimesOut_interruptsTheModelCall; restore $RSVC
 backup $SPDF; sub $SPDF 's/return unicode == 0x130 \? new byte\[\]\{\(byte\) 144\} : super\.encode\(unicode\);/return super.encode(unicode);/' \
   && expect_red "M202 the sample PDFs cannot write a dotted capital I" verso-app SamplePdfsTest samples_whenBuiltFromTheirSources_matchTheCommittedPdfs; restore $SPDF
+backup $RSVC; sub $RSVC 's/        if \(started\.compareAndSet\(false, true\)\) embeddingSlots\.release\(\);\n//' \
+  && expect_red "M212 a cancelled embedding that never started keeps its slot forever" verso-app $RTT search_whenTheCallerIsInterrupted_keepsTheEmbeddingSlots; restore $RSVC
+backup $VY; sub $VY 's/min-similarity: 0\.50/min-similarity: 0.45/' \
+  && expect_red "M213 the shipped threshold is not the measured one" verso-app ConfigProfilesTest qaSettings_whenDeployProfile_areTheMeasuredValues; restore $VY
+QP=$QS/config/QaProperties.java
+backup $QP; sub $QP 's/\@DefaultValue\("1"\) int chatConcurrency/\@DefaultValue("2") int chatConcurrency/' \
+  && expect_red "M214 the code default runs two chat calls on one model server" verso-app ConfigProfilesTest qaSettings_whenDeployProfile_areTheMeasuredValues; restore $QP
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node

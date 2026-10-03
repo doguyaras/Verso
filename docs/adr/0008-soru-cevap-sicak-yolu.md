@@ -31,10 +31,10 @@ Kritik akış kaydı (`docs/ai/repo-context.md` Bölüm 3) bu ADR ile tutarlıd�
 
 | Alan | Değer |
 |---|---|
-| Gecikme bütçesi (p99) | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn. Faz 8 ölçümü (local-CPU, gemma4:e2b, Ollama 2 CPU): sıralı sorularda p50 28 sn, p95 45 sn, en çok 67 sn (`docs/capacity.md`) |
+| Gecikme bütçesi (p99) | local-GPU 15 sn · local-CPU 60 sn · cloud 20 sn. Faz 8 ölçümü (local-CPU, gemma4:e2b, Ollama 2 CPU): sıralı sorularda iki koşu: p50 28 / 21 sn, p95 45 / 37 sn, en çok 67 / 43 sn (`docs/capacity.md`). **Bütçe aşılıyor:** 33 soruda en kötü 67 sn > 60 sn; eşzamanlı yükte bir cevap 84 sn sürdü. Karar (faz 8): bütçe ve 90 sn'lik kesin sınır şimdilik kalır, çünkü kısaltmak cevapları yarıda keser. Yeniden değerlendirme: GPU'lu host ölçümü ya da `num-predict` (512) düşürülmesi; p99 > 60 sn bir hafta sürerse `QaSlow` alarmı zaten çalar |
 | Embedding timeout | 10 sn (sorunun embedding'i; worker'ın toplu çağrıları HTTP okuma timeout'una tabidir) |
 | Chat timeout | local 90 sn · cloud 30 sn (HTTP okuma timeout'u) |
-| Eşzamanlılık | Chat: instance başına 2 çağrı (semaphore, boş slot için 5 sn bekleme → 503 `MODEL_BUSY`). Sorunun embedding'i: 4 çağrı, dolunca anında 503. Ollama zaten tek tek işler |
+| Eşzamanlılık | Chat: instance başına 1 çağrı (faz 8 ölçümü: 2. çağrı Ollama'da yalnız sırada bekliyordu, `docs/capacity.md`) (semaphore, boş slot için 5 sn bekleme → 503 `MODEL_BUSY`). Sorunun embedding'i: 4 çağrı, dolunca anında 503. Ollama zaten tek tek işler |
 | Retry | Senkron yolda yok (referans 4.7). Spring AI'ın istemci retry'ı kapalı (`spring.ai.retry.max-attempts: 0`; `OllamaChatClientTest` gerçek istemciyle doğrular) |
 | Devre kesici | Ardışık 2 chat hatasından sonra 15 sn boyunca soru modele ve embedding'e gitmeden 503 `MODEL_UNAVAILABLE` alır; süre dolunca ilk soru modeli yeniden dener |
 | Bağımlılık düşünce | 503 `MODEL_UNAVAILABLE`; boş ya da uydurma cevap dönülmez (fail-closed) |
