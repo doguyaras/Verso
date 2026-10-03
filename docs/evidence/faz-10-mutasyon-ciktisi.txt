@@ -1,0 +1,15 @@
+baseline      green (356 tests)
+baseline      green (node suites: 9)
+caught        M205 the panel is served without a CSP (ComposeConfigTest.edgeProxy_whenConfigured_keepsTheContractAndLogsNothing)
+caught        M206 the device-flow client also accepts the browser code flow (KeycloakRealmTest.clients_whenDeclared_useOnlyDeviceFlowClientCredentialsOrThePanelsCodeFlow)
+caught        M207 the model's own not-found sentence is reported as an uncited answer (QuestionApiTest.ask_whenTheModelCitesNothing_tellsNotFoundFromUncited)
+caught        M208 the panel's CSP leaves HTML sinks to the tests alone (no Trusted Types) (ComposeConfigTest.edgeProxy_whenConfigured_keepsTheContractAndLogsNothing)
+caught        M203 the panel writes HTML (scripts/panel.test.mjs: safety: the panel never writes HTML)
+caught        M204 every user sees the system screen (scripts/panel.test.mjs: roles: a user without Verso roles)
+caught        M209 concurrent callers each refresh (the second gets a revoked refresh token) (scripts/panel.test.mjs: refresh: concurrent callers)
+caught        M210 the sign-in redirect is accepted with any state (login CSRF) (scripts/panel.test.mjs: sign-in: a wrong state)
+caught        M211 file names keep bidi overrides in the delete prompt (scripts/panel.test.mjs: text: file names lose control)
+--- log of the last step: /tmp/verso-mutation.QF7Za3 (failed steps keep a copy as /tmp/verso-mutation.QF7Za3.<id>)
+--- leftovers:
+none
+exit 0
