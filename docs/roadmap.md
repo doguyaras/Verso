@@ -13,4 +13,4 @@ Fazlar sırayla yapılır. Her faz kendi dalında geliştirilir, review'lardan v
 | 7 | Gözlem: Alloy → Loki, Prometheus + Alertmanager, Grafana; alarmlar ve runbook (ADR-0014) | Bitti (PR #9) |
 | 8 | Ölçüm: Türkçe eval seti, yük testi, kapasite (`eval/`, `docs/capacity.md`) | Bitti (PR #10) |
 | 9 | Teslim: README (Türkçe + İngilizce özet, KVKK md. 9 açıklaması, ≤5 komutla kurulum, curl örnekleri), `samples/` sentetik PDF'ler ve demo script'i, image yayını | Bitti (PR #11) |
-| 10 | **Panel** (ADR-0015): belgeler, soru-cevap, sistem; bağımlılıksız tarayıcı uygulaması, `verso-panel` istemcisi (code + PKCE), token yalnız bellekte, rol matrisi tek dosyada. Plate app paneli görülemedi; varsayımlar ADR-0015'te | Bitti (PR #12) |
+| 10 | **Panel** (ADR-0015): belgeler, soru-cevap, sistem; bağımlılıksız tarayıcı uygulaması, `verso-panel` istemcisi (code + PKCE), token yalnız bellekte, rol matrisi tek dosyada; backoffice mantığında yönetim arayüzü | Bitti (PR #12) |

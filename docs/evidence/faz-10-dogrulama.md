@@ -11,7 +11,7 @@
   - `scripts/keycloak-reimport.sh`: faz 10'dan önce kurulmuş yığına panel istemcisini getirir.
   - Kararlar: ADR-0015, ADR-0007 #10 güncellendi.
 - **Davranışsal kapsam (seviye 3):** panel çalışan yığında, gerçek Keycloak ve gerçek modellerle tarayıcıda kullanıldı (Bölüm 2).
-- **Varsayımlar:** plate app paneli görülmeden yapıldı; ADR-0015 "Varsayımlar" bölümü kullanıcı onayı bekliyor.
+- **Kapsam notu:** istek backoffice mantığında bir yönetim arayüzüdür; belirli bir projenin paneline benzerlik aranmadı (kullanıcı, 2026-10-03). Tasarım kararları ADR-0015'te.
 
 ## 1. Makine kontrolleri
 
@@ -70,7 +70,6 @@ Kabul edilen açıklar:
 - **Portlar:** panel varsayılan portlarla çalışır. Port değişirse `config.js`, realm istemcisi ve CSP birlikte değişir; bunu şablonla üretmek ileriye bırakıldı.
 - **Çıkış URL'si:** `id_token_hint` (kullanıcı adıyla birlikte) tarayıcı geçmişine düşer; demo için kabul edildi (ADR-0015).
 - **401 döngüsü koruması** DOM'a bağlı olduğu için node testinde değil ve kalıcı 401 canlı olarak üretilmedi; yalnız kod incelemesiyle doğrulandı.
-- **Plate app varsayımları** kullanıcı onayı bekliyor.
 
 ## 5. Mutasyonlar
 

@@ -1,19 +1,19 @@
 # ADR-0015: Yönetim paneli (tarayıcı istemcisi)
 
-- **Durum:** Kabul edildi (faz 10). Plate app paneline benzerlik varsayımları kullanıcı onayı bekliyor (aşağıda).
+- **Durum:** Kabul edildi (faz 10). Kullanıcı netleştirdi (2026-10-03): istek, belirli bir projenin paneline benzemek değil, backoffice mantığında bir yönetim arayüzüdür.
 - **Tarih:** 2026-10-03
 - **Karar verenler:** doguyaras (roadmap faz 10, referans Bölüm 17); uygulama ayrıntıları faz 10
 - **İlgili eşik (referans Bölüm 24):** yok (sunum katmanı). Ekran sayısı ya da kullanıcı sayısı büyürse yeniden değerlendirilir.
 
 ## Bağlam
 
-Roadmap faz 10, kullanıcının "plate app" projesindeki panel tarzında bir yönetim paneli istiyor. Referans 17 şunları ister:
+Roadmap faz 10, backoffice mantığında bir yönetim arayüzü istiyor: belgeler, soru-cevap ve sistem durumu tek yerden. Referans 17 şunları ister:
 
 - React/TS;
 - token yalnız bellekte;
 - rol matrisinin tek dosyada olması.
 
-Plate app panelinin ekranları ve yığını sorulamadı: kullanıcı faz aralarında beklenmemesini istedi. Ayrıca yeni bağımlılıktan kaçınılması istendi. React/TS bir derleme zinciri (npm, Vite, TypeScript ve onların bağımlılık ağacı) getirirdi.
+Kullanıcı yeni bağımlılıktan kaçınılmasını istedi. React/TS bir derleme zinciri (npm, Vite, TypeScript ve onların bağımlılık ağacı) getirirdi.
 
 ## Seçenekler
 
@@ -64,9 +64,7 @@ Plate app panelinin ekranları ve yığını sorulamadı: kullanıcı faz aralar
 
 **Yükseltme:** Keycloak realm'i yalnız ilk açılışta içe aktarır. Faz 10'dan önce kurulmuş bir yığında `bash scripts/keycloak-reimport.sh` panel istemcisini ve rolü getirir. Demo IdP'nin kendi veritabanını sıfırlar; Verso verisine dokunmaz.
 
-## Varsayımlar (kullanıcı onayı bekliyor)
-
-Plate app paneli görülmeden yapılan varsayımlar:
+## Tasarım kararları
 
 - Sol değil, üst menü.
 - Açık ve koyu tema (sistemi izler).
@@ -75,7 +73,7 @@ Plate app paneli görülmeden yapılan varsayımlar:
 - Üç ekran.
 - Panel bir yönetici aracı değil, bir son kullanıcı arayüzüdür. Kullanıcı yönetimi IdP'de (Keycloak yönetim konsolu) kalır.
 
-Plate app'in yığını React/TS ise ve aynı görünüm isteniyorsa, ekranlar bu API sözleşmesiyle (`panel/js/api.js`) bire bir taşınabilir.
+İleride React/TS'e geçilirse ekranlar bu API sözleşmesiyle (`panel/js/api.js`) bire bir taşınabilir.
 
 ## Sonuçlar
 
@@ -92,4 +90,4 @@ Plate app'in yığını React/TS ise ve aynı görünüm isteniyorsa, ekranlar b
 
 ## Yeniden değerlendirme koşulu
 
-- Ekran sayısı beşi geçerse, ya da kullanıcı plate app'in yığınını (ör. React/TS) isterse: bileşen modeli olan bir çatıya geçilir. Bu, onay gerektiren yeni bir bağımlılıktır.
+- Ekran sayısı beşi geçerse, ya da kullanıcı bir bileşen çatısı (ör. React/TS) isterse: bileşen modeli olan bir çatıya geçilir. Bu, onay gerektiren yeni bir bağımlılıktır.
