@@ -12,6 +12,7 @@ import com.verso.document.repository.DocumentRow;
 import com.verso.document.testing.TestPdfs;
 import com.verso.document.worker.IngestionWorker;
 import com.verso.support.TestEmbeddingModel;
+import com.verso.support.VersoPostgres;
 import com.verso.support.VersoTestEnvironment;
 import java.time.Instant;
 import java.util.List;
@@ -85,12 +86,11 @@ class RetrievalTest {
     /** Only READY documents are searched: a document still waiting or FAILED has no chunks to offer. */
     @Test
     void search_whenADocumentIsNotReady_ignoresIt() {
-        DocumentRow pending = documents.insert(alice, "pending.pdf", 10, null, Instant.now());
-        documents.insertFile(pending.id(), TestPdfs.pages("topic-leave pending"));
-        UUID ready = ready(alice, "topic-leave ready");
+        UUID id = ready(alice, "topic-leave being processed again");
+        assertThat(retrieval.search(alice, "topic-leave", 5)).hasSize(1);
+        // The same chunks, but the document is back in the queue: it does not count until READY again.
         jdbc.update("UPDATE document.document SET status = 'PENDING', next_attempt_at = now() + interval '1 hour' "
-                + "WHERE id = ?", ready);
-
+                + "WHERE id = ?", id);
         assertThat(retrieval.search(alice, "topic-leave", 5)).isEmpty();
     }
 
@@ -105,9 +105,16 @@ class RetrievalTest {
 
     /** llm-rules 6.1: vectors of another model are not compared; the search fails closed with a code. */
     @Test
-    void search_whenChunksCameFromAnotherModel_failsClosed() {
+    void search_whenChunksCameFromAnotherModel_failsClosed() throws Exception {
         UUID id = ready(alice, "topic-leave old index");
-        jdbc.update("UPDATE document.document_chunk SET embedding_model = 'old-model' WHERE document_id = ?", id);
+        // The application role cannot update chunks (V1); an index of an older model is set up as the superuser.
+        try (java.sql.Connection admin = java.sql.DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
+                VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
+             java.sql.PreparedStatement update = admin.prepareStatement(
+                     "UPDATE document.document_chunk SET embedding_model = 'old-model' WHERE document_id = ?")) {
+            update.setObject(1, id);
+            update.executeUpdate();
+        }
 
         assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5))
                 .isInstanceOfSatisfying(DocumentServiceException.class,

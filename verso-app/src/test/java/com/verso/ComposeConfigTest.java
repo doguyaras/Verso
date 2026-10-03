@@ -173,8 +173,9 @@ class ComposeConfigTest {
         assertThat((List<String>) ollama.get("volumes")).singleElement().asString().endsWith(":ro");
         assertThat(environment("ollama")).containsEntry("OLLAMA_NO_CLOUD", "true");
         // Every pulled model is pinned by digest; the healthcheck asks for each; the application uses exactly them.
-        List<String> pulled = List.of(String.valueOf(environment("ollama-pull").get("OLLAMA_PULL")).trim().split("\s+"));
-        assertThat(pulled).hasSize(2).allSatisfy(entry -> assertThat(entry).matches(".+@(sha256:[0-9a-f]{64}|\$\{[A-Z_]+:-sha256:[0-9a-f]{64}})"));
+        List<String> pulled = List.of(String.valueOf(environment("ollama-pull").get("OLLAMA_PULL")).trim().split("\\s+"));
+        assertThat(pulled).hasSize(2).allSatisfy(entry -> assertThat(entry)
+                .matches(".+@(sha256:[0-9a-f]{64}|\\$\\{[A-Z_]+:-sha256:[0-9a-f]{64}})"));
         String embedding = pulled.get(0).substring(0, pulled.get(0).indexOf('@'));
         String chat = pulled.get(1).substring(0, pulled.get(1).lastIndexOf("}@") + 1);
         String healthcheck = String.valueOf(((Map<String, Object>) ollama.get("healthcheck")).get("test"));

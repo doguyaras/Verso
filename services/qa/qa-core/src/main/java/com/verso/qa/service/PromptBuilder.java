@@ -3,6 +3,7 @@ package com.verso.qa.service;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.qa.config.QaProperties;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
  * document cannot close its own fence and talk to the model as if it were the system.
  */
 @Component
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class PromptBuilder {
 
     /** The answer when nothing relevant was found; the model is told to use exactly this sentence too. */
