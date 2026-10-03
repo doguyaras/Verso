@@ -1,0 +1,33 @@
+# Cloud mode overlay (ADR-0006, ADR-0013): the chat call goes to Anthropic (default) or an OpenAI-compatible API.
+# Embeddings, documents and vectors stay local; only the system rules, the question and the top-k passages leave.
+# KVKK md. 9 applies to that transfer: the operator decides, this file only makes it possible (README).
+#
+#   printf '%s' "<api key>" > secrets/SECRET_CLOUD_API_KEY          # once; never committed (.gitignore: secrets/)
+#   docker compose -f compose.yaml -f deploy/compose.cloud.yaml up -d --build --wait
+#
+# VERSO_CLOUD_PROVIDER (anthropic | openai), VERSO_CLOUD_CHAT_MODEL and VERSO_OPENAI_BASE_URL come from .env.
+services:
+  verso-app:
+    environment:
+      VERSO_AI_MODE: cloud
+      VERSO_CHAT_PROVIDER: ${VERSO_CLOUD_PROVIDER:-anthropic}
+    # "egress" has a gateway: the chat call reaches the provider. The other networks stay as they are.
+    networks: [backend, models, egress]
+    secrets:
+      - SECRET_DB_DOCUMENT_PASSWORD
+      # The config tree turns the file name into the setting: no placeholder in config/verso.yml, so no fallback.
+      - source: SECRET_CLOUD_API_KEY
+        target: spring.ai.${VERSO_CLOUD_PROVIDER:-anthropic}.api-key
+
+  # The proxy's own error responses say "cloud" too (llm-rules 1.3).
+  edge:
+    volumes:
+      - ./deploy/edge/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/edge/mode-cloud.conf:/etc/nginx/mode.conf:ro
+
+networks:
+  egress: {}
+
+secrets:
+  SECRET_CLOUD_API_KEY:
+    file: ./secrets/SECRET_CLOUD_API_KEY

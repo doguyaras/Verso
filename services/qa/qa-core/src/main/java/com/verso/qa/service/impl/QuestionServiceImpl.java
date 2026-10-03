@@ -4,6 +4,7 @@ import com.verso.document.api.DocumentRetrieval;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.platform.security.web.AccountId;
 import com.verso.qa.api.dto.AnswerResponse;
+import com.verso.qa.config.AiMode;
 import com.verso.qa.config.QaProperties;
 import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.exception.QaErrorCode;
@@ -14,9 +15,15 @@ import com.verso.qa.service.ModelCircuitBreaker;
 import com.verso.qa.service.PromptBuilder;
 import com.verso.qa.service.PromptBuilder.BuiltPrompt;
 import com.verso.qa.service.QuestionService;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -46,6 +53,7 @@ import org.springframework.stereotype.Service;
 public class QuestionServiceImpl implements QuestionService {
 
     private static final Logger log = LoggerFactory.getLogger(QuestionServiceImpl.class);
+    private static final Executor VIRTUAL = Executors.newVirtualThreadPerTaskExecutor();
 
     private final DocumentRetrieval retrieval;
     private final ChatModel chatModel;
@@ -105,26 +113,44 @@ public class QuestionServiceImpl implements QuestionService {
             throw new QaServiceException(QaErrorCode.MODEL_BUSY, "INTERRUPTED");
         }
         if (!acquired) throw new QaServiceException(QaErrorCode.MODEL_BUSY, "NO_CHAT_SLOT");
+        // No runtime options: Spring AI 2.0 providers accept only their own options type, so temperature and the
+        // answer length are provider settings (spring.ai.<provider>.chat.*, config/verso.yml).
+        Prompt request = new Prompt(List.of(new SystemMessage(prompt.system()), new UserMessage(prompt.user())));
+        CompletableFuture<ChatResponse> call;
         try {
-            // No runtime options: Spring AI 2.0 providers accept only their own options type, so temperature and the
-            // answer length are provider settings (spring.ai.<provider>.chat.*, config/verso.yml).
-            ChatResponse response = chatModel.call(new Prompt(
-                    List.of(new SystemMessage(prompt.system()), new UserMessage(prompt.user()))));
-            String text = response == null || response.getResult() == null ? null
-                    : response.getResult().getOutput().getText();
-            if (text == null || text.isBlank()) throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, "EMPTY_ANSWER");
-            circuit.recordSuccess();
-            return text;
-        } catch (QaServiceException e) {
-            circuit.recordFailure();
-            throw e;
+            call = CompletableFuture.supplyAsync(() -> chatModel.call(request), VIRTUAL);
         } catch (RuntimeException e) {
-            circuit.recordFailure();
-            // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
-            throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, e.getClass().getSimpleName());
-        } finally {
             chatSlots.release();
+            throw failure(e.getClass().getSimpleName());
         }
+        // The slot is freed when the call really ends: an abandoned call still occupies the model (bulkhead).
+        call.whenComplete((response, error) -> chatSlots.release());
+        ChatResponse response;
+        try {
+            // One bound for every provider (ADR-0008: local 90 s, cloud 30 s), whatever the client's own timeout says.
+            response = call.get(chatTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            throw failure("TIMEOUT");
+        } catch (ExecutionException e) {
+            // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
+            throw failure(e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw failure("INTERRUPTED");
+        }
+        String text = response == null || response.getResult() == null ? null : response.getResult().getOutput().getText();
+        if (text == null || text.isBlank()) throw failure("EMPTY_ANSWER");
+        circuit.recordSuccess();
+        return text;
+    }
+
+    private Duration chatTimeout() {
+        return ai.mode() == AiMode.CLOUD ? properties.cloudChatTimeout() : properties.localChatTimeout();
+    }
+
+    private QaServiceException failure(String reason) {
+        circuit.recordFailure();
+        return new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, reason);
     }
 
     private static long elapsedMs(long started) {

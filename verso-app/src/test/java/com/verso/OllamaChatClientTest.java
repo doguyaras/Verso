@@ -23,11 +23,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.http.client.FilteredHostException;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.util.ClassUtils;
+import org.springframework.web.client.RestClient;
 
 /**
  * The real, auto-configured Ollama chat client against a fake Ollama server (phase 5 review R1/L1/L2): the request
@@ -49,6 +55,12 @@ class OllamaChatClientTest {
 
     @Autowired
     OllamaChatModel chatModel;
+
+    @Autowired
+    RestClient.Builder restClients;
+
+    @Autowired
+    ApplicationContext context;
 
     private Logger root;
     private ListAppender<ILoggingEvent> appender;
@@ -99,6 +111,40 @@ class OllamaChatClientTest {
                     + (event.getThrowableProxy() == null ? "" : event.getThrowableProxy().getMessage());
             assertThat(text).as(event.getLoggerName()).doesNotContain("MarkerProviderEcho");
         }
+    }
+
+    /**
+     * ADR-0006 decision 1.2: Boot's HTTP clients (the one under the Ollama client) connect to internal addresses only.
+     * A public address is refused before any packet leaves, so the test needs no network.
+     */
+    @Test
+    void outboundClients_whenAddressIsPublic_refuseToConnect_andInternalOnesWork() {
+        RestClient client = restClients.build();
+        assertThatThrownBy(() -> client.get().uri("http://203.0.113.9:11434/api/tags").retrieve().toBodilessEntity())
+                .hasRootCauseInstanceOf(FilteredHostException.class);
+        status = 200;
+        assertThat(client.post().uri("http://127.0.0.1:" + OLLAMA.getAddress().getPort() + "/api/chat")
+                .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(200);
+    }
+
+    /** Local mode creates no cloud client at all (ADR-0013): the cloud starters are on the classpath, not in use. */
+    @Test
+    void localMode_whenStarted_hasNoCloudChatClient() {
+        assertThat(context.getBeanNamesForType(AnthropicChatModel.class)).isEmpty();
+        assertThat(context.getBeanNamesForType(OpenAiChatModel.class)).isEmpty();
+        assertThat(context.getBeanNamesForType(OllamaChatModel.class)).hasSize(1);
+    }
+
+    /** llm-rules 1.5: no prompt or completion in observations, no exporter that could ship them anywhere. */
+    @Test
+    void observations_whenConfigured_carryNoContentAndExportNowhere() {
+        for (String setting : List.of("spring.ai.chat.observations.log-prompt", "spring.ai.chat.observations.log-completion",
+                "spring.ai.chat.observations.include-error-logging", "spring.ai.chat.client.observations.log-prompt",
+                "spring.ai.chat.client.observations.log-completion")) {
+            assertThat(context.getEnvironment().getProperty(setting, Boolean.class, false)).as(setting).isFalse();
+        }
+        assertThat(ClassUtils.isPresent("io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter", null)).isFalse();
+        assertThat(ClassUtils.isPresent("io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter", null)).isFalse();
     }
 
     private static Prompt prompt() {

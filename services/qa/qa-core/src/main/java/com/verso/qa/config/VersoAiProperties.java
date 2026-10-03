@@ -5,7 +5,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * The AI mode (ADR-0006: a property, not a Spring profile) and the model names reported with every answer and on
- * /actuator/info. The names are read from the model clients' own settings in config/verso.yml.
+ * /actuator/info. The names are read from the model clients' own settings in config/verso.yml (the chat model from the
+ * settings of the provider in spring.ai.model.chat). AiModeCheck verifies that the settings keep the mode's promise.
  *
  * @param mode           local (no outbound connection, llm-rules 1.1) or cloud (only the chat call leaves)
  * @param chatModel      the chat model in use

@@ -73,4 +73,9 @@ Kabul edilen açıklar:
 
 ## 6. CI
 
-CI_RESULT
+PR [doguyaras/Verso#7](https://github.com/doguyaras/Verso/pull/7), commit `0260fea`, merge `030841e`:
+
+| Workflow | Koşu | Sonuç |
+|---|---|---|
+| `ci` (backend: `mvn verify`, `MIN_TESTS` 310; scripts-and-hooks: 8 node suite) | 37104452536 | **success** |
+| `restore-drill` (temiz Linux: yığın + bge-m3 ve qwen3:0.6b indirme → `auth-smoke` → `ingest-smoke` → `qa-smoke` → yedek/restore öz-testi → prova) | 37104452490 | **success** |

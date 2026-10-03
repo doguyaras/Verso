@@ -61,6 +61,11 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-actuator-autoconfigure</artifactId>
     </dependency>
+    <!-- InetAddressFilter: Boot-built HTTP clients reach internal addresses only (ADR-0006, ADR-0013). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-http-client</artifactId>
+    </dependency>
     <!-- ChatModel only; the provider starter is chosen by the assembly (verso-app), ADR-0006. -->
     <dependency>
       <groupId>org.springframework.ai</groupId>

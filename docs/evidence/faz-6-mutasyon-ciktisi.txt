@@ -1,0 +1,21 @@
+# Faz 6 mutasyon çıktısı (scripts/mutation-check.sh, ONLY=M183..M195), worktree feature/doguyaras-faz-6-cloud-modu
+baseline      green (342 tests)
+baseline      green (node suites: 8)
+SETUP FAILED  compose.yaml: s/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n    ports:)/    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n    ports:/
+caught        M183 the startup check is not wired (AiModeStartupTest.start_whenLocalModeIsGivenACloudProvider_fails)
+caught        M184 Boot clients may connect anywhere (OllamaChatClientTest.outboundClients_whenAddressIsPublic_refuseToConnect_andInternalOnesWork)
+caught        M185 the Anthropic SDK retries (AnthropicCloudModeTest.ask_whenTheProviderFails_asksOnceAndAnswers503WithoutProviderText)
+caught        M186 the OpenAI SDK retries (OpenAiCloudModeTest.ask_whenTheProviderFails_asksOnce)
+caught        M187 a hanging chat model holds the question (QuestionApiTest.ask_whenTheModelHangs_answers503AtTheChatTimeout)
+caught        M188 cloud calls get the local 90 s (OpenAiCloudModeTest.ask_whenTheProviderIsSlow_answers503AtTheServiceBound)
+caught        M189 the proxy's 413 hides the mode (ComposeConfigTest.edgeProxy_whenConfigured_keepsTheContractAndLogsNothing)
+caught        M190 the proxy logs client addresses and request lines (ComposeConfigTest.edgeProxy_whenConfigured_keepsTheContractAndLogsNothing)
+caught        M191 the restored copy has a route out (ComposeConfigTest.networks_whenComposed_keepTheApplicationWithoutARouteOutUnlessCloud)
+caught        M192 the application has a route out in local mode (ComposeConfigTest.networks_whenComposed_keepTheApplicationWithoutARouteOutUnlessCloud)
+caught        M193 the API key may come from an environment variable (AiModeCheckTest.cloud_whenTheKeyComesFromTheEnvironmentOrSdkLoggingIsOn_refusesToStart)
+caught        M194 a public Ollama address is accepted (AiModeCheckTest.local_whenOllamaIsAPublicAddress_refusesToStart)
+caught        M195 Claude gets a sampling value it refuses (AnthropicCloudModeTest.ask_whenAPassageMatches_sendsOnlyRulesQuestionAndPassagesToTheProvider)
+
+
+## M76 (faz 2), compose değişikliğine uyarlanan tanımla yeniden
+caught        M76 application container gets the migration password (ComposeConfigTest.migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService)

@@ -34,6 +34,8 @@ class DeployConfigTest {
                     "OIDC_JWK_SET_URI=" + com.verso.support.TestIdp.IDP.jwkSetUri(),
                     "SECRET_DB_DOCUMENT_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_PASSWORD"),
                     "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
+                    // Compose gives every model setting too (x-db-env); the provider is read by auto-configuration conditions.
+                    "VERSO_AI_MODE=local", "VERSO_CHAT_PROVIDER=ollama",
                     "spring.datasource.hikari.maximum-pool-size=2")
                     .applyTo(context);
         }

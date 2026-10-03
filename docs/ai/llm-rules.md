@@ -10,7 +10,7 @@ Sınıflar: **ZG** = zorunlu güvence (ihlal `BLOCK`), **VT** = varsayılan terc
 
 | # | Kural | Sınıf | Gerekçe | Uygulanma / istisna | Doğrulama | Yeniden değerlendirme |
 |---|---|---|---|---|---|---|
-| 1.1 | `verso.ai.mode=local` iken uygulama yapılandırılmış model host'u ve kendi veritabanı dışında **hiçbir** adrese bağlantı açmaz. | ZG | Ürünün temel vaadi; KVKK md. 9 yurt dışına aktarım riski | Her ortam; istisna yok | (a) Compose: app ve Ollama yalnız `internal: true` ağda; (b) `InetAddressFilter` allowlist; (c) açılış kontrolü; (d) dış adrese istek reddi testi; (e) `scripts/prove-local-mode.sh` | Yeni bir dış bağımlılık (IdP dahil) eklendiğinde allowlist bilinçli güncellenir |
+| 1.1 | `verso.ai.mode=local` iken uygulama yapılandırılmış model host'u, kendi veritabanı ve iç ağdaki kimlik sağlayıcısı (JWKS) dışında **hiçbir** adrese bağlantı açmaz. | ZG | Ürünün temel vaadi; KVKK md. 9 yurt dışına aktarım riski | Her ortam; istisna yok | (a) Compose: app ve Ollama yalnız `internal: true` ağda; (b) `InetAddressFilter` allowlist; (c) açılış kontrolü; (d) dış adrese istek reddi testi; (e) `scripts/prove-local-mode.sh` | Yeni bir dış bağımlılık (IdP dahil) eklendiğinde allowlist bilinçli güncellenir |
 | 1.2 | Embedding her modda yereldir. Cloud chat'e yalnız soru, sahiplik filtresinden geçmiş en fazla `top-k` pasaj ve sistem talimatı gider; dosya, tam metin ve vektör gitmez. | ZG | Dışarı çıkan veriyi en aza indirmek; mod değişince vektörler geçersiz kalmamalı | Cloud mod | Prompt kurucu birim testi: gönderilen içerik yalnız seçilen pasajlar; tam belge işareti yok | – |
 | 1.3 | Aktif mod her HTTP yanıtında `X-Rag-Mode` ile ve `/actuator/info`'da görünür. | ZG | Demo ve denetim kanıtı; gizli mod değişimi olmamalı | Hata yanıtları ve filtre redleri dahil | Smoke testi: başarı, 4xx ve 5xx yanıtlarında header | – |
 | 1.4 | Cloud API anahtarı yalnız `/run/secrets` ile gelir; literal fallback yok; local modda anahtar beklenmez. | ZG | `security-rules.md` 1 | – | `ConfigDriftTest`, `config-lint` | – |
@@ -87,4 +87,10 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
 - Spring AI 2.0.x'te prompt/completion içerik loglamasını kontrol eden property adları: faz 5'te kaynak koddan doğrulanacak.
 - Kısmen doğrulanan: 2.1. Global handler ve hata sayfası yalnız istisna tiplerini loglar; ham path hiçbir framework log'una düşmez (`GlobalServiceExceptionHandlerTest`, `VersoAppSmokeTest`, mutasyonlar M12, M29). Belge/soru/cevap içeriği için testler faz 4–5'te.
 - Faz 5 itibarıyla doğrulananlar: 1.3 (`QuestionApiTest`: 200/401/404/503'te `X-Rag-Mode`), 2.1 (worker, yükleme ve soru-cevap log testleri), 2.2 (ArchUnit: `SimpleLoggerAdvisor` yok), 2.3 (503, sağlayıcı metni yok), 3.1–3.5 (`PromptBuilderTest`, `CitationExtractorTest`, `QuestionApiTest`), 4.1–4.2 (`RetrievalTest`: iki hesap, silme), 5.1 (`TransactionBoundaryRulesTest`), 6.1 (`RetrievalTest`: başka model → 409), 6.3–6.4 (`PageChunkerTest`), 8.1–8.2 (`ollama-pull.test.js`, `ComposeConfigTest`).
-- Doğrulaması henüz yazılmamış kurallar: 1.1, 1.2, 1.4, 1.5 (faz 6), 7.1 (faz 8), 9.1 (faz 9).
+- Faz 6 itibarıyla doğrulananlar (ADR-0013):
+  - 1.1: `ComposeConfigTest.networks_*` (uygulama yalnız iç ağlarda), `OllamaChatClientTest` (filtre dış adresi reddeder, local modda bulut istemcisi yok), `AiModeCheckTest` (açılış kontrolü), `scripts/prove-local-mode.sh` (CI'da).
+  - 1.2: `AnthropicCloudModeTest` (giden gövdede dosya adı yok, eşik altında hiç istek yok), `AiModeCheckTest` (embedding her modda Ollama).
+  - 1.3: cloud modda da (`AnthropicCloudModeTest`, `OpenAiCloudModeTest`).
+  - 1.4: anahtar yalnız config tree dosyası (`ComposeConfigTest`, `AiModeCheckTest`).
+  - 1.5: `OllamaChatClientTest` (içerik loglama kapalı, OTLP exporter yok).
+- Doğrulaması henüz yazılmamış kurallar: 7.1 (faz 8), 9.1 (faz 9).
