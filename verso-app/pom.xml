@@ -37,6 +37,11 @@
       <groupId>com.verso</groupId>
       <artifactId>qa-core</artifactId>
     </dependency>
+    <!-- /actuator/prometheus for the observability stack (ADR-0014; reference 8.7). Version from the Boot BOM. -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
     <!-- EmbeddingModel and the local chat model, served by the local Ollama (ADR-0006, ADR-0011). -->
     <dependency>
       <groupId>org.springframework.ai</groupId>

@@ -1,0 +1,13 @@
+# Faz 7 mutasyon çıktısı (scripts/mutation-check.sh, ONLY=M196..M199), worktree feature/doguyaras-faz-7-gozlem
+baseline      green (348 tests)
+baseline      green (node suites: 8)
+SETUP FAILED  platform/platform-security/src/main/java/com/verso/platform/security/config/PlatformSecurityAutoConfiguration.java: s/if \(ACTUATOR_PRESENT\) requests/if (false) requests/
+SETUP FAILED  services/qa/qa-core/src/main/java/com/verso/qa/service/impl/QuestionServiceImpl.java: s/\n\s*if \(circuit\.isOpen\(\)\) throw new QaServiceException\(QaErrorCode\.MODEL_UNAVAILABLE, "CIRCUIT_OPEN"\);//
+caught        M196 the paused gauge is held weakly and reads NaN (MetricsTest.outageGauges_whenModelsFail_turnFromZeroToOne)
+caught        M197 the token-free scrape follows the actuator onto the API port (MetricsSharedPortTest.prometheus_whenTheActuatorSharesTheApiPort_needsAToken)
+caught        M198 every container's log goes to Loki (ComposeConfigTest.observability_whenComposed_isOptInInternalAndQuiet)
+caught        M199 Grafana has a route out (ComposeConfigTest.observability_whenComposed_isOptInInternalAndQuiet)
+
+## Kodla birlikte değişen iki eski tanım (M98 faz 3, M170 faz 5) uyarlandı ve yeniden koşuldu
+caught        M98 health probes need a token (VersoAppSmokeTest.probesAndApi_whenCalledWithoutToken_probesAnswerAndApiRefuses)
+caught        M170 no circuit breaker on the chat model (QuestionApiTest.ask_whenTheChatModelKeepsFailing_opensTheCircuitAndRecovers)

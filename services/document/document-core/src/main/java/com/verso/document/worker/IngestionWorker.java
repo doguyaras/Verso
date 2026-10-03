@@ -46,17 +46,21 @@ public class IngestionWorker implements SmartLifecycle {
     private final EmbeddingModel embeddingModel;
     private final DocumentProperties properties;
     private final Clock clock;
+    private final IngestionMetrics metrics;
     private volatile boolean running;
     private volatile Instant pausedUntil = Instant.MIN;
 
     public IngestionWorker(IngestionTransactionService tx, PdfTextExtractor extractor, PageChunker chunker,
-                           EmbeddingModel embeddingModel, DocumentProperties properties, Clock clock) {
+                           EmbeddingModel embeddingModel, DocumentProperties properties, Clock clock,
+                           IngestionMetrics metrics) {
         this.tx = tx;
         this.extractor = extractor;
         this.chunker = chunker;
         this.embeddingModel = embeddingModel;
         this.properties = properties;
         this.clock = clock;
+        this.metrics = java.util.Objects.requireNonNull(metrics, "metrics");
+        metrics.registerPause(this::paused);
     }
 
     /** One failure must not stop the next poll (reference 23.4 scheduler wrapper); empty polls are not logged. */
@@ -102,6 +106,7 @@ public class IngestionWorker implements SmartLifecycle {
             if (chunks.isEmpty()) throw new IngestionRejectedException(DocumentFailureReason.NO_TEXT);
             List<StoredChunk> stored = embed(claim, chunks);
             tx.complete(claim, pages.size(), stored, properties.embeddingModel(), clock.instant());
+            metrics.record(IngestionMetrics.Outcome.READY);
             log.info("Document ingestion finished: documentId={} pages={} chunks={} attempts={} durationMs={} outcome=READY",
                     claim.documentId(), pages.size(), chunks.size(), claim.attempts(), elapsedMs(started));
         } catch (IngestionRejectedException e) {
@@ -112,6 +117,7 @@ public class IngestionWorker implements SmartLifecycle {
         } catch (Stopping e) {
             release(claim, "SHUTDOWN", started);
         } catch (LostClaimException e) {
+            metrics.record(IngestionMetrics.Outcome.LOST);
             log.warn("Document ingestion abandoned: documentId={} reason=CLAIM_LOST durationMs={} outcome=lost",
                     claim.documentId(), elapsedMs(started));
         } catch (RuntimeException e) {
@@ -171,9 +177,11 @@ public class IngestionWorker implements SmartLifecycle {
     private void release(Claim claim, String reason, long started) {
         try {
             tx.release(claim, clock.instant());
+            metrics.record(IngestionMetrics.Outcome.RELEASED);
             log.info("Document ingestion released: documentId={} reason={} durationMs={} outcome=released",
                     claim.documentId(), reason, elapsedMs(started));
         } catch (LostClaimException lost) {
+            metrics.record(IngestionMetrics.Outcome.LOST);
             log.warn("Document ingestion abandoned: documentId={} reason=CLAIM_LOST outcome=lost", claim.documentId());
         } catch (RuntimeException e) {
             // Shutdown closes the pool after this phase; the lease then hands the document to the next worker.
@@ -185,9 +193,11 @@ public class IngestionWorker implements SmartLifecycle {
     private void fail(Claim claim, DocumentFailureReason reason, long started) {
         try {
             tx.fail(claim, reason, clock.instant());
+            metrics.record(IngestionMetrics.Outcome.FAILED);
             log.warn("Document ingestion failed: documentId={} reason={} attempts={} durationMs={} outcome=FAILED",
                     claim.documentId(), reason, claim.attempts(), elapsedMs(started));
         } catch (LostClaimException lost) {
+            metrics.record(IngestionMetrics.Outcome.LOST);
             log.warn("Document ingestion abandoned: documentId={} reason=CLAIM_LOST outcome=lost", claim.documentId());
         }
     }
@@ -196,10 +206,12 @@ public class IngestionWorker implements SmartLifecycle {
         if (claim.attempts() >= properties.ingestion().maxAttempts()) {
             try {
                 tx.fail(claim, DocumentFailureReason.PROCESSING_FAILED, clock.instant());
+                metrics.record(IngestionMetrics.Outcome.FAILED);
                 log.error("Document ingestion failed: documentId={} reason=PROCESSING_FAILED exceptionType={} attempts={} "
                         + "durationMs={} outcome=FAILED", claim.documentId(), cause.getClass().getSimpleName(),
                         claim.attempts(), elapsedMs(started));
             } catch (LostClaimException lost) {
+                metrics.record(IngestionMetrics.Outcome.LOST);
                 log.warn("Document ingestion abandoned: documentId={} reason=CLAIM_LOST outcome=lost", claim.documentId());
             }
             return;
@@ -208,10 +220,12 @@ public class IngestionWorker implements SmartLifecycle {
         try {
             Instant now = clock.instant();
             tx.retryLater(claim, now.plus(delay), now);
+            metrics.record(IngestionMetrics.Outcome.RETRY);
             log.warn("Document ingestion will retry: documentId={} exceptionType={} attempts={} retryInSeconds={} "
                     + "outcome=retry", claim.documentId(), cause.getClass().getSimpleName(), claim.attempts(),
                     delay.toSeconds());
         } catch (LostClaimException lost) {
+            metrics.record(IngestionMetrics.Outcome.LOST);
             log.warn("Document ingestion abandoned: documentId={} reason=CLAIM_LOST outcome=lost", claim.documentId());
         }
     }

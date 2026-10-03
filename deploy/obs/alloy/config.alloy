@@ -1,0 +1,53 @@
+// Grafana Alloy (ADR-0014, reference 8.7): the JSON stdout of the compose project's containers → Loki. Labels: the
+// compose service and the log level only; the trace id goes to structured metadata, never a label (reference 8.4).
+
+discovery.docker "verso" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=verso"]
+  }
+}
+
+// Containers whose logs are read at all: only the services whose log lines are known to carry ids, sizes and
+// timings (llm-rules 2.1). Keycloak (user names and addresses of failed logins), PostgreSQL (statement errors can
+// quote values), Ollama and the observability services are not read (phase 7 review B2). The filter works on the
+// discovered targets, so a dropped container's log is never opened.
+discovery.relabel "verso" {
+  targets = discovery.docker.verso.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "verso-app|migrate|edge|backup"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "verso" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.verso.output
+  forward_to = [loki.process.verso.receiver]
+}
+
+loki.process "verso" {
+  // ECS JSON of the Java services (config/verso.yml); other services' lines pass through without these fields.
+  stage.json {
+    expressions = { level = "log.level", trace_id = "trace.id" }
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  stage.structured_metadata {
+    values = { trace_id = "" }
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

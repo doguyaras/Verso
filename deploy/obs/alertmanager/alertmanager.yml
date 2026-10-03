@@ -1,0 +1,21 @@
+# Alertmanager (ADR-0014). No notification channel is wired yet: the "default" receiver drops alerts, they are only
+# visible in the Alertmanager and Grafana UIs. Before production, add one receiver (Slack, Telegram, e-mail or a
+# webhook, its URL or token from /run/secrets via *_file settings) and point both routes at it (docs/runbooks/README.md).
+route:
+  receiver: default
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="page"]
+      receiver: default
+      repeat_interval: 1h
+
+receivers:
+  - name: default
+
+# While the API is down, the alerts that follow from it stay quiet.
+inhibit_rules:
+  - source_matchers: [alertname="VersoDown"]
+    target_matchers: [alertname=~"VersoHighErrorRate|QaSlow|IngestionBacklog"]

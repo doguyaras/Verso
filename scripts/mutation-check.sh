@@ -394,7 +394,7 @@ backup $VY; sub $VY 's/\n\s*type-header: at\+jwt//' \
   && expect_red "M96 application config does not require at+jwt" verso-app $SMK api_whenTokenIsNotAnAccessTokenForVerso_isRefused; restore $VY
 backup $H; sub $H 's/\n\s*if \(ErrorClassifier\.isSecurityException\(ex\)\) throw ex;//' \
   && expect_red "M97 access denied becomes a 500" $PSM $PST request_whenControllerDeniesAccess_isRejectedWith403EnvelopeNot500; restore $H
-backup $PSA; sub $PSA 's/if \(ACTUATOR_PRESENT\) requests/if (false) requests/' \
+backup $PSA; sub $PSA 's/if \(ACTUATOR_PRESENT\) \{/if (false) {/' \
   && expect_red "M98 health probes need a token" verso-app $SMK probesAndApi_whenCalledWithoutToken_probesAnswerAndApiRefuses; restore $PSA
 backup $PSA; sub $PSA 's/EnvelopeRequestRejectedHandler envelopeRequestRejectedHandler\(/org.springframework.security.web.firewall.RequestRejectedHandler envelopeRequestRejectedHandler(/' \
   && sub $PSA 's/return new EnvelopeRequestRejectedHandler\(resolver\);/return new org.springframework.security.web.firewall.DefaultRequestRejectedHandler();/' \
@@ -566,7 +566,7 @@ backup $RSVC; sub $RSVC 's/if \(!embeddingSlots\.tryAcquire\(\)\) \{/if (false) 
   && expect_red "M168 unbounded question embeddings" verso-app $RTT search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel; restore $RSVC
 backup $QSVC; sub $QSVC 's/\.filter\(p -> p\.similarity\(\) >= properties\.minSimilarity\(\)\)/.filter(p -> true)/' \
   && expect_red "M169 the model is asked below the threshold" verso-app $QAT ask_whenNothingIsRelevant_answersNotFoundWithoutCallingTheModel; restore $QSVC
-backup $QSVC; sub $QSVC 's/\n\s*if \(circuit\.isOpen\(\)\) throw new QaServiceException\(QaErrorCode\.MODEL_UNAVAILABLE, "CIRCUIT_OPEN"\);//' \
+backup $QSVC; sub $QSVC 's/if \(circuit\.isOpen\(\)\) \{/if (false) {/' \
   && expect_red "M170 no circuit breaker on the chat model" verso-app $QAT ask_whenTheChatModelKeepsFailing_opensTheCircuitAndRecovers; restore $QSVC
 backup $QS/service/ModelCircuitBreaker.java; sub $QS/service/ModelCircuitBreaker.java 's/consecutiveFailures >= properties\.circuitFailures\(\)/consecutiveFailures > properties.circuitFailures()/' \
   && expect_red "M171 the circuit opens one failure late" $QCM ModelCircuitBreakerTest opensAfterConsecutiveFailures_andOnlyForThePause; restore $QS/service/ModelCircuitBreaker.java
@@ -623,6 +623,19 @@ backup $MCHK; sub $MCHK 's/\n\s*requireInternalIfLiteral\(environment\.getProper
   && expect_red "M194 a public Ollama address is accepted" $QCM AiModeCheckTest local_whenOllamaIsAPublicAddress_refusesToStart; restore $MCHK
 backup $VY; sub $VY 's/(        model: \$\{CLOUD_CHAT_MODEL\}\n)(        # No temperature)/$1        temperature: 0.1\n$2/' \
   && expect_red "M195 Claude gets a sampling value it refuses" verso-app AnthropicCloudModeTest ask_whenAPassageMatches_sendsOnlyRulesQuestionAndPassagesToTheProvider; restore $VY
+
+
+# ---------- phase 7: observability (ADR-0014) ----------
+IMET=$DOC/worker/IngestionMetrics.java
+PSAC=platform/platform-security/src/main/java/com/verso/platform/security/config/PlatformSecurityAutoConfiguration.java
+backup $IMET; sub $IMET 's/\.strongReference\(true\)//' \
+  && expect_red "M196 the paused gauge is held weakly and reads NaN" verso-app MetricsTest outageGauges_whenModelsFail_turnFromZeroToOne; restore $IMET
+backup $PSAC; sub $PSAC 's/managementPort::matches/request -> true/' \
+  && expect_red "M197 the token-free scrape follows the actuator onto the API port" verso-app MetricsSharedPortTest prometheus_whenTheActuatorSharesTheApiPort_needsAToken; restore $PSAC
+backup deploy/obs/alloy/config.alloy; sub deploy/obs/alloy/config.alloy 's/\n  rule \{\n    source_labels = \["__meta_docker_container_label_com_docker_compose_service"\]\n    regex         = "verso-app\|migrate\|edge\|backup"\n    action        = "keep"\n  \}//' \
+  && expect_red "M198 every container's log goes to Loki" verso-app ComposeConfigTest observability_whenComposed_isOptInInternalAndQuiet; restore deploy/obs/alloy/config.alloy
+backup compose.yaml; sub compose.yaml 's/(can leave the host \(phase 7 review B1\)\. obs-edge publishes it on 127\.0\.0\.1\. The settings below say the same\.\n    networks: )\[obs\]/$1\[obs, default\]/' \
+  && expect_red "M199 Grafana has a route out" verso-app ComposeConfigTest observability_whenComposed_isOptInInternalAndQuiet; restore compose.yaml
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node

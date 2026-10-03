@@ -30,14 +30,37 @@ public class IngestionRepository {
     public record StoredChunk(int pageNumber, int chunkIndex, String content, float[] embedding) {
     }
 
+    /** The ingestion queue across all accounts (no account in it): for metrics and alerts (ADR-0014). */
+    public record QueueStats(long pending, long processing, double oldestDueWaitSeconds) {
+    }
+
     private static final int INSERT_BATCH = 100;
 
     private final JdbcClient jdbc;
     private final JdbcTemplate template;
+    private final JdbcTemplate statsTemplate;
 
     public IngestionRepository(JdbcClient jdbc, JdbcTemplate template) {
         this.jdbc = jdbc;
         this.template = template;
+        // The metrics read runs at scrape time: 2 s at most, well inside Prometheus' 10 s scrape timeout, so a slow
+        // database shows as NaN (alert VersoDatabaseUnavailable) instead of a failed scrape (VersoDown; review R3).
+        this.statsTemplate = template.getDataSource() == null ? template : new JdbcTemplate(template.getDataSource());
+        this.statsTemplate.setQueryTimeout(2);
+    }
+
+    /**
+     * Queue size and how long the oldest due document has been waiting: a growing wait means the worker does not keep
+     * up or is paused (alert IngestionBacklog). One read over the queued rows; no account, no id leaves.
+     */
+    public QueueStats queueStats() {
+        return statsTemplate.queryForObject("""
+                        SELECT count(*) FILTER (WHERE status = 'PENDING') AS pending,
+                               count(*) FILTER (WHERE status = 'PROCESSING') AS processing,
+                               COALESCE(EXTRACT(EPOCH FROM now() - min(next_attempt_at)
+                                   FILTER (WHERE status = 'PENDING' AND next_attempt_at <= now())), 0) AS oldest
+                        FROM document.document WHERE status IN ('PENDING', 'PROCESSING')""",
+                (rs, n) -> new QueueStats(rs.getLong("pending"), rs.getLong("processing"), rs.getDouble("oldest")));
     }
 
     /**
