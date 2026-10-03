@@ -3,6 +3,9 @@
 server:
   port: 8080
   shutdown: graceful
+  # The edge proxy (ADR-0013) passes X-Forwarded-For/-Proto and drops every other forwarding header; the application
+  # trusts none of them (phase 6 review B2), whatever platform it runs on.
+  forward-headers-strategy: none
 spring:
   application:
     name: verso

@@ -26,6 +26,7 @@ public final class FakeModelServer implements AutoCloseable {
     private final List<Recorded> requests = new CopyOnWriteArrayList<>();
     private volatile int status = 200;
     private volatile String body = "{}";
+    private volatile long delayMillis;
 
     public FakeModelServer() {
         try {
@@ -37,12 +38,21 @@ public final class FakeModelServer implements AutoCloseable {
             requests.add(new Recorded(exchange.getRequestMethod(), exchange.getRequestURI().getPath(),
                     Map.copyOf(exchange.getRequestHeaders()),
                     new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+            if (delayMillis > 0) {
+                try {
+                    Thread.sleep(delayMillis);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(status, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.close();
         });
+        // One thread per request: a delayed answer must not hold up the next test's request.
+        server.setExecutor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor());
         server.start();
     }
 
@@ -55,6 +65,11 @@ public final class FakeModelServer implements AutoCloseable {
         this.body = body;
     }
 
+    /** Answers only after this long: a slow or hanging provider. */
+    public void delay(java.time.Duration delay) {
+        this.delayMillis = delay.toMillis();
+    }
+
     public List<Recorded> requests() {
         return List.copyOf(requests);
     }
@@ -63,6 +78,7 @@ public final class FakeModelServer implements AutoCloseable {
         requests.clear();
         status = 200;
         body = "{}";
+        delayMillis = 0;
     }
 
     @Override

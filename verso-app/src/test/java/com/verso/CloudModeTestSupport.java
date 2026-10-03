@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
@@ -94,11 +95,15 @@ abstract class CloudModeTestSupport {
                 .header("Authorization", TestIdp.bearer(account)).GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    /** Message, arguments, MDC and the whole cause chain of every event (llm-rules 2.1; phase 6 review L6). */
     void assertNoLogContains(String... markers) {
         for (ILoggingEvent event : appender.list) {
-            String text = event.getFormattedMessage()
-                    + (event.getThrowableProxy() == null ? "" : event.getThrowableProxy().getMessage());
-            for (String marker : markers) assertThat(text).as(event.getLoggerName()).doesNotContain(marker);
+            StringBuilder text = new StringBuilder(event.getFormattedMessage()).append(event.getMDCPropertyMap());
+            if (event.getArgumentArray() != null) for (Object a : event.getArgumentArray()) text.append(' ').append(a);
+            for (IThrowableProxy t = event.getThrowableProxy(); t != null; t = t.getCause()) {
+                text.append(' ').append(t.getClassName()).append(' ').append(t.getMessage());
+            }
+            for (String marker : markers) assertThat(text.toString()).as(event.getLoggerName()).doesNotContain(marker);
         }
     }
 }

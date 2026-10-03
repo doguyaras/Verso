@@ -124,10 +124,10 @@ bash scripts/obs-smoke.sh
 bash scripts/prove-local-mode.sh
 ```
 
-**Cloud modu** (isteğe bağlı; ADR-0013). Yalnız chat çağrısı sağlayıcıya gider: sistem kuralları, soru ve en fazla 5 pasaj. Belgeler, tam metin ve vektörler yerelde kalır. Varsayılan sağlayıcı Anthropic'tir; `.env`'de `VERSO_CLOUD_PROVIDER=openai` ve `VERSO_OPENAI_BASE_URL` ile OpenAI uyumlu bir API seçilebilir. Anahtar yalnız dosyadır, ortam değişkeni değildir:
+**Cloud modu** (isteğe bağlı; ADR-0013). Yalnız chat çağrısı sağlayıcıya gider: sistem kuralları, soru ve en fazla 5 pasaj. Belgeler, tam metin ve vektörler yerelde kalır. Varsayılan sağlayıcı Anthropic'tir (`VERSO_CLOUD_CHAT_MODEL=claude-sonnet-5-5`). OpenAI uyumlu bir API için `.env`'de üçü birlikte değişir: `VERSO_CLOUD_PROVIDER=openai`, `VERSO_OPENAI_BASE_URL` ve o sağlayıcının model adıyla `VERSO_CLOUD_CHAT_MODEL`; aksi hâlde sağlayıcıya Claude model adı gider ve her soru 503 alır. Anahtar yalnız dosyadır, ortam değişkeni değildir (ortamdan gelirse uygulama başlamaz). Anahtarı kabuk geçmişine yazmadan oluşturmak için:
 
 ```bash
-printf '%s' "<API anahtarı>" > secrets/SECRET_CLOUD_API_KEY
+read -rs -p "API anahtarı: " key && printf '%s' "$key" > secrets/SECRET_CLOUD_API_KEY && unset key
 ```
 
 ```bash

@@ -50,6 +50,7 @@ public @interface VersoTestEnvironment {
                     "verso.document.ingestion.model-unavailable-pause=1s",
                     "verso.document.ingestion.model-misconfigured-pause=1s",
                     "verso.qa.circuit-open=1s",
+                    "verso.qa.local-chat-timeout=8s",
                     "verso.document.retrieval.embedding-timeout=2s").applyTo(context);
         }
     }

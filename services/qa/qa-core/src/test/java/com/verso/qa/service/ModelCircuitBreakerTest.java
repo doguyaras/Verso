@@ -13,7 +13,8 @@ class ModelCircuitBreakerTest {
 
     private Instant now = Instant.parse("2026-10-03T10:00:00Z");
     private final ModelCircuitBreaker breaker = new ModelCircuitBreaker(
-            new QaProperties(5, 0.45, 1500, 2, Duration.ofSeconds(5), 2, Duration.ofSeconds(15)),
+            new QaProperties(5, 0.45, 1500, 2, Duration.ofSeconds(5), 2, Duration.ofSeconds(15),
+                Duration.ofSeconds(90), Duration.ofSeconds(30)),
             new Clock() {
                 @Override
                 public ZoneOffset getZone() {

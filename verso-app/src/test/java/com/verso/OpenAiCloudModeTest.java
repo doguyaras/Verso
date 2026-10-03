@@ -22,7 +22,7 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "management.server.port=0", "VERSO_AI_MODE=cloud", "VERSO_CHAT_PROVIDER=openai",
-        "CLOUD_CHAT_MODEL=gpt-test", "spring.ai.openai.api-key=test-openai-key"})
+        "CLOUD_CHAT_MODEL=gpt-test", "spring.ai.openai.api-key=test-openai-key", "verso.qa.cloud-chat-timeout=3s"})
 @ContextConfiguration(initializers = {VersoPostgres.Initializer.class, TestIdp.Initializer.class,
         VersoTestEnvironment.Models.class})
 @Import(TestEmbeddingModel.Config.class)
@@ -59,8 +59,9 @@ class OpenAiCloudModeTest extends CloudModeTestSupport {
         FakeModelServer.Recorded request = OPENAI.requests().getFirst();
         assertThat(request.path()).isEqualTo("/v1/chat/completions");
         assertThat(request.header("Authorization")).isEqualTo("Bearer test-openai-key");
-        assertThat(request.body().replace(" ", "")).contains("\"model\":\"gpt-test\"", "\"temperature\":0.1")
-                .doesNotContain("\"tools\"").doesNotContain("izin.pdf");
+        assertThat(request.body().replace(" ", "")).contains("\"model\":\"gpt-test\"", "\"temperature\":0.1",
+                "\"max_tokens\":512").doesNotContain("\"tools\"").doesNotContain("izin.pdf");
+        assertNoLogContains("Yillik izin", "twenty working days", "test-openai-key");
     }
 
     @Test
@@ -75,6 +76,25 @@ class OpenAiCloudModeTest extends CloudModeTestSupport {
         Thread.sleep(1500);
         assertThat(OPENAI.requests()).as("no retry (ADR-0008)").hasSize(1);
         assertNoLogContains("MarkerProviderEcho", "test-openai-key");
+    }
+
+    /**
+     * Phase 6 reviews L2/F1: the OpenAI client keeps its own 60 s per request whatever the settings say; the service's
+     * bound (verso.qa.cloud-chat-timeout, 30 s in production, 3 s here) answers 503 in time anyway.
+     */
+    @Test
+    void ask_whenTheProviderIsSlow_answers503AtTheServiceBound() throws Exception {
+        ready("izin.pdf", "topic-leave Annual leave rules.");
+        OPENAI.delay(java.time.Duration.ofSeconds(10));
+        OPENAI.answer(200, completion("late [1]."));
+
+        long started = System.nanoTime();
+        HttpResponse<String> response = ask("topic-leave izin?");
+        java.time.Duration took = java.time.Duration.ofNanos(System.nanoTime() - started);
+
+        assertThat(response.statusCode()).isEqualTo(503);
+        assertThat(response.body()).contains("\"code\":11001");
+        assertThat(took).isBetween(java.time.Duration.ofMillis(2500), java.time.Duration.ofSeconds(6));
     }
 
     private static String completion(String text) {
