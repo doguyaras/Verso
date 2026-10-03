@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end question answering on the running compose stack (ADR-0006, ADR-0008): a real token, a real upload, the
 # worker with the real embedding model, then two questions to the real local chat model.
-#   - a question about the document: 200, X-Rag-Mode local, and every citation points at the uploaded document;
+#   - a question about the document: 200, X-Rag-Mode local, every citation points at the uploaded document, and the
+#     application log says the chat model was asked (outcome answered or uncited);
 #   - an unrelated question: 200 with found=false and no citation (the chat model is not asked below the threshold).
 # Answer quality is not judged here (the eval set does that, phase 8): CI runs with a tiny chat model.
 #
@@ -53,6 +54,11 @@ printf '%s' "$body" | grep -q '"mode":"local"' || die "question: mode is not loc
 cited="$(printf '%s' "$body" | grep -o '"fileName":"[^"]*"' | sort -u || true)"
 if [ -n "$cited" ] && [ "$cited" != '"fileName":"smoke.pdf"' ]; then die "question: a citation points elsewhere"; fi
 echo "qa-smoke: related question found=$(printf '%s' "$body" | field found) citations=$(printf '%s' "$body" | grep -o '"number":' | grep -c . || true)"
+# The chat model was really asked (not the below-threshold shortcut): the application's own log line says so. Only
+# the outcome word is read; the log carries no question or answer (llm-rules 2.1).
+outcome="$(docker compose logs --no-log-prefix --since 5m verso-app 2>/dev/null | grep 'Question answered' | tail -n 1 \
+  | sed -n 's/.*outcome=\([a-z_]*\).*/\1/p')"
+case "$outcome" in answered|uncited) ;; *) die "question: the chat model was not asked (outcome=${outcome:-none})" ;; esac
 
 unrelated="$(ask 'Which planet has the most moons in the solar system?')"
 code="${unrelated##*$'\n'}"; body="${unrelated%$'\n'*}"

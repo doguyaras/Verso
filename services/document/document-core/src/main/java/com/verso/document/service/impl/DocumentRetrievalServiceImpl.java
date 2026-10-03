@@ -6,7 +6,15 @@ import com.verso.document.config.DocumentProperties;
 import com.verso.document.exception.DocumentErrorCode;
 import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.RetrievalRepository;
+import java.time.Duration;
 import java.util.Comparator;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.List;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -23,10 +31,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
 
+    private static final Executor VIRTUAL = Executors.newVirtualThreadPerTaskExecutor();
+
     private final RetrievalRepository repository;
     private final EmbeddingModel embeddingModel;
     private final DocumentProperties properties;
     private final TransactionTemplate readOnly;
+    private final Semaphore embeddingSlots;
 
     public DocumentRetrievalServiceImpl(RetrievalRepository repository, EmbeddingModel embeddingModel,
                                         DocumentProperties properties, TransactionTemplate transaction) {
@@ -35,6 +46,35 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         this.properties = properties;
         this.readOnly = new TransactionTemplate(transaction.getTransactionManager());
         this.readOnly.setReadOnly(true);
+        this.embeddingSlots = new Semaphore(properties.retrieval().embeddingConcurrency());
+    }
+
+    /**
+     * Bounded in concurrency and time (ADR-0008: 10 s; phase 5 review R2/R3): a hanging model answers 503 quickly
+     * instead of holding the request for the 90 s HTTP read timeout the ingestion batches need. The abandoned call
+     * keeps its slot until it really ends, so a hanging model cannot pile up more calls than the bulkhead allows.
+     */
+    private float[] embedQuestion(String question) {
+        Duration timeout = properties.retrieval().embeddingTimeout();
+        if (!embeddingSlots.tryAcquire()) {
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+        }
+        CompletableFuture<float[]> call;
+        try {
+            call = CompletableFuture.supplyAsync(() -> embeddingModel.embed(question), VIRTUAL);
+        } catch (RuntimeException e) {
+            embeddingSlots.release();
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+        }
+        call.whenComplete((result, error) -> embeddingSlots.release());
+        try {
+            return call.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+        }
     }
 
     @Override
@@ -43,12 +83,7 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         if (repository.hasChunksOfAnotherModel(accountId, model)) {
             throw new DocumentServiceException(DocumentErrorCode.DOCUMENT_REINDEX_REQUIRED);
         }
-        float[] vector;
-        try {
-            vector = embeddingModel.embed(question);
-        } catch (RuntimeException e) {
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
-        }
+        float[] vector = embedQuestion(question);
         if (vector.length != properties.embeddingDimensions()) {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }

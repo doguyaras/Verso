@@ -2,6 +2,7 @@ package com.verso.qa.service;
 
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.qa.api.dto.Citation;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,7 +21,11 @@ import org.springframework.stereotype.Component;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class CitationExtractor {
 
-    private static final Pattern MARKER = Pattern.compile("\\[(\\d{1,3}(?:\\s*,\\s*\\d{1,3})*)]");
+    // [2], [ 2 ], [1, 3], [1; 3], [1-3]; full-width brackets are folded first (NFKC). Numbers of any length are matched
+    // so that [1234] is removed too, not left in the text (phase 5 review L6).
+    private static final String ITEM = "\\d{1,9}(?:\\s*[-–]\\s*\\d{1,9})?";
+    private static final Pattern MARKER = Pattern.compile("\\[\\s*(" + ITEM + "(?:\\s*[,;]\\s*" + ITEM + ")*)\\s*]");
+    private static final Pattern RANGE = Pattern.compile("\\s*[-–]\\s*");
     private static final Pattern SPACE_BEFORE_PUNCTUATION = Pattern.compile("\\s+([.,;:!?])");
 
     /** The cleaned answer and its citations in order of first use. */
@@ -29,13 +34,17 @@ public class CitationExtractor {
 
     public Extracted extract(String raw, List<RetrievedPassage> passages) {
         Map<Integer, Citation> used = new LinkedHashMap<>();
-        Matcher matcher = MARKER.matcher(raw);
+        Matcher matcher = MARKER.matcher(Normalizer.normalize(raw, Normalizer.Form.NFKC));
         StringBuilder answer = new StringBuilder();
         while (matcher.find()) {
             List<Integer> valid = new ArrayList<>();
-            for (String part : matcher.group(1).split(",")) {
-                int number = Integer.parseInt(part.strip());
-                if (number >= 1 && number <= passages.size()) {
+            for (String part : matcher.group(1).split("[,;]")) {
+                String[] bounds = RANGE.split(part.strip());
+                long from = Long.parseLong(bounds[0]);
+                long to = bounds.length == 2 ? Long.parseLong(bounds[1]) : from;
+                if (from < 1 || to > passages.size() || from > to) continue;
+                for (int number = (int) from; number <= to; number++) {
+                    if (valid.contains(number)) continue;
                     valid.add(number);
                     RetrievedPassage passage = passages.get(number - 1);
                     used.putIfAbsent(number, new Citation(number, passage.documentId(), passage.fileName(),

@@ -9,7 +9,8 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 ## Değişikliklerin özeti
 - Yeni uç: `POST /v1/questions`.
 - Her yanıtta (hatalar dahil) `X-Rag-Mode: local|cloud` başlığı.
-- Yeni hata kodları: 11001, 11002, 10030, 10031.
+- Yeni hata kodları: 11001, 11002, 11010, 11011, 10030, 10031.
+- Her 503 yanıtı `Retry-After` (saniye) taşır.
 
 ## Kurallar
 - **Kritik:** Atıflar sunucuda üretilir. İstemci, cevap metnindeki `[n]` işaretini yalnız `citations` listesindeki `number` ile eşler; listede olmayan numara gösterilmez.
@@ -19,7 +20,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 ## Kullanılan endpoint'ler
 | Method | Path | Auth | Idempotency | Sınır | Zarf |
 |---|---|---|---|---|---|
-| POST | `/v1/questions` | user JWT | yok (yan etkisi yok) | 503 `11002` (model meşgul) | başarı ham, hata zarflı |
+| POST | `/v1/questions` | user JWT | yok (yan etkisi yok) | gövde ≤ 16 KB, `Content-Length` zorunlu; 503 `11002` (model meşgul) | başarı ham, hata zarflı |
 
 ## API sözleşmesi
 ### Soru sor
@@ -36,8 +37,11 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 #### Senaryo: belgelerde yok
 `HTTP 200`: `{"answer":"Belgelerde bu sorunun cevabı bulunamadı.","found":false,"citations":[],"mode":"local","model":"gemma4:e2b"}`
 
+#### Senaryo: model atıf yazmadı
+`HTTP 200`, `found: false`, `citations: []`, ama `answer` modelin metnidir (sabit "bulunamadı" cümlesi değil). "Kaynak gösterilemedi" uyarısıyla gösterilir.
+
 #### Senaryo: model kapalı
-`HTTP 503`, zarflı, `"code": 11001`. Birkaç saniye sonra tekrar dene.
+`HTTP 503`, zarflı, `"code": 11001`, `Retry-After: 5`. Bu kadar bekleyip tekrar dene. Model art arda hata verirse sunucu 15 sn boyunca modeli hiç denemeden aynı yanıtı verir.
 
 #### Alan eşleme
 | Alan | Tip | Not |
@@ -70,10 +74,17 @@ if (res.status === 503) retryLater(error.code);
 |---|---|---|---|---|
 | 11001 | 503 | Dil modeli kapalı | "Asistan şu an yanıt veremiyor" | evet, birkaç sn sonra |
 | 11002 | 503 | Dil modeli meşgul | "Yoğunluk var, tekrar deneniyor" | evet, otomatik |
-| 10030 | 503 | Embedding modeli kapalı | aynı | evet |
+| 10030 | 503 | Embedding modeli kapalı, yavaş ya da meşgul | aynı | evet, `Retry-After` kadar sonra |
 | 10031 | 409 | Belgeler yeniden indekslenmeli (model değişti) | "Belgeleriniz güncelleniyor" | hayır, yöneticiye bildir |
+| 11010 | 413 | Gövde 16 KB'tan büyük | alanı vurgula | hayır |
+| 11011 | 411 | `Content-Length` yok (chunked gövde) | istemci hatası; gövdeyi string olarak gönder | hayır |
 | 90000 | 400 | Soru boş ya da 1000 karakterden uzun | alanı vurgula | hayır |
+| 90001 | 400 | Gövde okunamadı (bozuk JSON) | istemci hatası | hayır |
+| 90012 | 415 | `Content-Type` JSON değil | istemci hatası | hayır |
+| 90020 | 400 | API sürümü geçersiz | istemci hatası | hayır |
 | 90100 | 401 | Oturum yok | yeniden giriş | – |
+| 90103 | 503 | Kimlik sağlayıcısına ulaşılamıyor | "Giriş servisi geçici olarak yok" | evet, `Retry-After` |
+| 99997 | 503 | Veritabanı geçici olarak yok | "Geçici sorun" | evet, `Retry-After` |
 
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
@@ -85,7 +96,7 @@ if (res.status === 503) retryLater(error.code);
 4. Otomatik: `bash scripts/qa-smoke.sh`.
 
 ## Deploy ve uyumluluk
-Yeni uç. CPU'da cevap on saniyeler sürebilir: istemci zaman aşımını en az 90 sn tutmalı ve bekleme göstergesi göstermeli.
+Yeni uç. CPU'da cevap on saniyeler sürebilir. Sunucu tarafında en kötü durum ≈ 105 sn'dir (10 sn embedding + 5 sn slot bekleme + 90 sn chat): istemci zaman aşımını **en az 120 sn** tutmalı ve bekleme göstergesi göstermeli.
 
 ## Açık sorular
 - Streaming (kelime kelime cevap) gerekecek mi? (ADR-0008: SSE yeniden değerlendirme koşulu)

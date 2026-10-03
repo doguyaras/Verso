@@ -86,6 +86,17 @@ test('ollama-pull: every listed model is pulled and checked (embedding and chat)
   assert.deepEqual(result.pulls, [`pull ${MODEL}`, 'pull other:1b']);
 });
 
+test('ollama-pull: a digest prefix or fragment is refused, also for a model already present', () => {
+  const env = setup();
+  assert.equal(run(env, PINNED).status, 0);
+  for (const weak of ['sha256:', 'sha256:da', PINNED.toUpperCase().replace('SHA256', 'sha256')]) {
+    env.pull = `${MODEL}@${weak}`;
+    const result = run(env, PINNED);
+    assert.equal(result.status, 1, weak);
+    assert.match(result.stderr, /has no pinned sha256 digest/);
+  }
+});
+
 test('ollama-pull: a model without a pinned digest is refused before any download', () => {
   const env = setup();
   env.pull = `${MODEL}@latest`;

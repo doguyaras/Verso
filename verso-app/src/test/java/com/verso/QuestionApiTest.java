@@ -9,14 +9,17 @@ import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.testing.TestPdfs;
 import com.verso.document.worker.IngestionWorker;
+import com.verso.qa.service.ModelCircuitBreaker;
 import com.verso.support.TestChatModel;
 import com.verso.support.TestEmbeddingModel;
 import com.verso.support.TestIdp;
 import com.verso.support.VersoTestEnvironment;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -55,6 +58,9 @@ class QuestionApiTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    ModelCircuitBreaker circuit;
+
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final String account = "acct-qa-" + UUID.randomUUID();
     private Logger root;
@@ -65,6 +71,7 @@ class QuestionApiTest {
         jdbc.update("DELETE FROM document.document");
         TestEmbeddingModel.INSTANCE.reset();
         TestChatModel.INSTANCE.reset();
+        circuit.reset();
         while (worker.isPaused()) Thread.sleep(50);
         root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         appender = new ListAppender<>();
@@ -110,7 +117,7 @@ class QuestionApiTest {
         String user = messages.get(1).getText();
         assertThat(user).contains("[[BELGE 1]] (sayfa 1)").contains("[[/BELGE 1]]").contains("Soru: topic-leave izin?");
         assertThat(user.split("\\[\\[/BELGE 1]]", -1)).as("one real closing fence").hasSize(2);
-        assertThat(user).contains("[ [/BELGE 1] ]").doesNotContain("[[BELGE 2]]");
+        assertThat(user).contains("((/BELGE 1))").doesNotContain("[[BELGE 2]]");
     }
 
     /** llm-rules 3.4: below the threshold the model is not asked; a fixed answer, no citations. */
@@ -136,6 +143,44 @@ class QuestionApiTest {
         assertThat(response.statusCode()).isEqualTo(503);
         assertThat(response.body()).contains("\"code\":11001").doesNotContain("provider said");
         assertThat(response.headers().firstValue("X-Rag-Mode")).hasValue("local");
+        assertThat(response.headers().firstValue("Retry-After")).as("phase 5 review P2").hasValue("5");
+    }
+
+    /** ADR-0008, phase 5 review R2: two failures in a row open the circuit; then 503 at once, no model call. */
+    @Test
+    void ask_whenTheChatModelKeepsFailing_opensTheCircuitAndRecovers() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        TestChatModel.INSTANCE.failWith(new IllegalStateException("down"));
+        ask("topic-leave izin?");
+        ask("topic-leave izin?");
+        int embeddings = TestEmbeddingModel.INSTANCE.calls();
+
+        HttpResponse<String> open = ask("topic-leave izin?");
+
+        assertThat(open.statusCode()).isEqualTo(503);
+        assertThat(open.body()).contains("\"code\":11001");
+        assertThat(TestChatModel.INSTANCE.calls()).as("the open circuit asks no model").isEqualTo(2);
+        assertThat(TestEmbeddingModel.INSTANCE.calls()).as("nor embeds the question").isEqualTo(embeddings);
+
+        TestChatModel.INSTANCE.reset();
+        Thread.sleep(1100); // verso.qa.circuit-open=1s in tests
+        assertThat(ask("topic-leave izin?").statusCode()).as("half open: the trial succeeds").isEqualTo(200);
+        assertThat(ask("topic-leave izin?").statusCode()).isEqualTo(200);
+    }
+
+    /** Phase 5 review S2: the body is bounded before Jackson reads it. */
+    @Test
+    void ask_whenTheBodyIsHugeOrHasNoLength_isRefusedBeforeParsing() throws Exception {
+        String huge = "{\"question\":\"" + "x".repeat(200_000) + "\"}";
+        HttpResponse<String> tooLarge = post(HttpRequest.BodyPublishers.ofString(huge));
+        assertThat(tooLarge.statusCode()).isEqualTo(413);
+        assertThat(tooLarge.body()).contains("\"code\":11010");
+
+        byte[] small = "{\"question\":\"topic-leave izin?\"}".getBytes(StandardCharsets.UTF_8);
+        HttpResponse<String> chunked = post(HttpRequest.BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(small)));
+        assertThat(chunked.statusCode()).isEqualTo(411);
+        assertThat(chunked.body()).contains("\"code\":11011");
+        assertThat(TestEmbeddingModel.INSTANCE.calls()).isZero();
     }
 
     @Test
@@ -167,6 +212,7 @@ class QuestionApiTest {
                 + "/actuator/info")).header("Authorization", TestIdp.bearer(account)).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(info.statusCode()).isEqualTo(200);
+        assertThat(info.headers().firstValue("X-Rag-Mode")).as("llm-rules 1.3 on the management port too").hasValue("local");
         assertThat(info.body()).contains("\"mode\":\"local\"", "\"chatModel\":\"test-chat\"", "\"embeddingModel\":\"test-embedding\"");
     }
 
@@ -195,6 +241,12 @@ class QuestionApiTest {
         worker.runOnce();
         assertThat(documents.find(account, row.id()).orElseThrow().status().name()).isEqualTo("READY");
         return row.id();
+    }
+
+    private HttpResponse<String> post(HttpRequest.BodyPublisher body) throws Exception {
+        return http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/questions"))
+                .header("Authorization", TestIdp.bearer(account)).header("Content-Type", "application/json")
+                .POST(body).timeout(Duration.ofSeconds(30)).build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private HttpResponse<String> ask(String question) throws Exception {

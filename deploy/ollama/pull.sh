@@ -31,9 +31,13 @@ start_server() {
 for entry in $OLLAMA_PULL; do
   model="${entry%@*}"
   digest="${entry#*@}"
-  case "$digest" in sha256:*) ;; *) echo "ollama-pull: $model has no pinned sha256 digest" >&2; exit 1 ;; esac
+  # A full 64-hex digest, matched as a whole JSON string: a prefix or a fragment must not pass (phase 5 review S3).
+  if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+    echo "ollama-pull: $model has no pinned sha256 digest" >&2
+    exit 1
+  fi
   manifest="$(manifest_of "$model")"
-  if [ -f "$manifest" ] && grep -q "$digest" "$manifest"; then
+  if [ -f "$manifest" ] && grep -qF "\"$digest\"" "$manifest"; then
     echo "ollama-pull: $model already present"
     continue
   fi
@@ -43,7 +47,7 @@ for entry in $OLLAMA_PULL; do
     echo "ollama-pull: download of $model failed" >&2
     exit 1
   fi
-  if ! grep -q "$digest" "$manifest"; then
+  if ! grep -qF "\"$digest\"" "$manifest"; then
     echo "ollama-pull: $model does not match the pinned digest" >&2
     exit 1
   fi

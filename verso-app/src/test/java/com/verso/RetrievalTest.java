@@ -14,9 +14,14 @@ import com.verso.document.worker.IngestionWorker;
 import com.verso.support.TestEmbeddingModel;
 import com.verso.support.VersoPostgres;
 import com.verso.support.VersoTestEnvironment;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,6 +134,59 @@ class RetrievalTest {
         assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5))
                 .isInstanceOfSatisfying(DocumentServiceException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE));
+    }
+
+    /** ADR-0008, phase 5 review R3: a hanging embedding model answers 503 after the timeout, not after 90 s. */
+    @Test
+    void search_whenTheEmbeddingModelHangs_givesUpAfterTheTimeout() throws Exception {
+        ready(alice, "topic-leave");
+        CountDownLatch release = new CountDownLatch(1);
+        TestEmbeddingModel.INSTANCE.onCall(() -> await(release));
+        try {
+            long started = System.nanoTime();
+            assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5))
+                    .isInstanceOfSatisfying(DocumentServiceException.class,
+                            e -> assertThat(e.getErrorCode()).isEqualTo(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE));
+            assertThat(Duration.ofNanos(System.nanoTime() - started)).isBetween(Duration.ofMillis(1900), Duration.ofSeconds(8));
+        } finally {
+            release.countDown();
+        }
+    }
+
+    /** Phase 5 review L3/S1: at most 4 question embeddings in flight; a hung call keeps its slot until it really ends. */
+    @Test
+    void search_whenAllEmbeddingSlotsAreTaken_failsFastWithoutCallingTheModel() throws Exception {
+        ready(alice, "topic-leave");
+        CountDownLatch release = new CountDownLatch(1);
+        TestEmbeddingModel.INSTANCE.onCall(() -> await(release));
+        int before = TestEmbeddingModel.INSTANCE.calls();
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i < 4; i++) pool.submit(() -> retrieval.search(alice, "topic-leave", 5));
+            while (TestEmbeddingModel.INSTANCE.calls() < before + 4) Thread.sleep(20);
+            long started = System.nanoTime();
+            assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5))
+                    .isInstanceOfSatisfying(DocumentServiceException.class,
+                            e -> assertThat(e.getErrorCode()).isEqualTo(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE));
+            assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(1));
+            Thread.sleep(2500); // the four callers timed out, their model calls still hang
+            assertThatThrownBy(() -> retrieval.search(alice, "topic-leave", 5)).as("slots stay taken")
+                    .isInstanceOf(DocumentServiceException.class);
+            assertThat(TestEmbeddingModel.INSTANCE.calls()).isEqualTo(before + 4);
+            release.countDown();
+        } finally {
+            release.countDown();
+        }
+        TestEmbeddingModel.INSTANCE.reset();
+        Thread.sleep(100);
+        assertThat(retrieval.search(alice, "topic-leave", 5)).as("slots come back when the calls end").isNotEmpty();
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**

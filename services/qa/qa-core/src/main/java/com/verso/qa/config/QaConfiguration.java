@@ -29,6 +29,11 @@ public class QaConfiguration {
      */
     @Bean
     FilterRegistrationBean<OncePerRequestFilter> ragModeHeaderFilter(VersoAiProperties ai) {
+        return ragModeHeaderRegistration(ai, "ragModeHeaderFilter");
+    }
+
+    /** Shared with {@link QaManagementContextConfiguration}: the management port gets the same header. */
+    static FilterRegistrationBean<OncePerRequestFilter> ragModeHeaderRegistration(VersoAiProperties ai, String name) {
         String mode = ai.mode().header();
         OncePerRequestFilter filter = new OncePerRequestFilter() {
             @Override
@@ -45,7 +50,7 @@ public class QaConfiguration {
         };
         FilterRegistrationBean<OncePerRequestFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        registration.setName("ragModeHeaderFilter");
+        registration.setName(name);
         return registration;
     }
 

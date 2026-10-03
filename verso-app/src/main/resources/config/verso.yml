@@ -57,6 +57,10 @@ spring:
     model:
       embedding: ollama
       chat: ollama
+    # No client retry (ADR-0008: none on the synchronous path). Spring AI 2.0's Ollama chat client retries up to 10
+    # times with backoff by default; one question could hold a model slot for half an hour (phase 5 review R1).
+    retry:
+      max-attempts: 0
     ollama:
       base-url: ${OLLAMA_BASE_URL}
       init:
@@ -105,6 +109,9 @@ verso:
     min-similarity: 0.45
     max-passage-chars: 1500
     chat-concurrency: 2
+    # Circuit breaker on the chat model (ADR-0008): 2 failures in a row, then 15 s of fast 503s.
+    circuit-failures: 2
+    circuit-open: 15s
     chat-wait: 5s
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
@@ -123,6 +130,10 @@ verso:
     # Stored with every chunk (llm-rules 6.1): read from the Ollama client's own setting, so the two cannot differ.
     embedding-model: ${spring.ai.ollama.embedding.model}
     embedding-dimensions: 1024
+    # The question embedding on the hot path (ADR-0008): 10 s, at most 4 at once per instance.
+    retrieval:
+      embedding-timeout: 10s
+      embedding-concurrency: 4
     ingestion:
       enabled: true
       poll-interval-ms: 5000

@@ -35,6 +35,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -569,6 +570,8 @@ class GlobalServiceExceptionHandlerTest {
         MvcResult r = mvc.perform(post("/v1/probe/unavailable"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error.code").value(42002))
+                // Phase 5 review P2: every 503 tells the client when to come back.
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "5"))
                 .andReturn();
         assertEnvelope(r);
         assertBodyFreeOf(r, "10.0.0.5", TOKEN_MARKER);

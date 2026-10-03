@@ -11,6 +11,7 @@ import org.springframework.util.unit.DataSize;
 class DocumentPropertiesTest {
 
     private static final DocumentProperties.Ingestion INGESTION = TestPdfs.properties().ingestion();
+    private static final DocumentProperties.Retrieval RETRIEVAL = TestPdfs.properties().retrieval();
 
     @Test
     void properties_whenALimitIsNotPositive_failAtStartup() {
@@ -24,21 +25,21 @@ class DocumentPropertiesTest {
     void properties_whenAnyOtherLimitIsZeroOrNegative_failAtStartup() {
         var ingestion = INGESTION;
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 0, 50_000, DataSize.ofMegabytes(64),
-                200, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("max-text-chars");
+                200, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("max-text-chars");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 0, DataSize.ofMegabytes(64),
-                200, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("max-page-chars");
+                200, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("max-page-chars");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 10, DataSize.ofBytes(0),
-                200, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("max-content-bytes");
+                200, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("max-content-bytes");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 10, DataSize.ofMegabytes(64),
-                0, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("max-documents-per-account");
+                0, 4, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("max-documents-per-account");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 10, DataSize.ofMegabytes(64),
-                200, 0, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("max-concurrent-uploads");
+                200, 0, 20, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("max-concurrent-uploads");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 10, DataSize.ofMegabytes(64),
-                200, 4, 0, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("max-queued-per-account");
+                200, 4, 0, DataSize.ofMegabytes(256), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("max-queued-per-account");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 10, DataSize.ofMegabytes(64),
-                200, 4, 20, DataSize.ofBytes(0), 1000, 150, "m", 1024, ingestion)).hasMessageContaining("parser-memory");
+                200, 4, 20, DataSize.ofBytes(0), 1000, 150, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("parser-memory");
         assertThatThrownBy(() -> new DocumentProperties(DataSize.ofMegabytes(20), 500, 100, 10, DataSize.ofMegabytes(64),
-                200, 4, 20, DataSize.ofMegabytes(256), 1000, -1, "m", 1024, ingestion)).hasMessageContaining("chunk-overlap");
+                200, 4, 20, DataSize.ofMegabytes(256), 1000, -1, "m", 1024, ingestion, RETRIEVAL)).hasMessageContaining("chunk-overlap");
         assertThatThrownBy(() -> new DocumentProperties.Ingestion(true, 5000, java.time.Duration.ofMinutes(10), 5,
                 java.time.Duration.ofSeconds(30), java.time.Duration.ofMinutes(10), 0, 10, java.time.Duration.ofSeconds(30),
                 java.time.Duration.ofMinutes(5))).hasMessageContaining("embedding-batch");
@@ -74,6 +75,6 @@ class DocumentPropertiesTest {
                                             int dimensions) {
         return new DocumentProperties(maxFile, maxPages, 2_000_000, 50_000, DataSize.ofMegabytes(64), 200, 4, 20,
                 DataSize.ofMegabytes(256), chunkSize, overlap,
-                model, dimensions, INGESTION);
+                model, dimensions, INGESTION, RETRIEVAL);
     }
 }

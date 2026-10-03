@@ -10,6 +10,7 @@ import com.verso.qa.exception.QaErrorCode;
 import com.verso.qa.exception.QaServiceException;
 import com.verso.qa.service.CitationExtractor;
 import com.verso.qa.service.CitationExtractor.Extracted;
+import com.verso.qa.service.ModelCircuitBreaker;
 import com.verso.qa.service.PromptBuilder;
 import com.verso.qa.service.PromptBuilder.BuiltPrompt;
 import com.verso.qa.service.QuestionService;
@@ -32,7 +33,8 @@ import org.springframework.stereotype.Service;
  * <ol>
  *   <li>Retrieval through document-api (embedding + vector search of the caller's READY documents).</li>
  *   <li>Below the similarity threshold the chat model is not asked: a fixed "not found" answer (llm-rules 3.4).</li>
- *   <li>Otherwise one chat call, bounded per instance (bulkhead) and by the HTTP client timeout.</li>
+ *   <li>Otherwise one chat call, bounded per instance (bulkhead) and by the HTTP client timeout; while the model is
+ *       down a circuit breaker answers 503 at once.</li>
  *   <li>Citations are mapped on the server to the passages that were retrieved (3.3).</li>
  * </ol>
  *
@@ -52,9 +54,11 @@ public class QuestionServiceImpl implements QuestionService {
     private final QaProperties properties;
     private final VersoAiProperties ai;
     private final Semaphore chatSlots;
+    private final ModelCircuitBreaker circuit;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
-                               CitationExtractor citations, QaProperties properties, VersoAiProperties ai) {
+                               CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
+                               ModelCircuitBreaker circuit) {
         this.retrieval = retrieval;
         this.chatModel = chatModel;
         this.promptBuilder = promptBuilder;
@@ -62,10 +66,13 @@ public class QuestionServiceImpl implements QuestionService {
         this.properties = properties;
         this.ai = ai;
         this.chatSlots = new Semaphore(properties.chatConcurrency());
+        this.circuit = circuit;
     }
 
     @Override
     public AnswerResponse ask(AccountId account, String question) {
+        // Before retrieval: an open circuit costs no embedding call either.
+        if (circuit.isOpen()) throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, "CIRCUIT_OPEN");
         long started = System.nanoTime();
         List<RetrievedPassage> passages = retrieval.search(account.value(), question, properties.topK());
         long retrievalMs = elapsedMs(started);
@@ -106,10 +113,13 @@ public class QuestionServiceImpl implements QuestionService {
             String text = response == null || response.getResult() == null ? null
                     : response.getResult().getOutput().getText();
             if (text == null || text.isBlank()) throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, "EMPTY_ANSWER");
+            circuit.recordSuccess();
             return text;
         } catch (QaServiceException e) {
+            circuit.recordFailure();
             throw e;
         } catch (RuntimeException e) {
+            circuit.recordFailure();
             // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
             throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, e.getClass().getSimpleName());
         } finally {

@@ -2,14 +2,17 @@ package com.verso.qa.service;
 
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.qa.config.QaProperties;
+import java.text.Normalizer;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
 /**
  * Builds the prompt (llm-rules 3.1): the instructions live only in the system message; the passages are untrusted data,
- * numbered and fenced with fixed delimiters in the user message. A passage that imitates a delimiter is defused, so a
- * document cannot close its own fence and talk to the model as if it were the system.
+ * numbered and fenced with fixed delimiters in the user message. Data (passages and the question) is defused, so a
+ * document cannot close its own fence and talk to the model as if it were the system, nor carry a citation marker the
+ * model could copy onto the wrong passage.
  */
 @Component
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -57,8 +60,16 @@ public class PromptBuilder {
         return content.length() <= properties.maxPassageChars() ? content : content.substring(0, properties.maxPassageChars());
     }
 
-    /** "[[" and "]]" only ever come from the builder; in data they become harmless look-alikes. */
+    /**
+     * Square brackets only ever come from the builder (fences, and the [n] markers the model is asked to write). In data
+     * every bracket becomes a parenthesis after NFKC folding (full-width look-alikes) and with invisible format
+     * characters removed (zero-width spaces), so no fence or marker can be imitated, and applying it twice changes
+     * nothing (phase 5 review L4/L5).
+     */
     static String defuse(String text) {
-        return text.replace("[[", "[ [").replace("]]", "] ]");
+        String folded = FORMAT_CHARACTERS.matcher(Normalizer.normalize(text, Normalizer.Form.NFKC)).replaceAll("");
+        return folded.replace('[', '(').replace(']', ')');
     }
+
+    private static final Pattern FORMAT_CHARACTERS = Pattern.compile("\\p{Cf}");
 }

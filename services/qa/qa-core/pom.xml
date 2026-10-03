@@ -56,6 +56,11 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-actuator</artifactId>
     </dependency>
+    <!-- @ManagementContextConfiguration: X-Rag-Mode on the management port too (llm-rules 1.3). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-actuator-autoconfigure</artifactId>
+    </dependency>
     <!-- ChatModel only; the provider starter is chosen by the assembly (verso-app), ADR-0006. -->
     <dependency>
       <groupId>org.springframework.ai</groupId>

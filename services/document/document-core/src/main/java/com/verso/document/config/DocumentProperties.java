@@ -24,6 +24,7 @@ import org.springframework.util.unit.DataSize;
  * @param embeddingModel       name stored with every chunk (llm-rules 6.1); the Ollama model in use
  * @param embeddingDimensions  expected vector length; the column is vector(1024)
  * @param ingestion            worker settings
+ * @param retrieval            the question embedding on the hot path (ADR-0008)
  */
 @ConfigurationProperties("verso.document")
 public record DocumentProperties(
@@ -40,7 +41,23 @@ public record DocumentProperties(
         @DefaultValue("150") int chunkOverlap,
         String embeddingModel,
         @DefaultValue("1024") int embeddingDimensions,
-        @DefaultValue Ingestion ingestion) {
+        @DefaultValue Ingestion ingestion,
+        @DefaultValue Retrieval retrieval) {
+
+    /**
+     * @param embeddingTimeout     the question embedding gives up after this (ADR-0008: 10 s), independent of the
+     *                             90 s HTTP read timeout the ingestion worker's batches need
+     * @param embeddingConcurrency question embeddings in flight per instance (bulkhead)
+     */
+    public record Retrieval(
+            @DefaultValue("10s") Duration embeddingTimeout,
+            @DefaultValue("4") int embeddingConcurrency) {
+
+        public Retrieval {
+            if (!embeddingTimeout.isPositive()) throw new IllegalStateException("verso.document.retrieval.embedding-timeout must be positive");
+            if (embeddingConcurrency < 1) throw new IllegalStateException("verso.document.retrieval.embedding-concurrency must be positive");
+        }
+    }
 
     /**
      * @param enabled          the scheduled poll; tests switch it off and drive the worker directly

@@ -35,7 +35,9 @@ public @interface VersoTestEnvironment {
                     "verso.document.ingestion.enabled=false",
                     // Short circuit-breaker pauses, so tests can wait them out.
                     "verso.document.ingestion.model-unavailable-pause=1s",
-                    "verso.document.ingestion.model-misconfigured-pause=1s").applyTo(context);
+                    "verso.document.ingestion.model-misconfigured-pause=1s",
+                    "verso.qa.circuit-open=1s",
+                    "verso.document.retrieval.embedding-timeout=2s").applyTo(context);
         }
     }
 }
