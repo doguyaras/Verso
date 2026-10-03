@@ -58,7 +58,7 @@ jobs:
         run: bash scripts/qa-smoke.sh
       - name: local mode proof (app and model server on internal networks only; no route, no DNS out; X-Rag-Mode local)
         run: bash scripts/prove-local-mode.sh
-      - name: observability smoke (Prometheus scrapes the app, 5 alert rules, Alertmanager, Grafana datasources and dashboard; Loki has the app's logs and none of the questions)
+      - name: observability smoke (Prometheus scrapes the app, 6 alert rules and their unit tests, Alertmanager, Grafana datasources and dashboard; Loki has the app's logs and none of the questions)
         run: bash scripts/obs-smoke.sh
       - name: backup + restore drill self-test (passes on real data, fails on every tampering)
         run: bash scripts/restore-drill-selftest.sh

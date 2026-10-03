@@ -322,6 +322,9 @@ services:
     volumes:
       - ./deploy/obs/prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
+    # promtool's rule tests (scripts/obs-smoke.sh) need a scratch directory; the root file system is read-only.
+    tmpfs:
+      - /tmp:size=64m
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
       interval: 10s
