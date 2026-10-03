@@ -214,8 +214,16 @@ class ComposeConfigTest {
 
         Map<String, Object> cloud = new Yaml().load(read("deploy/compose.cloud.yaml"));
         Map<String, Object> cloudApp = (Map<String, Object>) ((Map<String, Object>) cloud.get("services")).get("verso-app");
-        assertThat(((Map<String, Object>) cloud.get("services")).keySet()).as("the overlay touches the application only")
-                .containsExactly("verso-app");
+        assertThat(((Map<String, Object>) cloud.get("services")).keySet()).as("the application and the proxy's mode file")
+                .containsExactly("verso-app", "edge");
+        assertThat(String.valueOf(((Map<String, Object>) ((Map<String, Object>) cloud.get("services")).get("edge"))
+                .get("volumes"))).contains("mode-cloud.conf:/etc/nginx/mode.conf:ro");
+        assertThat(String.valueOf(service("edge").get("volumes"))).contains("mode-local.conf:/etc/nginx/mode.conf:ro");
+        for (String name : List.of("restore-db", "restore-runner", "restore-flyway")) {
+            assertThat(service(name).get("networks")).as(name + ": the restored copy has no route out (review L3)")
+                    .isEqualTo(List.of("drill"));
+        }
+        assertThat((Map<String, Object>) networks.get("drill")).containsEntry("internal", true);
         assertThat((List<String>) cloudApp.get("networks")).containsExactly("backend", "models", "egress");
         assertThat((Map<String, Object>) cloudApp.get("environment")).containsEntry("VERSO_AI_MODE", "cloud");
         assertThat(String.valueOf(cloudApp.get("secrets"))).contains("source=SECRET_CLOUD_API_KEY")
@@ -267,6 +275,36 @@ class ComposeConfigTest {
             assertThat(ROOT.resolve(runbook)).as(name).exists();
             assertThat(read("docs/runbooks/README.md")).as(name).contains("`" + name + "`");
         }
+    }
+
+    /**
+     * The edge proxy (ADR-0013; phase 6 reviews B1, B2, L1, F6, F12): its own responses carry the envelope and
+     * X-Rag-Mode, it logs neither requests nor client addresses, strips forwarding headers, waits longer than the
+     * slowest question and lets the application answer its own 413 up to the multipart limit.
+     */
+    @Test
+    void edgeProxy_whenConfigured_keepsTheContractAndLogsNothing() throws IOException {
+        String nginx = read("deploy/edge/nginx.conf");
+        assertThat(nginx).contains("access_log off;", "error_log /dev/stderr crit;", "include /etc/nginx/mode.conf;",
+                "proxy_intercept_errors off;", "error_page 400 414 494 = @rejected;", "error_page 413 = @too_large;",
+                "error_page 500 502 503 504 = @unavailable;", "proxy_set_header Forwarded \"\";",
+                "proxy_set_header X-Forwarded-Host \"\";", "proxy_request_buffering off;");
+        Matcher named = Pattern.compile("location @(\\w+) \\{([^}]*)}").matcher(nginx);
+        int count = 0;
+        while (named.find()) {
+            count++;
+            assertThat(named.group(2)).as("@" + named.group(1)).contains("add_header X-Rag-Mode $rag_mode always;",
+                    "\"ok\":false", "default_type application/json;");
+        }
+        assertThat(count).isEqualTo(3);
+        Matcher body = Pattern.compile("client_max_body_size (\\d+)m;").matcher(nginx);
+        assertThat(body.find()).isTrue();
+        assertThat(Integer.parseInt(body.group(1))).as("above the multipart limit (21MB)").isGreaterThan(21);
+        Matcher read = Pattern.compile("proxy_read_timeout (\\d+)s;").matcher(nginx);
+        assertThat(read.find()).isTrue();
+        assertThat(Integer.parseInt(read.group(1))).as("above the slowest question (ADR-0008)").isGreaterThanOrEqualTo(105);
+        assertThat(read("deploy/edge/mode-local.conf")).contains("default local;");
+        assertThat(read("deploy/edge/mode-cloud.conf")).contains("default cloud;");
     }
 
     @SuppressWarnings("unchecked")

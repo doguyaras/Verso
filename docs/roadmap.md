@@ -9,7 +9,7 @@ Fazlar sırayla yapılır. Her faz kendi dalında geliştirilir, review'lardan v
 | 3 | Kimlik: Keycloak (OIDC), resource server, JWT doğrulama, `@CurrentAccount`, güvenlik filtreleri, management portu (ADR-0005, ADR-0010) | Bitti (PR #5) |
 | 4 | Belge alımı: PDF yükleme, sayfa korumalı ayrıştırma, chunking, embedding (bge-m3), sahiplik (ADR-0011) | Bitti (PR #6) |
 | 5 | Soru-cevap (local): retrieval, Ollama sohbet modeli, atıflar, `X-Rag-Mode` (ADR-0012) | Bitti (PR #7) |
-| 6 | Cloud modu: Anthropic (varsayılan) ve OpenAI uyumlu sağlayıcı, egress kuralları (ADR-0006, ADR-0013) | Devam ediyor |
+| 6 | Cloud modu: Anthropic (varsayılan) ve OpenAI uyumlu sağlayıcı, egress kuralları (ADR-0006, ADR-0013) | Bitti (PR #8) |
 | 7 | Gözlem: Alloy → Loki, Prometheus + Alertmanager, Grafana; alarmlar ve runbook (ADR-0014) | Devam ediyor |
 | 8 | Ölçüm: Türkçe eval seti, yük testi, kapasite | Planlı |
 | 9 | Teslim: README (Türkçe + İngilizce özet, KVKK md. 9 açıklaması, ≤5 komutla kurulum, curl örnekleri), `samples/` sentetik PDF'ler ve demo script'i, image yayını | Planlı |

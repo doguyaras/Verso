@@ -339,7 +339,7 @@ backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/\nALTER SYSTEM SET log_
 AFTERERR=services/document/document-core/src/main/resources/db/migration/document/afterMigrateError.sql
 backup $AFTERERR; sub $AFTERERR 's/^REVOKE ALL ON [^\n]*\n//m' \
   && expect_red "M75 history left writable after a failed migrate" services/document/document-core MigrationConventionsTest callbacks_whenPresent_revokeTheHistoryTableFromTheApplicationRole; restore $AFTERERR
-backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n    ports:)/    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n    ports:/' \
+backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n)(    # Not published)/$1      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n$2/' \
   && expect_red "M76 application container gets the migration password" verso-app ComposeConfigTest migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService; restore compose.yaml
 backup .dockerignore; sub .dockerignore 's/\n\*\*\/\.env\n/\n/' \
   && expect_red "M77 nested .env files enter the build context" verso-app ComposeConfigTest dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth; restore .dockerignore
@@ -591,6 +591,38 @@ backup $MCI; sub $MCI 's/com\.verso\.qa\.config\.QaManagementContextConfiguratio
   && expect_red "M180 the management port has no X-Rag-Mode" verso-app $QAT actuatorInfo_whenAsked_namesTheModeAndModels; restore $MCI
 backup $QS/config/QaConfiguration.java; sub $QS/config/QaConfiguration.java 's/\n\s*response\.setHeader\(MODE_HEADER, mode\);//' \
   && expect_red "M181 responses do not say which mode answered" verso-app $QAT ragModeHeader_whenTheRequestIsRejectedOrUnknown_isStillPresent; restore $QS/config/QaConfiguration.java
+
+
+# ---------- phase 6: cloud mode and egress (ADR-0013) ----------
+QCFG=$QS/config/QaConfiguration.java
+MCHK=$QS/config/AiModeCheck.java
+NGX=deploy/edge/nginx.conf
+backup $QCFG; sub $QCFG 's/return \(\) -> AiModeCheck\.verify\(ai\.mode\(\), environment\);/return () -> { };/' \
+  && expect_red "M183 the startup check is not wired" verso-app AiModeStartupTest start_whenLocalModeIsGivenACloudProvider_fails; restore $QCFG
+backup $QCFG; sub $QCFG 's/return InetAddressFilter\.internalAddresses\(\);/return InetAddressFilter.all();/' \
+  && expect_red "M184 Boot clients may connect anywhere" verso-app OllamaChatClientTest outboundClients_whenAddressIsPublic_refuseToConnect_andInternalOnesWork; restore $QCFG
+backup $VY; sub $VY 's/(    anthropic:\n)      max-retries: 0\n/$1/' \
+  && expect_red "M185 the Anthropic SDK retries" verso-app AnthropicCloudModeTest ask_whenTheProviderFails_asksOnceAndAnswers503WithoutProviderText; restore $VY
+backup $VY; sub $VY 's/(        model: \$\{CLOUD_CHAT_MODEL\}\n)        max-retries: 0\n/$1/; s/(          timeout: 30s\n)          max-retries: 0\n/$1/' \
+  && expect_red "M186 the OpenAI SDK retries" verso-app OpenAiCloudModeTest ask_whenTheProviderFails_asksOnce; restore $VY
+backup $QSVC; sub $QSVC 's/response = call\.get\(chatTimeout\(\)\.toMillis\(\), TimeUnit\.MILLISECONDS\);/response = call.get(600_000L, TimeUnit.MILLISECONDS);/' \
+  && expect_red "M187 a hanging chat model holds the question" verso-app $QAT ask_whenTheModelHangs_answers503AtTheChatTimeout; restore $QSVC
+backup $QSVC; sub $QSVC 's/ai\.mode\(\) == AiMode\.CLOUD \? properties\.cloudChatTimeout\(\) : properties\.localChatTimeout\(\)/properties.localChatTimeout()/' \
+  && expect_red "M188 cloud calls get the local 90 s" verso-app OpenAiCloudModeTest ask_whenTheProviderIsSlow_answers503AtTheServiceBound; restore $QSVC
+backup $NGX; sub $NGX 's/(location \@too_large \{\n\s*default_type application\/json;\n)\s*add_header X-Rag-Mode \$rag_mode always;\n/$1/' \
+  && expect_red "M189 the proxy's 413 hides the mode" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
+backup $NGX; sub $NGX 's/error_log \/dev\/stderr crit;/error_log \/dev\/stderr warn;/' \
+  && expect_red "M190 the proxy logs client addresses and request lines" verso-app ComposeConfigTest edgeProxy_whenConfigured_keepsTheContractAndLogsNothing; restore $NGX
+backup compose.yaml; sub compose.yaml 's/(\/var\/lib\/postgresql:size=\$\{RESTORE_TMPFS_SIZE:-1g\}\n)    networks: \[drill\]\n/$1/' \
+  && expect_red "M191 the restored copy has a route out" verso-app ComposeConfigTest networks_whenComposed_keepTheApplicationWithoutARouteOutUnlessCloud; restore compose.yaml
+backup compose.yaml; sub compose.yaml 's/    networks: \[backend, models\]/    networks: [backend, models, default]/' \
+  && expect_red "M192 the application has a route out in local mode" verso-app ComposeConfigTest networks_whenComposed_keepTheApplicationWithoutARouteOutUnlessCloud; restore compose.yaml
+backup $MCHK; sub $MCHK 's/if \(environment instanceof ConfigurableEnvironment configurable && \(definedIn/if (false \&\& environment instanceof ConfigurableEnvironment configurable \&\& (definedIn/' \
+  && expect_red "M193 the API key may come from an environment variable" $QCM AiModeCheckTest cloud_whenTheKeyComesFromTheEnvironmentOrSdkLoggingIsOn_refusesToStart; restore $MCHK
+backup $MCHK; sub $MCHK 's/\n\s*requireInternalIfLiteral\(environment\.getProperty\(OLLAMA_BASE_URL, ""\)\);//' \
+  && expect_red "M194 a public Ollama address is accepted" $QCM AiModeCheckTest local_whenOllamaIsAPublicAddress_refusesToStart; restore $MCHK
+backup $VY; sub $VY 's/(        model: \$\{CLOUD_CHAT_MODEL\}\n)(        # No temperature)/$1        temperature: 0.1\n$2/' \
+  && expect_red "M195 Claude gets a sampling value it refuses" verso-app AnthropicCloudModeTest ask_whenAPassageMatches_sendsOnlyRulesQuestionAndPassagesToTheProvider; restore $VY
 
 # ---------- scripts and hooks ----------
 # node_red <id+description> <test file> <expected test name prefix>: like expect_red for node --test suites. The node

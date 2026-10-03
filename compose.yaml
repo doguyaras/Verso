@@ -294,6 +294,8 @@ services:
       - "127.0.0.1:${VERSO_HTTP_PORT:-8080}:8080"
     volumes:
       - ./deploy/edge/nginx.conf:/etc/nginx/nginx.conf:ro
+      # The mode on the proxy's own error responses; the cloud overlay mounts mode-cloud.conf.
+      - ./deploy/edge/mode-local.conf:/etc/nginx/mode.conf:ro
     tmpfs:
       - /tmp:size=32m
     depends_on:
@@ -447,6 +449,7 @@ services:
       - ./deploy/postgres/initdb/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
     tmpfs:
       - /var/lib/postgresql:size=${RESTORE_TMPFS_SIZE:-1g}
+    networks: [drill]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d verso -q"]
       interval: 3s
@@ -474,6 +477,7 @@ services:
       - backups:/backups:ro
     tmpfs:
       - /tmp:size=${RESTORE_TMPFS_SIZE:-1g}
+    networks: [drill]
     depends_on:
       restore-db:
         condition: service_healthy
@@ -495,6 +499,7 @@ services:
       - ./services/document/document-core/src/main/resources/db/migration/document:/flyway/migrations:ro
     tmpfs:
       - /tmp:size=64m
+    networks: [drill]
     depends_on:
       restore-db:
         condition: service_healthy
@@ -531,6 +536,9 @@ networks:
     internal: true
   # Observability (profile "obs", ADR-0014); internal as well.
   obs:
+    internal: true
+  # Restore drill: the restored copy holds every document's text in clear; no route out (phase 6 review L3).
+  drill:
     internal: true
 
 volumes:
