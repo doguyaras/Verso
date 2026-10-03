@@ -20,9 +20,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties("verso.qa")
 public record QaProperties(
         @DefaultValue("5") int topK,
-        @DefaultValue("0.45") double minSimilarity,
+        @DefaultValue("0.50") double minSimilarity,
         @DefaultValue("1500") int maxPassageChars,
-        @DefaultValue("2") int chatConcurrency,
+        @DefaultValue("1") int chatConcurrency,
         @DefaultValue("5s") Duration chatWait,
         @DefaultValue("2") int circuitFailures,
         @DefaultValue("15s") Duration circuitOpen,

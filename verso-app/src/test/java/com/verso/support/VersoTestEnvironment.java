@@ -50,6 +50,8 @@ public @interface VersoTestEnvironment {
                     "verso.document.ingestion.model-unavailable-pause=1s",
                     "verso.document.ingestion.model-misconfigured-pause=1s",
                     "verso.qa.circuit-open=1s",
+                    // Two slots: QuestionApiTest exercises the bulkhead with two calls in flight (production default 1).
+                    "verso.qa.chat-concurrency=2",
                     "verso.qa.local-chat-timeout=8s",
                     "verso.document.retrieval.embedding-timeout=2s").applyTo(context);
         }

@@ -37,7 +37,7 @@ import tools.jackson.databind.json.JsonMapper;
  * Retrieval quality on the Turkish eval set (phase 8, llm-rules 7.1) with the real embedding model: the sample PDFs
  * are ingested by the real worker into a real PostgreSQL + pgvector, then every question of eval/eval-set.json is
  * searched like a question to /v1/questions. Measures recall@1/@5 and MRR of the expected page, and how the best
- * similarity separates answerable from unanswerable questions (the 0.45 threshold, llm-rules 3.4). Writes
+ * similarity separates answerable from unanswerable questions (the 0.50 threshold, llm-rules 3.4). Writes
  * eval/results/retrieval.json. Not part of the build (tag "eval"); needs Ollama with bge-m3:567m on
  * VERSO_EVAL_OLLAMA_URL (default http://localhost:11434, e.g. deploy/compose.local.yaml):
  *
@@ -55,7 +55,7 @@ import tools.jackson.databind.json.JsonMapper;
 class RetrievalEvalTest {
 
     private static final Path ROOT = VersoPostgres.repoRoot();
-    private static final double THRESHOLD = 0.45;
+    private static final double THRESHOLD = 0.50;
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Autowired

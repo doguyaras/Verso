@@ -1,0 +1,445 @@
+{
+  "measuredAt": "2026-10-03T07:58:53.378Z",
+  "summary": {
+    "mode": "local",
+    "chatModel": "gemma4:e2b",
+    "questions": 33,
+    "errors": 0,
+    "answerable": 25,
+    "foundRate": 1,
+    "citationHitRate": 1,
+    "citationPrecision": 1,
+    "factAccuracy": 0.96,
+    "unanswerable": 8,
+    "notFoundAccuracy": 1,
+    "latencyMs": {
+      "p50": 28285,
+      "p95": 44980,
+      "max": 66600
+    }
+  },
+  "questions": [
+    {
+      "id": "izin-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 36506,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "Beş yıldan az hizmeti olan çalışanlar yılda yirmi iş günü izin kullanır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": false
+    },
+    {
+      "id": "izin-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 40676,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "Yılda yirmi altı iş günü izin kullanır [2].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 36692,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "Evet, kullanılmayan yıllık izin bir sonraki yıla en fazla beş iş günü olarak devredilebilir [2].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 22208,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Eşi doğum yapan çalışana beş iş günü babalık izni verilir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 16804,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Doğum izni toplam on altı haftadır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 24586,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#3"
+      ],
+      "answer": "Yıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 39497,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#1"
+      ],
+      "answer": "İş seyahatinde günlük yemek limiti kişi başı 900 TL'dir [1]. Müşteri ağırlamalarında kişi başı limit 1.500 TL'dir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 44980,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#1"
+      ],
+      "answer": "Masraflar, harcamanın yapıldığı ayı izleyen ayın beşinci iş gününe kadar masraf sistemine girilmelidir [2].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 29597,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "Kişisel araçla yapılan iş yolculuklarında kilometre başına 9 TL yakıt ve yıpranma bedeli ödenir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 26008,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "Ankara için yurt içinde gecelik otel limiti 4.000 TL'dir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 32189,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#3"
+      ],
+      "answer": "25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 20900,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#1"
+      ],
+      "answer": "Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalıdır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 30313,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#1"
+      ],
+      "answer": "Kurumsal hesap parolaları doksan günde bir değiştirilir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 66600,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 29372,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Şirket verileri dört sınıfa ayrılır: Kamuya Açık, İç Kullanım, Gizli ve Çok Gizli [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 28410,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#3"
+      ],
+      "answer": "Oltalama tatbikatı yılda iki kez yapılır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "uzaktan-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 43996,
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Çalışanlar haftada en fazla iki gün uzaktan çalışabilir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "uzaktan-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 36708,
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Çekirdek çalışma saatleri 10.00 ile 16.00 arasında olmak zorundadır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "uzaktan-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 28285,
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#2"
+      ],
+      "answer": "Ev interneti için aylık 500 TL destek ödenir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "kvkk-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 38893,
+      "found": true,
+      "citations": [
+        "kvkk-aydinlatma.pdf#2"
+      ],
+      "answer": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "kvkk-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 29716,
+      "found": true,
+      "citations": [
+        "kvkk-aydinlatma.pdf#2"
+      ],
+      "answer": "Kamera kayıtları otuz gün sonra kendiliğinden silinir [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "kvkk-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 21278,
+      "found": true,
+      "citations": [
+        "kvkk-aydinlatma.pdf#3"
+      ],
+      "answer": "Başvurular en geç otuz gün içinde ücretsiz olarak sonuçlandırılır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "satin-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 38803,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#1"
+      ],
+      "answer": "50.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "satin-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 26803,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "satin-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 19708,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "Yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez [1].",
+      "citationHit": true,
+      "citationsOnDocument": 1,
+      "factFound": true
+    },
+    {
+      "id": "yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 11487,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    },
+    {
+      "id": "yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 19891,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    },
+    {
+      "id": "yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 1011,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    },
+    {
+      "id": "yok-4",
+      "answerable": false,
+      "status": 200,
+      "ms": 8896,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    },
+    {
+      "id": "yok-5",
+      "answerable": false,
+      "status": 200,
+      "ms": 22501,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde fazla mesai saat ücreti hakkında bilgi bulunmamaktadır."
+    },
+    {
+      "id": "yok-6",
+      "answerable": false,
+      "status": 200,
+      "ms": 1106,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    },
+    {
+      "id": "yok-7",
+      "answerable": false,
+      "status": 200,
+      "ms": 199,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    },
+    {
+      "id": "yok-8",
+      "answerable": false,
+      "status": 200,
+      "ms": 201,
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı."
+    }
+  ]
+}
