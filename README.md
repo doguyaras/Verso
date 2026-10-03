@@ -15,8 +15,8 @@ Verso answers questions about your own PDF documents in Turkish and cites every 
   - retrieval recall@5 1.00;
   - citation hit rate 1.00;
   - correct fact in the answer 0.96;
-  - "not found" accuracy 1.00;
-  - median answer time 28 s.
+  - "not found" accuracy 0.875 (the threshold stopped 4 of 4, the model 3 of 4; the miss was a correct refusal in its own words);
+  - median answer time 21–28 s on CPU (two runs).
 - **Engineering:**
   - A modular monolith with machine-checked architecture rules.
   - About 350 tests (the database ones on a real PostgreSQL), and 200 mutation checks that prove the tests catch what they claim to.
@@ -114,12 +114,12 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 | Retrieval: doğru sayfa ilk 5 pasajda | 1,00 (ilk sırada 0,88) | `eval/results/retrieval.json` |
 | Cevapta doğru belge ve sayfaya atıf | 1,00 | `eval/results/e2e-gemma4_e2b.json` |
 | Cevapta beklenen bilgi | 0,96 | aynı |
-| Belgelerde olmayan soruya "bulunamadı" | 1,00 | aynı |
-| Cevap süresi (CPU, 2 çekirdek) | p50 28 sn, p95 45 sn | aynı |
+| Belgelerde olmayan soruya "bulunamadı" | 0,875: eşik 4/4, model 3/4 (kaçan soruda model doğru reddi kendi cümlesiyle yazdı) | aynı |
+| Cevap süresi (CPU, 2 çekirdek) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | aynı |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
 | Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır) | `docs/capacity.md` |
 
-Set küçüktür (33 soru, 6 belge). Sonuçlar yön gösterir, istatistiksel güvence vermez. Komutlar: [`eval/README.md`](eval/README.md).
+Set küçüktür (33 soru, 6 sentetik belge) ve eşik aynı veriyle ayarlanmıştır. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
 
 ## Mimari
 
