@@ -682,7 +682,7 @@ backup $DOCXX; sub $DOCXX 's/\n\s*if \(blocks != null\) throw rejected\(Document
   && expect_red "M218 a second main part silently replaces the first" $DCM DocxTextExtractorTest extract_whenTheStructureIsAmbiguousOrHuge_failsAsUnsupported; restore $DOCXX
 backup $FORMATS; sub $FORMATS 's/for \(int i = 0; i < window; i\+\+\) if \(content\[i\] == 0\) return false;/window = 0;/' \
   && expect_red "M219 a binary file named .txt is accepted" $DCM DocumentFormatsTest detect_whenTextIsNamedTxtOrMd_isTextUnlessItHasNulBytes; restore $FORMATS
-backup $FORMATS; sub $FORMATS 's/return startsWith\(content, ZIP_MAGIC\) \? Optional\.of\(DocumentFormat\.DOCX\) : Optional\.empty\(\);/return Optional.of(DocumentFormat.DOCX);/' \
+backup $FORMATS; sub $FORMATS 's/return startsWith\(content, ZIP_MAGIC\) \? Optional\.of\(DocumentFormat\.DOCX\) : pdfOrNothing\(content\);/return Optional.of(DocumentFormat.DOCX);/' \
   && expect_red "M220 any bytes named .docx are accepted" $DCM DocumentFormatsTest detect_whenAZipIsNamedDocx_isDocx; restore $FORMATS
 backup $SECTS; sub $SECTS 's/\(block\.heading\(\) \|\| full\)/(full)/' \
   && expect_red "M221 headings no longer start sections" $DCM PlainTextExtractorTest extract_whenMarkdownHasHeadings_startsASectionAtEachOutsideCodeFences; restore $SECTS
