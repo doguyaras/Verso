@@ -7,7 +7,8 @@
 //   - unanswerable questions: not-found accuracy (the answer is the fixed "bulunamadı" sentence; an uncited answer
 //     is wrong), split into those the threshold stopped (eval/results/retrieval.json) and those the model decided;
 //   - latency p50/p95.
-// Writes eval/results/e2e-<chat model>.json and prints a summary. Removes its uploads at the end.
+// Writes eval/results/e2e-<chat model>.json (or eval/results/<OUT>) and prints a summary. Removes its uploads at the
+// end. OUT keeps a run on other hardware (e2e-gemma4_e2b-gpu.json) from overwriting the CPU baseline.
 //
 // It works on the CI client's account (verso-ci) and DELETES EVERY DOCUMENT IN IT first, so earlier uploads cannot be
 // cited. Run it only against a local demo stack.
@@ -156,7 +157,7 @@ try {
 } catch { /* not a git checkout */ }
 
 mkdirSync(join(ROOT, 'eval/results'), { recursive: true });
-const out = join(ROOT, `eval/results/e2e-${model.replace(/[^A-Za-z0-9.-]/g, '_')}.json`);
+const out = join(ROOT, 'eval/results', process.env.OUT ?? `e2e-${model.replace(/[^A-Za-z0-9.-]/g, '_')}.json`);
 writeFileSync(out, JSON.stringify({ measuredAt: new Date().toISOString(), commit, summary, questions: rows }, null, 2) + '\n');
 console.log('eval: summary', JSON.stringify(summary));
 console.log(`eval: written ${out}`);

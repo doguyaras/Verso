@@ -1,0 +1,56 @@
+{
+  "measuredAt": "2026-10-23T16:31:39.298Z",
+  "host": {
+    "cpus": 8
+  },
+  "settings": {
+    "CONCURRENCY": 20,
+    "DURATION": 30,
+    "UPLOADS": 6,
+    "CHAT_QUESTIONS": 18,
+    "CHAT_CONCURRENCY": 6,
+    "SCENARIOS": [
+      "upload",
+      "chat"
+    ],
+    "ollamaCpus": "2 (compose default)",
+    "ollamaGpu": "RTX 4070 Ti SUPER 16 GB (deploy/compose.gpu.yaml)",
+    "commit": "fe906876615f",
+    "serverChatConcurrency": "1 (config/verso.yml)",
+    "serverMinSimilarity": "0.50 (config/verso.yml)"
+  },
+  "upload": {
+    "parallel": 6,
+    "requests": 6,
+    "byStatus": {
+      "201": 4,
+      "503/10014": 2
+    },
+    "okLatencyMs": {
+      "p50": 58,
+      "p95": 61,
+      "p99": 61,
+      "max": 61
+    },
+    "accepted": 4,
+    "ready": 4,
+    "secondsUntilAllReady": 4,
+    "documentsPerMinute": 57.8
+  },
+  "chat": {
+    "concurrency": 6,
+    "requests": 18,
+    "perSecond": 1.2,
+    "byStatus": {
+      "200": 5,
+      "503/10030": 5,
+      "503/11002": 8
+    },
+    "okLatencyMs": {
+      "p50": 825,
+      "p95": 15534,
+      "p99": 15534,
+      "max": 15534
+    }
+  }
+}

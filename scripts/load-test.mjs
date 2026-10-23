@@ -17,7 +17,8 @@
 //   node scripts/load-test.mjs      # after: docker compose up -d --build --wait
 //
 // Environment: CONCURRENCY (20), DURATION (30), UPLOADS (12), CHAT_QUESTIONS (6), CHAT_CONCURRENCY (3),
-// SCENARIOS (read,upload,retrieval,chat), OUT (load.json), OLLAMA_CPUS (recorded only: what compose was given).
+// SCENARIOS (read,upload,retrieval,chat), OUT (load.json), OLLAMA_CPUS and OLLAMA_GPU (recorded only: what compose
+// was given).
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -90,7 +91,8 @@ async function pool(count, task) {
 
 const report = { measuredAt: new Date().toISOString(), host: { cpus: cpus().length },
   settings: { CONCURRENCY, DURATION, UPLOADS, CHAT_QUESTIONS, CHAT_CONCURRENCY, SCENARIOS,
-    ollamaCpus: process.env.OLLAMA_CPUS ?? '2 (compose default)', commit: gitCommit(),
+    ollamaCpus: process.env.OLLAMA_CPUS ?? '2 (compose default)',
+    ollamaGpu: process.env.OLLAMA_GPU ?? 'none (deploy/compose.gpu.yaml not used)', commit: gitCommit(),
     // What the server ran with: set them when the stack was started differently from config/verso.yml.
     serverChatConcurrency: process.env.VERSO_QA_CHAT_CONCURRENCY ?? '1 (config/verso.yml)',
     serverMinSimilarity: process.env.VERSO_QA_MIN_SIMILARITY ?? '0.50 (config/verso.yml)' } };
