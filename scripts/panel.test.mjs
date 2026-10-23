@@ -12,18 +12,21 @@ import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentC
 import { answerParts, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
   sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
-import { SIGNATURE, timeline } from '../panel/js/signature-data.js';
+import { SIGN_MS, SIGNATURE, timeline } from '../panel/js/signature-data.js';
+import { CONNECTORS, PHASES, setupSteps } from '../panel/js/screens/setup.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
   assert.deepEqual(roles, [ROLES.USER]);
-  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents']);
+  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents', 'setup']);
   assert.equal(canOpen('system', roles), false);
 });
 
 test('roles: an operator also sees the system screen; unknown screens are closed', () => {
   const roles = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents', 'system']);
+  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents', 'setup', 'system']);
+  assert.ok(screensFor(roles).length <= 5, 'at most five screens (ADR-0015)');
+  assert.ok(screensFor(roles).filter((id) => SCREENS[id].tab !== false).length <= 4, 'four tabs at most on mobile');
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
 });
@@ -306,7 +309,7 @@ test('signature: the Keycloak markup, its CSS animation and the favicon are gene
   const strokes = timeline();
   assert.equal(strokes.length, SIGNATURE.pen.length);
   const end = strokes.at(-1).delay + strokes.at(-1).duration;
-  assert.ok(Math.abs(end - 1600) < 1, `the word is signed in 1.6 s (${end} ms)`);
+  assert.ok(Math.abs(end - SIGN_MS) < 1 && SIGN_MS <= 1200, `the word is signed quickly (${end} ms)`);
   for (let i = 1; i < strokes.length; i++) assert.ok(strokes[i].delay > strokes[i - 1].delay, 'strokes follow each other');
   const template = readFileSync('deploy/keycloak/themes/verso/login/template.ftl', 'utf8');
   const block = template.slice(template.indexOf('<#-- signature:start -->'), template.indexOf('<#-- signature:end -->'));
@@ -320,8 +323,13 @@ test('signature: the Keycloak markup, its CSS animation and the favicon are gene
 test('motion: every animation stops under "reduce motion" and styles are set through the CSSOM only (CSP)', () => {
   const css = readFileSync('panel/css/panel.css', 'utf8');
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation-duration: \.01ms !important;/);
-  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-tuval.css', 'utf8');
+  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-fildisi.css', 'utf8');
   assert.ok((theme.match(/prefers-reduced-motion: reduce/g) ?? []).length >= 2, 'the login theme and its signature stand still too');
+  // WCAG 2.2.2: the sign-in ambience starts by itself, so it ends by itself (a few rounds, then the painting stands still).
+  assert.doesNotMatch(theme, /infinite/, 'no endless motion on the login page');
+  const paint = css.match(/\.paint\.[a-z.]+ \{[^}]*\}/g) ?? [];
+  assert.ok(paint.length >= 5, 'the painted layers of the sign-in canvas');
+  for (const rule of paint) assert.doesNotMatch(rule, /infinite/, rule.slice(0, 40));
   for (const file of ['motion.js', 'signature.js', 'app.js', 'screens/ask.js', 'screens/overview.js']) {
     const code = readFileSync(`panel/js/${file}`, 'utf8');
     assert.doesNotMatch(code, /setAttribute\(\s*'style'|\.cssText|style:\s*'/, `${file}: no style attributes`);
@@ -352,11 +360,43 @@ test('palette: the token pairs the screens use keep their contrast in both theme
   };
   const pairs = [['fg-default', 'bg-canvas', 4.5], ['fg-muted', 'bg-canvas', 4.5], ['fg-muted', 'bg-surface', 4.5],
     ['fg-subtle', 'bg-surface', 4.5], ['fg-accent', 'bg-canvas', 4.5], ['fg-on-emphasis', 'accent-emphasis', 4.5],
-    ['border-control', 'bg-surface', 3], ['ink-muted', 'ink-1', 4.5], ['ink-gold-solid', 'ink-1', 4.5], ['signature-ink', 'bg-canvas', 3]];
+    ['border-control', 'bg-surface', 3], ['ink-muted', 'ink-1', 4.5], ['ink-gold-solid', 'ink-1', 4.5], ['signature-ink', 'bg-canvas', 3],
+    ['fg-default', 'bg-sidebar', 4.5], ['fg-muted', 'bg-sidebar', 4.5], ['fg-subtle', 'bg-sidebar', 4.5], ['fg-accent', 'accent-bg-subtle', 4.5],
+    ['success-text', 'success-bg', 4.5], ['warning-text', 'warning-bg', 4.5], ['danger-text', 'danger-bg', 4.5], ['info-text', 'info-bg', 4.5]];
   for (const [name, tokens] of [['light', light], ['dark', dark]]) {
     for (const [fg, bg, min] of pairs) {
       const value = ratio(resolve(tokens, `var(--${fg})`), resolve(tokens, `var(--${bg})`));
       assert.ok(value >= min, `${name}: ${fg} on ${bg} is ${value.toFixed(2)}:1, needs ${min}:1`);
     }
   }
+});
+
+test('setup: every step reflects the running system or the installation config, nothing is claimed by default', () => {
+  const none = setupSteps({ signedIn: true, mode: null, ready: 0, cited: false, pilotGroup: false });
+  assert.deepEqual(none.map((s) => s.done), [true, false, false, false, false]);
+  const all = setupSteps({ signedIn: true, mode: 'local', ready: 3, cited: true, pilotGroup: true });
+  assert.ok(all.every((s) => s.done));
+  assert.match(setupSteps({ signedIn: true, mode: 'cloud', ready: 0, cited: false, pilotGroup: false })[1].note, /sağlayıcıya gider/);
+  assert.deepEqual(PHASES.map((p) => p.id), ['discovery', 'pilot', 'rollout', 'integrations']);
+  for (const connector of CONNECTORS) assert.ok(connector.title && connector.text);
+  const setup = readFileSync('panel/js/screens/setup.js', 'utf8');
+  assert.match(setup, /'Planlandı'/, 'connectors are shown as planned, not as working');
+});
+
+test('fonts: Fraunces is served from the panel itself with its licence, for Turkish letters too, and the CSP allows only that', () => {
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  const faces = [...css.matchAll(/url\(\.\.\/fonts\/([\w-]+\.woff2)\)/g)].map((m) => m[1]);
+  assert.equal(faces.length, 4);
+  for (const file of faces) assert.ok(readFileSync(`panel/fonts/${file}`).length > 10000, file);
+  assert.ok(faces.some((f) => f.includes('latin-ext')), 'ğ, ş and İ live in latin-ext');
+  assert.match(readFileSync('panel/fonts/OFL.txt', 'utf8'), /SIL Open Font License, Version 1\.1/);
+  const nginx = readFileSync('deploy/edge/nginx.conf', 'utf8');
+  assert.match(nginx, /font-src 'self';/);
+  assert.match(nginx, /font\/woff2 woff2;/);
+  assert.doesNotMatch(nginx, /font-src[^;]*(data:|https?:)/, 'no inline or remote fonts');
+  const theme = 'deploy/keycloak/themes/verso/login/resources';
+  for (const file of [...faces, 'OFL.txt']) {
+    assert.ok(readFileSync(`${theme}/fonts/${file}`).equals(readFileSync(`panel/fonts/${file}`)), `the login theme serves the same ${file}`);
+  }
+  assert.match(readFileSync(`${theme}/css/verso-fildisi.css`, 'utf8'), /url\(\.\.\/fonts\/fraunces-latin-ext-standard-normal\.woff2\)/);
 });

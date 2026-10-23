@@ -153,8 +153,14 @@
 <body id="keycloak-bg" class="${properties.kcBodyClass!} verso" data-page-id="login-${pageId}">
 <div class="verso-split">
 <aside class="verso-brand" aria-label="Verso">
-  <div class="verso-aurora" aria-hidden="true"></div>
-  <div class="verso-grain" aria-hidden="true"></div>
+  <div class="verso-paint verso-sky" aria-hidden="true"></div>
+  <div class="verso-paint verso-sun" aria-hidden="true"></div>
+  <div class="verso-paint verso-rays" aria-hidden="true"></div>
+  <div class="verso-paint verso-mist verso-far" aria-hidden="true"></div>
+  <div class="verso-paint verso-mist" aria-hidden="true"></div>
+  <div class="verso-paint verso-glint" aria-hidden="true"></div>
+  <div class="verso-paint verso-weave" aria-hidden="true"></div>
+  <div class="verso-paint verso-grain" aria-hidden="true"></div>
   <div class="verso-brand-row">
 <#-- signature:start -->
 <svg class="verso-signature" viewBox="16 81 425 169" role="img" aria-label="Verso" focusable="false">
@@ -177,11 +183,11 @@
 <#-- signature:end -->
     <small>${msg("versoTagline")}</small>
   </div>
-  <h2>${msg("versoHeadline")}</h2>
+  <h2>${msg("versoHeadline")} <em>${msg("versoHeadlineEm")}</em> ${msg("versoHeadlineEnd")}</h2>
   <p>${msg("versoLead")}</p>
   <ul class="verso-trust">
-    <li><strong>${msg("versoTrustLocalTitle")}</strong><span>${msg("versoTrustLocalText")}</span></li>
     <li><strong>${msg("versoTrustCitedTitle")}</strong><span>${msg("versoTrustCitedText")}</span></li>
+    <li><strong>${msg("versoTrustLocalTitle")}</strong><span>${msg("versoTrustLocalText")}</span></li>
     <li><strong>${msg("versoTrustSsoTitle")}</strong><span>${msg("versoTrustSsoText")}</span></li>
   </ul>
   <div class="verso-brand-foot">${msg("versoFoot")}</div>

@@ -3,6 +3,7 @@
 import { api, ApiError } from '../api.js';
 import { icon } from '../icons.js';
 import { el, fill, foldTr, formatDate, formatLabel, formatSize, plainName, UPLOAD_TYPES } from '../render.js';
+import { CONNECTORS } from './setup.js';
 import { confirmDialog, emptyState, failureText, fileIcon, formatNumber, openDrawer, relativeTime, statusPill, toast } from '../ui.js';
 
 const MAX_UPLOAD = 20 * 1024 * 1024;
@@ -67,8 +68,8 @@ export function renderDocuments(ctx) {
 
   main.replaceChildren(
     el('div', { class: 'page-head' },
-      el('div', {}, el('h1', {}, 'Belgeler'),
-        el('p', {}, 'Belgeleriniz bu sunucuda işlenir ve yalnız size görünür. Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.')),
+      el('div', {}, el('h1', {}, 'Bilgi kaynakları'),
+        el('p', {}, 'Verso\'nun cevap verirken okuduğu belgeler. Bu sunucuda işlenir ve yalnız size görünür; Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.')),
       el('div', { class: 'page-actions' },
         el('button', { class: 'button secondary', type: 'button', onclick: () => refresh() }, icon('refresh'), 'Yenile'),
         el('button', { class: 'button', type: 'button', onclick: () => input.click() }, icon('upload'), 'Belge yükle'))),
@@ -76,7 +77,15 @@ export function renderDocuments(ctx) {
     el('section', { class: 'card', 'aria-label': 'Belge listesi' },
       el('div', { class: 'toolbar' }, el('div', { class: 'input-icon' }, icon('search', 'sm'), search), segmented,
         el('span', { class: 'spacer' }), count),
-      body));
+      body),
+    el('section', { class: 'card', 'aria-labelledby': 'connectors-title' },
+      el('div', { class: 'card-head' }, el('h2', { id: 'connectors-title' }, 'Bağlantılar'), el('span', { class: 'spacer' }),
+        el('a', { href: '#/setup' }, 'Kurulum durumu')),
+      el('div', { class: 'card-body' }, el('p', { class: 'muted' }, 'Şirket sistemlerinden otomatik belge alma, kurulumun entegrasyon aşamasında eklenir.'),
+        el('div', { class: 'connectors' }, CONNECTORS.map((c) => el('div', { class: 'connector' },
+          el('span', { class: 'connector-icon' }, icon('plug', 'sm')),
+          el('div', { class: 'grow' }, el('strong', {}, c.title), el('span', { class: 'sub' }, c.text)),
+          el('span', { class: 'pill neutral' }, 'Planlandı')))))));
 
   // The whole page accepts a drop, not only the drop zone.
   const overlay = el('div', { class: 'drag-overlay', hidden: true }, el('div', {}, icon('upload', 'lg'), 'Yüklemek için bırakın'));

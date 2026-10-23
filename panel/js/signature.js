@@ -1,7 +1,7 @@
 // The Verso signature as an SVG element, and its "being signed" animation (ADR-0017). The outline is revealed through
 // a mask along the pen strokes, one stroke after the other, while a gold pen tip moves at the end of the ink. Built with
 // createElementNS (no markup strings, Trusted Types); the animation sets SVG attributes only, so the CSP is untouched.
-import { SIGNATURE, timeline } from './signature-data.js';
+import { SIGN_MS, SIGNATURE, timeline } from './signature-data.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 let ids = 0;
@@ -44,10 +44,10 @@ export function signature({ height = 32, ink = 'currentColor', tip = 'var(--ink-
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2); // a hand speeds up and slows down per stroke
 
 /**
- * Plays the signing once (about 1.6 s). With "reduce motion" the finished signature is shown at once. Resolves when
+ * Plays the signing once (SIGN_MS). With "reduce motion" the finished signature is shown at once. Resolves when
  * the ink is complete.
  */
-export function sign(svg, { total = 1600, delay = 0 } = {}) {
+export function sign(svg, { total = SIGN_MS, delay = 0 } = {}) {
   const strokes = [...svg.querySelectorAll('mask path')];
   const glow = svg.querySelector('.signature-glow');
   const nib = svg.querySelector('.signature-tip');

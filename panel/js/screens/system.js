@@ -29,7 +29,7 @@ export async function renderSystem(ctx) {
   const timer = setInterval(tick, 1000);
 
   fill(main,
-    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Sistem'),
+    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Sistem ve güvenlik'),
       el('p', {}, 'Asistanın hangi modda çalıştığı, hangi modelleri kullandığı ve oturumunuz.'))),
     info ? el('section', { class: `card mode-hero ${local ? 'local' : 'cloud'}` },
       el('span', { class: 'big-icon' }, icon(local ? 'shield' : 'cloud', 'lg')),

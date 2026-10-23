@@ -86,28 +86,29 @@ Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikis
 
 Ekranlar:
 
-- **Giriş:** kurumun kimlik sağlayıcısına yönlendirir. Paketteki demo Keycloak, Verso'nun kendi giriş temasıyla açılır (Türkçe, marka paneli, aynı renkler).
-- **Genel bakış:** ilk kullanım listesi (belge yükle, ilk soruyu sor, gizlilik modunu incele), tıklanabilir sayılar (aranabilir, işleniyor, hata), son yüklenenler, bu oturumdaki sorular, hızlı soru, asistanın modu ve modelleri.
+- **Giriş:** kurumun kimlik sağlayıcısına yönlendirir. Paketteki demo Keycloak, Verso'nun kendi giriş temasıyla açılır: Türkçe, boyalı "Fildişi tuval" marka paneli, atılan imza, panelle aynı renkler.
+- **Genel bakış:** ilk kullanım listesi (belge yükle, ilk soruyu sor, gizlilik modunu incele), tıklanabilir sayılar (aranabilir, işleniyor, hata), son yüklenenler, bu oturumdaki sorular, kurulumun aşaması, hızlı soru, asistanın modu ve modelleri.
 - **Soru sor:**
   - Sohbet görünümünde bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
   - Kaynak kartları belgeye göre gruplanır.
   - Cevabın türü (kaynaklı, bulunamadı, kaynak gösterilemedi) kendi görünümüyle gösterilir; bulunamadığında "soruyu düzenle" ve "belge yükle" önerilir.
   - Beklerken geçen süre ve gerçekçi bir beklenti görünür; bir durdurma düğmesi vardır.
   - Kopyalanan cevap kaynaklarıyla birlikte gelir.
-- **Belgeler:** sayfanın her yerine sürükle-bırak; dosya başına ilerleme ve "tekrar dene"; Türkçe harf duyarsız arama, durum filtresi ve sıralanabilir tablo; ayrıntı paneli; dosya adıyla silme onayı.
-- **Sistem:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
+- **Bilgi kaynakları:** sayfanın her yerine sürükle-bırak; dosya başına ilerleme ve "tekrar dene"; Türkçe harf duyarsız arama, durum filtresi ve sıralanabilir tablo; ayrıntı paneli; dosya adıyla silme onayı. Altında planlanan bağlantılar (SharePoint ve dosya paylaşımları, talep yönetimi, ERP) "Planlandı" olarak görünür.
+- **Kurulum durumu:** kurulumu yapan ekibin aşamaları (Keşif, Pilot, Yaygınlaştırma, Entegrasyonlar) ve sistemden okunan kontrol listesi. Aşama, pilot grubu ve kurum adı `panel/js/config.js`'teki `deployment` alanından gelir.
+- **Sistem ve güvenlik:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
 
-Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` belgeler). Açık ve koyu tema sistemi izler; hesap menüsünden değiştirilebilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md).
+Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` bilgi kaynakları, `g k` kurulum). Açık ("Fildişi tuval") ve koyu ("Obscur") tema sistemi izler; hesap menüsünden değiştirilebilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md).
 
 Panelin özellikleri:
 
-- Bağımlılıksızdır; derleme adımı, dış font ya da ikon paketi yoktur (ikonlar panelin kendi SVG'leri).
+- Bağımlılıksızdır; derleme adımı ve dış kaynak yoktur. İkonlar panelin kendi SVG'leri; başlık fontu Fraunces (OFL) panelin kendi sunucusundan gelir (`font-src 'self'`).
 - Token yalnız bellekte durur.
 - Model çıktısı sayfaya yalnız metin olarak girer.
 - Rol matrisi tek dosyadadır (`panel/js/roles.js`).
 - Varsayılan portlarla çalışır (8080, 8180, 3000). Port değişirse `panel/js/config.js`, realm'deki `verso-panel` istemcisi ve `deploy/edge/nginx.conf`'taki CSP birlikte değişir.
 
-Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
+Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
 
 Daha önce kurulmuş bir yığında panelin IdP istemcisi, `admin` kullanıcısı ya da Verso giriş teması yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz). Sonra Keycloak'ı tema bağlantısıyla yeniden oluşturun; bu, sıkıştırılmış kaynak önbelleğini de siler (tema dosyaları her değiştiğinde de gerekir):
 

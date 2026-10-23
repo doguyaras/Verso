@@ -23,6 +23,9 @@ export const SIGNATURE = Object.freeze({
   ],
 });
 
+/** How long signing the whole word takes, in ms (2.4 s and 1.6 s were found slow). */
+export const SIGN_MS = 1150;
+
 /** Length of a pen stroke ("M x y L x y …", straight segments only). */
 export function strokeLength(d) {
   const pts = d.slice(1).split('L').map((p) => p.trim().split(' ').map(Number));
@@ -33,9 +36,9 @@ export function strokeLength(d) {
 
 /**
  * The writing timeline: when each stroke starts and how long it takes, in ms. The pen moves at one speed (the whole
- * word takes about 1.6 s) and pauses briefly between strokes, where a hand lifts the pen.
+ * word takes SIGN_MS) and pauses briefly between strokes, where a hand lifts the pen.
  */
-export function timeline(total = 1600, liftMs = 45) {
+export function timeline(total = SIGN_MS, liftMs = 30) {
   const lengths = SIGNATURE.pen.map(strokeLength);
   const writing = total - liftMs * (lengths.length - 1);
   const speed = lengths.reduce((a, b) => a + b, 0) / writing;

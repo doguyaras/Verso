@@ -2,6 +2,7 @@
 // operators. No framework and no build step; ES modules served by the edge proxy. Screens are hash routes (#/ask, …).
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
 import { api, ApiError, lastMode } from './api.js';
+import { CONFIG } from './config.js';
 import { icon, logo } from './icons.js';
 import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
@@ -13,12 +14,13 @@ import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
 import { renderDocuments } from './screens/documents.js';
 import { renderOverview } from './screens/overview.js';
+import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
 
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
-const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, system: renderSystem };
+const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem };
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
 
 const $ = (selector) => document.querySelector(selector);
@@ -160,7 +162,7 @@ function accountMenu(anchor, placement) {
     { heading: identity.preferred_username ?? 'kullanıcı', sub: operator ? 'Operatör' : 'Kullanıcı' },
     ...themeItems(),
     'separator',
-    ...(canOpen('system', roles) ? [{ label: 'Sistem', glyph: 'server', onSelect: () => navigate('system') }] : []),
+    ...(canOpen('system', roles) ? [{ label: 'Sistem ve güvenlik', glyph: 'server', onSelect: () => navigate('system') }] : []),
     { label: 'Çıkış yap', glyph: 'logout', onSelect: signOut },
   ], { placement });
 }
@@ -227,7 +229,8 @@ function buildShell() {
   if (prefs.rail()) $('#shell').classList.add('rail');
 
   $('#brand').prepend(logo(30));
-  $('#brand .brand-text').prepend(signature({ height: 30, ink: 'var(--sb-gold-solid)' }));
+  $('#brand .brand-text').prepend(signature({ height: 30, ink: 'var(--signature-ink)' }));
+  if (CONFIG.deployment.client) $('#brand .brand-text small').textContent = CONFIG.deployment.client;
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 
@@ -239,7 +242,7 @@ function buildShell() {
       el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${s.key.toUpperCase()}`))));
   moveIndicator = navIndicator($('#nav'));
   cardSpotlight($('#main'));
-  $('#tabbar').replaceChildren(...links.map((s) => el('a', { href: `#/${s.id}`, 'data-screen': s.id }, icon(s.icon), s.short)));
+  $('#tabbar').replaceChildren(...links.filter((s) => s.tab !== false).map((s) => el('a', { href: `#/${s.id}`, 'data-screen': s.id }, icon(s.icon), s.short)));
 
   const account = el('button', { class: 'account', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
     onclick: () => accountMenu(account, 'above') },
@@ -295,27 +298,29 @@ function showSignIn(problem) {
   $('#shell').hidden = true;
   const gate = $('#gate');
   gate.hidden = false;
-  const mark = signature({ height: 72, ink: 'var(--ink-gold-solid)', tip: 'var(--ink-gold)', animated: true });
+  const mark = signature({ height: 72, ink: 'var(--signature-ink)', tip: 'var(--accent-fill)', animated: true });
+  const paint = (name) => el('div', { class: `paint ${name}`, 'aria-hidden': 'true' });
   const panel = el('div', { class: 'brand-panel' },
-    el('div', { class: 'aurora', 'aria-hidden': 'true' }),
-    el('div', { class: 'grain', 'aria-hidden': 'true' }),
-    el('div', { class: 'brand-row' }, mark, el('small', {}, 'Kurumunuzun belge asistanı')),
-    el('h2', {}, ...words('Belgelerinize sorun, cevabı', { text: 'kaynağıyla' }, 'alın.')),
-    el('p', {}, 'Verso yönetmeliklerinizi, sözleşmelerinizi ve prosedürlerinizi kendi sunucunuzda okur; Türkçe sorulara sayfa sayfa kaynak göstererek cevap verir.'),
+    paint('sky'), paint('sun'), paint('rays'), paint('mist far'), paint('mist'), paint('glint'), paint('weave'), paint('grain'),
+    el('div', { class: 'brand-row' }, mark, el('small', {}, 'Kurumunuza uyum sağlayan yapay zekâ katmanı')),
+    el('h2', {}, ...words('Kurumunuzun bilgisine,', { text: 'kurumunuzun içinden' }, 'ulaşın.')),
+    el('p', {}, 'Verso şirketinizin sistemlerine uyum sağlar: belgelerinizi okur, ekibinizin sorularını kaynağıyla cevaplar ve işi hızlandırır.'),
     el('ul', { class: 'trust' },
-      el('li', {}, el('span', { class: 'trust-icon' }, icon('shield', 'sm')),
-        el('div', {}, el('strong', {}, 'Veri kurum dışına çıkmaz'), el('span', {}, 'Yerel modda model de belgeler de sizin sunucunuzda.'))),
       el('li', {}, el('span', { class: 'trust-icon' }, icon('quote', 'sm')),
-        el('div', {}, el('strong', {}, 'Her cevap kaynaklı'), el('span', {}, 'Belge adı ve sayfası; cevap yoksa "bulunamadı".'))),
+        el('div', {}, el('strong', {}, 'Her yanıt kaynağıyla'), el('span', {}, 'Hangi belgeden, hangi sayfadan geldiğini görürsünüz.'))),
+      el('li', {}, el('span', { class: 'trust-icon' }, icon('shield', 'sm')),
+        el('div', {}, el('strong', {}, 'Veriniz kurum içinde kalır'), el('span', {}, 'Verso kendi altyapınızda çalışır; yerel modda sorular da dışarı çıkmaz.'))),
       el('li', {}, el('span', { class: 'trust-icon' }, icon('building', 'sm')),
-        el('div', {}, el('strong', {}, 'Kurumsal oturum'), el('span', {}, 'Kurumunuzun kimlik sağlayıcısıyla giriş (OIDC).')))),
-    el('div', { class: 'brand-foot' }, 'KVKK md. 9 · PDF, Word, TXT, Markdown'));
+        el('div', {}, el('strong', {}, 'Şirket hesabınızla giriş'), el('span', {}, 'Ayrı şifre yok; erişimi kurumunuzun kimlik sistemi yönetir.')))),
+    el('div', { class: 'brand-foot' }, 'Kurulumu ekibimiz yapar, sistem sizde kalır.'));
   spotlight(panel);
+  const corner = (where) => el('span', { class: `corner ${where}`, 'aria-hidden': 'true' });
   gate.replaceChildren(el('section', { class: 'signin', 'aria-labelledby': 'signin-title' },
     panel,
-    el('div', { class: 'signin-form' },
+    el('div', { class: 'signin-form' }, el('div', { class: 'signin-card' },
+      corner('tl'), corner('tr'), corner('bl'), corner('br'),
       el('h3', { id: 'signin-title' }, 'Giriş yapın'),
-      el('p', {}, 'Kurumunuzun giriş sayfasına yönlendirileceksiniz; giriş sonrası buraya dönersiniz.'),
+      el('p', {}, 'Şirket hesabınızla devam edin; giriş sonrası buraya dönersiniz.'),
       problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
       el('button', { class: 'button lg block sheen', type: 'button', onclick: (event) => {
         event.currentTarget.setAttribute('aria-busy', 'true');
@@ -323,10 +328,10 @@ function showSignIn(problem) {
         signIn();
       } }, icon('key'), 'Kurum hesabıyla giriş yap'),
       el('ol', { class: 'signin-steps', 'aria-label': 'Nasıl çalışır' },
-        el('li', {}, el('b', {}, '1'), 'Belgelerinizi yükleyin (PDF, Word, TXT, MD).'),
+        el('li', {}, el('b', {}, '1'), 'Belgelerinizi ekleyin (PDF, Word, TXT, MD).'),
         el('li', {}, el('b', {}, '2'), 'Türkçe sorunuzu yazın.'),
         el('li', {}, el('b', {}, '3'), 'Cevabı, kaynağına tıklayarak doğrulayın.')),
-      el('p', { class: 'signin-note' }, icon('lock', 'sm'), 'Oturum bilgisi yalnız bu sekmenin belleğinde tutulur.'))));
+      el('p', { class: 'signin-note' }, icon('lock', 'sm'), 'Oturum bilgisi yalnız bu sekmenin belleğinde tutulur.')))));
   sign(mark, { delay: 250 });
 }
 

@@ -1,6 +1,6 @@
 # ADR-0017: Panel v3 tasarım sistemi ve Verso giriş teması
 
-- **Durum:** Kabul edildi
+- **Durum:** Kabul edildi; renk, menü rengi ve giriş ekranı bölümlerinin yerini [ADR-0018](0018-fildisi-tuval.md) aldı
 - **Tarih:** 2026-10-23
 - **Karar verenler:** doguyaras (istek: "tasarımları beğenmedim; araştır, kullanıcı dostu ve satılabilir bir ürün yap"); uygulama ayrıntıları bu ADR
 - **İlgili eşik (referans Bölüm 24):** yok (sunum katmanı). Ekran sayısı beşi geçerse ya da bir bileşen çatısı istenirse ADR-0015'in yeniden değerlendirme koşulu geçerlidir.

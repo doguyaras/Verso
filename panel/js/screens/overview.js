@@ -1,10 +1,12 @@
 // Overview (ADR-0017): a first-run checklist until it is done, four counts that link to their list, the latest
 // documents, this tab's latest questions, a quick question and the assistant's mode. It fits one screen.
 import { api } from '../api.js';
+import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 import { countUp } from '../motion.js';
 import { el, fill, formatLabel, greeting, plainName } from '../render.js';
 import { conversation, prefs } from '../store.js';
+import { PHASES } from './setup.js';
 import { emptyState, fileIcon, formatNumber, relativeTime, statusPill } from '../ui.js';
 
 const TYPES = ['PDF', 'DOCX', 'TXT', 'MD'];
@@ -90,6 +92,18 @@ function recentQuestions(ctx) {
       : entry.result.outcome === 'UNCITED' ? el('span', { class: 'pill wait' }, 'Kaynaksız') : el('span', { class: 'pill neutral' }, 'Bulunamadı'))));
 }
 
+/** Where the installation stands (ADR-0018), with a link to the full setup screen. */
+function setupCard() {
+  const index = Math.max(0, PHASES.findIndex((p) => p.id === CONFIG.deployment.phase));
+  return el('a', { class: 'card setup-card stat-link', href: '#/setup', 'aria-labelledby': 'setup-title' },
+    el('div', { class: 'card-head' }, el('h2', { id: 'setup-title' }, 'Kurulum durumu'), el('span', { class: 'spacer' }),
+      el('span', { class: 'pill info' }, icon('flag', 'sm'), PHASES[index].title)),
+    el('div', { class: 'card-body grid' },
+      el('div', { class: 'phase-line', 'aria-hidden': 'true' }, PHASES.map((p, i) =>
+        el('span', { class: `phase-dot ${i < index ? 'done' : i === index ? 'now' : ''}` }))),
+      el('p', { class: 'muted' }, `Aşama ${index + 1} / ${PHASES.length}: ${PHASES[index].text}`)));
+}
+
 export async function renderOverview(ctx, quiet = false) {
   const { main, guarded, navigate, identity } = ctx;
   const name = identity.preferred_username;
@@ -128,7 +142,7 @@ export async function renderOverview(ctx, quiet = false) {
       stat('Belgeler', docs.length, 'Hesabınızdaki toplam (en çok 200)', 'accent', '#/documents'),
       stat('Aranabilir', ready.length, `${formatNumber(units)} sayfa / bölüm`, 'ok', '#/documents'),
       stat('İşleniyor', waiting.length, waiting.length ? 'Birkaç saniye içinde hazır' : 'Bekleyen belge yok', 'wait', '#/documents'),
-      stat('Hata', failed.length, failed.length ? 'Ayrıntı Belgeler ekranında' : 'Sorunlu belge yok', failed.length ? 'bad' : '', '#/documents')),
+      stat('Hata', failed.length, failed.length ? 'Ayrıntı Bilgi kaynakları ekranında' : 'Sorunlu belge yok', failed.length ? 'bad' : '', '#/documents')),
     el('div', { class: 'grid split' },
       el('div', { class: 'grid' },
         el('section', { class: 'card', 'aria-labelledby': 'recent-docs' },
@@ -147,6 +161,7 @@ export async function renderOverview(ctx, quiet = false) {
             el('a', { href: '#/ask' }, 'Sohbete git')),
           el('div', { class: 'card-body' }, recentQuestions(ctx)))),
       el('div', { class: 'grid' },
+        setupCard(),
         el('section', { class: 'card', 'aria-labelledby': 'quick-title' },
           el('div', { class: 'card-head' }, el('h2', { id: 'quick-title' }, 'Hızlı soru')),
           el('form', { class: 'card-body grid', onsubmit: (event) => {

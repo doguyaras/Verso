@@ -8,12 +8,14 @@ export const ROLES = Object.freeze({
   OPERATOR: 'verso-operator',
 });
 
-// Menu order: the most used task right after the overview (ADR-0017). "key" is the second key of the "g" shortcut.
+// Menu order: the most used task right after the overview (ADR-0017); at most five screens (ADR-0015). "key" is the
+// second key of the "g" shortcut; "tab: false" keeps a screen out of the mobile tab bar (four tabs at most).
 export const SCREENS = Object.freeze({
   overview: { title: 'Genel bakış', short: 'Özet', icon: 'home', key: 'o', roles: [ROLES.USER, ROLES.OPERATOR] },
   ask: { title: 'Soru sor', short: 'Sor', icon: 'chat', key: 's', roles: [ROLES.USER, ROLES.OPERATOR] },
-  documents: { title: 'Belgeler', short: 'Belgeler', icon: 'files', key: 'b', roles: [ROLES.USER, ROLES.OPERATOR] },
-  system: { title: 'Sistem', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR] },
+  documents: { title: 'Bilgi kaynakları', short: 'Kaynaklar', icon: 'files', key: 'b', roles: [ROLES.USER, ROLES.OPERATOR] },
+  setup: { title: 'Kurulum durumu', short: 'Kurulum', icon: 'flag', key: 'k', roles: [ROLES.USER, ROLES.OPERATOR], tab: false },
+  system: { title: 'Sistem ve güvenlik', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR] },
 });
 
 /** The roles of a decoded access token payload; every authenticated user is at least a verso-user. */

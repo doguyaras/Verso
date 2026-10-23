@@ -17,3 +17,4 @@ Fazlar sırayla yapılır. Her faz kendi dalında geliştirilir, review'lardan v
 | + | Belge türleri: DOCX, TXT, MD (ADR-0016); kanıt `docs/evidence/adr-0016-dogrulama.md` | Bitti (PR #15) |
 | + | Panel v2 (yeniden tasarım) ve kalıcı `admin` kullanıcısı; kanıt `docs/evidence/panel-v2-dogrulama.md` | Bitti (PR #17) |
 | + | Panel v3 (ADR-0017): araştırmaya dayalı tasarım sistemi, Verso giriş teması, atıfta pasaj önizlemesi; kanıt `docs/evidence/panel-v3-dogrulama.md` | Bitti |
+| + | Fildişi tuval (ADR-0018): yeni palet, Fraunces, boyalı giriş ekranı, Bilgi kaynakları ve Kurulum durumu; kanıt `docs/evidence/adr-0018-dogrulama.md` | Bitti |
