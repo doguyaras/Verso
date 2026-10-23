@@ -12,6 +12,7 @@
 | nginx (kenar proxy) | 1.29.8 (`nginxinc/nginx-unprivileged:1.29.8-alpine@sha256:0c79d56a…7fbe6`) | – | Docker Hub 2026-10-03 | root'suz, salt okunur; kullanıcı onayı bekliyor (ADR-0013) |
 | Gözlem yığını (`obs` profili) | Prometheus 3.15.0, Alertmanager 0.34.1, Loki 3.7.8, Alloy 1.20.1, Grafana 13.2.3 (hepsi `@sha256` pinli, compose.yaml) | – | Docker Hub 2026-10-03 | Lisans: Prometheus ve Alertmanager Apache 2.0; Loki ve Grafana AGPL-3.0 (değiştirilmeden, ayrı süreç olarak kullanılır); Alloy Apache 2.0. Promtail EOL 2026-03-02, yerine Alloy (referans 25). Kullanıcı onayı bekliyor (ADR-0014) |
 | Micrometer Prometheus registry | Boot 4.1.1 BOM | – | Boot 4.1.1 BOM | `/actuator/prometheus` (ADR-0014) |
+| Allura (imza konturları) | Google Fonts `allura/v22` TTF'inden "Verso" kelimesinin konturları (`panel/js/signature-data.js`) | – | fonts.google.com 2026-10-23 | SIL Open Font License 1.1 (Robert Leuschke). Font dosyası dağıtılmaz ve yüklenmez; yalnız konturlar kullanılır (ADR-0017) |
 | Apache PDFBox | 3.0.8 (`pdfbox`, `pdfbox-io`, `fontbox`) | – | Maven Central 2026-10-02 | Apache 2.0; kullanıcı onayı 2026-10-02 (ADR-0011) |
 | Ollama | 0.35.1 (`ollama/ollama:0.35.1@sha256:292ee794…278c`) | – | Docker Hub 2026-10-02 | ~3,8 GB; CPU (ADR-0011) |
 | ArchUnit | 1.5.1 | – | Maven Central 2026-10-02 | düz `@Test` ile (Ek B ders 2) |

@@ -12,6 +12,7 @@ import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentC
 import { answerParts, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
   sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
+import { SIGNATURE, timeline } from '../panel/js/signature-data.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
@@ -297,4 +298,65 @@ test('login theme: keycloak.v2 child, CSS and markup only, Turkish texts for eve
 
 test('sign-in: the IdP page is asked for Turkish', () => {
   assert.match(readFileSync('panel/js/auth.js', 'utf8'), /ui_locales: 'tr'/);
+});
+
+test('signature: the Keycloak markup, its CSS animation and the favicon are generated from the same pen data', () => {
+  const run = spawnSync(process.execPath, ['scripts/signature-theme.mjs', '--check'], { encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  const strokes = timeline();
+  assert.equal(strokes.length, SIGNATURE.pen.length);
+  const end = strokes.at(-1).delay + strokes.at(-1).duration;
+  assert.ok(Math.abs(end - 1600) < 1, `the word is signed in 1.6 s (${end} ms)`);
+  for (let i = 1; i < strokes.length; i++) assert.ok(strokes[i].delay > strokes[i - 1].delay, 'strokes follow each other');
+  const template = readFileSync('deploy/keycloak/themes/verso/login/template.ftl', 'utf8');
+  const block = template.slice(template.indexOf('<#-- signature:start -->'), template.indexOf('<#-- signature:end -->'));
+  assert.equal((block.match(/class="vs-s\d+"/g) ?? []).length, SIGNATURE.pen.length);
+  assert.match(block, /maskUnits="userSpaceOnUse" x="16" y="81" width="425" height="169"/, 'the mask region is explicit (the default cut the letters)');
+  assert.match(readFileSync('panel/index.html', 'utf8'), /<link rel="icon" href="img\/favicon\.svg" type="image\/svg\+xml">/);
+  assert.match(readFileSync('deploy/edge/nginx.conf', 'utf8'), /image\/svg\+xml svg;/, 'the favicon is served as SVG');
+  assert.match(readFileSync('panel/js/signature-data.js', 'utf8'), /Allura .*SIL Open Font License 1\.1/, 'the font licence travels with the outlines');
+});
+
+test('motion: every animation stops under "reduce motion" and styles are set through the CSSOM only (CSP)', () => {
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation-duration: \.01ms !important;/);
+  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-tuval.css', 'utf8');
+  assert.ok((theme.match(/prefers-reduced-motion: reduce/g) ?? []).length >= 2, 'the login theme and its signature stand still too');
+  for (const file of ['motion.js', 'signature.js', 'app.js', 'screens/ask.js', 'screens/overview.js']) {
+    const code = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.doesNotMatch(code, /setAttribute\(\s*'style'|\.cssText|style:\s*'/, `${file}: no style attributes`);
+  }
+  assert.match(readFileSync('panel/js/motion.js', 'utf8'), /export const reducedMotion/);
+});
+
+test('palette: the token pairs the screens use keep their contrast in both themes (WCAG 2.2 AA)', () => {
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  const block = (selector) => {
+    const start = css.indexOf(`${selector} {`);
+    return Object.fromEntries([...css.slice(start, css.indexOf('\n}', start)).matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  };
+  const light = block(':root');
+  const dark = { ...light, ...block(':root[data-theme="dark"]') };
+  const resolve = (tokens, value) => {
+    for (let i = 0; i < 10 && value.startsWith('var('); i++) value = tokens[value.slice(6, -1)];
+    return value;
+  };
+  const luminance = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => {
+    const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  };
+  const pairs = [['fg-default', 'bg-canvas', 4.5], ['fg-muted', 'bg-canvas', 4.5], ['fg-muted', 'bg-surface', 4.5],
+    ['fg-subtle', 'bg-surface', 4.5], ['fg-accent', 'bg-canvas', 4.5], ['fg-on-emphasis', 'accent-emphasis', 4.5],
+    ['border-control', 'bg-surface', 3], ['ink-muted', 'ink-1', 4.5], ['ink-gold-solid', 'ink-1', 4.5], ['signature-ink', 'bg-canvas', 3]];
+  for (const [name, tokens] of [['light', light], ['dark', dark]]) {
+    for (const [fg, bg, min] of pairs) {
+      const value = ratio(resolve(tokens, `var(--${fg})`), resolve(tokens, `var(--${bg})`));
+      assert.ok(value >= min, `${name}: ${fg} on ${bg} is ${value.toFixed(2)}:1, needs ${min}:1`);
+    }
+  }
 });

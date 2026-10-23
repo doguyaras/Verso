@@ -4,9 +4,11 @@ import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, sign
 import { api, ApiError, lastMode } from './api.js';
 import { icon, logo } from './icons.js';
 import { openPalette } from './palette.js';
+import { sign, signature } from './signature.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
 import { el, plainName } from './render.js';
 import { prefs } from './store.js';
+import { cardSpotlight, navIndicator, transition } from './motion.js';
 import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
 import { renderDocuments } from './screens/documents.js';
@@ -25,6 +27,8 @@ let view = 0; // bumped on every navigation: a late answer for a screen the user
 let cleanup = null;
 let params = null;
 const counts = {};
+let moveIndicator = () => {};
+let routed = false; // the first screen appears without a transition
 
 // ---------- theme: follow the system unless the user chose (NN/g dark mode) ----------
 function applyTheme() {
@@ -121,6 +125,13 @@ function route() {
     if (link.dataset.screen === screen) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
+  moveIndicator();
+  if (routed) transition(() => show(screen));
+  else show(screen);
+  routed = true;
+}
+
+function show(screen) {
   view += 1;
   const shown = view;
   if (typeof cleanup === 'function') cleanup();
@@ -159,6 +170,7 @@ function railToggle() {
   const on = !shell.classList.contains('rail');
   shell.classList.toggle('rail', on);
   prefs.setRail(on);
+  moveIndicator();
   const button = $('#collapse');
   button.setAttribute('aria-label', on ? 'Menüyü genişlet' : 'Menüyü daralt');
   button.setAttribute('aria-expanded', String(!on));
@@ -215,6 +227,7 @@ function buildShell() {
   if (prefs.rail()) $('#shell').classList.add('rail');
 
   $('#brand').prepend(logo(30));
+  $('#brand .brand-text').prepend(signature({ height: 30, ink: 'var(--sb-gold-solid)' }));
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 
@@ -224,6 +237,8 @@ function buildShell() {
       icon(s.icon), el('span', { class: 'label' }, s.title),
       s.id === 'documents' ? el('span', { class: 'count' }, String(counts.documents ?? '')) : null,
       el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${s.key.toUpperCase()}`))));
+  moveIndicator = navIndicator($('#nav'));
+  cardSpotlight($('#main'));
   $('#tabbar').replaceChildren(...links.map((s) => el('a', { href: `#/${s.id}`, 'data-screen': s.id }, icon(s.icon), s.short)));
 
   const account = el('button', { class: 'account', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
@@ -238,11 +253,39 @@ function buildShell() {
   const mobileAccount = el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Hesap ve tema', 'aria-haspopup': 'menu',
     onclick: () => accountMenu(mobileAccount, 'below') }, el('span', { class: 'avatar' }, initials(name)));
   $('#mobilebar').replaceChildren(
-    el('a', { class: 'brand', href: '#/overview', 'aria-label': 'Verso, genel bakış' }, logo(26),
-      el('span', { class: 'brand-text' }, el('strong', {}, 'Verso'))),
+    el('a', { class: 'brand', href: '#/overview', 'aria-label': 'Verso, genel bakış' },
+      signature({ height: 26, ink: 'var(--signature-ink)' })),
     el('span', { class: 'spacer' }),
     el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Ara', onclick: () => openPalette(paletteSources()) }, icon('search')),
     mobileAccount);
+}
+
+/** The headline, one span per word: the words rise one after another (CSS, delay from --i). */
+function words(...parts) {
+  let i = 0;
+  const split = (text, wrap) => text.split(' ').filter(Boolean).map((word) => {
+    const span = el('span', { class: 'word' }, wrap ? wrap(word) : word);
+    span.style.setProperty('--i', String(i++));
+    return [span, ' '];
+  }).flat();
+  return parts.flatMap((part) => (typeof part === 'string' ? split(part) : split(part.text, (w) => el('em', {}, w))));
+}
+
+/** A soft light that follows the pointer over the canvas (mice and pens only; it is decoration). */
+function spotlight(panel) {
+  if (!matchMedia('(pointer: fine)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let frame = 0;
+  panel.addEventListener('pointermove', (event) => {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const box = panel.getBoundingClientRect();
+      panel.style.setProperty('--mx', `${event.clientX - box.left}px`);
+      panel.style.setProperty('--my', `${event.clientY - box.top}px`);
+      panel.classList.add('lit');
+    });
+  });
+  panel.addEventListener('pointerleave', () => panel.classList.remove('lit'));
 }
 
 function showSignIn(problem) {
@@ -252,24 +295,29 @@ function showSignIn(problem) {
   $('#shell').hidden = true;
   const gate = $('#gate');
   gate.hidden = false;
+  const mark = signature({ height: 72, ink: 'var(--ink-gold-solid)', tip: 'var(--ink-gold)', animated: true });
+  const panel = el('div', { class: 'brand-panel' },
+    el('div', { class: 'aurora', 'aria-hidden': 'true' }),
+    el('div', { class: 'grain', 'aria-hidden': 'true' }),
+    el('div', { class: 'brand-row' }, mark, el('small', {}, 'Kurumunuzun belge asistanı')),
+    el('h2', {}, ...words('Belgelerinize sorun, cevabı', { text: 'kaynağıyla' }, 'alın.')),
+    el('p', {}, 'Verso yönetmeliklerinizi, sözleşmelerinizi ve prosedürlerinizi kendi sunucunuzda okur; Türkçe sorulara sayfa sayfa kaynak göstererek cevap verir.'),
+    el('ul', { class: 'trust' },
+      el('li', {}, el('span', { class: 'trust-icon' }, icon('shield', 'sm')),
+        el('div', {}, el('strong', {}, 'Veri kurum dışına çıkmaz'), el('span', {}, 'Yerel modda model de belgeler de sizin sunucunuzda.'))),
+      el('li', {}, el('span', { class: 'trust-icon' }, icon('quote', 'sm')),
+        el('div', {}, el('strong', {}, 'Her cevap kaynaklı'), el('span', {}, 'Belge adı ve sayfası; cevap yoksa "bulunamadı".'))),
+      el('li', {}, el('span', { class: 'trust-icon' }, icon('building', 'sm')),
+        el('div', {}, el('strong', {}, 'Kurumsal oturum'), el('span', {}, 'Kurumunuzun kimlik sağlayıcısıyla giriş (OIDC).')))),
+    el('div', { class: 'brand-foot' }, 'KVKK md. 9 · PDF, Word, TXT, Markdown'));
+  spotlight(panel);
   gate.replaceChildren(el('section', { class: 'signin', 'aria-labelledby': 'signin-title' },
-    el('div', { class: 'brand-panel' },
-      el('div', { class: 'brand-row' }, logo(34), el('span', {}, 'Verso', el('small', {}, 'Kurumunuzun belge asistanı'))),
-      el('h2', {}, 'Belgelerinize sorun, cevabı ', el('em', {}, 'kaynağıyla'), ' alın.'),
-      el('p', {}, 'Verso yönetmeliklerinizi, sözleşmelerinizi ve prosedürlerinizi kendi sunucunuzda okur; Türkçe sorulara sayfa sayfa kaynak göstererek cevap verir.'),
-      el('ul', { class: 'trust' },
-        el('li', {}, el('span', { class: 'trust-icon' }, icon('shield', 'sm')),
-          el('div', {}, el('strong', {}, 'Veri kurum dışına çıkmaz'), el('span', {}, 'Yerel modda model de belgeler de sizin sunucunuzda.'))),
-        el('li', {}, el('span', { class: 'trust-icon' }, icon('quote', 'sm')),
-          el('div', {}, el('strong', {}, 'Her cevap kaynaklı'), el('span', {}, 'Belge adı ve sayfası; cevap yoksa "bulunamadı".'))),
-        el('li', {}, el('span', { class: 'trust-icon' }, icon('building', 'sm')),
-          el('div', {}, el('strong', {}, 'Kurumsal oturum'), el('span', {}, 'Kurumunuzun kimlik sağlayıcısıyla giriş (OIDC).')))),
-      el('div', { class: 'brand-foot' }, 'KVKK md. 9 · PDF, Word, TXT, Markdown')),
+    panel,
     el('div', { class: 'signin-form' },
       el('h3', { id: 'signin-title' }, 'Giriş yapın'),
       el('p', {}, 'Kurumunuzun giriş sayfasına yönlendirileceksiniz; giriş sonrası buraya dönersiniz.'),
       problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
-      el('button', { class: 'button lg block', type: 'button', onclick: (event) => {
+      el('button', { class: 'button lg block sheen', type: 'button', onclick: (event) => {
         event.currentTarget.setAttribute('aria-busy', 'true');
         sessionStorage.removeItem(AUTO_SIGN_IN);
         signIn();
@@ -279,6 +327,7 @@ function showSignIn(problem) {
         el('li', {}, el('b', {}, '2'), 'Türkçe sorunuzu yazın.'),
         el('li', {}, el('b', {}, '3'), 'Cevabı, kaynağına tıklayarak doğrulayın.')),
       el('p', { class: 'signin-note' }, icon('lock', 'sm'), 'Oturum bilgisi yalnız bu sekmenin belleğinde tutulur.'))));
+  sign(mark, { delay: 250 });
 }
 
 async function start() {

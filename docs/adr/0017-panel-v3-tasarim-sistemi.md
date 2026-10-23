@@ -34,26 +34,30 @@
 
 Kullanıcı ilk önerilen "Petrol" paletini beğenmedi. 13 palet yönü, ardından 14 koyu gri palet ve "kül" tonunun 10 varyasyonu panel taslakları üzerinde karşılaştırıldı. Seçilen: açık kül zemin ve "Clair obscur" varyasyonu. Esin kaynağı *Clair Obscur: Expedition 33*'ün ışık-gölge (chiaroscuro) fikridir; oyunun logosu, yazı tipi ya da görselleri kullanılmaz.
 
-- **Açık tema (clair):** sayfa açık kül `#e8e9eb`, kartlar `#f6f7f8`, metin `#1c1e22`.
-- **Çerçeve (obscur):** menü ve giriş ekranının marka paneli her iki temada da koyu antrasittir (`#1e2024`, koyu temada `#121315`). Menü kendi alt ağacında fonksiyonel token'ları yeniden tanımlar; paylaşılan bileşenlerin menüye özel varyantı yoktur.
-- **Antik altın** yalnız kaynağa işaret eden yerlerde kullanılır: atıflar, etkin menü öğesi, odak halkası. Açık temada metin `#6e521a`, zemin `#f1e6cc`. Koyu temada dolgu `#d4b26a`, metin `#e8cb8a`.
+- **Açık tema (clair):** sayfa açık kül `#f1f2f4`, kartlar `#fafafb`, metin `#1c1e22`, kenarlık `#d8dbdf`, ikincil metin `#5f646b`. Kullanıcı ilk sürümden sonra renkleri "biraz daha açık" istedi; bütün ölçek bir adım açıldı.
+- **Çerçeve (obscur):** menü ve giriş ekranının marka paneli her iki temada da koyu antrasittir (`#2a2d33`, koyu temada `#1a1c1f`; koyu temanın sayfası `#2b2e33`). Menü kendi alt ağacında fonksiyonel token'ları yeniden tanımlar; paylaşılan bileşenlerin menüye özel varyantı yoktur.
+- **Antik altın** yalnız kaynağa işaret eden yerlerde kullanılır: atıflar, etkin menü öğesi, odak halkası. Açık temada metin `#6e521a`, zemin `#f1e6cc`. Koyu temada dolgu `#d9bc7c`, metin `#e8cb8a`. İmzanın altını da `#d9bc7c`'dir.
 - **Birincil düğme:** açık temada antrasit üstüne krem (`#f3e3bc`), koyu temada altın üstüne koyu metin.
 - **Uyarı rengi** turuncuya kaydırıldı (`#8a3f06` / `#fdebdd`), altın vurguyla karışmasın diye.
 - 12 adımlı gri ("kül") ve vurgu ("antik altın") ölçekleri; adım rolleri Radix modelinde. Bileşenler yalnız fonksiyonel token'ları kullanır (`--bg-*`, `--fg-*`, `--border-*`, `--accent-*`), Primer modelinde.
-- Mor/indigo, gradyan vurgu, glow ve parıltı ikonu kullanılmaz.
+- Mor/indigo, gradyan vurgu ve parıltı ikonu kullanılmaz. Işık efektleri (aşağıda "Hareket") yalnız koyu çerçevede ve kartların üstünde, altın tonunda ve düşük opaklıkta kalır.
 - **Kontrast (WCAG 2.2 AA, ölçüldü):**
 
 | Çift | Açık | Koyu |
 |---|---|---|
-| Metin / sayfa | 13,7:1 | 13,2:1 |
-| İkincil metin / sayfa | 5,6:1 | 7,1:1 |
-| Yer tutucu / kart | 5,0:1 | 4,7:1 |
-| Form kenarlığı / kart | 3,5:1 | 3,1:1 |
-| Düğme etiketi / düğme | 12,8:1 (krem / antrasit) | 8,5:1 (koyu / altın) |
+| Metin / sayfa | 14,9:1 | 12,1:1 |
+| İkincil metin / sayfa | 5,3:1 | 6,9:1 |
+| Yer tutucu / kart | 5,0:1 | 4,6:1 |
+| Form kenarlığı / kart | 3,6:1 | 3,2:1 |
+| Düğme etiketi / düğme | 10,9:1 (krem / antrasit) | 9,4:1 (koyu / altın) |
 | Altın metin / altın zemin | 5,9:1 | 7,6:1 |
-| Odak halkası / sayfa | 5,0:1 | 9,6:1 |
-| Menü metni / menü | 13,4:1 | 13,4:1 |
-| Menü ikincil / menü | 6,4:1 | 6,0:1 |
+| Odak halkası / sayfa | 5,4:1 | 8,7:1 |
+| Menü metni / menü | 11,9:1 | 15,1:1 |
+| Menü ikincil / menü | 6,0:1 | 6,1:1 |
+| İmza (altın) / çerçeve | 7,5:1 | 9,3:1 |
+| İmza (mobil çubuk) / sayfa | 12,3:1 | 7,4:1 |
+
+Tablo `scripts/panel.test.mjs`'teki "palette" testiyle aynı token çiftlerinden hesaplanır; test bir çift eşiğin altına düşerse kırmızıdır.
 
 - Koyu temada yükselti gölgeyle değil, açılan yüzeyle verilir.
 
@@ -62,7 +66,40 @@ Kullanıcı ilk önerilen "Petrol" paletini beğenmedi. 13 palet yönü, ardınd
 - Ölçek 12/13/14/16/18/20/24/30 px; sayılar `tabular-nums`.
 - Köşe yarıçapı 4/8/12 px; düğme yüksekliği 32/36/44 px.
 - Odak halkası 2 px + 2 px boşluk.
-- Hareket 100–250 ms, girişte ease-out; `prefers-reduced-motion` ile kapanır.
+- Hareket 100–250 ms, girişte ease-out; `prefers-reduced-motion` ile kapanır (aşağıda "Hareket").
+
+**Logo: "Verso" imzası.**
+- Kullanıcı italik serif logoları beğenmedi; "imza atılıyormuş gibi", altı çizgisiz, okunaklı bir yazı istedi. Great Vibes, Alex Brush ve Allura karşılaştırıldı; seçilen **Allura** (Robert Leuschke, SIL Open Font License 1.1).
+- Font yüklenmez (CSP yalnız `'self'`): "Verso" kelimesi opentype.js ile bir kez kontura çevrildi ve `panel/js/signature-data.js`'e yazıldı. OFL, konturlara çevrilmiş bir çizimin üründe kullanılmasına izin verir; lisans notu dosyanın başındadır (`docs/versions.md`).
+- **Atılma animasyonu:** her glifin orta çizgisi rasterleştirme ve Zhang-Suen inceltmesiyle çıkarıldı. Kalemin yazma sırasındaki 12 hareketi ayrı yollar olarak saklanır.
+  - Kontur bir maskenin arkasından bu yollar boyunca açılır; her hareket kendi `stroke-dasharray`'iyle çizilir. Chrome dash'i her alt yolda baştan başlattığı için hareketler tek yolda birleştirilemez.
+  - Maske bölgesi açık verilir (`userSpaceOnUse` + kutu); varsayılan bölge Allura'nın alt kuyruklarını kesiyordu.
+  - Kalem tek hızla gider; kelime **1,6 sn**'de atılır (ilk deneme 2,4 sn'ydi, kullanıcı yavaş buldu). Hareketler arasında 45 ms kalem kaldırma vardır.
+  - Panelde kalemin ucu (`getPointAtLength`) mürekkebin ucunda ilerler.
+- **Nerede:**
+  - Panelin ve Keycloak'ın giriş ekranında atılır.
+  - Menüde ve mobil üst çubukta durağandır.
+  - Daraltılmış menüde, asistan avatarında ve favicon'da imzanın "V"si antrasit karo üstünde altındır.
+- **Keycloak'ta script yok:** `scripts/signature-theme.mjs` aynı veriden `template.ftl`'deki SVG'yi, CSS-yalnız animasyonu (`signature:start/end` işaretleri arasında) ve `panel/img/favicon.svg`'yi üretir. `--check` güncel değilse 1 döner; panel testi bunu çalıştırır.
+
+**Hareket ("Tuval ışığı").** Kullanıcı ilk tasarımın giriş ekranını ve arayüzünü durağan buldu, efekt ve animasyon istedi. Üç giriş yönü taslakta karşılaştırıldı; seçilen "Tuval ışığı".
+- **Giriş ekranı** (panel ve Keycloak):
+  - Koyu çerçevede yavaşça kayan altın ışık: kayıtlı `@property` değişkenleriyle radyal gradyan, 38 sn. İlk denemedeki konik gradyan sert kenarlı bir şerit bıraktığı için kaldırıldı.
+  - `feTurbulence` film greni (veri URI'si, `img-src data:`).
+  - İmza atılır; başlık kelime kelime gelir; maddeler ve form sırayla gelir; birincil düğmenin üstünden tek bir ışık geçer.
+  - Yalnız panelde imleci izleyen yumuşak ışık vardır; fare ve kalem için, dokunmada yok.
+- **Panel** (`panel/js/motion.js`):
+  - Etkin menü işareti sayfadan sayfaya kayar.
+  - Kartlarda imleç altında altın ışık, sayı kartlarında hafif yükselme.
+  - Sayılar 0'dan sayar (ease-out-expo, 0,9 sn, `tabular-nums`).
+  - İskelet ve "Cevap hazırlanıyor" yazısı üstünden ışık geçer. Uydurma aşama metni yine gösterilmez.
+  - Yeni cevap kelime kelime belirir; boşluklar metin olarak kalır, kopyalama ve ekran okuyucu düz cümleyi görür. Sonraki ziyarette cevap animasyonsuz çizilir.
+  - Atıf üzerindeyken ya da odaktayken ilgili kaynak kartı vurgulanır; tıklanınca kart görünür alana kayar ve kısa bir nabız atar.
+  - Ekranlar arasında View Transitions ile yumuşak geçiş olur (tarayıcıda yoksa doğrudan).
+- **Kurallar:**
+  - Hiçbir animasyon bilgi taşımaz: son durum düz içeriktir.
+  - `prefers-reduced-motion` her şeyi durdurur: imza tamamlanmış görünür, ışık durur.
+  - Biçim yalnız CSSOM ve Web Animations ile verilir; CSP değişmez.
 
 **Kabuk.**
 - Masaüstünde etiketli sol menü; hamburger yok (NN/g). Menü ikon şeridine daraltılabilir.
@@ -97,7 +134,7 @@ Kullanıcı ilk önerilen "Petrol" paletini beğenmedi. 13 palet yönü, ardınd
 - **Sistem:** üç koruma katmanının adları (ağ, uygulama, açılış).
 
 **Giriş teması** (`deploy/keycloak/themes/verso`).
-- `keycloak.v2`'nin alt teması: yalnız CSS ve işaretleme, kendi script'i yok.
+- `keycloak.v2`'nin alt teması: yalnız CSS ve işaretleme, kendi script'i yok. Stil dosyası `verso-tuval.css`.
 - `template.ftl` keycloak.v2'nin kopyasıdır; tek fark, formun yanına statik bir marka paneli eklenmesidir.
 - Metinler `messages_tr` / `messages_en` dosyalarındadır.
 - Realm: `loginTheme: verso`, `defaultLocale: tr`. Panel giriş isteğine `ui_locales=tr` ekler; tarayıcı İngilizce olsa da sayfa Türkçe açılır.
@@ -108,7 +145,7 @@ Kullanıcı ilk önerilen "Petrol" paletini beğenmedi. 13 palet yönü, ardınd
 **Olumlu:**
 - Kullanıcı cevabın hangi belge ve sayfaya dayandığını ve o pasajı tek hareketle görür. Canlı denemede model "yirmi gün" dedi (belgede "on dört gün"). Önizleme doğru belgeyi ve sayfayı gösterdi, ama alıntı pasajın başı olduğu için ilgili cümleyi içermedi. Bu, aşağıdaki "alıntı penceresi" işinin gerekçesidir.
 - Ürün ilk ekrandan itibaren Türkçe ve kendi kimliğiyle görünür.
-- Yeni bağımlılık yok. CSP değişmedi; görünüm ayarları için yalnız CSSOM `element.style` kullanılır.
+- Yeni bağımlılık yok. CSP değişmedi; görünüm ayarları için yalnız CSSOM `element.style` kullanılır. İmza bir font değil, çizimdir: indirilen font dosyası yoktur.
 
 **Olumsuz / kabul edilen risk:**
 - **Alıntı pasajın başıdır,** cevabın dayandığı cümle olmayabilir. Daha isabetli seçim (cevapla örtüşen pencere) sonraki iştir.
@@ -116,11 +153,14 @@ Kullanıcı ilk önerilen "Petrol" paletini beğenmedi. 13 palet yönü, ardınd
 - **Keycloak güncellemelerinde şablon:** `template.ftl` keycloak.v2'nin kopyası olduğu için her Keycloak sürüm yükseltmesinde üst temanın şablonuyla karşılaştırılmalıdır (`ImageVersionsTest`'in sürüm sabitlemesiyle aynı anda).
 - **Keycloak tema kaynaklarını iki yerde önbelleğe alır:**
   - Sıkıştırılmış kopyalar `data/tmp/kc-gzip-cache`'tedir ve yeniden başlatmada silinmez. Tema değişince container yeniden oluşturulur: `docker compose up -d --force-recreate keycloak`.
-  - Tarayıcılar kaynakları 30 gün önbellekte tutar; URL'deki sürüm Keycloak sürümüyle değişir. Canlıda bir tema değişikliği, CSS dosyasının adını değiştirerek dağıtılmalıdır (bu ADR'de `verso.css` → `verso-clair-obscur.css`).
+  - Tarayıcılar kaynakları 30 gün önbellekte tutar; URL'deki sürüm Keycloak sürümüyle değişir. Canlıda bir tema değişikliği, CSS dosyasının adını değiştirerek dağıtılmalıdır (bu ADR'de `verso.css` → `verso-clair-obscur.css` → `verso-tuval.css`).
+- **İmza verisi elle düzenlenmez:** konturlar ve kalem yolları bir kez üretildi; değişiklik araştırma sayfasıyla (opentype.js + inceltme) yeniden üretilir, sonra `node scripts/signature-theme.mjs` çalıştırılır.
+- **Hareket maliyeti:** kayan ışık ve gren yalnız giriş ekranındadır (`contain: paint` / `isolation`); panel içindeki animasyonlar kısa ve tek seferliktir.
 - **Realm değişikliği:** realm yalnız ilk açılışta içe aktarılır; mevcut yığında `bash scripts/keycloak-reimport.sh` gerekir. Bu, demo IdP'nin kullanıcı kimliklerini yeniler. Belgeler `sub`'a bağlı olduğundan, önceki demo kullanıcılarının yüklediği belgeler yeni kimlikle görünmez; veri silinmez.
 
 **Etkilenen dosyalar:**
-- `panel/` (bütün modüller, `css/panel.css`; yeni `js/palette.js`, `js/store.js`)
+- `panel/` (bütün modüller, `css/panel.css`; yeni `js/palette.js`, `js/store.js`, `js/motion.js`, `js/signature.js`, `js/signature-data.js`, `img/favicon.svg`)
+- `scripts/signature-theme.mjs`, `deploy/edge/nginx.conf` (`/panel/` altında SVG türü)
 - `deploy/keycloak/themes/verso/`, `deploy/keycloak/realm/verso-realm.json`, `compose.yaml` (tema bağlantısı)
 - `services/qa` (`Citation.excerpt`), `docs/api-questions-integration-v1.md`
 - `scripts/panel.test.mjs`

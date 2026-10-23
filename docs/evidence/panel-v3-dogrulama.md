@@ -63,6 +63,23 @@ Rapor ve notlar çalışma dosyası olarak tutuldu (`reports/`, `research_notes/
   - Soru ekranında altın atıf rozeti ve alıntı önizlemesi açık ve koyu temada denendi. Bu sefer alıntı ilgili cümleyi içeriyordu: "telefon veya erişim kartı kaybolduğunda…".
 - **Bulunan ürün sorunu (bu değişiklikten bağımsız):** Ollama 30 dk boşta kaldıktan sonra (`OLLAMA_KEEP_ALIVE`) ilk soruda embedding modelinin yüklenmesi 10 sn'lik zaman aşımını geçti. Kullanıcı 503 10030 "Arama modeli şu an yanıt vermiyor" aldı; "Tekrar dene" ile ikinci deneme cevaplandı. Ayrı bir iş olarak ele alınmalı.
 
+## İmza, Tuval ışığı ve hareket (2026-10-23)
+
+Dal `feature/doguyaras-imza-ve-tuval`; yığın GPU katmanıyla çalışıyordu (`compose.yaml` + `deploy/compose.gpu.yaml`). Kenar proxy yeniden yüklendi (`nginx -s reload`), Keycloak yeniden oluşturuldu (tema önbelleği).
+
+- **Testler:**
+  - `node --test scripts/panel.test.mjs`: 31/31 geçti. Yeni üç test: imza üreticisinin güncelliği ve 1,6 sn zaman çizelgesi; hareketin "reduce motion"la durması ve stil özniteliği yazılmaması (CSP); iki temada 11 token çiftinin kontrastı.
+  - Diğer betik testleri: 66 geçti, 12 kaldı. Kalan 12 test yerelde `gitleaks` ikilisi olmadığı için düşüyor; aynı sonuç değişikliksiz ağaçta da alındı. CI'da ikili kurulu.
+- **Mutasyonlar** (ikisi de geri alındı):
+  - İkincil metni `#9a9fa6`'ya açmak palette testini kırdı ("fg-muted on bg-canvas is 2.38:1").
+  - Keycloak animasyonunu 2 sn zaman çizelgesiyle üretmek imza testini kırdı ("verso-tuval.css is out of date").
+- **Canlı:**
+  - **Panel giriş ekranı:** imza 0,8 sn'de yarıya kadar atılmış, 3 sn'de tamamdı. Başlık kelime kelime, maddeler sırayla geldi.
+  - **Keycloak:** script olmadan, CSS ile aynı imza atıldı; form ve marka paneli yeni paletle göründü.
+  - **Kabuk:** menüde altın imza vardı. Daraltılmış menüde "V" karosu göründü, imza metni gizlendi. Etkin menü işareti sayfa değişince kaydı (`--y` 0 → 38 px). Favicon `image/svg+xml` olarak 200 döndü.
+  - **Soru:** "Şirket laptopu kaybolursa…" sorusunun cevabı 24 kelime span'iyle belirdi. Atıf üzerine gelince kaynak kartı `hl` sınıfını aldı.
+  - **Temalar ve konsol:** açık tema, mobil (375 px; antrasit imza) ve koyu tema denendi; konsolda hata yoktu.
+
 ## Bilinen sınırlar
 
 ADR-0017'nin "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

@@ -1,6 +1,8 @@
 // Line icons drawn for the panel (24×24, stroke only). Built with createElementNS: no HTML strings, which the CSP's
 // Trusted Types rule would refuse anyway (ADR-0015).
 
+import { mark } from './signature-data.js';
+
 const SVG = 'http://www.w3.org/2000/svg';
 
 const SHAPES = Object.freeze({
@@ -56,10 +58,11 @@ const SHAPES = Object.freeze({
 });
 
 /**
- * The Verso mark: a filled tile with a "V" drawn as an open book's fold and a citation dot. Colours come from CSS
- * classes (logo-bg, logo-fg, logo-dot), so the mark follows the theme.
+ * The Verso mark: the "V" of the signature on a tile (the favicon, the collapsed menu, the assistant). Colours come
+ * from CSS classes (logo-bg, logo-fg), so the mark follows the theme.
  */
 export function logo(size = 28) {
+  const { d, transform } = mark(32, 4);
   const svg = document.createElementNS(SVG, 'svg');
   svg.setAttribute('viewBox', '0 0 32 32');
   svg.setAttribute('width', String(size));
@@ -68,10 +71,8 @@ export function logo(size = 28) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   for (const [tag, attributes] of [
-    ['rect', { class: 'logo-bg', x: 0, y: 0, width: 32, height: 32, rx: 8 }],
-    ['path', { class: 'logo-fg', d: 'M8.5 9.5 16 23l7.5-13.5' }],
-    ['path', { class: 'logo-fg', d: 'M12.2 9.5 16 16.4l3.8-6.9', opacity: 0.55 }],
-    ['circle', { class: 'logo-dot', cx: 24.5, cy: 23.5, r: 2.2 }],
+    ['rect', { class: 'logo-bg', x: 0, y: 0, width: 32, height: 32, rx: 7 }],
+    ['path', { class: 'logo-fg', d, transform }],
   ]) {
     const shape = document.createElementNS(SVG, tag);
     for (const [key, value] of Object.entries(attributes)) shape.setAttribute(key, String(value));

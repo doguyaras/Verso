@@ -5,6 +5,7 @@ import { api, ApiError, lastMode } from '../api.js';
 import { icon, logo } from '../icons.js';
 import { answerParts, answerWithSources, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { conversation, prefs } from '../store.js';
+import { pulse, wordSpans } from '../motion.js';
 import { fileIcon, toast } from '../ui.js';
 
 const MAX_CHARS = 1000;
@@ -19,7 +20,7 @@ const SHOW_WAIT_MS = 1000;
 const SLOW_MS = 10000;
 
 /** The [n] marker as a button; hover, focus or a click shows the source and its passage (NotebookLM-style). */
-function citationButton(citation, onPick) {
+function citationButton(citation, onPick, onHover) {
   const where = sourceLabel(citation).slice(citation.fileName.length + 2);
   const pop = el('span', { class: 'cite-pop', role: 'tooltip', id: `cite-pop-${citation.number}-${Math.random().toString(36).slice(2, 8)}` },
     el('span', { class: 'src' }, fileIcon(citation.fileName.split('.').pop()?.toUpperCase(), 'sm'),
@@ -32,9 +33,19 @@ function citationButton(citation, onPick) {
       button.setAttribute('aria-expanded', String(open));
       onPick(citation);
     },
-    onblur: () => button.setAttribute('aria-expanded', 'false'),
-    onmouseenter: () => place(button) }, String(citation.number), pop);
-  button.addEventListener('focus', () => place(button));
+    onblur: () => {
+      button.setAttribute('aria-expanded', 'false');
+      onHover(citation, false);
+    },
+    onmouseenter: () => {
+      place(button);
+      onHover(citation, true);
+    },
+    onmouseleave: () => onHover(citation, false) }, String(citation.number), pop);
+  button.addEventListener('focus', () => {
+    place(button);
+    onHover(citation, true);
+  });
   return button;
 }
 
@@ -84,12 +95,19 @@ function answerView(entry, actions) {
   }
   const { result } = entry;
   const sources = result.citations.length ? sourceCards(result.citations) : null;
+  const cardOf = (citation) => sources?.querySelector(`[data-numbers~="${citation.number}"]`);
   const flash = (citation) => {
-    const card = sources?.querySelector(`[data-numbers~="${citation.number}"]`);
+    const card = cardOf(citation);
     if (!card) return;
     card.classList.add('flash');
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    pulse(card);
     setTimeout(() => card.classList.remove('flash'), 1200);
   };
+  const hover = (citation, on) => cardOf(citation)?.classList.toggle('hl', on);
+  // A fresh answer appears word by word; one drawn again (a later visit) appears at once.
+  const counter = entry.fresh ? { i: 0 } : null;
+  const text = (value) => (counter ? wordSpans(value, counter) : value);
   const notFound = result.outcome === 'NOT_FOUND' || (result.outcome == null && !result.found && !result.citations.length);
   return el('div', { class: 'answer' },
     el('h3', { class: 'sr-only' }, 'Verso cevapladı'),
@@ -101,8 +119,8 @@ function answerView(entry, actions) {
         el('div', { class: 'actions' },
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Soruyu düzenle'),
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.navigate('documents', { upload: true }) }, icon('upload', 'sm'), 'Belge yükle'))))
-      : el('div', { class: 'answer-text' }, answerParts(result.answer, result.citations)
-        .map((part) => (part.citation ? citationButton(part.citation, flash) : part.text))),
+      : el('div', { class: `answer-text${counter ? ' reveal' : ''}` }, answerParts(result.answer, result.citations)
+        .map((part) => (part.citation ? citationButton(part.citation, flash, hover) : text(part.text))).flat()),
     result.outcome === 'UNCITED'
       ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), 'Bu cevabı belgelerinizdeki bir kaynağa bağlayamadım; kullanmadan önce doğrulayın.')
       : null,
@@ -205,7 +223,7 @@ export function renderAsk(ctx) {
     const elapsed = el('span', { class: 'tabular' });
     const expect = el('div', { class: 'expect' });
     const waiting = el('div', { class: 'waiting', hidden: true },
-      el('div', { class: 'status' }, el('span', { class: 'spinner' }), el('span', {}, 'Cevap hazırlanıyor'), elapsed),
+      el('div', { class: 'status' }, el('span', { class: 'spinner' }), el('span', { class: 'thinking' }, 'Cevap hazırlanıyor'), elapsed),
       el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }), expect);
     const pending = botTurn(waiting);
     thread.append(userTurn(question), pending);
@@ -238,7 +256,7 @@ export function renderAsk(ctx) {
     if (!ctx.isCurrent()) return;
     announcer.textContent = entry.cancelled ? 'Bekleme durduruldu.' : entry.error ? 'Cevap alınamadı.'
       : entry.result.outcome === 'NOT_FOUND' ? 'Belgelerde bulunamadı.' : 'Cevap hazır.';
-    pending.replaceWith(botTurn(answerView(entry, actions)));
+    pending.replaceWith(botTurn(answerView({ ...entry, fresh: true }, actions)));
     field.focus();
   }
 

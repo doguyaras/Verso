@@ -2,6 +2,7 @@
 // documents, this tab's latest questions, a quick question and the assistant's mode. It fits one screen.
 import { api } from '../api.js';
 import { icon } from '../icons.js';
+import { countUp } from '../motion.js';
 import { el, fill, formatLabel, greeting, plainName } from '../render.js';
 import { conversation, prefs } from '../store.js';
 import { emptyState, fileIcon, formatNumber, relativeTime, statusPill } from '../ui.js';
@@ -9,10 +10,16 @@ import { emptyState, fileIcon, formatNumber, relativeTime, statusPill } from '..
 const TYPES = ['PDF', 'DOCX', 'TXT', 'MD'];
 const SVG = 'http://www.w3.org/2000/svg';
 
+function countUpValue(value) {
+  const node = el('span', { class: 'stat-value' });
+  countUp(node, value, formatNumber);
+  return node;
+}
+
 function stat(label, value, note, tone, href) {
   return el('a', { class: 'card stat stat-link', href },
     el('span', { class: 'stat-label' }, el('span', { class: `dot ${tone}` }), label),
-    el('span', { class: 'stat-value' }, formatNumber(value)),
+    countUpValue(value),
     el('span', { class: 'stat-note' }, note));
 }
 
