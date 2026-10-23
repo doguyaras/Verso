@@ -255,7 +255,7 @@ function showSignIn(problem) {
   gate.replaceChildren(el('section', { class: 'signin', 'aria-labelledby': 'signin-title' },
     el('div', { class: 'brand-panel' },
       el('div', { class: 'brand-row' }, logo(34), el('span', {}, 'Verso', el('small', {}, 'Kurumunuzun belge asistanı'))),
-      el('h2', {}, 'Belgelerinize sorun, cevabı kaynağıyla alın.'),
+      el('h2', {}, 'Belgelerinize sorun, cevabı ', el('em', {}, 'kaynağıyla'), ' alın.'),
       el('p', {}, 'Verso yönetmeliklerinizi, sözleşmelerinizi ve prosedürlerinizi kendi sunucunuzda okur; Türkçe sorulara sayfa sayfa kaynak göstererek cevap verir.'),
       el('ul', { class: 'trust' },
         el('li', {}, el('span', { class: 'trust-icon' }, icon('shield', 'sm')),

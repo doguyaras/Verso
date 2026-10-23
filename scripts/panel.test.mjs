@@ -275,7 +275,9 @@ test('login theme: keycloak.v2 child, CSS and markup only, Turkish texts for eve
   const dir = 'deploy/keycloak/themes/verso/login';
   const props = readFileSync(`${dir}/theme.properties`, 'utf8');
   assert.match(props, /^parent=keycloak\.v2$/m);
-  assert.match(props, /^styles=css\/styles\.css css\/verso\.css$/m, 'the parent styles first, ours last');
+  const ours = props.match(/^styles=css\/styles\.css css\/(verso-[a-z0-9-]+\.css)$/m);
+  assert.ok(ours, 'the parent styles first, ours last, under a palette name (browsers cache theme files for 30 days)');
+  readFileSync(`${dir}/resources/css/${ours[1]}`, 'utf8');
   assert.doesNotMatch(props, /^scripts=/m, 'the theme adds no scripts');
   const template = readFileSync(`${dir}/template.ftl`, 'utf8');
   const added = template.slice(template.indexOf('<div class="verso-split">'), template.indexOf('<div class="${properties.kcLogin!}">'));

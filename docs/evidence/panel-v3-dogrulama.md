@@ -29,7 +29,7 @@ Rapor ve notlar çalışma dosyası olarak tutuldu (`reports/`, `research_notes/
 ## Canlı kontrol (çalışan yığın, uygulama içi tarayıcı)
 
 1. **Panelin giriş ekranı:** iki sütun; marka paneli, üç güven maddesi ve "Kurum hesabıyla giriş yap" düğmesi.
-2. **Keycloak giriş sayfası:** Verso teması, Türkçe (tarayıcı İngilizce olsa da `ui_locales=tr` ile), Petrol rengi düğme. İlk denemede düğme mavi kaldı. İki önbellek bulundu:
+2. **Keycloak giriş sayfası:** Verso teması, Türkçe (tarayıcı İngilizce olsa da `ui_locales=tr` ile), Verso renginde düğme. İlk denemede (o zamanki "Petrol" paletiyle) düğme mavi kaldı. İki önbellek bulundu:
    - **Keycloak gzip önbelleği:** `data/tmp/kc-gzip-cache` yeniden başlatmada silinmiyor ve sıkıştırma isteyen istemciye eski dosyayı veriyor. `curl` sıkıştırmasız istediği için yeni dosyayı görmüştü. Container yeniden oluşturulunca düzeldi.
    - **Tarayıcı önbelleği:** kaynaklar 30 gün önbellekleniyor.
    - Her ikisi de ADR-0017 ve README'ye yazıldı.
@@ -51,6 +51,17 @@ Rapor ve notlar çalışma dosyası olarak tutuldu (`reports/`, `research_notes/
    - Koyu ve açık tema denendi.
    - Mobil (375 px) görünümde alt sekme çubuğu ve tek sütun düzen çalıştı; soru kutusundaki sayaç tek satıra alındı.
    - Sistem ekranı koruma katmanlarını gösterdi.
+
+## Palet: Clair obscur (aynı gün, kullanıcı seçimi)
+
+- Kullanıcı ilk paleti beğenmedi; 13 farklı palet, 14 koyu gri palet ve "kül" tonunun 10 varyasyonu panel taslakları üzerinde gösterildi. Kullanıcı açık kül tabanlı "Clair obscur" varyasyonunu seçti.
+- Kontrast çiftleri betikle ölçüldü (tablo ADR-0017'de). İlk denemede üç çift sınırda kaldı: açık temada yer tutucu 4,45; koyu temada form kenarlığı 2,62 ve yer tutucu 3,57. Bunlar `#666b72`, `#767b83` ve `#959aa1`'e çekildi (5,0 / 3,1 / 4,7).
+- Giriş temasının CSS'i `verso-clair-obscur.css` adıyla dağıtıldı: tarayıcı önbelleğindeki eski dosya kullanılmasın diye. Test, dosyanın bir palet adı taşımasını ve var olmasını sınar.
+- Canlı kontrol:
+  - Panel ve Keycloak giriş ekranları açık ve koyu temada denendi.
+  - Genel bakış açık temada denendi.
+  - Soru ekranında altın atıf rozeti ve alıntı önizlemesi açık ve koyu temada denendi. Bu sefer alıntı ilgili cümleyi içeriyordu: "telefon veya erişim kartı kaybolduğunda…".
+- **Bulunan ürün sorunu (bu değişiklikten bağımsız):** Ollama 30 dk boşta kaldıktan sonra (`OLLAMA_KEEP_ALIVE`) ilk soruda embedding modelinin yüklenmesi 10 sn'lik zaman aşımını geçti. Kullanıcı 503 10030 "Arama modeli şu an yanıt vermiyor" aldı; "Tekrar dene" ile ikinci deneme cevaplandı. Ayrı bir iş olarak ele alınmalı.
 
 ## Bilinen sınırlar
 

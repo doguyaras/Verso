@@ -30,15 +30,31 @@
 
 **C.** Ayrıntılar aşağıda.
 
-**Renk: "Petrol" paleti.**
-- 12 adımlı gri ve vurgu ölçekleri; vurgu `#177a83` / `oklch(53% 0.085 205)`.
-- Dört durum rengi; adım rolleri Radix modelinde.
-- Bileşenler yalnız fonksiyonel token'ları kullanır (`--bg-*`, `--fg-*`, `--border-*`, `--accent-*`), Primer modelinde.
+**Renk: "Clair obscur" paleti.**
+
+Kullanıcı ilk önerilen "Petrol" paletini beğenmedi. 13 palet yönü, ardından 14 koyu gri palet ve "kül" tonunun 10 varyasyonu panel taslakları üzerinde karşılaştırıldı. Seçilen: açık kül zemin ve "Clair obscur" varyasyonu. Esin kaynağı *Clair Obscur: Expedition 33*'ün ışık-gölge (chiaroscuro) fikridir; oyunun logosu, yazı tipi ya da görselleri kullanılmaz.
+
+- **Açık tema (clair):** sayfa açık kül `#e8e9eb`, kartlar `#f6f7f8`, metin `#1c1e22`.
+- **Çerçeve (obscur):** menü ve giriş ekranının marka paneli her iki temada da koyu antrasittir (`#1e2024`, koyu temada `#121315`). Menü kendi alt ağacında fonksiyonel token'ları yeniden tanımlar; paylaşılan bileşenlerin menüye özel varyantı yoktur.
+- **Antik altın** yalnız kaynağa işaret eden yerlerde kullanılır: atıflar, etkin menü öğesi, odak halkası. Açık temada metin `#6e521a`, zemin `#f1e6cc`. Koyu temada dolgu `#d4b26a`, metin `#e8cb8a`.
+- **Birincil düğme:** açık temada antrasit üstüne krem (`#f3e3bc`), koyu temada altın üstüne koyu metin.
+- **Uyarı rengi** turuncuya kaydırıldı (`#8a3f06` / `#fdebdd`), altın vurguyla karışmasın diye.
+- 12 adımlı gri ("kül") ve vurgu ("antik altın") ölçekleri; adım rolleri Radix modelinde. Bileşenler yalnız fonksiyonel token'ları kullanır (`--bg-*`, `--fg-*`, `--border-*`, `--accent-*`), Primer modelinde.
 - Mor/indigo, gradyan vurgu, glow ve parıltı ikonu kullanılmaz.
-- Kontrast WCAG 2.2 AA'dır:
-  - Ana metin 16,3:1.
-  - Vurgu dolgusu üzerinde beyaz 5,1:1.
-  - Form kenarlığı 3,3:1; bu yüzden gri 8 değil, gri 9 kullanılır.
+- **Kontrast (WCAG 2.2 AA, ölçüldü):**
+
+| Çift | Açık | Koyu |
+|---|---|---|
+| Metin / sayfa | 13,7:1 | 13,2:1 |
+| İkincil metin / sayfa | 5,6:1 | 7,1:1 |
+| Yer tutucu / kart | 5,0:1 | 4,7:1 |
+| Form kenarlığı / kart | 3,5:1 | 3,1:1 |
+| Düğme etiketi / düğme | 12,8:1 (krem / antrasit) | 8,5:1 (koyu / altın) |
+| Altın metin / altın zemin | 5,9:1 | 7,6:1 |
+| Odak halkası / sayfa | 5,0:1 | 9,6:1 |
+| Menü metni / menü | 13,4:1 | 13,4:1 |
+| Menü ikincil / menü | 6,4:1 | 6,0:1 |
+
 - Koyu temada yükselti gölgeyle değil, açılan yüzeyle verilir.
 
 **Tipografi ve şekil.**
@@ -100,7 +116,7 @@
 - **Keycloak güncellemelerinde şablon:** `template.ftl` keycloak.v2'nin kopyası olduğu için her Keycloak sürüm yükseltmesinde üst temanın şablonuyla karşılaştırılmalıdır (`ImageVersionsTest`'in sürüm sabitlemesiyle aynı anda).
 - **Keycloak tema kaynaklarını iki yerde önbelleğe alır:**
   - Sıkıştırılmış kopyalar `data/tmp/kc-gzip-cache`'tedir ve yeniden başlatmada silinmez. Tema değişince container yeniden oluşturulur: `docker compose up -d --force-recreate keycloak`.
-  - Tarayıcılar kaynakları 30 gün önbellekte tutar; URL'deki sürüm Keycloak sürümüyle değişir. Canlıda bir tema değişikliği, CSS dosyasının adını değiştirerek dağıtılmalıdır (`verso.css` → `verso-2.css`).
+  - Tarayıcılar kaynakları 30 gün önbellekte tutar; URL'deki sürüm Keycloak sürümüyle değişir. Canlıda bir tema değişikliği, CSS dosyasının adını değiştirerek dağıtılmalıdır (bu ADR'de `verso.css` → `verso-clair-obscur.css`).
 - **Realm değişikliği:** realm yalnız ilk açılışta içe aktarılır; mevcut yığında `bash scripts/keycloak-reimport.sh` gerekir. Bu, demo IdP'nin kullanıcı kimliklerini yeniler. Belgeler `sub`'a bağlı olduğundan, önceki demo kullanıcılarının yüklediği belgeler yeni kimlikle görünmez; veri silinmez.
 
 **Etkilenen dosyalar:**

@@ -1,31 +1,36 @@
-/* Verso panel, design v3 (ADR-0017). System fonts and inline SVG icons only: the CSP allows nothing but 'self'.
-   Colours come in three layers: 12-step scales (gray, accent "petrol"), status scales, and the functional tokens the
-   components use. The dark theme follows the system unless the user picks one ([data-theme] on <html>).
-   Palette research: docs/adr/0017-panel-v3-tasarim-sistemi.md. */
+/* Verso panel, design v3 (ADR-0017), palette "Clair obscur": a light ash page (clair) inside a dark charcoal frame
+   (obscur), with antique gold reserved for what points to a source: citations, the active place, focus. System fonts
+   and inline SVG icons only: the CSP allows nothing but 'self'. Three colour layers: 12-step scales (gray "kül",
+   accent "antique gold"), status scales, and the functional tokens the components use. The sidebar is dark in both
+   themes; it redefines the functional tokens for its own subtree. The dark theme follows the system unless the user
+   picks one ([data-theme] on <html>). Contrast pairs are listed in docs/adr/0017-panel-v3-tasarim-sistemi.md. */
 
 :root {
-  /* gray, light (oklch hue 230, low chroma) */
-  --gray-1: #fbfdfe; --gray-2: #f7f9fb; --gray-3: #f0f3f5; --gray-4: #eaedef; --gray-5: #e3e7ea; --gray-6: #dae0e2;
-  --gray-7: #ced5d8; --gray-8: #b8bfc3; --gray-9: #858e92; --gray-10: #798286; --gray-11: #5d6569; --gray-12: #191f22;
-  /* accent "petrol", light (oklch hue 205) */
-  --accent-1: #fafdfd; --accent-2: #f2f9fa; --accent-3: #e2f2f4; --accent-4: #d0eaed; --accent-5: #bde1e5;
-  --accent-6: #a6d4da; --accent-7: #86c2c9; --accent-8: #5da9b2; --accent-9: #177a83; --accent-10: #006b74;
-  --accent-11: #016770; --accent-12: #00353a;
-  /* status, light */
+  /* gray "kül", light */
+  --gray-1: #f6f7f8; --gray-2: #eff0f2; --gray-3: #e8e9eb; --gray-4: #e0e2e5; --gray-5: #d8dbdf; --gray-6: #cdd0d4;
+  --gray-7: #bfc3c8; --gray-8: #a9aeb4; --gray-9: #80858c; --gray-10: #666b72; --gray-11: #575c63; --gray-12: #1c1e22;
+  /* accent "antique gold", light */
+  --accent-1: #fcfaf4; --accent-2: #f8f2e4; --accent-3: #f1e6cc; --accent-4: #eadab4; --accent-5: #e0cb98;
+  --accent-6: #d3b97b; --accent-7: #c3a35e; --accent-8: #a88a45; --accent-9: #8c6e2c; --accent-10: #7a5e22;
+  --accent-11: #6e521a; --accent-12: #3e2e0c;
+  /* charcoal frame */
+  --ink-1: #1e2024; --ink-2: #2a2d31; --ink-3: #33363b; --ink-fg: #e8e9eb; --ink-muted: #9ea3aa; --ink-gold: #e9d6a6;
+  --ink-gold-solid: #d4b26a;
+  /* status, light; warning leans orange so it does not read as the gold accent */
   --success-bg: #eaf8ec; --success-border: #b6ddbc; --success-solid: #218041; --success-text: #186632;
-  --warning-bg: #fef1e3; --warning-border: #edcaa3; --warning-solid: #efa831; --warning-text: #774a01;
+  --warning-bg: #fdebdd; --warning-border: #f0c4a0; --warning-solid: #e8893a; --warning-text: #8a3f06;
   --danger-bg: #ffefee; --danger-border: #ffbfb8; --danger-solid: #c13234; --danger-solid-hover: #b01e25; --danger-text: #982325;
   --info-bg: #e9f5ff; --info-border: #b1d7f3; --info-solid: #0070a6; --info-text: #035b88;
 
   /* functional tokens: the only colours the components use */
-  --bg-canvas: var(--gray-2);
-  --bg-subtle: var(--gray-1);
-  --bg-surface: #ffffff;
+  --bg-canvas: var(--gray-3);
+  --bg-subtle: var(--gray-2);
+  --bg-surface: var(--gray-1);
   --bg-raised: #ffffff;
-  --bg-control: var(--gray-3);
+  --bg-control: var(--gray-4);
   --bg-control-hover: var(--gray-4);
   --bg-control-active: var(--gray-5);
-  --bg-sidebar: var(--gray-1);
+  --bg-sidebar: var(--ink-1);
   --border-muted: var(--gray-6);
   --border-default: var(--gray-7);
   --border-control: var(--gray-9);
@@ -35,16 +40,19 @@
   --accent-bg-subtle: var(--accent-3);
   --accent-bg-hover: var(--accent-4);
   --accent-border: var(--accent-7);
-  --accent-emphasis: var(--accent-9);
-  --accent-emphasis-hover: var(--accent-10);
+  --accent-emphasis: var(--ink-1); /* primary buttons: charcoal with a cream label */
+  --accent-emphasis-hover: var(--ink-2);
   --fg-accent: var(--accent-11);
   --fg-accent-strong: var(--accent-12);
-  --fg-on-emphasis: #ffffff;
-  --focus-ring: var(--accent-8);
-  --fmt-pdf: #c13234; --fmt-docx: #2f5fb3; --fmt-txt: #5d6569; --fmt-md: #177a83;
-  --scrim: rgba(25, 31, 34, .42);
-  --shadow-1: 0 1px 2px rgba(25, 31, 34, .06);
-  --shadow-2: 0 2px 6px rgba(25, 31, 34, .06), 0 12px 32px rgba(25, 31, 34, .10);
+  --fg-on-emphasis: #f3e3bc;
+  --focus-ring: var(--accent-10);
+  --fmt-pdf: #c13234; --fmt-docx: #2f5fb3; --fmt-txt: #575c63; --fmt-md: #6e521a;
+  --scrim: rgba(28, 30, 34, .45);
+  --shadow-1: 0 1px 2px rgba(28, 30, 34, .06);
+  --shadow-2: 0 2px 6px rgba(28, 30, 34, .06), 0 12px 32px rgba(28, 30, 34, .12);
+  --sb-surface: var(--ink-2); --sb-hover: var(--ink-2); --sb-active: var(--ink-3); --sb-border: #2d3035;
+  --sb-fg: var(--ink-fg); --sb-muted: var(--ink-muted); --sb-gold: var(--ink-gold); --sb-gold-solid: var(--ink-gold-solid);
+  --sb-on-gold: #231a06;
 
   /* shape, type, motion */
   --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 999px;
@@ -59,29 +67,57 @@
 }
 
 :root[data-theme="dark"] {
-  --gray-1: #0e1011; --gray-2: #131617; --gray-3: #1b1e20; --gray-4: #202426; --gray-5: #262b2d; --gray-6: #2e3336;
-  --gray-7: #3b4144; --gray-8: #51585c; --gray-9: #6e767a; --gray-10: #7b8388; --gray-11: #aeb6b9; --gray-12: #e9eef0;
-  --accent-1: #0d1415; --accent-2: #111c1d; --accent-3: #152a2d; --accent-4: #143538; --accent-5: #184044;
-  --accent-6: #1f4e54; --accent-7: #246167; --accent-8: #297881; --accent-9: #177a83; --accent-10: #006b74;
-  --accent-11: #84c8d0; --accent-12: #d1eef2;
+  --gray-1: #17181b; --gray-2: #1d1f22; --gray-3: #24262a; --gray-4: #2a2d31; --gray-5: #2d3035; --gray-6: #33363b;
+  --gray-7: #3e4248; --gray-8: #4b5057; --gray-9: #767b83; --gray-10: #959aa1; --gray-11: #aeb2b9; --gray-12: #eeeff1;
+  --accent-1: #1c1a14; --accent-2: #26221a; --accent-3: #3d3624; --accent-4: #4a412a; --accent-5: #5a4e31;
+  --accent-6: #6e5d33; --accent-7: #85703d; --accent-8: #9a8048; --accent-9: #d4b26a; --accent-10: #c49f55;
+  --accent-11: #e8cb8a; --accent-12: #f5e6c4;
+  --ink-1: #121315; --ink-2: #1c1d20; --ink-3: #2a2b2f; --ink-fg: #eeeff1; --ink-muted: #8e939a;
   --success-bg: #122616; --success-border: #2a5233; --success-text: #90d09d;
-  --warning-bg: #2d1d08; --warning-border: #614013; --warning-text: #e9b270;
+  --warning-bg: #2d1a0b; --warning-border: #613611; --warning-text: #f0a873;
   --danger-bg: #361513; --danger-border: #732f2c; --danger-text: #ffa098;
   --info-bg: #0f2330; --info-border: #244c67; --info-text: #87c6f2;
 
   /* elevation is a lighter surface, not a shadow */
-  --bg-canvas: var(--gray-1);
-  --bg-subtle: var(--gray-2);
-  --bg-surface: var(--gray-2);
-  --bg-raised: var(--gray-3);
-  --bg-sidebar: var(--gray-1);
-  --border-control: var(--gray-8);
+  --bg-canvas: var(--gray-3);
+  --bg-subtle: var(--gray-4);
+  --bg-surface: var(--gray-5);
+  --bg-raised: var(--gray-6);
+  --bg-control: var(--gray-6);
+  --bg-control-hover: var(--gray-6);
+  --bg-control-active: var(--gray-7);
+  --border-muted: var(--gray-7);
+  --border-default: var(--gray-8);
+  --border-control: var(--gray-9);
+  --accent-emphasis: var(--accent-9); /* in the dark the primary button is the gold, with a dark label */
+  --accent-emphasis-hover: var(--accent-10);
+  --fg-on-emphasis: #231a06;
   --focus-ring: var(--accent-11);
-  --fmt-pdf: #ffa098; --fmt-docx: #87b4f2; --fmt-txt: #aeb6b9; --fmt-md: #84c8d0;
+  --fmt-pdf: #ffa098; --fmt-docx: #87b4f2; --fmt-txt: #aeb2b9; --fmt-md: #e8cb8a;
   --scrim: rgba(0, 0, 0, .6);
   --shadow-1: none;
   --shadow-2: 0 16px 48px rgba(0, 0, 0, .5);
+  --sb-surface: var(--ink-2); --sb-hover: var(--ink-2); --sb-active: var(--ink-3); --sb-border: #24262a;
   color-scheme: dark;
+}
+
+/* The obscur frame: the sidebar keeps the dark charcoal in both themes and maps the functional tokens for its own
+   subtree, so the shared components (nav, privacy card, account button, logo) need no sidebar variants. */
+.sidebar {
+  --bg-surface: var(--sb-surface);
+  --bg-control-hover: var(--sb-hover);
+  --border-muted: var(--sb-border);
+  --border-default: #3e4248;
+  --fg-default: var(--sb-fg);
+  --fg-muted: var(--sb-muted);
+  --fg-subtle: var(--sb-muted);
+  --accent-bg-subtle: var(--sb-active);
+  --accent-border: #6e5d33;
+  --fg-accent-strong: var(--sb-gold);
+  --accent-emphasis: var(--sb-gold-solid);
+  --fg-on-emphasis: var(--sb-on-gold);
+  --focus-ring: var(--sb-gold);
+  color: var(--sb-fg);
 }
 
 /* ---------- base ---------- */
@@ -165,7 +201,8 @@ kbd {
 .logo-mark { color: var(--accent-emphasis); }
 .logo-mark .logo-bg { fill: var(--accent-emphasis); }
 .logo-mark .logo-fg { fill: none; stroke: var(--fg-on-emphasis); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.logo-mark .logo-dot { fill: var(--accent-5); }
+.logo-mark .logo-dot { fill: var(--accent-6); }
+.sidebar .logo-mark .logo-dot, .brand-panel .logo-mark .logo-dot { fill: var(--sb-on-gold); }
 
 /* ---------- gate (loading and the panel's own sign-in screen) ---------- */
 .gate { min-height: 100%; display: grid; place-items: center; padding: 24px; background: var(--bg-canvas); }
@@ -180,25 +217,27 @@ kbd {
   background: var(--bg-surface); border: 1px solid var(--border-muted); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-2);
 }
 .brand-panel {
-  position: relative; display: flex; flex-direction: column; gap: 28px; padding: 44px 44px 36px; color: #e9f6f7;
-  background: linear-gradient(160deg, #0b3b40 0%, #0a2d31 55%, #082226 100%);
+  position: relative; display: flex; flex-direction: column; gap: 28px; padding: 44px 44px 36px; color: var(--ink-fg);
+  background: var(--ink-1);
+  --accent-emphasis: var(--ink-gold-solid); --fg-on-emphasis: var(--sb-on-gold);
 }
 .brand-panel::after {
   /* a quiet page motif: stacked document sheets, drawn with borders only */
   content: ""; position: absolute; right: -60px; bottom: -40px; width: 300px; height: 360px; border-radius: 14px;
-  border: 1px solid rgba(132, 200, 208, .18); box-shadow: -18px -18px 0 -1px rgba(132, 200, 208, .06), -36px -36px 0 -2px rgba(132, 200, 208, .04);
+  border: 1px solid rgba(233, 214, 166, .16); box-shadow: -18px -18px 0 -1px rgba(233, 214, 166, .06), -36px -36px 0 -2px rgba(233, 214, 166, .035);
   transform: rotate(-8deg); pointer-events: none;
 }
 .brand-row { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--text-lg); letter-spacing: -.01em; }
-.brand-row small { display: block; font-weight: 400; font-size: var(--text-xs); color: #a8cfd4; letter-spacing: 0; }
-.brand-panel h2 { font-size: var(--text-4xl); line-height: 1.2; letter-spacing: -.02em; font-weight: 600; max-width: 18ch; }
-.brand-panel p { color: #b9d9dd; font-size: var(--text-lg); line-height: 1.55; max-width: 40ch; }
+.brand-row small { display: block; font-weight: 400; font-size: var(--text-xs); color: var(--ink-muted); letter-spacing: 0; }
+.brand-panel h2 { font-size: var(--text-4xl); line-height: 1.2; letter-spacing: -.02em; font-weight: 600; max-width: 18ch; color: #f6f7f8; }
+.brand-panel h2 em { font-style: normal; color: var(--ink-gold); }
+.brand-panel p { color: #c4c8ce; font-size: var(--text-lg); line-height: 1.55; max-width: 40ch; }
 .trust { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; position: relative; z-index: 1; }
 .trust li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; }
-.trust li .trust-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: rgba(132, 200, 208, .12); color: #84c8d0; }
-.trust li strong { display: block; font-weight: 600; color: #f1fafb; }
-.trust li span { color: #a8cfd4; font-size: var(--text-sm); }
-.brand-foot { margin-top: auto; font-size: var(--text-xs); color: #86b4ba; position: relative; z-index: 1; }
+.trust li .trust-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: rgba(233, 214, 166, .1); color: var(--ink-gold); }
+.trust li strong { display: block; font-weight: 600; color: #f6f7f8; }
+.trust li span { color: var(--ink-muted); font-size: var(--text-sm); }
+.brand-foot { margin-top: auto; font-size: var(--text-xs); color: var(--ink-muted); position: relative; z-index: 1; }
 .signin-form { padding: 44px; display: flex; flex-direction: column; justify-content: center; gap: 20px; max-width: 440px; width: 100%; justify-self: center; }
 .signin-form h3 { font-size: var(--text-3xl); letter-spacing: -.015em; font-weight: 600; }
 .signin-form p { color: var(--fg-muted); }
@@ -470,8 +509,8 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .thread { display: flex; flex-direction: column; gap: 28px; padding: 8px 0; outline: none; }
 .turn-user { align-self: flex-end; max-width: 78%; }
 .turn-user .bubble {
-  padding: 10px 14px; border-radius: var(--r-lg); border-bottom-right-radius: var(--r-sm); background: var(--accent-bg-subtle);
-  color: var(--fg-accent-strong); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5;
+  padding: 10px 14px; border-radius: var(--r-lg); border-bottom-right-radius: var(--r-sm); background: var(--bg-surface);
+  border: 1px solid var(--border-muted); color: var(--fg-default); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5;
 }
 .turn-bot { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; }
 .turn-bot > .logo { margin-top: 2px; }
