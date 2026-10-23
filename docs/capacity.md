@@ -54,6 +54,34 @@ Aynı makine ve yığın; tek fark Ollama'nın GPU'yu kullanması: `docker compo
 
 **Sınırlar:** her senaryo tek koşudur. Eval koşusunun başında aynı makinede bir Maven testi çalışıyordu; ilk soruların süresini etkilemiş olabilir. 6 istemcili koşuda 6 yüklemenin 2'si yükleme sınırına (503 10014) takıldı; o belgelere ait sorular "bulunamadı" döndü. Bu yüzden o satır yalnız doygunluğun nerede başladığını gösterir.
 
+## Soğuk açılış (2026-10-23)
+
+**Sorun:** Ollama, `OLLAMA_KEEP_ALIVE=30m` ile boşta 30 dk kalan modeli bellekten çıkarıyordu. Ardından gelen ilk soruda embedding modeli yeniden yükleniyordu; soru embedding'inin bütçesi ise 10 sn (ADR-0008). Canlıda kullanıcı 503 10030 ("Arama modeli şu an yanıt vermiyor") aldı; "Tekrar dene" ile ikinci deneme cevaplandı.
+
+**Ölçüm:** Modeller `ollama stop` ile boşaltıldı, sonra Ollama API'sine container içinden ilk ve ikinci istek gönderildi. Betik `/dev/tcp` kullanıyor, çünkü imajda curl yok.
+
+| Durum | İlk embedding | Sıcak embedding | İlk sohbet (1 token) | Sıcak sohbet |
+|---|---|---|---|---|
+| GPU, 30 dk boşta kaldıktan sonra | 9,4 sn | 14 ms | 60,5 sn | 10,1 sn |
+| CPU, container yeni açılmış (dosyalar sayfa önbelleğinde) | 2,1 sn | 190 ms | 13,6 sn | 1,1 sn |
+
+Yükleme süresi, model dosyasının o an işletim sisteminin sayfa önbelleğinde olup olmamasına göre 2 ile 60 sn arasında değişiyor. 10 sn'lik bütçe bu yüzden ilk soruda tutmayabilir. Bütçeyi büyütmek her soruyu etkilerdi; sorun yüklemenin kendisi.
+
+**Düzeltme:**
+- `deploy/ollama/serve.sh` Ollama'yı başlatıyor, ardından iki modeli bir kez yüklüyor: embedding'e kısa bir girdi, sohbete boş prompt, ikisi de `keep_alive: -1` ile.
+- `OLLAMA_KEEP_ALIVE=-1` olduğu için modeller bir daha bellekten çıkmıyor.
+- Sağlık kontrolü `ollama ps` ile iki modelin de bellekte olduğunu soruyor; yani "healthy", "sıcak" demek.
+- Isınma başarısız olursa üç kez deneniyor ama sunucu yine çalışıyor; modeller o zaman eskisi gibi ilk kullanımda yükleniyor.
+- Durdurma sinyali sunucuya iletiliyor; `docker compose stop ollama` 1 sn sürdü.
+
+**Sonuç (CPU, varsayılan kurulum):**
+- Ollama yeniden oluşturulunca ısınma log'u: embedding 2,0 sn, sohbet 11,7 sn. Container 16–18 sn'de healthy oldu.
+- `ollama ps` iki model için de `UNTIL Forever` gösteriyor.
+- Yeniden başlatmanın hemen ardından API üzerinden sorulan ilk üç soru 0,3–0,6 sn'de cevaplandı (yalnız embedding ve arama; hesapta belge yoktu).
+- 4 belgeyle sohbet senaryosu: 4/4 cevap, p50 25 sn (CPU).
+
+**Bellek:** İki model yüklüyken Ollama container'ı 6 GiB sınırına dayanıyor (anonim bellek 5,9 GiB; `memory.peak` 6 GiB). Önceki ayarda da iki model birlikte yüklüyken aynısı oluyordu; değişen, bunun kalıcı olması. Isınma ve sohbet yükü boyunca `oom_kill` 0 kaldı. Sınır, bellek bütçesindeki gibi 6 GiB'da bırakıldı. Taşma görülürse `OLLAMA_MEM_LIMIT` artırılır ([model-unavailable runbook](runbooks/model-unavailable.md)).
+
 ## Ölçümün sınırları
 
 - Yük kapalı döngüdür: her istemci cevabını bekleyip sonraki isteği gönderir. Aşırı yükte gecikmeler, açık bir geliş hızının göstereceğinden iyi görünür.
