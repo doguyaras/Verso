@@ -1,30 +1,37 @@
-// Shared pieces of the screens: toasts, a confirm dialog, the side drawer, status pills, file icons, empty states and
-// skeletons. Every text goes in as a text node (render.js el()); nothing is written as HTML.
+// Shared pieces of the screens: toasts, a confirm dialog, a popover menu, the side drawer, status pills, file badges,
+// empty states and skeletons. Every text goes in as a text node (render.js el()); nothing is written as HTML.
 import { icon } from './icons.js';
 import { el, FAILURES, formatLabel, STATUS } from './render.js';
 
+/**
+ * A toast. Successes and notes close by themselves after 4.5 s; errors stay until closed, so they are not missed
+ * (NN/g). Errors are announced as alerts, the rest politely.
+ */
 export function toast(message, tone = 'bad') {
   const glyph = tone === 'ok' ? 'checkCircle' : tone === 'info' ? 'info' : 'alert';
-  const node = el('div', { class: `toast ${tone}`, role: 'status' }, icon(glyph), el('p', {}, message),
+  const node = el('div', { class: `toast ${tone}`, role: tone === 'bad' ? 'alert' : 'status' }, icon(glyph), el('p', {}, message),
     el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Kapat', onclick: () => node.remove() }, icon('x', 'sm')));
   document.querySelector('#toasts').append(node);
-  setTimeout(() => node.remove(), tone === 'bad' ? 8000 : 4500);
+  if (tone !== 'bad') setTimeout(() => node.remove(), 4500);
 }
 
-/** A modal confirmation (native <dialog>); resolves true when the user confirms. */
+/**
+ * A modal confirmation (native <dialog>); resolves true when the user confirms. The buttons say what they do and the
+ * safe choice ("Vazgeç") has the focus, so Enter never deletes by accident (NN/g confirmation dialogs).
+ */
 export function confirmDialog({ title, message, confirm = 'Onayla', danger = true }) {
   return new Promise((resolve) => {
-    const dialog = el('dialog', { class: 'modal', 'aria-labelledby': 'modal-title' });
+    const dialog = el('dialog', { class: 'modal', 'aria-labelledby': 'modal-title', 'aria-describedby': 'modal-text' });
     const done = (value) => {
       dialog.close();
       dialog.remove();
       resolve(value);
     };
+    const cancel = el('button', { class: 'button secondary', type: 'button', onclick: () => done(false) }, 'Vazgeç');
     dialog.append(
-      el('div', { class: 'modal-body' }, el('span', { class: 'modal-icon' }, icon(danger ? 'trash' : 'info', 'lg')),
-        el('h3', { id: 'modal-title' }, title), el('p', {}, message)),
-      el('div', { class: 'modal-actions' },
-        el('button', { class: 'button secondary', type: 'button', onclick: () => done(false) }, 'Vazgeç'),
+      el('div', { class: 'modal-body' }, el('span', { class: `modal-icon ${danger ? '' : 'info'}` }, icon(danger ? 'trash' : 'info', 'lg')),
+        el('h2', { id: 'modal-title' }, title), el('p', { id: 'modal-text' }, message)),
+      el('div', { class: 'modal-actions' }, cancel,
         el('button', { class: `button ${danger ? 'danger' : ''}`, type: 'button', onclick: () => done(true) }, confirm)));
     dialog.addEventListener('cancel', (event) => {
       event.preventDefault();
@@ -32,23 +39,81 @@ export function confirmDialog({ title, message, confirm = 'Onayla', danger = tru
     });
     document.body.append(dialog);
     dialog.showModal();
+    cancel.focus();
   });
 }
 
-/** A panel sliding in from the right; returns a function that closes it. */
+/**
+ * A popover menu next to an anchor (fixed position, so it is never clipped by the sidebar). Items: { label, glyph,
+ * onSelect, checked } or 'separator' or { heading }. Escape, a click outside or a choice closes it; the anchor gets the
+ * focus back.
+ */
+export function openMenu(anchor, items, { placement = 'above' } = {}) {
+  document.querySelector('.menu')?.remove();
+  const menu = el('div', { class: 'menu', role: 'menu' });
+  const close = () => {
+    menu.remove();
+    removeEventListener('pointerdown', outside, true);
+    removeEventListener('keydown', keys, true);
+    anchor.setAttribute('aria-expanded', 'false');
+  };
+  const outside = (event) => {
+    if (!menu.contains(event.target) && !anchor.contains(event.target)) close();
+  };
+  const keys = (event) => {
+    const buttons = [...menu.querySelectorAll('button')];
+    const at = buttons.indexOf(document.activeElement);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      anchor.focus();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      buttons[(at + step + buttons.length) % buttons.length]?.focus();
+    }
+  };
+  for (const item of items) {
+    if (item === 'separator') menu.append(el('hr'));
+    else if (item.heading) menu.append(el('div', { class: 'menu-head' }, el('strong', {}, item.heading), el('span', {}, item.sub ?? '')));
+    else if (item.label === undefined) menu.append(el('div', { class: 'menu-label' }, item.group));
+    else {
+      menu.append(el('button', { type: 'button', role: item.checked === undefined ? 'menuitem' : 'menuitemradio',
+        'aria-checked': item.checked === undefined ? undefined : String(item.checked), onclick: () => {
+          close();
+          item.onSelect();
+        } }, icon(item.glyph, 'sm'), item.label));
+    }
+  }
+  document.body.append(menu);
+  const box = anchor.getBoundingClientRect();
+  const width = menu.offsetWidth;
+  menu.style.left = `${Math.max(8, Math.min(box.left, innerWidth - width - 8))}px`;
+  if (placement === 'above') menu.style.bottom = `${innerHeight - box.top + 6}px`;
+  else menu.style.top = `${box.bottom + 6}px`;
+  anchor.setAttribute('aria-expanded', 'true');
+  addEventListener('pointerdown', outside, true);
+  addEventListener('keydown', keys, true);
+  menu.querySelector('button')?.focus();
+  return close;
+}
+
+/** A panel sliding in from the right; returns a function that closes it. The opener gets the focus back. */
 export function openDrawer({ title, subtitle, body, actions = [] }) {
+  const opener = document.activeElement;
   const scrim = el('div', { class: 'drawer-scrim' });
   const close = () => {
     scrim.remove();
     drawer.remove();
     removeEventListener('keydown', onKey);
+    if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
   };
   const onKey = (event) => {
     if (event.key === 'Escape') close();
   };
-  const drawer = el('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+  const drawer = el('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'drawer-title' },
     el('div', { class: 'drawer-head' },
-      el('div', { class: 'grow' }, el('h3', {}, title), subtitle ? el('div', { class: 'sub' }, subtitle) : null),
+      el('div', { class: 'grow' }, el('h2', { id: 'drawer-title' }, title), subtitle ? el('div', { class: 'sub' }, subtitle) : null),
       el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Kapat', onclick: close }, icon('x'))),
     el('div', { class: 'drawer-body' }, body),
     actions.length ? el('div', { class: 'drawer-foot' }, actions) : null);
@@ -68,21 +133,24 @@ export function failureText(reason) {
   return FAILURES[reason] ?? 'Belge işlenemedi';
 }
 
-/** A file glyph with the type written on it. */
-export function fileIcon(format) {
+const FILE_TYPES = ['pdf', 'docx', 'txt', 'md'];
+
+/** A file type badge: the extension on a tile, coloured by type; the type name is its accessible title. */
+export function fileIcon(format, size = '') {
   const type = String(format ?? 'PDF').toLowerCase();
-  return el('span', { class: `file-icon ${['pdf', 'docx', 'txt', 'md'].includes(type) ? type : 'txt'}`, title: formatLabel(format) },
-    icon('file'), el('b', {}, ['pdf', 'docx', 'txt', 'md'].includes(type) ? type.toUpperCase() : 'DOC'));
+  const known = FILE_TYPES.includes(type) ? type : 'txt';
+  return el('span', { class: `file-icon ${known} ${size}`.trim(), title: formatLabel(format), 'aria-hidden': 'true' },
+    FILE_TYPES.includes(type) ? type.toUpperCase() : 'DOC');
 }
 
 export function emptyState(glyph, title, text, action) {
-  return el('div', { class: 'empty' }, el('span', { class: 'empty-art' }, icon(glyph)), el('strong', {}, title),
+  return el('div', { class: 'empty' }, el('span', { class: 'empty-art' }, icon(glyph, 'lg')), el('strong', {}, title),
     el('p', {}, text), action ?? null);
 }
 
 export function skeletonRows(count) {
   return el('div', { class: 'card-body grid' }, Array.from({ length: count }, (_, i) =>
-    el('div', { class: `skeleton line ${i % 3 === 2 ? 'short' : ''}` })));
+    el('div', { class: `skeleton line ${i % 3 === 2 ? 'short' : ''}`.trim() })));
 }
 
 /** "3 dakika önce" style time; the exact time goes into the title. */

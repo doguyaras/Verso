@@ -114,7 +114,8 @@ export const api = {
       xhr.send(form);
     });
   },
-  ask: (question) => request('/v1/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }) }),
+  /** signal: an AbortSignal; aborting stops waiting for the answer (the server finishes its own call). */
+  ask: (question, signal) => request('/v1/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }), signal }),
   info: () => request('/v1/info'),
 };

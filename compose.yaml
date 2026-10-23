@@ -172,6 +172,8 @@ services:
     volumes:
       - ./deploy/keycloak/start.sh:/opt/verso/start.sh:ro
       - ./deploy/keycloak/realm:/opt/keycloak/data/import:ro
+      # Verso login theme (ADR-0017): markup and CSS only, read-only.
+      - ./deploy/keycloak/themes/verso:/opt/keycloak/themes/verso:ro
     ports:
       - "127.0.0.1:${VERSO_KEYCLOAK_PORT:-8180}:8080"
     # default: the published port (device-flow login, CI token); backend: its database, and the application's key fetch.
