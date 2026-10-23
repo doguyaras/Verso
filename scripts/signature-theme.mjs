@@ -13,7 +13,7 @@ import { mark, SIGNATURE, timeline } from '../panel/js/signature-data.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE = join(ROOT, 'deploy/keycloak/themes/verso/login/template.ftl');
-const CSS = join(ROOT, 'deploy/keycloak/themes/verso/login/resources/css/verso-fildisi.css');
+const CSS = join(ROOT, 'deploy/keycloak/themes/verso/login/resources/css/verso-fildisi-2.css');
 const FAVICON = join(ROOT, 'panel/img/favicon.svg');
 const r = (v) => Math.round(v * 10) / 10;
 

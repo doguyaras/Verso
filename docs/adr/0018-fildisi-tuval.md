@@ -81,8 +81,10 @@
   - PatternFly'ın iki kenarlığından (kutu + alt çizgi) yalnız kutu kalır; odakta tek altın halka.
   - Otomatik doldurma, temanın alan rengine boyanır.
   - Şifre alanı ve göz düğmesi tek alan gibi görünür.
-  - Dil seçici sade bir haptır.
-- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
+  - Dil seçimi sayfanın sağ üstünde TR / EN anahtarıdır: düz bağlantılar. keycloak.v2'nin `onchange`'li `select`'i kalktı; şablonda satır içi script kalmadı.
+  - Kart 440 px'tir. İçinde 10 px içeriden altın ince çerçeve ve üstte küçük bir elmas var. Başlığın altında yalnız giriş sayfasında "Şirket hesabınızla devam edin." ve kısa bir altın çizgi bulunur. Alanlar 48 px'tir.
+  - Marka sütunu sol yarıda 520 px genişlikte ortalanır; geniş ekranda köşeye yapışmaz.
+- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` → `verso-fildisi-2.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
 
 **Ürün metni ve ekranlar.**
 - **Slogan:** "Kurumunuza uyum sağlayan yapay zekâ katmanı."
@@ -99,7 +101,7 @@
   - Aşamalar: Keşif → Pilot → Yaygınlaştırma → Entegrasyonlar. Kurulumu yapan ekip `config.js`'te `deployment.phase`'i ayarlar.
   - Kontrol listesi sistemden okunur: şirket girişi, model modu, sorulabilir belge sayısı, bu sekmede kaynaklı ilk cevap.
   - Pilot grubu yine config'ten gelir (`deployment.pilotGroup`). Varsayılanlar hiçbir şeyi tamamlanmış göstermez; test bunu kontrol eder.
-- **Kurum adı:** `deployment.client` verilirse menüde imzanın altında görünür (beyaz etiket için ilk adım).
+- **Kurum adı:** `deployment.client` verilirse menüde imzanın altında görünür (beyaz etiket için ilk adım). Verilmezse imzanın altında bir şey yazmaz; kullanıcı "yapay zeka katmanı diye bir şey yazmasına gerek yok" dedi.
 
 ## Sonuçlar
 

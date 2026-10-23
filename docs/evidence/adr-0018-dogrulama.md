@@ -52,6 +52,16 @@ Değişiklikler canlı yığına iki adımla alındı:
 - `node --test scripts/panel.test.mjs`: 34/34. Yeni "theme" testi: koyu sistemde varsayılan açık; koyu yalnız seçilince; Keycloak `darkMode=false`.
 - Canlı, tarayıcı koyu renk şemasında: panel `data-theme="light"` açıldı, Keycloak sayfasında `pf-v5-theme-dark` sınıfı yok, marka paneli fildişi gökyüzü.
 
+## Giriş sayfası düzeltmeleri (ek, aynı gün)
+
+- Keycloak'ta:
+  - Sağ üstte TR / EN anahtarı var; Türkçe seçili.
+  - Kartın altın iç çerçevesi, elması, alt başlığı ve altın çizgisi göründü.
+  - Marka sütunu 1440 px genişlikte ortada; başlık, metin ve maddeler aynı sol hizada.
+- Alt başlık, sayfa kimliği `login` olduğunda çıkar (`data-page-id="login-login"`).
+- Tarayıcı eski stil dosyasını önbellekten getirdi. Ad `verso-fildisi-2.css` oldu.
+- `node --test scripts/panel.test.mjs`: 34/34. Tema testi dil anahtarının bağlantı olduğunu ve şablonda `onchange=` olmadığını kontrol ediyor.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

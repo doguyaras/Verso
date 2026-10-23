@@ -230,7 +230,8 @@ function buildShell() {
 
   $('#brand').prepend(logo(30));
   $('#brand .brand-text').prepend(signature({ height: 30, ink: 'var(--signature-ink)' }));
-  if (CONFIG.deployment.client) $('#brand .brand-text small').textContent = CONFIG.deployment.client;
+  // Under the signature only the client's name, when the installation sets one (ADR-0018).
+  if (CONFIG.deployment.client) $('#brand .brand-text').append(el('small', {}, CONFIG.deployment.client));
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 

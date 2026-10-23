@@ -132,10 +132,18 @@
   border-radius: 0 10px 10px 0;
 }
 .verso .pf-v5-c-input-group .pf-v5-c-button.pf-m-control::after { border: 0 !important; }
-/* the language picker is a quiet pill, not a second field */
-.verso .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control { min-height: 34px; border-radius: 999px; --pf-v5-c-form-control--BackgroundColor: transparent; }
-.verso .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control::before { border-color: var(--verso-border) !important; }
-.verso .pf-v5-c-login__main-header-utilities select { font-size: 13px; color: var(--verso-muted); }
+/* the language switch: a TR / EN toggle at the top right of the page (links, no script) */
+.verso-lang {
+  position: absolute; top: 24px; right: 28px; z-index: 2; display: inline-flex; gap: 2px; padding: 3px;
+  border: 1px solid var(--verso-border); border-radius: 999px; background: var(--verso-raised); box-shadow: 0 1px 2px rgba(60, 45, 20, .06);
+}
+.verso-lang a {
+  min-width: 40px; padding: 6px 12px; border-radius: 999px; text-align: center; font: 600 12px/1 var(--verso-font); letter-spacing: .08em;
+  color: var(--verso-muted); text-decoration: none; transition: background .15s ease, color .15s ease;
+}
+.verso-lang a:hover { color: var(--verso-fg); background: var(--verso-surface); }
+.verso-lang a[aria-current="true"] { background: var(--verso-button); color: var(--verso-on-button); }
+.verso-lang a:focus-visible { outline: 2px solid var(--verso-focus); outline-offset: 2px; }
 
 .login-pf body.verso, body.verso { background: var(--verso-surface); font-family: var(--verso-font); min-height: 100vh; }
 .verso-split { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); min-height: 100vh; }
@@ -145,7 +153,7 @@
 @property --verso-sy { syntax: '<percentage>'; inherits: false; initial-value: 12%; }
 .verso-brand {
   position: relative; isolation: isolate; overflow: hidden; contain: paint; display: flex; flex-direction: column; gap: 20px;
-  padding: 52px 56px 36px; color: #1c1a17;
+  justify-content: center; padding: 64px max(56px, calc((100% - 520px) / 2)) 88px; color: #1c1a17;
   background:
     radial-gradient(120% 80% at 8% -10%, #fffaf0 0%, rgba(255, 247, 230, 0) 55%),
     linear-gradient(180deg, #f6eedd 0%, #ead9b6 48%, #d8c19a 78%, #b89b6c 100%);
@@ -202,7 +210,7 @@
 }
 .verso-trust strong { color: #1c1a17; font-weight: 600; }
 .verso-trust span { color: #4a453d; font-size: 14px; }
-.verso-brand-foot { margin-top: auto; font-size: 12px; color: #5a4d39; letter-spacing: .02em; }
+.verso-brand > .verso-brand-foot { position: absolute; left: max(56px, calc((100% - 520px) / 2)); bottom: 32px; font-size: 12px; color: #5a4d39; letter-spacing: .02em; }
 
 /* the dark canvas: ink, a slow gold-leaf glint and a cold teal light */
 :root.pf-v5-theme-dark .verso-brand {
@@ -239,27 +247,32 @@
 .verso-brand-foot { animation-delay: 1.25s; }
 .verso .pf-v5-c-login__main { animation-delay: .15s; }
 
-/* ---------- the paper side: the form card with gold corner ornaments ---------- */
-.verso .pf-v5-c-login { display: grid; place-items: center; min-height: 100vh; padding: 32px 24px; background: var(--verso-surface); }
-.verso .pf-v5-c-login__container { grid-template-columns: min(420px, 100%); grid-template-areas: "main"; width: 100%; justify-content: center; }
+/* ---------- the paper side: the form card ---------- */
+.verso .pf-v5-c-login {
+  position: relative; display: grid; place-items: center; min-height: 100vh; padding: 88px 24px 48px;
+  background: radial-gradient(70% 55% at 0% 45%, rgba(201, 164, 92, .10), transparent 70%), var(--verso-surface);
+}
+.verso .pf-v5-c-login__container { grid-template-columns: min(440px, 100%); grid-template-areas: "main"; width: 100%; justify-content: center; }
 .verso #kc-header { display: none; }
 .verso .pf-v5-c-login__main {
-  position: relative; background-color: var(--verso-raised); border: 1px solid var(--verso-border); border-radius: 16px; box-shadow: var(--verso-shadow);
-  /* four L-shaped gold corners, 22 px long, 8 px inside the edge */
-  background-image:
-    linear-gradient(var(--verso-gold), var(--verso-gold)), linear-gradient(var(--verso-gold), var(--verso-gold)),
-    linear-gradient(var(--verso-gold), var(--verso-gold)), linear-gradient(var(--verso-gold), var(--verso-gold)),
-    linear-gradient(var(--verso-gold), var(--verso-gold)), linear-gradient(var(--verso-gold), var(--verso-gold)),
-    linear-gradient(var(--verso-gold), var(--verso-gold)), linear-gradient(var(--verso-gold), var(--verso-gold));
-  background-repeat: no-repeat;
-  background-size: 22px 1px, 1px 22px, 22px 1px, 1px 22px, 22px 1px, 1px 22px, 22px 1px, 1px 22px;
-  background-position: 8px 8px, 8px 8px, calc(100% - 8px) 8px, calc(100% - 8px) 8px,
-    8px calc(100% - 8px), 8px calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) calc(100% - 8px);
+  position: relative; background: var(--verso-raised); border: 1px solid var(--verso-border); border-radius: 20px; box-shadow: var(--verso-shadow);
 }
-.verso .pf-v5-c-login__main-header { border-top: 0; padding-top: 34px; }
-.verso .pf-v5-c-login__main-header .pf-v5-c-title { font: 500 30px/1.15 var(--verso-display); letter-spacing: -.01em; color: var(--verso-fg); }
+.verso .pf-v5-c-login__main::before {
+  content: ""; position: absolute; inset: 10px; border: 1px solid rgba(201, 164, 92, .45); border-radius: 12px; pointer-events: none;
+}
+.verso .pf-v5-c-login__main::after {
+  content: ""; position: absolute; top: 6px; left: 50%; width: 9px; height: 9px; transform: translateX(-50%) rotate(45deg);
+  background: var(--verso-raised); border: 1px solid var(--verso-gold); pointer-events: none;
+}
+.verso .pf-v5-c-login__main-header { border-top: 0; padding: 48px 44px 4px; grid-template-columns: 100%; row-gap: 8px; }
+.verso .pf-v5-c-login__main-header .pf-v5-c-title { font: 500 32px/1.15 var(--verso-display); letter-spacing: -.01em; color: var(--verso-fg); }
+.verso .verso-subtitle { margin: 0; color: var(--verso-muted); font-size: 14.5px; }
+.verso .verso-subtitle::after { content: ""; display: block; width: 44px; height: 1px; margin-top: 18px; background: var(--verso-gold); }
+.verso .pf-v5-c-login__main-body { padding: 18px 44px 44px; }
+.verso .pf-v5-c-form { gap: 18px; }
+.verso .pf-v5-c-form-control { min-height: 48px; }
 .verso .pf-v5-c-form__label-text { font-weight: 600; color: var(--verso-fg); }
-.verso .pf-v5-c-button.pf-m-primary { min-height: 46px; border-radius: 10px; font-weight: 600; position: relative; overflow: hidden; transition: transform .1s ease; }
+.verso .pf-v5-c-button.pf-m-primary { min-height: 48px; margin-top: 6px; border-radius: 10px; font-weight: 600; position: relative; overflow: hidden; transition: transform .1s ease; }
 .verso .pf-v5-c-button.pf-m-primary:active { transform: scale(.98); }
 /* one sheen of light across the button, once the form has arrived */
 .verso .pf-v5-c-button.pf-m-primary::after {
@@ -277,7 +290,10 @@
   .verso-signature { height: 52px; }
   .verso-brand h2 { margin-top: 4px; font-size: 26px; max-width: none; }
   .verso-brand p, .verso-trust, .verso-brand-foot { display: none; }
-  .verso .pf-v5-c-login { min-height: auto; padding-top: 24px; }
+  .verso .pf-v5-c-login { min-height: auto; padding: 72px 16px 32px; }
+  .verso .pf-v5-c-login__main-header { padding: 40px 28px 4px; }
+  .verso .pf-v5-c-login__main-body { padding: 16px 28px 32px; }
+  .verso-lang { top: 16px; right: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -288,6 +288,8 @@ test('login theme: keycloak.v2 child, CSS and markup only, Turkish texts for eve
   const added = template.slice(template.indexOf('<div class="verso-split">'), template.indexOf('<div class="${properties.kcLogin!}">'));
   assert.ok(added.length > 0);
   assert.doesNotMatch(added, /<script|on[a-z]+=|javascript:/i, 'the brand panel is static markup');
+  assert.match(template, /<nav class="verso-lang"[\s\S]*?<a href="\$\{l\.url\}"/, 'the language switch is a pair of links (TR / EN)');
+  assert.doesNotMatch(template, /onchange=/, 'no inline script for the language');
   const used = new Set([...added.matchAll(/msg\("(verso\w+)"\)/g)].map((m) => m[1]));
   assert.ok(used.size >= 8, 'the brand panel texts come from the message files');
   for (const lang of ['tr', 'en']) {
@@ -324,7 +326,7 @@ test('signature: the Keycloak markup, its CSS animation and the favicon are gene
 test('motion: every animation stops under "reduce motion" and styles are set through the CSSOM only (CSP)', () => {
   const css = readFileSync('panel/css/panel.css', 'utf8');
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation-duration: \.01ms !important;/);
-  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-fildisi.css', 'utf8');
+  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-fildisi-2.css', 'utf8');
   assert.ok((theme.match(/prefers-reduced-motion: reduce/g) ?? []).length >= 2, 'the login theme and its signature stand still too');
   // WCAG 2.2.2: the sign-in ambience starts by itself, so it ends by itself (a few rounds, then the painting stands still).
   assert.doesNotMatch(theme, /infinite/, 'no endless motion on the login page');
@@ -399,7 +401,7 @@ test('fonts: Fraunces is served from the panel itself with its licence, for Turk
   for (const file of [...faces, 'OFL.txt']) {
     assert.ok(readFileSync(`${theme}/fonts/${file}`).equals(readFileSync(`panel/fonts/${file}`)), `the login theme serves the same ${file}`);
   }
-  assert.match(readFileSync(`${theme}/css/verso-fildisi.css`, 'utf8'), /url\(\.\.\/fonts\/fraunces-latin-ext-standard-normal\.woff2\)/);
+  assert.match(readFileSync(`${theme}/css/verso-fildisi-2.css`, 'utf8'), /url\(\.\.\/fonts\/fraunces-latin-ext-standard-normal\.woff2\)/);
 });
 
 test('theme: the ivory light theme is the default even on a dark system; dark only when chosen', () => {
