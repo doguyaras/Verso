@@ -5,7 +5,7 @@
 **Kontrol:**
 
 1. `docker compose ps ollama`. Local modda chat ve embedding Ollama'dır.
-2. `docker compose logs --tail 50 ollama`: bellek (`OLLAMA_MEM_LIMIT`), model yükleme hataları.
+2. `docker compose logs --tail 50 ollama`: bellek (`OLLAMA_MEM_LIMIT`), model yükleme hataları, ısınma satırları (`ollama-warm:`). `docker compose exec ollama ollama ps`: iki model de `Forever` görünmeli.
 3. Uygulama log'u:
    - `{service="verso-app"} |= "Embedding model"`: `unavailable` geçici bir kesinti demektir, `misconfigured` yanlış model demektir.
    - `|= "code=MODEL_UNAVAILABLE"` (soru tarafı, hata işleyicisinin satırı).
@@ -15,6 +15,7 @@
 
 | Neden | Çözüm |
 |---|---|
+| Ollama açıldıktan sonra ilk sorular 10030 alıyor | Isınma henüz bitmedi ya da başarısız oldu: `docker compose logs ollama` içindeki `ollama-warm:` satırları. Sağlık kontrolü modeller bellekte değilse `unhealthy` der. Isınma başarısızsa modeller ilk kullanımda yüklenir; `docker compose restart ollama` ısınmayı yeniden dener |
 | Ollama yeniden başlıyor ya da bellek yetmiyor | `OLLAMA_MEM_LIMIT`'i artır ya da daha küçük chat modeli kullan (`VERSO_CHAT_MODEL` + digest) |
 | Model volume'de yok | `docker compose up ollama-pull` (internet gerekir); log'da `does not match the pinned digest` varsa digest'i kontrol et |
 | Yanlış model adı (`misconfigured`) | `OLLAMA_EMBEDDING_MODEL` ve `bge-m3:567m` eşleşmeli; worker 5 dk'da bir yeniden dener |

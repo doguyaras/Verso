@@ -171,8 +171,12 @@ class ComposeConfigTest {
         Map<String, Object> ollama = service("ollama");
         assertThat(ollama.get("networks")).isEqualTo(List.of("models"));
         assertThat(ollama).doesNotContainKey("ports");
-        assertThat((List<String>) ollama.get("volumes")).singleElement().asString().endsWith(":ro");
+        assertThat((List<String>) ollama.get("volumes")).containsExactly("ollama-models:/root/.ollama:ro",
+                "./deploy/ollama/serve.sh:/opt/verso/serve.sh:ro");
         assertThat(environment("ollama")).containsEntry("OLLAMA_NO_CLOUD", "true");
+        // Warm models (docs/capacity.md "Soğuk açılış"): loaded at start, never unloaded; healthy only when in memory.
+        assertThat((List<String>) ollama.get("entrypoint")).containsExactly("bash", "/opt/verso/serve.sh");
+        assertThat(environment("ollama")).containsEntry("OLLAMA_KEEP_ALIVE", "-1");
         // Every pulled model is pinned by digest; the healthcheck asks for each; the application uses exactly them.
         List<String> pulled = List.of(String.valueOf(environment("ollama-pull").get("OLLAMA_PULL")).trim().split("\\s+"));
         assertThat(pulled).hasSize(2).allSatisfy(entry -> assertThat(entry)
@@ -180,7 +184,9 @@ class ComposeConfigTest {
         String embedding = pulled.get(0).substring(0, pulled.get(0).indexOf('@'));
         String chat = pulled.get(1).substring(0, pulled.get(1).lastIndexOf("}@") + 1);
         String healthcheck = String.valueOf(((Map<String, Object>) ollama.get("healthcheck")).get("test"));
-        assertThat(healthcheck).contains(embedding).contains(chat);
+        assertThat(healthcheck).contains("ollama ps").contains(embedding).contains(chat);
+        assertThat(environment("ollama")).containsEntry("OLLAMA_WARM_EMBEDDING", embedding)
+                .containsEntry("OLLAMA_WARM_CHAT", chat);
         assertThat(environment("verso-app")).containsEntry("OLLAMA_EMBEDDING_MODEL", embedding)
                 .containsEntry("OLLAMA_CHAT_MODEL", chat);
 

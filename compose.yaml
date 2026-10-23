@@ -220,26 +220,33 @@ services:
     cpus: ${OLLAMA_CPUS:-2}
     pids_limit: 512
     networks: [models]
+    # Warms both models after every start (deploy/ollama/serve.sh): the first question must not pay the model load.
+    entrypoint: ["bash", "/opt/verso/serve.sh"]
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       # No ollama.com cloud models or remotes (llm-rules 1.1, 8.2).
       OLLAMA_NO_CLOUD: "true"
-      # Keep both models loaded between questions and ingestion batches.
-      OLLAMA_KEEP_ALIVE: 30m
+      # Both models stay loaded for good: after 30 min idle the first question paid a 2-60 s reload and the 10 s
+      # question-embedding budget failed (docs/capacity.md). The memory limit already counts both models loaded.
+      OLLAMA_KEEP_ALIVE: "-1"
       OLLAMA_MAX_LOADED_MODELS: "2"
+      OLLAMA_WARM_EMBEDDING: bge-m3:567m
+      OLLAMA_WARM_CHAT: ${VERSO_CHAT_MODEL:-gemma4:e2b}
     volumes:
       - ollama-models:/root/.ollama:ro
+      - ./deploy/ollama/serve.sh:/opt/verso/serve.sh:ro
     tmpfs:
       - /tmp:size=256m
     depends_on:
       ollama-pull:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "ollama show bge-m3:567m >/dev/null && ollama show ${VERSO_CHAT_MODEL:-gemma4:e2b} >/dev/null"]
+      # Healthy means warm: both models are in memory, not only on disk.
+      test: ["CMD-SHELL", "ollama ps | grep -q '^bge-m3:567m ' && ollama ps | grep -q '^${VERSO_CHAT_MODEL:-gemma4:e2b} '"]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 20s
+      start_period: 120s
 
   # Encrypted logical backups on a schedule (ADR-0009): pg_dump as verso_backup (pg_read_all_data), gpg AES256,
   # SHA-256 sum, row-count manifest and privilege fingerprint taken in the same snapshot. RPO = BACKUP_INTERVAL_SECONDS.

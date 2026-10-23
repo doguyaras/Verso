@@ -47,6 +47,7 @@ jobs:
           node --test scripts/repo-hygiene.test.js
           node --test scripts/keycloak-start.test.js
           node --test scripts/ollama-pull.test.js
+          node --test scripts/ollama-serve.test.js
           node --test scripts/panel.test.mjs
       - name: migration degismezligi (PR base'ine karsi)
         if: github.event_name == 'pull_request'
@@ -64,7 +65,7 @@ jobs:
           set -euo pipefail
           export CLAUDE_PROJECT_DIR="$PWD"
           export FLYWAY_BASE_REF=HEAD   # kuru calistirma: HEAD agacindaki V dosyasi "base'te var" sayilsin (repo'nun gercek base branch'inden bagimsiz)
-          for h in .claude/hooks/*.sh .githooks/* scripts/*.sh deploy/postgres/initdb/*.sh deploy/backup/*.sh; do bash -n "$h"; done
+          for h in .claude/hooks/*.sh .githooks/* scripts/*.sh deploy/postgres/initdb/*.sh deploy/backup/*.sh deploy/ollama/*.sh; do bash -n "$h"; done
           # compose dosyasi gecerli mi (secret dosyalari bu kosu icin rastgele uretilir; ADR-0009)
           bash scripts/dev-secrets.sh
           docker compose config --quiet
