@@ -6,7 +6,7 @@
 export const conversation = [];
 
 const KEYS = Object.freeze({
-  theme: 'verso.panel.theme', // 'light' | 'dark' | absent = follow the system
+  theme: 'verso.panel.theme', // 'light' | 'dark' | 'system'; absent = light, the product's look (ADR-0018)
   rail: 'verso.panel.rail', // '1' = the sidebar is collapsed to icons
   onboarding: 'verso.panel.onboarding', // JSON { asked, sawMode, dismissed }
 });
@@ -28,9 +28,19 @@ function write(key, value) {
   }
 }
 
+/**
+ * Whether the dark theme applies. The ivory light theme is the default whatever the system says; the dark theme comes
+ * only when the user picks it, or picks "follow the system" on a dark system.
+ */
+export function isDark(chosen, systemDark) {
+  if (chosen === 'dark') return true;
+  if (chosen === 'system') return Boolean(systemDark);
+  return false;
+}
+
 export const prefs = {
   theme: () => read(KEYS.theme),
-  setTheme: (value) => write(KEYS.theme, value === 'light' || value === 'dark' ? value : null),
+  setTheme: (value) => write(KEYS.theme, ['light', 'dark', 'system'].includes(value) ? value : null),
   rail: () => read(KEYS.rail) === '1',
   setRail: (on) => write(KEYS.rail, on ? '1' : null),
   onboarding() {

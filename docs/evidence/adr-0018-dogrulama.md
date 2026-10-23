@@ -46,6 +46,12 @@ Değişiklikler canlı yığına iki adımla alındı:
 
 **Mobil (375 px):** giriş ekranında yatay kaydırma yok (`scrollWidth` 375).
 
+## Varsayılan tema (ek, aynı gün)
+
+- Kullanıcı koyu sistemde paneli koyu gördü. Varsayılan artık açık tema; Keycloak `darkMode=false`.
+- `node --test scripts/panel.test.mjs`: 34/34. Yeni "theme" testi: koyu sistemde varsayılan açık; koyu yalnız seçilince; Keycloak `darkMode=false`.
+- Canlı, tarayıcı koyu renk şemasında: panel `data-theme="light"` açıldı, Keycloak sayfasında `pf-v5-theme-dark` sınıfı yok, marka paneli fildişi gökyüzü.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

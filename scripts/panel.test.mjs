@@ -14,6 +14,7 @@ import { answerParts, answerWithSources, FAILURES, fill, foldTr, formatLabel, fo
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 import { SIGN_MS, SIGNATURE, timeline } from '../panel/js/signature-data.js';
 import { CONNECTORS, PHASES, setupSteps } from '../panel/js/screens/setup.js';
+import { isDark } from '../panel/js/store.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
@@ -399,4 +400,13 @@ test('fonts: Fraunces is served from the panel itself with its licence, for Turk
     assert.ok(readFileSync(`${theme}/fonts/${file}`).equals(readFileSync(`panel/fonts/${file}`)), `the login theme serves the same ${file}`);
   }
   assert.match(readFileSync(`${theme}/css/verso-fildisi.css`, 'utf8'), /url\(\.\.\/fonts\/fraunces-latin-ext-standard-normal\.woff2\)/);
+});
+
+test('theme: the ivory light theme is the default even on a dark system; dark only when chosen', () => {
+  assert.equal(isDark(null, true), false);
+  assert.equal(isDark('light', true), false);
+  assert.equal(isDark('dark', false), true);
+  assert.equal(isDark('system', true), true);
+  assert.equal(isDark('system', false), false);
+  assert.match(readFileSync('deploy/keycloak/themes/verso/login/theme.properties', 'utf8'), /^darkMode=false$/m, 'the login page is light too');
 });

@@ -8,7 +8,7 @@ import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
 import { el, plainName } from './render.js';
-import { prefs } from './store.js';
+import { isDark, prefs } from './store.js';
 import { cardSpotlight, navIndicator, transition } from './motion.js';
 import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
@@ -32,10 +32,10 @@ const counts = {};
 let moveIndicator = () => {};
 let routed = false; // the first screen appears without a transition
 
-// ---------- theme: follow the system unless the user chose (NN/g dark mode) ----------
+// ---------- theme: the ivory light theme unless the user picks dark or "follow the system" (ADR-0018) ----------
 function applyTheme() {
   const chosen = prefs.theme();
-  const dark = chosen ? chosen === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = isDark(chosen, matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 }
 
@@ -48,9 +48,9 @@ function themeItems() {
   const chosen = prefs.theme();
   return [
     { group: 'Tema' },
-    { label: 'Sistemi izle', glyph: 'monitor', checked: !chosen, onSelect: () => setTheme(null) },
-    { label: 'Açık', glyph: 'sun', checked: chosen === 'light', onSelect: () => setTheme('light') },
-    { label: 'Koyu', glyph: 'moon', checked: chosen === 'dark', onSelect: () => setTheme('dark') },
+    { label: 'Açık (Fildişi)', glyph: 'sun', checked: chosen !== 'dark' && chosen !== 'system', onSelect: () => setTheme('light') },
+    { label: 'Koyu (Obscur)', glyph: 'moon', checked: chosen === 'dark', onSelect: () => setTheme('dark') },
+    { label: 'Sistemi izle', glyph: 'monitor', checked: chosen === 'system', onSelect: () => setTheme('system') },
   ];
 }
 
@@ -186,7 +186,7 @@ function paletteSources() {
     { label: 'Belge yükle', glyph: 'upload', keywords: 'yükle dosya pdf word', run: () => navigate('documents', { upload: true }) },
     { label: 'Açık temaya geç', glyph: 'sun', keywords: 'tema görünüm', run: () => setTheme('light') },
     { label: 'Koyu temaya geç', glyph: 'moon', keywords: 'tema görünüm karanlık', run: () => setTheme('dark') },
-    { label: 'Temada sistemi izle', glyph: 'monitor', keywords: 'tema otomatik', run: () => setTheme(null) },
+    { label: 'Temada sistemi izle', glyph: 'monitor', keywords: 'tema otomatik', run: () => setTheme('system') },
     { label: 'Çıkış yap', glyph: 'logout', keywords: 'oturum kapat', run: signOut },
   ];
   const documents = () => guarded(() => api.listAllDocuments()).then((docs) => (docs ?? []).map((doc) => ({

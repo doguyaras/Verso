@@ -49,6 +49,7 @@
   - sayfa `#131216`, kart `#1d1c21`, menü `#0d0c10`;
   - metin `#efe7d6`;
   - altın `#d9bc7c`; burada metin olarak da kullanılır.
+- **Varsayılan tema açık (Fildişi), sistem koyu olsa bile.** Kullanıcı koyu sistemde ürünü koyu görünce "hala koyu tema gözüküyor" dedi. Koyu tema yalnız hesap menüsünden "Koyu (Obscur)" ya da "Sistemi izle" seçilince gelir (`isDark`, `panel/js/store.js`). Keycloak teması `darkMode=false` ile her zaman açıktır; stil dosyasındaki koyu kurallar ileride açmak için durur. ADR-0017'deki "sistemi izle" varsayılanının yerini alır.
 - **Menü:** kullanıcı isteğiyle sayfanın renklerini kullanır, ayrı koyu çerçeve kalktı. Etkin sayfa kâğıt zemin ve altın çizgiyle işaretlenir.
 - **Kontrast (WCAG 2.2 AA):** testte 22 çift (2 tema × 11) kontrol edilir. Seçilmiş değerler:
 

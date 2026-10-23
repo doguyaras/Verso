@@ -98,7 +98,7 @@ Ekranlar:
 - **Kurulum durumu:** kurulumu yapan ekibin aşamaları (Keşif, Pilot, Yaygınlaştırma, Entegrasyonlar) ve sistemden okunan kontrol listesi. Aşama, pilot grubu ve kurum adı `panel/js/config.js`'teki `deployment` alanından gelir.
 - **Sistem ve güvenlik:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
 
-Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` bilgi kaynakları, `g k` kurulum). Açık ("Fildişi tuval") ve koyu ("Obscur") tema sistemi izler; hesap menüsünden değiştirilebilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md).
+Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` bilgi kaynakları, `g k` kurulum). Varsayılan tema açık ("Fildişi tuval"); koyu tema ("Obscur") ya da "sistemi izle" hesap menüsünden seçilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md).
 
 Panelin özellikleri:
 
