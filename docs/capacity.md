@@ -48,7 +48,7 @@ Aynı makine ve yığın; tek fark Ollama'nın GPU'yu kullanması: `docker compo
 
 **Bulgular:**
 
-1. **Tek cevabın medyan süresi 15–20 kat kısaldı; ADR-0008'in local-GPU bütçesi (15 sn) p95'te rahat tutuyor.** İstisna soğuk açılıştır: Ollama açıldıktan ya da 30 dk boş kaldıktan sonra (`OLLAMA_KEEP_ALIVE`) ilk soru modeli diskten yükler, bu ölçümde 65 sn.
+1. **Tek cevabın medyan süresi 15–20 kat kısaldı; ADR-0008'in local-GPU bütçesi (15 sn) p95'te rahat tutuyor.** İstisna soğuk açılıştı: Ollama açıldıktan ya da 30 dk boş kaldıktan sonra ilk soru modeli diskten yüklüyordu, bu ölçümde 65 sn. Modeller artık açılışta yükleniyor ve bellekte kalıyor (aşağıdaki "Soğuk açılış" bölümü).
 2. **Kalite değişmedi.** GPU yalnız hızı değiştirir; aynı model aynı cevapları verdi (33 sorunun metrikleri birebir).
 3. **GPU'da darboğaz model değil, uygulamanın bulkhead'leri.** 3 istemcide her soru cevaplandı, çünkü bir cevap 1–5 sn sürüyor ve sıradaki soru 5 sn'lik chat beklemesine sığıyor. 6 istemcide aynı anda bir chat (`chat-concurrency` 1) ve dört soru embedding'i sınırı reddetmeye başladı. Bu ayarlar CPU için ölçülmüştü (bulgu 2); GPU'da `chat-concurrency` ve Ollama'nın `OLLAMA_NUM_PARALLEL` değerini birlikte artırmak sonraki adım. Ölçülmeden değiştirilmedi.
 

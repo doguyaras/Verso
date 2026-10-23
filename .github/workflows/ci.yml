@@ -11,7 +11,9 @@ on:
     # edited: a changed base branch re-runs the migration immutability check against the new base (reference 18.3)
     types: [opened, synchronize, reopened, edited]
   push:
-    branches: [develop, release, main]
+    # feature/fix branches too: a change can then reach develop without a pull request; the protected branch still
+    # requires this workflow's "backend" check on the pushed commit, and a push to a branch is where it comes from.
+    branches: [develop, release, main, 'feature/**', 'fix/**']
 permissions:
   contents: read
 concurrency:
@@ -49,10 +51,11 @@ jobs:
           node --test scripts/ollama-pull.test.js
           node --test scripts/ollama-serve.test.js
           node --test scripts/panel.test.mjs
-      - name: migration degismezligi (PR base'ine karsi)
-        if: github.event_name == 'pull_request'
+      - name: migration degismezligi (PR base'ine ya da develop'a karsi)
+        # A pushed feature/fix branch is checked against develop, where it goes without a pull request.
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/fix/')
         # base_ref goes through env, never straight into the script text (expression injection)
-        env: { BASE_REF: "${{ github.base_ref }}" }
+        env: { BASE_REF: "${{ github.base_ref || 'develop' }}" }
         run: node scripts/flyway-immutability.js check --base "origin/$BASE_REF"
       - name: config lint (secret fallback / literal secret yok)
         # dosya listesi bossa script exit 3 verir (dogrulanamadi); liste pre-commit ile ortak dosyadan gelir (ucuncu tur B22)
