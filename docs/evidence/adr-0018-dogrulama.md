@@ -78,6 +78,22 @@ Değişiklikler canlı yığına iki adımla alındı:
 - Canlı: 1440 × 900 açık temada panel ve Keycloak önizlemeyle aynı tonlarda. Keycloak stil dosyası `verso-kitap-2.css`.
 - `node --test scripts/panel.test.mjs`: 34/34. Tema testi kitabın bütün metin anahtarlarını (en az 4) iki dilde arıyor.
 
+## Tanıtım (1C), giriş (2C), iç panel (3C) (ek, aynı gün)
+
+- `node --test scripts/panel.test.mjs`: 35/35. Yeni ya da genişletilen testler:
+  - kurulum örneği iki dilde, öneriler config'ten;
+  - Keycloak dili `prefs.lang()`;
+  - tanıtımda sonsuz animasyon yok;
+  - FreeMarker `if` / `list` / `macro` dengesi;
+  - tema checkbox'ı.
+- **Canlı, 1440 × 900 açık tema:**
+  - **Tanıtım:** imza, "Örnek · e-fatura entegrasyonu", kitapta soru ve kaynaklı cevap, "Giriş yap". EN'e geçince metinler İngilizce, Keycloak `ui_locales=en`. Tema anahtarı koyuya çevirdi.
+  - **Keycloak:**
+    - Sol yarıda levha ve imza, sağda form; alanlar dolgulu, etiket içeride.
+    - Tema anahtarı (checkbox) sayfayı koyuya çevirdi: gövde `#18171b`, başlık `#efe7d6`.
+    - Bir ara şablon hatası (fazladan `</#list>`) giriş sayfasını 500'e düşürdü. Düzeltildi; denge testi eklendi.
+  - **İç panel:** ikon şeridi, ortada imza ve soru kutusu, üç öneri, üç kart. Menü genişletilince imza ortada. Soru ekranında öneriler config'ten geliyor; koyu tema denendi.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

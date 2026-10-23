@@ -13,13 +13,15 @@ import { mark, SIGNATURE, timeline } from '../panel/js/signature-data.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE = join(ROOT, 'deploy/keycloak/themes/verso/login/template.ftl');
-const CSS = join(ROOT, 'deploy/keycloak/themes/verso/login/resources/css/verso-kitap-2.css');
+const CSS = join(ROOT, 'deploy/keycloak/themes/verso/login/resources/css/verso-giris.css');
 const FAVICON = join(ROOT, 'panel/img/favicon.svg');
 const r = (v) => Math.round(v * 10) / 10;
 
 export function themeMarkup() {
   const [x, y, w, h] = SIGNATURE.box;
-  const strokes = timeline().map((s, i) => `<path class="vs-s${i}" d="${SIGNATURE.pen[i]}" stroke-dasharray="${r(s.length)} ${r(s.length)}" stroke-dashoffset="${r(s.length)}"/>`);
+  // The gap after each dash is a cap wider than the stroke, so the round line cap shows no dot before the stroke starts.
+  const cap = Math.ceil(SIGNATURE.thickness * 1.25) + 4;
+  const strokes = timeline().map((s, i) => `<path class="vs-s${i}" d="${SIGNATURE.pen[i]}" stroke-dasharray="${r(s.length)} ${r(s.length + cap)}" stroke-dashoffset="${r(s.length + cap)}"/>`);
   return [
     `<svg class="verso-signature" viewBox="${x} ${y} ${w} ${h}" role="img" aria-label="Verso" focusable="false">`,
     `  <defs><mask id="verso-signature-mask" maskUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#fff" stroke-width="${r(SIGNATURE.thickness * 1.25)}" stroke-linecap="round" stroke-linejoin="round">`,

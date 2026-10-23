@@ -86,8 +86,8 @@ Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikis
 
 Ekranlar:
 
-- **Giriş:** kurumun kimlik sağlayıcısına yönlendirir. Paketteki demo Keycloak, Verso'nun kendi giriş temasıyla açılır: masada açık bir kitap; sol sayfada imzası atılan boyalı levha, sağ sayfada giriş. Panelin kendi giriş ekranı da aynı.
-- **Genel bakış:** ilk kullanım listesi (belge yükle, ilk soruyu sor, gizlilik modunu incele), tıklanabilir sayılar (aranabilir, işleniyor, hata), son yüklenenler, bu oturumdaki sorular, kurulumun aşaması, hızlı soru, asistanın modu ve modelleri.
+- **Tanıtım ve giriş:** panel önce bir tanıtım gösterir: büyük imza ve açık kitapta kurulumun örnek sorusu ile kaynaklı cevabı (`panel/js/config.js` → `deployment.showcase`). "Giriş yap" kurumun kimlik sağlayıcısına götürür; paketteki demo Keycloak ikiye bölünmüş bir ekranla açılır: solda imzalı boyalı levha, sağda form. İkisinde de sağ üstte tema ve TR / EN anahtarları var.
+- **Genel bakış:** ortada büyük imza ve soru kutusu, kurulumun önerdiği sorular (`deployment.suggestions`), sorulabilir belge, kurulum aşaması ve çalışma modu kartları, ilk kullanım listesi, son belgeler ve bu oturumun soruları. Menü varsayılan olarak ince ikon şerididir, genişletilebilir.
 - **Soru sor:**
   - Sohbet görünümünde bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
   - Kaynak kartları belgeye göre gruplanır.

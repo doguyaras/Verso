@@ -52,9 +52,11 @@ export function sign(svg, { total = SIGN_MS, delay = 0 } = {}) {
   const glow = svg.querySelector('.signature-glow');
   const nib = svg.querySelector('.signature-tip');
   const plan = timeline(total).map((stroke, i) => ({ ...stroke, path: strokes[i], real: strokes[i].getTotalLength() }));
+  // A gap wider than the round line cap after each dash: no dot shows where a stroke has not started yet.
+  const cap = SIGNATURE.thickness * 1.25 + 4;
   for (const s of plan) {
-    s.path.setAttribute('stroke-dasharray', `${s.real} ${s.real}`);
-    s.path.setAttribute('stroke-dashoffset', s.real);
+    s.path.setAttribute('stroke-dasharray', `${s.real} ${s.real + cap}`);
+    s.path.setAttribute('stroke-dashoffset', s.real + cap);
   }
   const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   return new Promise((resolve) => {
@@ -76,7 +78,7 @@ export function sign(svg, { total = SIGN_MS, delay = 0 } = {}) {
       for (const s of plan) {
         const raw = Math.min(1, Math.max(0, (t - s.delay) / s.duration));
         const done = ease(raw);
-        s.path.setAttribute('stroke-dashoffset', s.real * (1 - done));
+        s.path.setAttribute('stroke-dashoffset', (s.real + cap) * (1 - done));
         if (raw > 0 && raw < 1) point = s.path.getPointAtLength(s.real * done);
       }
       for (const dot of [glow, nib]) {

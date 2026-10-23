@@ -7,8 +7,9 @@ export const conversation = [];
 
 const KEYS = Object.freeze({
   theme: 'verso.panel.theme', // 'light' | 'dark' | 'system'; absent = light, the product's look (ADR-0018)
-  rail: 'verso.panel.rail', // '1' = the sidebar is collapsed to icons
+  rail: 'verso.panel.rail', // '0' = the user widened the menu; absent = the icon rail (ADR-0018)
   onboarding: 'verso.panel.onboarding', // JSON { asked, sawMode, dismissed }
+  lang: 'verso.panel.lang', // 'en' | absent = Turkish; the intro screen and the IdP's sign-in page follow it
 });
 
 function read(key) {
@@ -41,8 +42,10 @@ export function isDark(chosen, systemDark) {
 export const prefs = {
   theme: () => read(KEYS.theme),
   setTheme: (value) => write(KEYS.theme, ['light', 'dark', 'system'].includes(value) ? value : null),
-  rail: () => read(KEYS.rail) === '1',
-  setRail: (on) => write(KEYS.rail, on ? '1' : null),
+  lang: () => (read(KEYS.lang) === 'en' ? 'en' : 'tr'),
+  setLang: (value) => write(KEYS.lang, value === 'en' ? 'en' : null),
+  rail: () => read(KEYS.rail) !== '0',
+  setRail: (on) => write(KEYS.rail, on ? null : '0'),
   onboarding() {
     try {
       return { asked: false, sawMode: false, dismissed: false, ...JSON.parse(read(KEYS.onboarding) ?? '{}') };

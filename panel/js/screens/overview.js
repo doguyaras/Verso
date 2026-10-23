@@ -1,10 +1,12 @@
-// Overview (ADR-0017): a first-run checklist until it is done, four counts that link to their list, the latest
-// documents, this tab's latest questions, a quick question and the assistant's mode. It fits one screen.
+// Overview (ADR-0017, home as "ask" in ADR-0018): the signature and a large question box in the middle of the screen
+// with the installation's suggested questions, three small cards (searchable documents, setup phase, mode), the
+// first-run checklist until it is done, then the latest documents and this tab's questions.
 import { api } from '../api.js';
 import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 import { countUp } from '../motion.js';
 import { el, fill, formatLabel, greeting, plainName } from '../render.js';
+import { signature } from '../signature.js';
 import { conversation, prefs } from '../store.js';
 import { PHASES } from './setup.js';
 import { emptyState, fileIcon, formatNumber, relativeTime, statusPill } from '../ui.js';
@@ -65,20 +67,6 @@ function onboarding(ctx, docs, rerender) {
       } }, icon('x', 'sm')));
 }
 
-function typeBreakdown(docs) {
-  const counts = Object.fromEntries(TYPES.map((t) => [t, docs.filter((d) => (d.format ?? 'PDF') === t).length]));
-  const total = docs.length || 1;
-  const bar = el('div', { class: 'stack-bar', role: 'img', 'aria-label': TYPES.map((t) => `${formatLabel(t)} ${counts[t]}`).join(', ') });
-  for (const type of TYPES) {
-    if (!counts[type]) continue;
-    const part = el('span', { class: `bg-${type.toLowerCase()}`, title: `${formatLabel(type)}: ${counts[type]}` });
-    part.style.width = `${(counts[type] / total) * 100}%`;
-    bar.append(part);
-  }
-  return el('div', {}, bar, el('div', { class: 'legend' }, TYPES.map((type) =>
-    el('span', {}, el('i', { class: `bg-${type.toLowerCase()}` }), `${formatLabel(type)} · ${counts[type]}`))));
-}
-
 function recentQuestions(ctx) {
   const latest = conversation.filter((e) => e.result).slice(-4).reverse();
   if (!latest.length) {
@@ -92,28 +80,42 @@ function recentQuestions(ctx) {
       : entry.result.outcome === 'UNCITED' ? el('span', { class: 'pill wait' }, 'Kaynaksız') : el('span', { class: 'pill neutral' }, 'Bulunamadı'))));
 }
 
-/** Where the installation stands (ADR-0018), with a link to the full setup screen. */
-function setupCard() {
-  const index = Math.max(0, PHASES.findIndex((p) => p.id === CONFIG.deployment.phase));
-  return el('a', { class: 'card setup-card stat-link', href: '#/setup', 'aria-labelledby': 'setup-title' },
-    el('div', { class: 'card-head' }, el('h2', { id: 'setup-title' }, 'Kurulum durumu'), el('span', { class: 'spacer' }),
-      el('span', { class: 'pill info' }, icon('flag', 'sm'), PHASES[index].title)),
-    el('div', { class: 'card-body grid' },
-      el('div', { class: 'phase-line', 'aria-hidden': 'true' }, PHASES.map((p, i) =>
-        el('span', { class: `phase-dot ${i < index ? 'done' : i === index ? 'now' : ''}` }))),
-      el('p', { class: 'muted' }, `Aşama ${index + 1} / ${PHASES.length}: ${PHASES[index].text}`)));
+function hero(ctx, ready) {
+  const field = el('textarea', { class: 'hero-input', id: 'quick-question', rows: 1, maxlength: 1000,
+    placeholder: 'Sisteminizle ilgili bir soru sorun…', 'aria-label': 'Soru' });
+  const submit = () => {
+    const question = field.value.trim();
+    if (question) ctx.navigate('ask', { question });
+  };
+  field.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      submit();
+    }
+  });
+  field.addEventListener('input', () => {
+    field.style.height = 'auto';
+    field.style.height = `${Math.min(field.scrollHeight, 160)}px`;
+  });
+  return el('section', { class: 'hero', 'aria-labelledby': 'hero-title' },
+    el('h1', { id: 'hero-title', class: 'sr-only' }, 'Genel bakış'),
+    signature({ height: 86, ink: 'var(--signature-ink)' }),
+    el('p', { class: 'hero-caption' }, `${greeting(new Date().getHours())}${ctx.identity.preferred_username ? `, ${ctx.identity.preferred_username}` : ''}. Kurumunuza uyum sağlayan yapay zekâ.`),
+    el('form', { class: 'hero-ask', onsubmit: (event) => {
+      event.preventDefault();
+      submit();
+    } }, field,
+    el('button', { class: 'button icon-only', type: 'submit', 'aria-label': 'Sor', disabled: ready === 0 }, icon('send'))),
+    ready === 0
+      ? el('p', { class: 'hero-hint' }, 'Soru sormak için önce bir belge ekleyin.')
+      : el('div', { class: 'hero-chips' }, CONFIG.deployment.suggestions.map((question) =>
+        el('button', { class: 'chip', type: 'button', onclick: () => ctx.navigate('ask', { question }) }, question))));
 }
 
 export async function renderOverview(ctx, quiet = false) {
-  const { main, guarded, navigate, identity } = ctx;
-  const name = identity.preferred_username;
-  const head = (actions) => el('div', { class: 'page-head' },
-    el('div', {}, el('h1', {}, `${greeting(new Date().getHours())}${name ? `, ${name}` : ''}`),
-      el('p', {}, 'Belgelerinizin durumu, son sorularınız ve asistanın çalışma biçimi.')),
-    actions);
-  if (!quiet) fill(main, head(null),
-    el('div', { class: 'grid stats' }, Array.from({ length: 4 }, () => el('div', { class: 'skeleton block' }))),
-    el('div', { class: 'grid split' }, el('div', { class: 'skeleton block' }), el('div', { class: 'skeleton block' })));
+  const { main, guarded, navigate } = ctx;
+  if (!quiet) fill(main, el('div', { class: 'hero' }, el('div', { class: 'skeleton block' })),
+    el('div', { class: 'grid stats three' }, Array.from({ length: 3 }, () => el('div', { class: 'skeleton block' }))));
 
   const [docs, info] = await Promise.all([guarded(() => api.listAllDocuments()), guarded(() => api.info())]);
   if (!ctx.isCurrent()) return;
@@ -127,59 +129,40 @@ export async function renderOverview(ctx, quiet = false) {
   // While documents are being processed the counts change by themselves: look again in a few seconds.
   if (waiting.length) setTimeout(() => ctx.isCurrent() && renderOverview(ctx, true), 4000);
   const typed = main.querySelector('#quick-question')?.value ?? '';
-  const quick = el('textarea', { class: 'textarea', id: 'quick-question', rows: 3, maxlength: 1000,
-    placeholder: 'Örnek: 25.000 TL üstü masrafları kim onaylar?', 'aria-label': 'Hızlı soru' });
-  quick.value = typed;
   const latest = [...docs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
   const local = info?.mode !== 'cloud';
+  const index = Math.max(0, PHASES.findIndex((phase) => phase.id === CONFIG.deployment.phase));
 
   fill(main,
-    head(el('div', { class: 'page-actions' },
-      el('button', { class: 'button secondary', type: 'button', onclick: () => navigate('documents', { upload: true }) }, icon('upload'), 'Belge yükle'),
-      el('button', { class: 'button', type: 'button', onclick: () => navigate('ask', { focus: true }) }, icon('chat'), 'Soru sor'))),
+    hero(ctx, ready.length),
+    el('div', { class: 'grid stats three' },
+      stat('Sorulabilir belge', ready.length, failed.length ? `${failed.length} belgede hata var` : waiting.length ? `${waiting.length} belge işleniyor` : `${formatNumber(units)} sayfa / bölüm`, failed.length ? 'bad' : 'ok', '#/documents'),
+      el('a', { class: 'card stat stat-link', href: '#/setup' },
+        el('span', { class: 'stat-label' }, el('span', { class: 'dot accent' }), 'Kurulum'),
+        el('span', { class: 'stat-value small' }, PHASES[index].title),
+        el('div', { class: 'phase-line', 'aria-hidden': 'true' }, PHASES.map((phase, i) =>
+          el('span', { class: `phase-dot ${i < index ? 'done' : i === index ? 'now' : ''}` })))),
+      el('div', { class: 'card stat' },
+        el('span', { class: 'stat-label' }, el('span', { class: `dot ${local ? 'ok' : 'wait'}` }), 'Çalışma modu'),
+        el('span', { class: 'stat-value small' }, local ? 'Yerel' : 'Bulut'),
+        el('span', { class: 'stat-note' }, info ? `${info.chatModel} · ${local ? 'veri bu sunucuda kalır' : 'pasajlar sağlayıcıya gider'}` : '–'))),
     onboarding(ctx, docs, () => renderOverview(ctx, true)),
-    el('div', { class: 'grid stats' },
-      stat('Belgeler', docs.length, 'Hesabınızdaki toplam (en çok 200)', 'accent', '#/documents'),
-      stat('Aranabilir', ready.length, `${formatNumber(units)} sayfa / bölüm`, 'ok', '#/documents'),
-      stat('İşleniyor', waiting.length, waiting.length ? 'Birkaç saniye içinde hazır' : 'Bekleyen belge yok', 'wait', '#/documents'),
-      stat('Hata', failed.length, failed.length ? 'Ayrıntı Bilgi kaynakları ekranında' : 'Sorunlu belge yok', failed.length ? 'bad' : '', '#/documents')),
-    el('div', { class: 'grid split' },
-      el('div', { class: 'grid' },
-        el('section', { class: 'card', 'aria-labelledby': 'recent-docs' },
-          el('div', { class: 'card-head' }, el('h2', { id: 'recent-docs' }, 'Son yüklenenler'), el('span', { class: 'spacer' }),
-            el('a', { href: '#/documents' }, 'Tümünü gör')),
-          el('div', { class: 'card-body' }, latest.length
-            ? el('ul', { class: 'list' }, latest.map((doc) => el('li', {}, fileIcon(doc.format),
-              el('div', { class: 'grow' }, el('span', { class: 'title' }, plainName(doc.fileName)),
-                el('span', { class: 'sub', title: new Date(doc.createdAt).toLocaleString('tr-TR') },
-                  `${formatLabel(doc.format)} · ${relativeTime(doc.createdAt)}`)),
-              statusPill(doc.status))))
-            : emptyState('upload', 'Henüz belge yok', 'PDF, Word, TXT ya da Markdown yükleyin; içerik yalnız bu sunucuda işlenir.',
-              el('button', { class: 'button', type: 'button', onclick: () => navigate('documents', { upload: true }) }, icon('upload'), 'İlk belgenizi yükleyin')))),
-        el('section', { class: 'card', 'aria-labelledby': 'recent-questions' },
-          el('div', { class: 'card-head' }, el('h2', { id: 'recent-questions' }, 'Bu oturumdaki sorular'), el('span', { class: 'spacer' }),
-            el('a', { href: '#/ask' }, 'Sohbete git')),
-          el('div', { class: 'card-body' }, recentQuestions(ctx)))),
-      el('div', { class: 'grid' },
-        setupCard(),
-        el('section', { class: 'card', 'aria-labelledby': 'quick-title' },
-          el('div', { class: 'card-head' }, el('h2', { id: 'quick-title' }, 'Hızlı soru')),
-          el('form', { class: 'card-body grid', onsubmit: (event) => {
-            event.preventDefault();
-            const question = quick.value.trim();
-            if (question) navigate('ask', { question });
-          } }, quick,
-          el('button', { class: 'button block', type: 'submit', disabled: ready.length === 0 }, icon('send'),
-            ready.length ? 'Sor' : 'Önce bir belge yükleyin'))),
-        info ? el('section', { class: 'card', 'aria-labelledby': 'assistant-title' },
-          el('div', { class: 'card-head' }, el('h2', { id: 'assistant-title' }, 'Asistan'), el('span', { class: 'spacer' }),
-            el('span', { class: `pill ${local ? 'ok' : 'wait'}` }, icon(local ? 'shield' : 'cloud', 'sm'), local ? 'Yerel mod' : 'Bulut modu')),
-          el('div', { class: 'card-body grid' },
-            el('p', { class: 'muted' }, local ? 'Belgeler, sorular ve cevaplar bu sunucudan çıkmaz.' : 'Soru ve ilgili pasajlar bulut sağlayıcısına gider (KVKK md. 9).'),
-            el('dl', { class: 'facts' },
-              el('dt', {}, 'Sohbet modeli'), el('dd', {}, el('span', { class: 'code' }, info.chatModel)),
-              el('dt', {}, 'Embedding'), el('dd', {}, el('span', { class: 'code' }, info.embeddingModel))))) : null,
-        docs.length ? el('section', { class: 'card', 'aria-labelledby': 'types-title' },
-          el('div', { class: 'card-head' }, el('h2', { id: 'types-title' }, 'Belge türleri')),
-          el('div', { class: 'card-body' }, typeBreakdown(docs))) : null)));
+    el('div', { class: 'grid halves' },
+      el('section', { class: 'card', 'aria-labelledby': 'recent-docs' },
+        el('div', { class: 'card-head' }, el('h2', { id: 'recent-docs' }, 'Son eklenen belgeler'), el('span', { class: 'spacer' }),
+          el('a', { href: '#/documents' }, 'Tümünü gör')),
+        el('div', { class: 'card-body' }, latest.length
+          ? el('ul', { class: 'list' }, latest.map((doc) => el('li', {}, fileIcon(doc.format),
+            el('div', { class: 'grow' }, el('span', { class: 'title' }, plainName(doc.fileName)),
+              el('span', { class: 'sub', title: new Date(doc.createdAt).toLocaleString('tr-TR') },
+                `${formatLabel(doc.format)} · ${relativeTime(doc.createdAt)}`)),
+            statusPill(doc.status))))
+          : emptyState('upload', 'Henüz belge yok', 'PDF, Word, TXT ya da Markdown ekleyin; içerik yalnız bu sunucuda işlenir.',
+            el('button', { class: 'button', type: 'button', onclick: () => navigate('documents', { upload: true }) }, icon('upload'), 'İlk belgenizi ekleyin')))),
+      el('section', { class: 'card', 'aria-labelledby': 'recent-questions' },
+        el('div', { class: 'card-head' }, el('h2', { id: 'recent-questions' }, 'Bu oturumdaki sorular'), el('span', { class: 'spacer' }),
+          el('a', { href: '#/ask' }, 'Sohbete git')),
+        el('div', { class: 'card-body' }, recentQuestions(ctx)))));
+  const field = main.querySelector('#quick-question');
+  field.value = typed;
 }

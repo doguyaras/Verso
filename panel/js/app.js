@@ -6,6 +6,7 @@ import { CONFIG } from './config.js';
 import { icon, logo } from './icons.js';
 import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
+import { langSwitch, themeSwitch } from './toggles.js';
 import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
 import { el, plainName } from './render.js';
 import { isDark, prefs } from './store.js';
@@ -37,6 +38,7 @@ function applyTheme() {
   const chosen = prefs.theme();
   const dark = isDark(chosen, matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  for (const toggle of document.querySelectorAll('.theme-switch')) toggle.setAttribute('aria-checked', String(dark));
 }
 
 function setTheme(value) {
@@ -229,9 +231,11 @@ function buildShell() {
   if (prefs.rail()) $('#shell').classList.add('rail');
 
   $('#brand').prepend(logo(30));
-  $('#brand .brand-text').prepend(signature({ height: 30, ink: 'var(--signature-ink)' }));
+  $('#brand .brand-text').prepend(signature({ height: 42, ink: 'var(--signature-ink)' }));
   // Under the signature only the client's name, when the installation sets one (ADR-0018).
   if (CONFIG.deployment.client) $('#brand .brand-text').append(el('small', {}, CONFIG.deployment.client));
+  document.querySelector('.workspace').prepend(el('div', { class: 'toggles app-toggles' },
+    themeSwitch({ dark: document.documentElement.dataset.theme === 'dark', label: 'Koyu tema', onChange: (dark) => setTheme(dark ? 'dark' : 'light') })));
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 
@@ -264,32 +268,53 @@ function buildShell() {
     mobileAccount);
 }
 
-function showSignIn(problem) {
+// The intro before sign-in (ADR-0018): the signature above an open book with one example question on the left page and
+// its answer with the source on the right; the example is the installation's (config.js). Its few words follow the
+// TR / EN switch, which also sets the language of the IdP's sign-in page; the rest of the panel is Turkish.
+const INTRO = Object.freeze({
+  tr: { caption: 'Kurumunuza uyum sağlayan yapay zekâ', question: 'Soru', answer: 'Cevap', button: 'Giriş yap',
+    assure: ['Veriniz kurum içinde kalır', 'Her yanıt kaynağıyla'], theme: 'Koyu tema', lang: 'Dil', title: 'Verso' },
+  en: { caption: 'The AI that fits your organisation', question: 'Question', answer: 'Answer', button: 'Sign in',
+    assure: ['Your data stays inside', 'Every answer with its source'], theme: 'Dark theme', lang: 'Language', title: 'Verso' },
+});
+
+function showSignIn(problem, { quiet = false } = {}) {
   view += 1;
   if (typeof cleanup === 'function') cleanup();
   cleanup = null;
   $('#shell').hidden = true;
   const gate = $('#gate');
   gate.hidden = false;
-  const mark = signature({ height: 84, ink: 'var(--ink-1)', tip: 'var(--accent-fill)', animated: true });
-  const paint = (name) => el('div', { class: `paint ${name}`, 'aria-hidden': 'true' });
-  gate.replaceChildren(el('section', { class: 'signin', 'aria-labelledby': 'signin-title' },
+  const lang = prefs.lang();
+  const text = INTRO[lang];
+  const example = CONFIG.deployment.showcase[lang];
+  document.documentElement.lang = lang;
+  const mark = signature({ height: 104, ink: 'var(--signature-ink)', tip: 'var(--accent-fill)', animated: !quiet });
+  gate.replaceChildren(el('section', { class: `intro${quiet ? ' quiet' : ''}`, 'aria-labelledby': 'intro-title' },
+    el('div', { class: 'toggles' },
+      themeSwitch({ dark: document.documentElement.dataset.theme === 'dark', label: text.theme, onChange: (dark) => setTheme(dark ? 'dark' : 'light') }),
+      langSwitch({ lang, label: text.lang, onChange: (value) => {
+        prefs.setLang(value);
+        setTimeout(() => showSignIn(problem, { quiet: true }), 320); // after the marker has slid
+      } })),
+    el('header', { class: 'intro-head' },
+      el('h1', { id: 'intro-title', class: 'sr-only' }, text.title), mark, el('p', { class: 'intro-caption' }, text.caption)),
+    el('p', { class: 'example-label' }, example.label),
     el('div', { class: 'book' },
-      el('div', { class: 'leaf left' },
-        el('div', { class: 'plate' }, paint('sky'), mark),
-        el('div', { class: 'plate-caption' }, 'Kurumunuza uyum sağlayan yapay zekâ')),
-      el('div', { class: 'leaf right' },
-        el('h3', { id: 'signin-title' }, 'Giriş yapın'),
-        el('div', { class: 'rule', 'aria-hidden': 'true' }),
-        el('p', { class: 'sub' }, 'Şirket hesabınızla devam edin.'),
-        problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
-        el('button', { class: 'button lg sheen', type: 'button', onclick: (event) => {
-          event.currentTarget.setAttribute('aria-busy', 'true');
-          sessionStorage.removeItem(AUTO_SIGN_IN);
-          signIn();
-        } }, icon('key'), 'Kurum hesabıyla giriş yap'),
-        el('div', { class: 'assure' }, el('span', {}, 'Veriniz kurum içinde kalır'), el('span', {}, 'Her yanıt kaynağıyla'))))));
-  sign(mark, { delay: 250 });
+      el('div', { class: 'leaf left' }, el('span', { class: 'eyebrow' }, text.question),
+        el('p', { class: 'intro-question' }, `“${example.question}”`)),
+      el('div', { class: 'leaf right' }, el('span', { class: 'eyebrow' }, text.answer),
+        el('p', { class: 'intro-answer' }, example.answer, ' ', el('span', { class: 'cite-mark', 'aria-label': '1' }, '1')),
+        el('p', { class: 'margin-note' }, `¹ ${example.source}`))),
+    el('div', { class: 'intro-foot' },
+      problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
+      el('button', { class: 'button lg sheen', type: 'button', onclick: (event) => {
+        event.currentTarget.setAttribute('aria-busy', 'true');
+        sessionStorage.removeItem(AUTO_SIGN_IN);
+        signIn();
+      } }, icon('key'), text.button),
+      el('div', { class: 'assure' }, ...text.assure.map((t) => el('span', {}, t))))));
+  if (!quiet) sign(mark, { delay: 250 });
 }
 
 async function start() {

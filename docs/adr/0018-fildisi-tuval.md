@@ -70,33 +70,42 @@
 - **Nereden servis edilir:** panel `/panel/fonts/`, Keycloak teması `resources/fonts/`. İki kopyanın aynı olduğunu test kontrol eder.
 - **CSP:** panele tek yönerge eklendi, `font-src 'self'` (data: ve dış adres yok). nginx `woff2`'yi `font/woff2` olarak döndürür. `ComposeConfigTest` başlığı birebir sabitler. Keycloak'ın varsayılan realm CSP'si font kısıtlamaz.
 
-**Giriş ekranı: masada açık bir kitap** (panel ve Keycloak aynı tasarım). "Verso" kitabın sol sayfasının adıdır.
+**Üç ekran: tanıtım, giriş, iç panel.** Kullanıcı her biri için üç öneri arasından seçti: 1C, 2C, 3C.
 - **Nasıl seçildi:**
-  - İlk sürüm ikiye bölünmüş bir ekrandı: solda boyalı gökyüzü ve çok yazı, sağda kâğıt kart. Kullanıcı "çok fazla yazı var, arka plan dümdüz boş" dedi.
-  - On konsept animasyonlu önizlemeyle karşılaştırıldı: tam ekran tuval, kemerli pencere, galeri çerçevesi, ufuk, belge katmanları, Art Deco güneş, dev imza, sahne ışığı, kitap açılımı, mektup ve mühür. Kullanıcı kitap açılımını seçti.
-  - Deri kapaklı, kurdeleli ve kapağı çevrilen ayrıntılı bir sürüm "abartı" bulundu; sade kitap kaldı.
-- **Sol sayfa:**
-  - Altın çerçeveli boyalı bir levha, onaylanan önizlemedeki tonlarla durağan: açık fildişiden koyu altına inen gökyüzü, birkaç bulut, sol üstten ışık. Levhada Verso imzası atılır (1,15 sn).
-  - Sis ve tuval dokusu da denendi, ama renkleri soldurdu; kullanıcı "bu renk tonları güzeldi, geri al" dedi.
-  - Levhanın altında italik "Kurumunuza uyum sağlayan yapay zekâ"; kullanıcı bu yazının kalmasını istedi.
-- **Sağ sayfa:** "Giriş yapın", kısa bir altın çizgi, "Şirket hesabınızla devam edin.", giriş düğmesi ya da Keycloak formu, altında iki küçük güvence: "Veriniz kurum içinde kalır", "Her yanıt kaynağıyla".
-  - Keycloak'ta form doğrudan kâğıdın üstündedir, ayrı bir kart yoktur.
-- **Başlık yok.** On üç cümle denendi; kullanıcı hiçbirini beğenmedi. Araştırma gerekçeyi verdi:
-  - İncelenen 13 gerçek giriş sayfasının 10'unda başlık yok (Linear, Figma, Stripe, Slack, ChatGPT, Glean gibi).
-  - Reddedilen cümleler aynı fikri fiilsiz isim öbekleriyle tekrarlıyordu.
-  - Kullanıcı "başlık hiç olmasın"ı seçti. Kitap ve imza konuşur.
-  - Notlar repoya girmedi.
-- **Hareket kısa ve tek seferliktir:**
-  - Kitap yerine oturur, imza atılır, sağ sayfa sırayla gelir, düğmenin üstünden bir kez ışık geçer; levha durağandır.
-  - "Reduce motion" ile hiçbiri oynamaz. Test, giriş katmanlarında `infinite` olmadığını kontrol eder (WCAG 2.2.2).
-- **Koyu tema:** aynı kitap koyu bir masada, levha aydınlık kalır. Keycloak her zaman açıktır (`darkMode=false`).
-- **Mobil:** kitap tek sayfaya iner; üstte levha, altta giriş.
-- **Keycloak form düzeltmeleri:**
-  - PatternFly'ın iki kenarlığından (kutu + alt çizgi) yalnız kutu kalır; odakta tek altın halka.
-  - Otomatik doldurma, temanın alan rengine boyanır.
-  - Şifre alanı ve göz düğmesi tek alan gibi görünür.
-  - Dil seçimi TR / EN anahtarıdır: düz bağlantılar. keycloak.v2'nin `onchange`'li `select`'i kalktı; şablonda satır içi script kalmadı. Kitabın gölge filtresi yüzünden anahtar ekranın değil sağ sayfanın sağ üst köşesinde durur.
-- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` → `verso-fildisi-2.css` → `verso-kitap.css` → `verso-kitap-2.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
+  - Önce giriş ekranı için on konsept karşılaştırıldı: tuval, kemerli pencere, galeri, ufuk, belge katmanları, Art Deco, dev imza, sahne ışığı, kitap, mektup. Kitap seçildi.
+  - Ayrıntılı bir kitap (deri kapak, kurdele, kapak çevirme) "abartı" bulundu.
+  - On üç başlık cümlesi reddedildi; araştırmaya göre incelenen 13 giriş sayfasının 10'unda başlık yok. Kullanıcı "başlık hiç olmasın"ı seçti.
+  - Sonra panelin girişi Keycloak'ın kopyası olduğu için ("aynı ekran sadece girişlerle geliyor") tanıtım, giriş ve iç panel ayrı ayrı tasarlandı.
+- **Tanıtım ekranı (panel, 1C):**
+  - Masada açık kitap, üstünde ortada büyük imza (104 px, atılır) ve "Kurumunuza uyum sağlayan yapay zekâ".
+  - Sol sayfada bir örnek soru, sağ sayfada kaynaklı cevabı ve kenar notu, altında "Giriş yap".
+  - Örnek kurulumundur (`config.js` → `deployment.showcase`, TR ve EN) ve "Örnek · …" etiketiyle gösterilir. Kullanıcı basit politika sorularını "basit ve saçma" buldu; Verso bir firmaya kurulduğunda o sistemin teknik işleyişini cevaplar. Varsayılan örnek bir e-fatura entegrasyonunun zaman aşımı davranışıdır; kurulum ekibi firmanın kendi sisteminden bir örnek koyar.
+- **Giriş ekranı (Keycloak, 2C):** ekran ikiye bölünür.
+  - Sol yarı baştan sona boyalı levhadır; ortasında büyük imza (132 px, CSS ile atılır), altında "Kurumunuza uyum sağlayan yapay zekâ".
+  - Sağ yarı kâğıttır: "Giriş yapın", alt satır, altın çizgi, form, iki güvence.
+- **Alanlar: dolgulu "defter satırı":**
+  - Etiket alanın içindedir, altta ince çizgi vardır. Odakta zemin kâğıda açılır ve altın çizgi ortadan iki yana yayılır.
+  - Google'ın alan araştırmasında dolgulu alanlar en iyi, yalnız alt çizgili alanlar en kötü sonucu verdi; bu ikisinin iyi yanı.
+  - Odak rengi açık temada `#9c7a35`: saf altın fildişi zeminde 3:1'i geçmez.
+  - Şifre alanı ve göz düğmesi tek satırdır. Otomatik doldurma alan rengine boyanır.
+- **Sağ üstte kayan anahtarlar:**
+  - Tema: güneşten aya döner, yaylı kayar.
+  - Dil: TR / EN; gösterge kayar.
+  - Panelin tanıtım ekranında ikisi de JS'tir (`panel/js/toggles.js`). Dil seçimi tanıtım metnini ve Keycloak'ın dilini (`ui_locales`) belirler; iç panel Türkçedir (çok dillilik ayrı bir iş).
+  - Keycloak'ta tema bir checkbox'tır ve CSS `:has()` ile okunur; temada script yoktur, bu yüzden seçim o sayfa için geçerlidir. Varsayılan açık temadır.
+  - Keycloak'ta dil düz bağlantılardır; göstergesi sayfalar arası view transition ile kayar (Chrome 126+, Safari 18.2+).
+- **İç panel (3C):**
+  - Menü varsayılan olarak ince ikon şerididir ve genişletilebilir. Genişletilince imza menünün başında ortada ve büyüktür (42 px).
+  - Genel bakış bir "sor" sayfasıdır: ortada büyük imza, selam, büyük soru kutusu ve kurulumun önerdiği sorular (`deployment.suggestions`; gerçekten sorulduğu için dizinli belgelerden cevaplanabilir olmalı).
+  - Altında üç küçük kart (sorulabilir belge, kurulum aşaması, çalışma modu), ilk kullanım listesi, son belgeler ve bu oturumun soruları.
+  - Sağ üstte tema anahtarı.
+  - Araştırma da son kullanıcı için önce soru kutusunu öneriyor (Glean deseni).
+- **Hareket kısa ve tek seferliktir:** kitap ya da form yerine oturur, imza atılır, sayfa sırayla gelir. "Reduce motion" ile hiçbiri oynamaz. Test, tanıtım bloğunda ve Keycloak temasında `infinite` olmadığını kontrol eder (WCAG 2.2.2).
+- **İmza:** her kalem hareketinin önünde, yuvarlak uçtan geniş bir boşluk bırakılır; atılmadan önce nokta görünmez.
+- **Keycloak düzeltmeleri:**
+  - keycloak.v2'nin `onchange`'li dil `select`'i kalktı; şablonda satır içi script yok.
+  - FreeMarker yönergelerinin dengesi testte sayılır: dengesiz bir yönerge bütün giriş sayfasını 500'e düşürür, bir kez oldu.
+- **Önbellek:** stil dosyası `verso-tuval.css` → … → `verso-giris.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
 
 **Ürün metni ve ekranlar.**
 - **Konumlandırma cümlesi** (ürün ve satış metinleri için): "Kurumunuza uyum sağlayan yapay zekâ katmanı." Giriş ekranında ve menüde yazmaz; kullanıcı menüde "yapay zeka katmanı diye bir şey yazmasına gerek yok" dedi.

@@ -3,6 +3,7 @@
 // reload asks the user to sign in again (one click while the IdP session lasts). Only the one-time PKCE verifier and
 // the state cross the redirect, in sessionStorage, and are removed as soon as the redirect comes back.
 import { CONFIG } from './config.js';
+import { prefs } from './store.js';
 
 const PENDING = 'verso.panel.pkce';
 let session = null; // { accessToken, refreshToken, idToken, expiresAt, claims, identity }
@@ -39,8 +40,8 @@ export async function signIn() {
   const params = new URLSearchParams({
     client_id: CONFIG.clientId, response_type: 'code', scope: 'openid', redirect_uri: CONFIG.redirectUri, state,
     code_challenge: await challengeOf(verifier), code_challenge_method: 'S256',
-    // the IdP's sign-in page opens in Turkish whatever the browser's language (realm default "tr")
-    ui_locales: 'tr',
+    // the IdP's sign-in page opens in the intro screen's language (Turkish unless EN was picked), whatever the browser's
+    ui_locales: prefs.lang(),
   });
   location.assign(`${endpoint('auth')}?${params}`);
 }

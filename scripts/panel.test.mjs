@@ -290,6 +290,13 @@ test('login theme: keycloak.v2 child, CSS and markup only, Turkish texts for eve
   assert.doesNotMatch(added, /<script|on[a-z]+=|javascript:/i, 'the brand panel is static markup');
   assert.match(template, /<nav class="verso-lang"[\s\S]*?<a href="\$\{l\.url\}"/, 'the language switch is a pair of links (TR / EN)');
   assert.doesNotMatch(template, /onchange=/, 'no inline script for the language');
+  // FreeMarker fails the whole sign-in page (HTTP 500) on an unbalanced directive: count the openings and the closings.
+  for (const tag of ['if', 'list', 'macro']) {
+    const open = (template.match(new RegExp(`<#${tag}\\b`, 'g')) ?? []).length;
+    const close = (template.match(new RegExp(`</#${tag}>`, 'g')) ?? []).length;
+    assert.equal(open, close, `<#${tag}> and </#${tag}> are balanced`);
+  }
+  assert.match(template, /<input type="checkbox" id="verso-dark"[^>]*role="switch"/, 'the theme switch is a checkbox read by CSS');
   const used = new Set([...template.matchAll(/msg\("(verso\w+)"\)/g)].map((m) => m[1]));
   assert.ok(used.size >= 4, 'the book texts come from the message files');
   for (const lang of ['tr', 'en']) {
@@ -302,8 +309,20 @@ test('login theme: keycloak.v2 child, CSS and markup only, Turkish texts for eve
   assert.match(readFileSync('compose.yaml', 'utf8'), /- \.\/deploy\/keycloak\/themes\/verso:\/opt\/keycloak\/themes\/verso:ro/);
 });
 
-test('sign-in: the IdP page is asked for Turkish', () => {
-  assert.match(readFileSync('panel/js/auth.js', 'utf8'), /ui_locales: 'tr'/);
+test('sign-in: the IdP page is asked in the intro screen\'s language, Turkish unless EN was picked', () => {
+  assert.match(readFileSync('panel/js/auth.js', 'utf8'), /ui_locales: prefs\.lang\(\)/);
+  assert.match(readFileSync('panel/js/store.js', 'utf8'), /lang: \(\) => \(read\(KEYS\.lang\) === 'en' \? 'en' : 'tr'\)/, 'anything but "en" is Turkish');
+});
+
+test('intro: the example and the suggested questions are the installation\'s, in both languages', async () => {
+  const { CONFIG } = await import('../panel/js/config.js');
+  for (const lang of ['tr', 'en']) {
+    const example = CONFIG.deployment.showcase[lang];
+    for (const key of ['label', 'question', 'answer', 'source']) assert.ok(example[key], `${lang}.${key}`);
+  }
+  assert.match(CONFIG.deployment.showcase.tr.label, /^Örnek/, 'the intro says it is an example');
+  assert.ok(CONFIG.deployment.suggestions.length >= 3);
+  assert.match(readFileSync('panel/js/screens/ask.js', 'utf8'), /CONFIG\.deployment\.suggestions/);
 });
 
 test('signature: the Keycloak markup, its CSS animation and the favicon are generated from the same pen data', () => {
@@ -326,13 +345,13 @@ test('signature: the Keycloak markup, its CSS animation and the favicon are gene
 test('motion: every animation stops under "reduce motion" and styles are set through the CSSOM only (CSP)', () => {
   const css = readFileSync('panel/css/panel.css', 'utf8');
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation-duration: \.01ms !important;/);
-  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-kitap-2.css', 'utf8');
+  const theme = readFileSync('deploy/keycloak/themes/verso/login/resources/css/verso-giris.css', 'utf8');
   assert.ok((theme.match(/prefers-reduced-motion: reduce/g) ?? []).length >= 2, 'the login theme and its signature stand still too');
   // WCAG 2.2.2: the sign-in ambience starts by itself, so it ends by itself (a few rounds, then the painting stands still).
   assert.doesNotMatch(theme, /infinite/, 'no endless motion on the login page');
-  const paint = css.match(/\.paint\.[a-z.]+ \{[^}]*\}/g) ?? [];
-  assert.ok(paint.length >= 1, 'the painted layer of the plate on the sign-in book');
-  for (const rule of paint) assert.doesNotMatch(rule, /infinite/, rule.slice(0, 40));
+  const intro = css.slice(css.indexOf('/* The intro before sign-in'), css.indexOf('/* ---------- the switches at the top right'));
+  assert.ok(intro.length > 500, 'the intro block');
+  assert.doesNotMatch(intro, /infinite/, 'the intro animates once and stands still');
   for (const file of ['motion.js', 'signature.js', 'app.js', 'screens/ask.js', 'screens/overview.js']) {
     const code = readFileSync(`panel/js/${file}`, 'utf8');
     assert.doesNotMatch(code, /setAttribute\(\s*'style'|\.cssText|style:\s*'/, `${file}: no style attributes`);
@@ -401,7 +420,7 @@ test('fonts: Fraunces is served from the panel itself with its licence, for Turk
   for (const file of [...faces, 'OFL.txt']) {
     assert.ok(readFileSync(`${theme}/fonts/${file}`).equals(readFileSync(`panel/fonts/${file}`)), `the login theme serves the same ${file}`);
   }
-  assert.match(readFileSync(`${theme}/css/verso-kitap-2.css`, 'utf8'), /url\(\.\.\/fonts\/fraunces-latin-ext-standard-normal\.woff2\)/);
+  assert.match(readFileSync(`${theme}/css/verso-giris.css`, 'utf8'), /url\(\.\.\/fonts\/fraunces-latin-ext-standard-normal\.woff2\)/);
 });
 
 test('theme: the ivory light theme is the default even on a dark system; dark only when chosen', () => {

@@ -2,6 +2,7 @@
 // grouped by document, an honest state for each outcome, and a wait that says how long it has been and may be.
 // The conversation lives in this tab's memory only (store.js); a reload starts a new one.
 import { api, ApiError, lastMode } from '../api.js';
+import { CONFIG } from '../config.js';
 import { icon, logo } from '../icons.js';
 import { answerParts, answerWithSources, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { conversation, prefs } from '../store.js';
@@ -9,12 +10,8 @@ import { pulse, wordSpans } from '../motion.js';
 import { fileIcon, toast } from '../ui.js';
 
 const MAX_CHARS = 1000;
-const SUGGESTIONS = [
-  'Beş yıldan az hizmeti olan çalışan yılda kaç gün izin kullanır?',
-  'Şirket laptopu kaybolursa ne kadar sürede bildirmem gerekir?',
-  '25.000 TL üstü masrafları kim onaylar?',
-  'Uzaktan çalışmada çekirdek saatler nedir?',
-];
+// Suggested questions come from the installation (config.js): each client's own systems and documents.
+const SUGGESTIONS = CONFIG.deployment.suggestions;
 // Nielsen's limits: nothing under 1 s, a skeleton up to 10 s, then the elapsed time and what to expect.
 const SHOW_WAIT_MS = 1000;
 const SLOW_MS = 10000;

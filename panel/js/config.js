@@ -18,5 +18,28 @@ export const CONFIG = Object.freeze({
     phase: 'pilot', // discovery | pilot | rollout | integrations
     pilotGroup: false,
     team: null, // e.g. 'Kurulum ekibi · destek@ornek.com.tr'
+    // The example on the intro screen and the questions the ask screen suggests. The installation team sets them from
+    // the client's own systems and documents: Verso answers questions about how a company's systems work, not only
+    // policy look-ups. The showcase is labelled as an example; the suggestions are asked for real, so they must be
+    // answerable from the indexed documents (the defaults fit samples/).
+    showcase: Object.freeze({
+      tr: Object.freeze({
+        label: 'Örnek · e-fatura entegrasyonu',
+        question: 'Toplu gönderimde zaman aşımı alırsak entegrasyon nasıl davranır?',
+        answer: 'Gönderim kuyruğa alınır ve artan aralıklarla üç kez yeniden denenir. Üçüncü denemeden sonra fatura “beklemede” durumuna düşer ve operatöre bildirim gider.',
+        source: 'entegrasyon-teknik-kilavuzu.pdf · bölüm 4.2',
+      }),
+      en: Object.freeze({
+        label: 'Example · e-invoicing integration',
+        question: 'What does the integration do when a bulk submission times out?',
+        answer: 'The submission is queued and retried three times at growing intervals. After the third attempt the invoice moves to “on hold” and the operator is notified.',
+        source: 'integration-technical-guide.pdf · section 4.2',
+      }),
+    }),
+    suggestions: Object.freeze([
+      'Satın alma onay matrisi tutara göre nasıl işliyor?',
+      '500.000 TL\'yi aşan alımlarda süreç nasıl ilerler?',
+      'Yeni tedarikçi çalışmaya başlamadan önce hangi belgeleri vermeli?',
+    ]),
   }),
 });
