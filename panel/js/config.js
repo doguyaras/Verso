@@ -24,16 +24,16 @@ export const CONFIG = Object.freeze({
     // answerable from the indexed documents (the defaults fit samples/).
     showcase: Object.freeze({
       tr: Object.freeze({
-        label: 'Örnek · e-fatura entegrasyonu',
-        question: 'Toplu gönderimde zaman aşımı alırsak entegrasyon nasıl davranır?',
-        answer: 'Gönderim kuyruğa alınır ve artan aralıklarla üç kez yeniden denenir. Üçüncü denemeden sonra fatura “beklemede” durumuna düşer ve operatöre bildirim gider.',
-        source: 'entegrasyon-teknik-kilavuzu.pdf · bölüm 4.2',
+        label: 'Örnek · depo yönetim sistemi',
+        question: 'Sevkiyat emri onaylandıktan sonra stok neden hemen düşmüyor?',
+        answer: 'Stok, emir onaylandığında değil, toplama tamamlanıp koli kapatıldığında düşer. Aradaki kalemler “rezerve” görünür ve başka siparişe ayrılamaz.',
+        source: 'depo-yonetim-kilavuzu.pdf · bölüm 3.4',
       }),
       en: Object.freeze({
-        label: 'Example · e-invoicing integration',
-        question: 'What does the integration do when a bulk submission times out?',
-        answer: 'The submission is queued and retried three times at growing intervals. After the third attempt the invoice moves to “on hold” and the operator is notified.',
-        source: 'integration-technical-guide.pdf · section 4.2',
+        label: 'Example · warehouse management system',
+        question: 'Why doesn’t stock drop as soon as a shipment order is approved?',
+        answer: 'Stock drops when picking is finished and the parcel is closed, not when the order is approved. Items in between show as “reserved” and cannot be allocated to another order.',
+        source: 'warehouse-management-guide.pdf · section 3.4',
       }),
     }),
     suggestions: Object.freeze([

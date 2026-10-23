@@ -272,9 +272,9 @@ function buildShell() {
 // its answer with the source on the right; the example is the installation's (config.js). Its few words follow the
 // TR / EN switch, which also sets the language of the IdP's sign-in page; the rest of the panel is Turkish.
 const INTRO = Object.freeze({
-  tr: { caption: 'Kurumunuza uyum sağlayan yapay zekâ', question: 'Soru', answer: 'Cevap', button: 'Giriş yap',
+  tr: { caption: 'Kurumunuza uyum sağlayan yapay zekâ', question: 'Soru', answer: 'Cevap', button: 'Başlayın',
     assure: ['Veriniz kurum içinde kalır', 'Her yanıt kaynağıyla'], theme: 'Koyu tema', lang: 'Dil', title: 'Verso' },
-  en: { caption: 'The AI that fits your organisation', question: 'Question', answer: 'Answer', button: 'Sign in',
+  en: { caption: 'The AI that fits your organisation', question: 'Question', answer: 'Answer', button: 'Get started',
     assure: ['Your data stays inside', 'Every answer with its source'], theme: 'Dark theme', lang: 'Language', title: 'Verso' },
 });
 
@@ -312,7 +312,7 @@ function showSignIn(problem, { quiet = false } = {}) {
         event.currentTarget.setAttribute('aria-busy', 'true');
         sessionStorage.removeItem(AUTO_SIGN_IN);
         signIn();
-      } }, icon('key'), text.button),
+      } }, text.button, icon('arrowRight')),
       el('div', { class: 'assure' }, ...text.assure.map((t) => el('span', {}, t))))));
   if (!quiet) sign(mark, { delay: 250 });
 }

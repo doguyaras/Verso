@@ -94,6 +94,13 @@ Değişiklikler canlı yığına iki adımla alındı:
     - Bir ara şablon hatası (fazladan `</#list>`) giriş sayfasını 500'e düşürdü. Düzeltildi; denge testi eklendi.
   - **İç panel:** ikon şeridi, ortada imza ve soru kutusu, üç öneri, üç kart. Menü genişletilince imza ortada. Soru ekranında öneriler config'ten geliyor; koyu tema denendi.
 
+## İmza çizikleri ve tanıtım düğmesi (ek, aynı gün)
+
+- Keycloak'ta imza atılmadan önce kalem hareketlerinin sonunda çizikler görünüyordu. Sebep: kesikli çizgi deseni tekrar ediyordu ve sonraki parçanın yuvarlak ucu yolun sonuna düşüyordu.
+- Düzeltme iki yerde: boşluk artık "çizgi + iki uç payı", başlangıç kayması "çizgi + bir uç payı" (üretici ve panel).
+- Test her kalem hareketinde iki yanda en az yarım çizgi kalınlığı pay arıyor; eski desen testi kırdı ("stroke of 99.3: gap 121.3, offset 121.3").
+- Tanıtım örneği depo yönetim sistemine taşındı, düğme "Başlayın →" oldu.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

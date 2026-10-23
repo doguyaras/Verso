@@ -79,7 +79,8 @@
 - **Tanıtım ekranı (panel, 1C):**
   - Masada açık kitap, üstünde ortada büyük imza (104 px, atılır) ve "Kurumunuza uyum sağlayan yapay zekâ".
   - Sol sayfada bir örnek soru, sağ sayfada kaynaklı cevabı ve kenar notu, altında "Giriş yap".
-  - Örnek kurulumundur (`config.js` → `deployment.showcase`, TR ve EN) ve "Örnek · …" etiketiyle gösterilir. Kullanıcı basit politika sorularını "basit ve saçma" buldu; Verso bir firmaya kurulduğunda o sistemin teknik işleyişini cevaplar. Varsayılan örnek bir e-fatura entegrasyonunun zaman aşımı davranışıdır; kurulum ekibi firmanın kendi sisteminden bir örnek koyar.
+  - Örnek kurulumundur (`config.js` → `deployment.showcase`, TR ve EN) ve "Örnek · …" etiketiyle gösterilir. Kullanıcı basit politika sorularını "basit ve saçma" buldu; Verso bir firmaya kurulduğunda o sistemin teknik işleyişini cevaplar. Varsayılan örnek bir depo yönetim sisteminin stok davranışıdır (ilk sürümdeki e-fatura örneği kullanıcı isteğiyle değişti); kurulum ekibi firmanın kendi sisteminden bir örnek koyar.
+  - Tanıtımın düğmesi "Başlayın →" der; "Giriş yap" yalnız giriş sayfasındadır, iki kez görünmez.
 - **Giriş ekranı (Keycloak, 2C):** ekran ikiye bölünür.
   - Sol yarı baştan sona boyalı levhadır; ortasında büyük imza (132 px, CSS ile atılır), altında "Kurumunuza uyum sağlayan yapay zekâ".
   - Sağ yarı kâğıttır: "Giriş yapın", alt satır, altın çizgi, form, iki güvence.

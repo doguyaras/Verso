@@ -52,10 +52,11 @@ export function sign(svg, { total = SIGN_MS, delay = 0 } = {}) {
   const glow = svg.querySelector('.signature-glow');
   const nib = svg.querySelector('.signature-tip');
   const plan = timeline(total).map((stroke, i) => ({ ...stroke, path: strokes[i], real: strokes[i].getTotalLength() }));
-  // A gap wider than the round line cap after each dash: no dot shows where a stroke has not started yet.
+  // One dash per stroke with a gap longer than the stroke plus a round cap on each side: before the stroke is drawn
+  // neither the dash that is coming nor the next repeat of the pattern shows its cap on the path (no stray marks).
   const cap = SIGNATURE.thickness * 1.25 + 4;
   for (const s of plan) {
-    s.path.setAttribute('stroke-dasharray', `${s.real} ${s.real + cap}`);
+    s.path.setAttribute('stroke-dasharray', `${s.real} ${s.real + 2 * cap}`);
     s.path.setAttribute('stroke-dashoffset', s.real + cap);
   }
   const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

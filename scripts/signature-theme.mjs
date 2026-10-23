@@ -19,9 +19,10 @@ const r = (v) => Math.round(v * 10) / 10;
 
 export function themeMarkup() {
   const [x, y, w, h] = SIGNATURE.box;
-  // The gap after each dash is a cap wider than the stroke, so the round line cap shows no dot before the stroke starts.
+  // One dash per stroke with a gap longer than the stroke plus a round cap on each side: before the stroke is drawn
+  // neither the dash that is coming nor the next repeat of the pattern shows its cap on the path (no stray marks).
   const cap = Math.ceil(SIGNATURE.thickness * 1.25) + 4;
-  const strokes = timeline().map((s, i) => `<path class="vs-s${i}" d="${SIGNATURE.pen[i]}" stroke-dasharray="${r(s.length)} ${r(s.length + cap)}" stroke-dashoffset="${r(s.length + cap)}"/>`);
+  const strokes = timeline().map((s, i) => `<path class="vs-s${i}" d="${SIGNATURE.pen[i]}" stroke-dasharray="${r(s.length)} ${r(s.length + 2 * cap)}" stroke-dashoffset="${r(s.length + cap)}"/>`);
   return [
     `<svg class="verso-signature" viewBox="${x} ${y} ${w} ${h}" role="img" aria-label="Verso" focusable="false">`,
     `  <defs><mask id="verso-signature-mask" maskUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#fff" stroke-width="${r(SIGNATURE.thickness * 1.25)}" stroke-linecap="round" stroke-linejoin="round">`,
