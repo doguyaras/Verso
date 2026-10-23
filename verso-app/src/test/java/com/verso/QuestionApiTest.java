@@ -36,6 +36,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -112,9 +114,28 @@ class QuestionApiTest {
         assertThat(response.headers().firstValue("Cache-Control")).as("phase 5 review T6").hasValue("no-store, private");
         assertThat(response.body())
                 .contains("\"found\":true", "\"outcome\":\"ANSWERED\"", "\"mode\":\"local\"", "\"model\":\"test-chat\"")
-                .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1,\"unit\":\"PAGE\"}]")
+                .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1,"
+                        + "\"unit\":\"PAGE\",\"excerpt\":\"topic-leave Annual leave is twenty working days.\"}]")
                 .contains("yirmi iş günüdür [1].").doesNotContain("[7]");
         assertThat(TestChatModel.INSTANCE.calls()).isOne();
+    }
+
+    /** The hover card's excerpt is the start of the cited passage, white space collapsed and bounded to 280. */
+    @Test
+    void ask_whenTheCitedPassageIsLong_returnsABoundedExcerpt() throws Exception {
+        // ASCII because the test PDF font has no Turkish glyphs; the PDF wraps it onto several lines (collapsed here).
+        ready("topic-leave Annual   leave rules: " + "employee leave day ".repeat(40));
+        TestChatModel.INSTANCE.answer("Yirmi gün [1].");
+
+        HttpResponse<String> response = ask("topic-leave Yıllık izin kaç gün?");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        Matcher excerpt = Pattern.compile("\"excerpt\":\"([^\"]*)\"").matcher(response.body());
+        assertThat(excerpt.find()).as("citations[0].excerpt is present").isTrue();
+        String text = excerpt.group(1);
+        assertThat(text).startsWith("topic-leave Annual leave rules: employee leave day").endsWith("…")
+                .doesNotContain("  ", "\\n");
+        assertThat(text.codePointCount(0, text.length())).isLessThanOrEqualTo(280);
     }
 
     /** llm-rules 3.1: instructions only in the system message; passages fenced, numbered, and defused. */

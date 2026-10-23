@@ -39,6 +39,8 @@ export async function signIn() {
   const params = new URLSearchParams({
     client_id: CONFIG.clientId, response_type: 'code', scope: 'openid', redirect_uri: CONFIG.redirectUri, state,
     code_challenge: await challengeOf(verifier), code_challenge_method: 'S256',
+    // the IdP's sign-in page opens in Turkish whatever the browser's language (realm default "tr")
+    ui_locales: 'tr',
   });
   location.assign(`${endpoint('auth')}?${params}`);
 }

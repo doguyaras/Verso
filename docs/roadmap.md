@@ -16,3 +16,4 @@ Fazlar sırayla yapılır. Her faz kendi dalında geliştirilir, review'lardan v
 | 10 | **Panel** (ADR-0015): belgeler, soru-cevap, sistem; bağımlılıksız tarayıcı uygulaması, `verso-panel` istemcisi (code + PKCE), token yalnız bellekte, rol matrisi tek dosyada; backoffice mantığında yönetim arayüzü | Bitti (PR #12) |
 | + | Belge türleri: DOCX, TXT, MD (ADR-0016); kanıt `docs/evidence/adr-0016-dogrulama.md` | Bitti (PR #15) |
 | + | Panel v2 (yeniden tasarım) ve kalıcı `admin` kullanıcısı; kanıt `docs/evidence/panel-v2-dogrulama.md` | Bitti (PR #17) |
+| + | Panel v3 (ADR-0017): araştırmaya dayalı tasarım sistemi, Verso giriş teması, atıfta pasaj önizlemesi; kanıt `docs/evidence/panel-v3-dogrulama.md` | Bitti |

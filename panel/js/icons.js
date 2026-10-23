@@ -43,7 +43,42 @@ const SHAPES = Object.freeze({
   quote: [['path', { d: 'M9.5 7.5H6a1.5 1.5 0 0 0-1.5 1.5v3.5A1.5 1.5 0 0 0 6 14h3.5v-3.5A6 6 0 0 1 6 16.5' }],
     ['path', { d: 'M19.5 7.5H16a1.5 1.5 0 0 0-1.5 1.5v3.5A1.5 1.5 0 0 0 16 14h3.5v-3.5A6 6 0 0 1 16 16.5' }]],
   book: [['path', { d: 'M4.5 5.5A2 2 0 0 1 6.5 3.5H19.5v15H6.5a2 2 0 0 0-2 2Z' }], ['path', { d: 'M4.5 20.5a2 2 0 0 1 2-2h13' }]],
+  sidebar: [['rect', { x: 3.5, y: 4.5, width: 17, height: 15, rx: 2 }], ['path', { d: 'M9.5 4.5v15' }], ['path', { d: 'm15.5 10-2 2 2 2' }]],
+  stop: [['rect', { x: 6.5, y: 6.5, width: 11, height: 11, rx: 2 }]],
+  monitor: [['rect', { x: 3.5, y: 4.5, width: 17, height: 11.5, rx: 2 }], ['path', { d: 'M9 20h6M12 16v4' }]],
+  edit: [['path', { d: 'M4.5 19.5h4l10-10a2.1 2.1 0 0 0-3-3l-10 10Z' }], ['path', { d: 'm13.5 8.5 3 3' }]],
+  chevronRight: [['path', { d: 'm9.5 6 6 6-6 6' }]],
+  lock: [['rect', { x: 5, y: 10.5, width: 14, height: 10, rx: 2 }], ['path', { d: 'M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5' }]],
+  building: [['path', { d: 'M4.5 20.5V5.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15' }], ['path', { d: 'M14.5 9.5h4a1 1 0 0 1 1 1v10' }],
+    ['path', { d: 'M3 20.5h18M8 8.5h3M8 12h3M8 15.5h3' }]],
+  command: [['path', { d: 'M9 6.5a2.5 2.5 0 1 0-2.5 2.5H9Zm0 0v11m0-11h6m-6 11a2.5 2.5 0 1 1-2.5-2.5H9Zm0 0h6m0 0V6.5m0 11a2.5 2.5 0 1 0 2.5-2.5H15Zm0-11a2.5 2.5 0 1 1 2.5 2.5H15' }]],
+  enter: [['path', { d: 'M19.5 5v7a2 2 0 0 1-2 2H6' }], ['path', { d: 'm9.5 10.5-3.5 3.5 3.5 3.5' }]],
 });
+
+/**
+ * The Verso mark: a filled tile with a "V" drawn as an open book's fold and a citation dot. Colours come from CSS
+ * classes (logo-bg, logo-fg, logo-dot), so the mark follows the theme.
+ */
+export function logo(size = 28) {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 32 32');
+  svg.setAttribute('width', String(size));
+  svg.setAttribute('height', String(size));
+  svg.setAttribute('class', 'logo logo-mark');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  for (const [tag, attributes] of [
+    ['rect', { class: 'logo-bg', x: 0, y: 0, width: 32, height: 32, rx: 8 }],
+    ['path', { class: 'logo-fg', d: 'M8.5 9.5 16 23l7.5-13.5' }],
+    ['path', { class: 'logo-fg', d: 'M12.2 9.5 16 16.4l3.8-6.9', opacity: 0.55 }],
+    ['circle', { class: 'logo-dot', cx: 24.5, cy: 23.5, r: 2.2 }],
+  ]) {
+    const shape = document.createElementNS(SVG, tag);
+    for (const [key, value] of Object.entries(attributes)) shape.setAttribute(key, String(value));
+    svg.append(shape);
+  }
+  return svg;
+}
 
 /** An inline SVG icon; size "sm", "lg" or default. */
 export function icon(name, size = '') {

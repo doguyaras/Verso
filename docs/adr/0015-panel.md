@@ -66,6 +66,8 @@ Kullanıcı yeni bağımlılıktan kaçınılmasını istedi. React/TS bir derle
 
 ## Tasarım kararları
 
+> Görsel tasarım kararlarının yerini [ADR-0017](0017-panel-v3-tasarim-sistemi.md) aldı (panel v3: sol menü, mobil alt çubuk, "Clair obscur" tasarım sistemi). Kimlik, güvenlik ve rol matrisi kararları bu ADR'de geçerli.
+
 - Sol değil, üst menü.
 - Açık ve koyu tema (sistemi izler).
 - Kart ve tablo düzeni.

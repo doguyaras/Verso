@@ -9,19 +9,20 @@ import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
   signIn, signOut } from '../panel/js/auth.js';
-import { answerParts, FAILURES, formatLabel, plainName, sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
+import { answerParts, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
+  sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
   assert.deepEqual(roles, [ROLES.USER]);
-  assert.deepEqual(screensFor(roles), ['overview', 'documents', 'ask']);
+  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents']);
   assert.equal(canOpen('system', roles), false);
 });
 
 test('roles: an operator also sees the system screen; unknown screens are closed', () => {
   const roles = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(roles), ['overview', 'documents', 'ask', 'system']);
+  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents', 'system']);
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
 });
@@ -210,4 +211,90 @@ test('icons: every icon the screens and the menu use is drawn', () => {
       assert.ok(ICON_NAMES.includes(m[1]), `${file}: unknown icon ${m[1]}`);
     }
   }
+});
+
+// ---------- design v3 (ADR-0017) ----------
+test('search: Turkish letters fold, so "izin", "İZİN" and "sirket" find "İzin" and "şirket"', () => {
+  assert.equal(foldTr('İzin Yönetmeliği'), 'izin yonetmeligi');
+  assert.equal(foldTr('IŞIK ÇAĞRI'), 'isik cagri');
+  assert.equal(foldTr('ızgara'), 'izgara');
+  assert.ok(fuzzyScore('izin', 'İzin Yönetmeliği') > 0);
+  assert.ok(fuzzyScore('sirket', 'Şirket laptopu') > 0);
+  assert.ok(fuzzyScore('İZİN', 'izin-yonetmeligi.pdf') > 0);
+  assert.equal(fuzzyScore('xyz', 'Belgeler'), 0, 'letters that are not there do not match');
+  assert.equal(fuzzyScore('', 'Belgeler'), 1, 'an empty query shows everything');
+});
+
+test('search: a prefix ranks above a word start, which ranks above scattered letters', () => {
+  const prefix = fuzzyScore('bel', 'Belgeler');
+  const word = fuzzyScore('bel', 'Yeni belge');
+  const scattered = fuzzyScore('blg', 'Belgeler');
+  assert.ok(prefix > word && word > scattered && scattered > 0, `${prefix} ${word} ${scattered}`);
+});
+
+test('sources: citations are grouped by document in order of first use', () => {
+  const citations = [
+    { number: 1, documentId: 'a', fileName: 'izin.pdf', page: 2, unit: 'PAGE' },
+    { number: 2, documentId: 'b', fileName: 'masraf.docx', page: 1, unit: 'SECTION' },
+    { number: 3, documentId: 'a', fileName: 'izin.pdf', page: 3, unit: 'PAGE' },
+  ];
+  const groups = groupSources(citations);
+  assert.deepEqual(groups.map((g) => [g.fileName, g.items.map((c) => c.number)]), [['izin.pdf', [1, 3]], ['masraf.docx', [2]]]);
+});
+
+test('copy: the answer keeps its markers and lists its sources under it', () => {
+  const result = { answer: 'Yirmi gün [1].', citations: [{ number: 1, fileName: 'izin.pdf', page: 2, unit: 'PAGE' }] };
+  assert.equal(answerWithSources(result), 'Yirmi gün [1].\n\nKaynaklar:\n[1] izin.pdf, sayfa 2');
+  assert.equal(answerWithSources({ answer: 'Bulunamadı.', citations: [] }), 'Bulunamadı.');
+});
+
+test('time: answers under ten seconds show one decimal, slower ones whole seconds', () => {
+  assert.equal(formatSeconds(1320), '1,3 sn');
+  assert.equal(formatSeconds(64873), '65 sn');
+  assert.equal(greeting(8), 'Günaydın');
+  assert.equal(greeting(14), 'İyi günler');
+  assert.equal(greeting(23), 'İyi akşamlar');
+});
+
+test('fill: optional children that are null or false are skipped, never written as "null"', () => {
+  const node = { children: null, replaceChildren(...c) { this.children = c; } };
+  fill(node, 'a', null, false, undefined, ['b', null]);
+  assert.deepEqual(node.children, ['a', 'b']);
+});
+
+test('screens: page content uses fill() where a child may be null (the panel showed "null" under the table)', () => {
+  for (const file of readdirSync('panel/js/screens')) {
+    const source = readFileSync(`panel/js/screens/${file}`, 'utf8');
+    for (const m of source.matchAll(/(\w+)\.replaceChildren\(([\s\S]*?)\);\n/g)) {
+      assert.doesNotMatch(m[2], /: null\b|\? null\b/, `${file}: ${m[1]}.replaceChildren with a possible null`);
+    }
+  }
+});
+
+test('login theme: keycloak.v2 child, CSS and markup only, Turkish texts for every key it uses', () => {
+  const dir = 'deploy/keycloak/themes/verso/login';
+  const props = readFileSync(`${dir}/theme.properties`, 'utf8');
+  assert.match(props, /^parent=keycloak\.v2$/m);
+  const ours = props.match(/^styles=css\/styles\.css css\/(verso-[a-z0-9-]+\.css)$/m);
+  assert.ok(ours, 'the parent styles first, ours last, under a palette name (browsers cache theme files for 30 days)');
+  readFileSync(`${dir}/resources/css/${ours[1]}`, 'utf8');
+  assert.doesNotMatch(props, /^scripts=/m, 'the theme adds no scripts');
+  const template = readFileSync(`${dir}/template.ftl`, 'utf8');
+  const added = template.slice(template.indexOf('<div class="verso-split">'), template.indexOf('<div class="${properties.kcLogin!}">'));
+  assert.ok(added.length > 0);
+  assert.doesNotMatch(added, /<script|on[a-z]+=|javascript:/i, 'the brand panel is static markup');
+  const used = new Set([...added.matchAll(/msg\("(verso\w+)"\)/g)].map((m) => m[1]));
+  assert.ok(used.size >= 8, 'the brand panel texts come from the message files');
+  for (const lang of ['tr', 'en']) {
+    const messages = readFileSync(`${dir}/messages/messages_${lang}.properties`, 'utf8');
+    for (const key of used) assert.match(messages, new RegExp(`^${key}=.+`, 'm'), `${lang}: ${key}`);
+  }
+  const realm = JSON.parse(readFileSync('deploy/keycloak/realm/verso-realm.json', 'utf8'));
+  assert.equal(realm.loginTheme, 'verso');
+  assert.equal(realm.defaultLocale, 'tr');
+  assert.match(readFileSync('compose.yaml', 'utf8'), /- \.\/deploy\/keycloak\/themes\/verso:\/opt\/keycloak\/themes\/verso:ro/);
+});
+
+test('sign-in: the IdP page is asked for Turkish', () => {
+  assert.match(readFileSync('panel/js/auth.js', 'utf8'), /ui_locales: 'tr'/);
 });

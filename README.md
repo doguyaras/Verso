@@ -86,12 +86,18 @@ Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikis
 
 Ekranlar:
 
-- **Genel bakış:** belge sayıları (aranabilir, işleniyor, hata), tür dağılımı, son yüklenenler, hızlı soru, asistanın modu ve modelleri.
-- **Belgeler:** sayfanın her yerine sürükle-bırak, dosya başına yükleme ilerlemesi, arama ve durum filtresi, ayrıntı paneli, onaylı silme.
-- **Soru sor:** sohbet görünümü; atıf numaraları, kaynak listesi (sayfa ya da bölüm), cevabın türü (kaynaklı, bulunamadı, kaynak gösterilemedi), geçen süre, kopyalama.
-- **Sistem:** mod ve KVKK açıklaması, modeller, oturum süresi, gözlem bağlantıları; yalnız operatör rolüne görünür.
+- **Giriş:** kurumun kimlik sağlayıcısına yönlendirir. Paketteki demo Keycloak, Verso'nun kendi giriş temasıyla açılır (Türkçe, marka paneli, aynı renkler).
+- **Genel bakış:** ilk kullanım listesi (belge yükle, ilk soruyu sor, gizlilik modunu incele), tıklanabilir sayılar (aranabilir, işleniyor, hata), son yüklenenler, bu oturumdaki sorular, hızlı soru, asistanın modu ve modelleri.
+- **Soru sor:**
+  - Sohbet görünümünde bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
+  - Kaynak kartları belgeye göre gruplanır.
+  - Cevabın türü (kaynaklı, bulunamadı, kaynak gösterilemedi) kendi görünümüyle gösterilir; bulunamadığında "soruyu düzenle" ve "belge yükle" önerilir.
+  - Beklerken geçen süre ve gerçekçi bir beklenti görünür; bir durdurma düğmesi vardır.
+  - Kopyalanan cevap kaynaklarıyla birlikte gelir.
+- **Belgeler:** sayfanın her yerine sürükle-bırak; dosya başına ilerleme ve "tekrar dene"; Türkçe harf duyarsız arama, durum filtresi ve sıralanabilir tablo; ayrıntı paneli; dosya adıyla silme onayı.
+- **Sistem:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
 
-Açık ve koyu tema (sistemi izler, üst çubuktan değişir), telefon genişliğinde çekmece menü.
+Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` belgeler). Açık ve koyu tema sistemi izler; hesap menüsünden değiştirilebilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md).
 
 Panelin özellikleri:
 
@@ -101,13 +107,21 @@ Panelin özellikleri:
 - Rol matrisi tek dosyadadır (`panel/js/roles.js`).
 - Varsayılan portlarla çalışır (8080, 8180, 3000). Port değişirse `panel/js/config.js`, realm'deki `verso-panel` istemcisi ve `deploy/edge/nginx.conf`'taki CSP birlikte değişir.
 
-Kararlar: [ADR-0015](docs/adr/0015-panel.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
+Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
 
-Daha önce kurulmuş bir yığında panelin IdP istemcisi ya da `admin` kullanıcısı yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz), sonra bir kez şunu çalıştırın; yalnız demo IdP'nin verisini sıfırlar:
+Daha önce kurulmuş bir yığında panelin IdP istemcisi, `admin` kullanıcısı ya da Verso giriş teması yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz). Sonra Keycloak'ı tema bağlantısıyla yeniden oluşturun; bu, sıkıştırılmış kaynak önbelleğini de siler (tema dosyaları her değiştiğinde de gerekir):
+
+```bash
+docker compose up -d --force-recreate --no-deps --wait keycloak
+```
+
+Ardından realm'i bir kez yeniden içe aktarın; yalnız demo IdP'nin verisini sıfırlar:
 
 ```bash
 bash scripts/keycloak-reimport.sh
 ```
+
+Demo kullanıcıları yeni kimlik alır; önceki kimlikle yüklenen belgeler silinmez ama yeni oturumda görünmez.
 
 ## curl ile
 

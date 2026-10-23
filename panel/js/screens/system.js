@@ -2,7 +2,7 @@
 import { api } from '../api.js';
 import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
-import { el } from '../render.js';
+import { el, fill } from '../render.js';
 
 function row(glyph, key, value) {
   return el('div', { class: 'kv-row' }, el('span', { class: 'k' }, icon(glyph, 'sm'), key), el('span', { class: 'v' }, value));
@@ -28,29 +28,31 @@ export async function renderSystem(ctx) {
   tick();
   const timer = setInterval(tick, 1000);
 
-  main.replaceChildren(
-    el('div', { class: 'page-head' }, el('div', {}, el('h2', {}, 'Sistem'),
+  fill(main,
+    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Sistem'),
       el('p', {}, 'Asistanın hangi modda çalıştığı, hangi modelleri kullandığı ve oturumunuz.'))),
     info ? el('section', { class: `card mode-hero ${local ? 'local' : 'cloud'}` },
       el('span', { class: 'big-icon' }, icon(local ? 'shield' : 'cloud', 'lg')),
-      el('div', {}, el('h3', {}, local ? 'Yerel mod' : 'Bulut modu'),
+      el('div', {}, el('h2', {}, local ? 'Yerel mod' : 'Bulut modu', el('span', { class: `pill ${local ? 'ok' : 'wait'}` }, local ? 'Etkin' : 'Dikkat')),
         el('p', {}, local
           ? 'Belgeler, sorular ve cevaplar bu sunucudan çıkmaz. Embedding ve sohbet modeli aynı ağda çalışır; uygulamanın internete çıkışı ağ, uygulama ve açılış katmanlarında kapalıdır.'
-          : 'Sorular ve seçilen pasajlar bulut sağlayıcısına gönderilir (KVKK md. 9 kapsamında yurt dışına aktarım). Belgelerin kendisi ve embedding yine bu sunucuda kalır.'))) : null,
+          : 'Sorular ve seçilen pasajlar bulut sağlayıcısına gönderilir (KVKK md. 9 kapsamında yurt dışına aktarım). Belgelerin kendisi ve embedding yine bu sunucuda kalır.'),
+        local ? el('div', { class: 'layers' }, ['Ağ: iç ağ, internet yok', 'Uygulama: dış adres filtresi', 'Açılış: mod tutarlılık kontrolü'].map((t) =>
+          el('span', { class: 'pill neutral' }, icon('lock', 'sm'), t))) : null)) : null,
     el('div', { class: 'grid halves' },
-      el('section', { class: 'card' }, el('div', { class: 'card-head' }, el('h3', {}, 'Modeller')),
+      el('section', { class: 'card' }, el('div', { class: 'card-head' }, el('h2', {}, 'Modeller')),
         el('div', { class: 'card-body' },
           row('chat', 'Sohbet modeli', info ? el('span', { class: 'code' }, info.chatModel) : '–'),
           row('layers', 'Embedding modeli', info ? el('span', { class: 'code' }, info.embeddingModel) : '–'),
           row(local ? 'shield' : 'cloud', 'Mod', info ? (local ? 'local' : 'cloud') : '–'))),
-      el('section', { class: 'card' }, el('div', { class: 'card-head' }, el('h3', {}, 'Oturum')),
+      el('section', { class: 'card' }, el('div', { class: 'card-head' }, el('h2', {}, 'Oturum')),
         el('div', { class: 'card-body' },
           row('user', 'Kullanıcı', identity.preferred_username ?? '–'),
           row('key', 'Roller', roles.join(', ')),
           row('clock', 'Token geçerliliği', left),
           meterWrap,
           el('p', { class: 'stat-note' }, 'Token yalnız bu sekmenin belleğinde durur; süresi dolmadan kendiliğinden yenilenir.')))),
-    el('section', { class: 'card' }, el('div', { class: 'card-head' }, el('h3', {}, 'Gözlem')),
+    el('section', { class: 'card' }, el('div', { class: 'card-head' }, el('h2', {}, 'Gözlem')),
       el('div', { class: 'card-body' },
         row('chart', 'Grafana', el('a', { href: CONFIG.grafana, target: '_blank', rel: 'noopener noreferrer' }, CONFIG.grafana, ' ', icon('external', 'sm'))),
         row('book', 'Runbook\'lar', el('span', { class: 'code' }, 'docs/runbooks/')),

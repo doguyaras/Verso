@@ -1,0 +1,168 @@
+/* Verso login theme (ADR-0017), palette "Clair obscur": the panel's light ash page and charcoal frame with antique
+   gold, on top of keycloak.v2 (PatternFly 5). Only PatternFly variables and a few layout rules change, so Keycloak
+   upgrades keep working markup. The file name changes with the palette: browsers cache theme resources for 30 days
+   under a URL that only changes with the Keycloak version. */
+
+:root {
+  --verso-canvas: #e8e9eb;
+  --verso-surface: #f6f7f8;
+  --verso-border: #cdd0d4;
+  --verso-control-border: #80858c;
+  --verso-fg: #1c1e22;
+  --verso-muted: #575c63;
+  --verso-button: #1e2024;
+  --verso-button-hover: #2a2d31;
+  --verso-on-button: #f3e3bc;
+  --verso-link: #6e521a;
+  --verso-focus: #7a5e22;
+  --verso-frame: #1e2024;
+  --verso-gold: #e9d6a6;
+  --verso-frame-muted: #9ea3aa;
+  --verso-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui,
+    Roboto, "Noto Sans", "Liberation Sans", Arial, sans-serif;
+
+  --pf-v5-global--FontFamily--text: var(--verso-font);
+  --pf-v5-global--FontFamily--heading: var(--verso-font);
+  --pf-v5-global--link--Color: var(--verso-link);
+  --pf-v5-global--link--Color--hover: var(--verso-fg);
+  --pf-v5-global--BorderRadius--sm: 8px;
+  --pf-v5-global--BorderRadius--lg: 12px;
+  --keycloak-card-top-color: transparent;
+}
+
+:root.pf-v5-theme-dark {
+  --verso-canvas: #24262a;
+  --verso-surface: #2d3035;
+  --verso-border: #3e4248;
+  --verso-control-border: #767b83;
+  --verso-fg: #eeeff1;
+  --verso-muted: #aeb2b9;
+  --verso-button: #d4b26a;
+  --verso-button-hover: #c49f55;
+  --verso-on-button: #231a06;
+  --verso-link: #e8cb8a;
+  --verso-focus: #e8cb8a;
+  --verso-frame: #121315;
+  --verso-frame-muted: #8e939a;
+  --pf-v5-global--link--Color: var(--verso-link);
+  --pf-v5-global--link--Color--hover: #f5e6c4;
+  --pf-v5-global--BackgroundColor--100: var(--verso-surface);
+}
+
+/* Component variables, set on the components: PatternFly's dark theme redefines them under :where(.pf-v5-theme-dark). */
+.verso .pf-v5-c-button {
+  --pf-v5-c-button--m-primary--BackgroundColor: var(--verso-button);
+  --pf-v5-c-button--m-primary--Color: var(--verso-on-button);
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: var(--verso-button-hover);
+  --pf-v5-c-button--m-primary--hover--Color: var(--verso-on-button);
+  --pf-v5-c-button--m-primary--focus--BackgroundColor: var(--verso-button-hover);
+  --pf-v5-c-button--m-primary--focus--Color: var(--verso-on-button);
+  --pf-v5-c-button--m-primary--active--BackgroundColor: var(--verso-button-hover);
+  --pf-v5-c-button--m-primary--active--Color: var(--verso-on-button);
+}
+.verso .pf-v5-c-form-control {
+  --pf-v5-c-form-control--BackgroundColor: var(--verso-surface);
+  --pf-v5-c-form-control--before--BorderColor: var(--verso-control-border);
+  --pf-v5-c-form-control--hover--after--BorderBottomColor: var(--verso-focus);
+  --pf-v5-c-form-control--focus--after--BorderBottomColor: var(--verso-focus);
+}
+
+.login-pf body.verso, body.verso {
+  background: var(--verso-canvas);
+  font-family: var(--verso-font);
+  min-height: 100vh;
+}
+
+/* two columns: the dark frame (obscur) with the brand, the light page (clair) with the form */
+.verso-split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.verso-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 48px 56px 36px;
+  color: #e8e9eb;
+  background: var(--verso-frame);
+  overflow: hidden;
+}
+.verso-brand::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  bottom: -40px;
+  width: 300px;
+  height: 360px;
+  border-radius: 14px;
+  border: 1px solid rgba(233, 214, 166, .16);
+  box-shadow: -18px -18px 0 -1px rgba(233, 214, 166, .06), -36px -36px 0 -2px rgba(233, 214, 166, .035);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+.verso-brand-row { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 17px; }
+.verso-brand-row small { display: block; font-weight: 400; font-size: 12px; color: var(--verso-frame-muted); }
+.verso-logo-bg { fill: #d4b26a; }
+.verso-logo-fg { fill: none; stroke: #231a06; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.verso-logo-dot { fill: #231a06; }
+.verso-brand h2 { margin: 24px 0 0; font-size: 32px; line-height: 1.2; letter-spacing: -.02em; font-weight: 600; max-width: 17ch; color: #f6f7f8; }
+.verso-brand p { margin: 0; color: #c4c8ce; font-size: 16px; line-height: 1.55; max-width: 42ch; }
+.verso-trust { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 16px; position: relative; z-index: 1; }
+.verso-trust li { padding-left: 34px; position: relative; display: grid; gap: 2px; }
+.verso-trust li::before {
+  content: "✓";
+  position: absolute; left: 0; top: 1px;
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px;
+  background: rgba(233, 214, 166, .1); color: var(--verso-gold); font-size: 12px; font-weight: 700;
+}
+.verso-trust strong { color: #f6f7f8; font-weight: 600; }
+.verso-trust span { color: var(--verso-frame-muted); font-size: 14px; }
+.verso-brand-foot { margin-top: auto; font-size: 12px; color: var(--verso-frame-muted); position: relative; z-index: 1; }
+
+/* the form column: keycloak.v2's card without the background art and the realm title */
+.verso .pf-v5-c-login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 32px 24px;
+  background: none;
+}
+.verso .pf-v5-c-login__container {
+  grid-template-columns: min(420px, 100%);
+  grid-template-areas: "main";
+  width: 100%;
+  justify-content: center;
+}
+.verso #kc-header { display: none; }
+.verso .pf-v5-c-login__main {
+  background: var(--verso-surface);
+  border: 1px solid var(--verso-border);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(28, 30, 34, .06), 0 12px 32px rgba(28, 30, 34, .1);
+}
+:root.pf-v5-theme-dark .verso .pf-v5-c-login__main { box-shadow: none; }
+.verso .pf-v5-c-login__main-header { border-top: 0; padding-top: 32px; }
+.verso .pf-v5-c-login__main-header .pf-v5-c-title { font-size: 24px; font-weight: 600; letter-spacing: -.015em; color: var(--verso-fg); }
+.verso .pf-v5-c-form__label-text { font-weight: 500; color: var(--verso-fg); }
+.verso .pf-v5-c-form-control { min-height: 44px; }
+.verso .pf-v5-c-button.pf-m-primary { min-height: 44px; font-weight: 600; }
+.verso .pf-v5-c-button:focus-visible, .verso .pf-v5-c-form-control:focus-within {
+  outline: 2px solid var(--verso-focus);
+  outline-offset: 2px;
+}
+.verso .pf-v5-c-alert { border-radius: 8px; }
+
+@media (max-width: 960px) {
+  .verso-split { grid-template-columns: minmax(0, 1fr); }
+  .verso-brand { padding: 22px 24px; gap: 10px; }
+  .verso-brand h2 { margin-top: 6px; font-size: 20px; max-width: none; }
+  .verso-brand p, .verso-trust, .verso-brand-foot, .verso-brand::after { display: none; }
+  .verso .pf-v5-c-login { min-height: auto; padding-top: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

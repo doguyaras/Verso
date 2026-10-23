@@ -29,6 +29,12 @@ public class CitationExtractor {
     private static final Pattern MARKER = Pattern.compile("\\[\\s*(" + ITEM + "(?:\\s*[,;]\\s*" + ITEM + ")*)\\s*]");
     private static final Pattern RANGE = Pattern.compile("\\s*[-–]\\s*");
     private static final Pattern SPACE_BEFORE_PUNCTUATION = Pattern.compile("\\s+([.,;:!?])");
+    // Unicode white space (NBSP included) and control characters left over from text extraction become one space.
+    private static final Pattern WHITESPACE = Pattern.compile("[\\p{IsWhite_Space}\\p{Cc}]+");
+
+    /** Upper bound of {@link Citation#excerpt()} in code points, the ellipsis included (API doc: at most 280). */
+    static final int EXCERPT_MAX = 280;
+    private static final String ELLIPSIS = "…";
 
     /** The cleaned answer and its citations in order of first use. */
     public record Extracted(String answer, List<Citation> citations) {
@@ -50,7 +56,7 @@ public class CitationExtractor {
                     valid.add(number);
                     RetrievedPassage passage = passages.get(number - 1);
                     used.putIfAbsent(number, new Citation(number, passage.documentId(), passage.fileName(),
-                            passage.pageNumber(), unit(passage.unit())));
+                            passage.pageNumber(), unit(passage.unit()), excerpt(passage.content())));
                 }
             }
             String replacement = valid.isEmpty() ? "" : valid.stream().map(n -> "[" + n + "]")
@@ -60,6 +66,24 @@ public class CitationExtractor {
         matcher.appendTail(answer);
         String cleaned = SPACE_BEFORE_PUNCTUATION.matcher(answer.toString()).replaceAll("$1").strip();
         return new Extracted(cleaned, List.copyOf(used.values()));
+    }
+
+    /**
+     * The start of a passage for the client's hover card: white space collapsed, at most {@link #EXCERPT_MAX} code
+     * points with a trailing ellipsis when cut. The cut goes back to the last space unless that would drop more than
+     * half of the kept text (one very long word); it never splits a surrogate pair. Display only, never logged
+     * (llm-rules 2.1).
+     */
+    static String excerpt(String content) {
+        if (content == null) return "";
+        String text = WHITESPACE.matcher(content).replaceAll(" ").strip();
+        if (text.codePointCount(0, text.length()) <= EXCERPT_MAX) return text;
+        int end = text.offsetByCodePoints(0, EXCERPT_MAX - ELLIPSIS.length());
+        if (text.charAt(end) != ' ') {
+            int space = text.lastIndexOf(' ', end - 1);
+            if (space > end / 2) end = space;
+        }
+        return text.substring(0, end).stripTrailing() + ELLIPSIS;
     }
 
     /** Exhaustive on purpose: a new SourceUnit must not reach clients as a 500 (review L3). */

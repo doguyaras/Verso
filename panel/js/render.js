@@ -72,6 +72,80 @@ export function sourceLabel(citation) {
   return `${citation.fileName}, ${citation.unit === 'SECTION' ? 'bölüm' : 'sayfa'} ${citation.page}`;
 }
 
+/**
+ * Text folded for searching Turkish: "İzin", "izin", "IZIN" and "ızın" all match, and so do "şirket" and "sirket".
+ * Dotted and dotless i collapse to "i", the other letters lose their marks (ç→c, ğ→g, ö→o, ş→s, ü→u).
+ */
+export function foldTr(text) {
+  return String(text).toLocaleLowerCase('tr').replace(/ı/g, 'i').normalize('NFD').replace(/\p{Mn}/gu, '');
+}
+
+/**
+ * A fuzzy match score for the command palette: 0 when the query's letters do not appear in order, higher for a
+ * prefix, a word start or consecutive letters. Both sides are folded (foldTr).
+ */
+export function fuzzyScore(query, text) {
+  const q = foldTr(query).replace(/\s+/g, '');
+  if (!q) return 1;
+  const t = foldTr(text);
+  if (t.startsWith(q)) return 100 + q.length;
+  const at = t.indexOf(q);
+  if (at >= 0) return (t[at - 1] === ' ' ? 80 : 60) + q.length;
+  let score = 0;
+  let from = 0;
+  let previous = -2;
+  for (const letter of q) {
+    const found = t.indexOf(letter, from);
+    if (found < 0) return 0;
+    score += found === previous + 1 ? 3 : found === 0 || t[found - 1] === ' ' ? 2 : 1;
+    previous = found;
+    from = found + 1;
+  }
+  return score;
+}
+
+/** Seconds for the answer footer: one decimal below ten ("1,3 sn"), whole seconds above ("23 sn"). */
+export function formatSeconds(ms) {
+  const seconds = ms / 1000;
+  return seconds < 10 ? `${seconds.toFixed(1).replace('.', ',')} sn` : `${Math.round(seconds)} sn`;
+}
+
+/**
+ * The answer as plain text for the clipboard, with its sources listed under it: "[1] izin.pdf, sayfa 3". Markers
+ * stay as they are, so the copied text still points to its sources (NotebookLM-style copy).
+ */
+export function answerWithSources(result) {
+  if (!result.citations?.length) return result.answer;
+  return `${result.answer}\n\nKaynaklar:\n${result.citations.map((c) => `[${c.number}] ${sourceLabel(c)}`).join('\n')}`;
+}
+
+/** Citations grouped by document for the source cards, in order of first use: [{ fileName, items: [citation] }]. */
+export function groupSources(citations) {
+  const groups = new Map();
+  for (const citation of citations) {
+    const key = citation.documentId ?? citation.fileName;
+    if (!groups.has(key)) groups.set(key, { documentId: citation.documentId, fileName: citation.fileName, items: [] });
+    groups.get(key).items.push(citation);
+  }
+  return [...groups.values()];
+}
+
+/** The time-of-day greeting for the overview. */
+export function greeting(hour) {
+  if (hour >= 5 && hour < 12) return 'Günaydın';
+  if (hour >= 12 && hour < 18) return 'İyi günler';
+  return 'İyi akşamlar';
+}
+
+/**
+ * Replaces a node's children, skipping null and false like el() does. Plain replaceChildren() would turn a null
+ * (an optional card that is not shown) into the text "null".
+ */
+export function fill(node, ...children) {
+  node.replaceChildren(...children.flat().filter((child) => child !== null && child !== undefined && child !== false));
+  return node;
+}
+
 /** Builds an element: el('div', {class: 'x'}, 'text', child). Strings become text nodes, never HTML. */
 export function el(tag, attributes = {}, ...children) {
   const node = document.createElement(tag);

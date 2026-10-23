@@ -8,11 +8,12 @@ export const ROLES = Object.freeze({
   OPERATOR: 'verso-operator',
 });
 
+// Menu order: the most used task right after the overview (ADR-0017). "key" is the second key of the "g" shortcut.
 export const SCREENS = Object.freeze({
-  overview: { title: 'Genel bakış', icon: 'home', roles: [ROLES.USER, ROLES.OPERATOR] },
-  documents: { title: 'Belgeler', icon: 'files', roles: [ROLES.USER, ROLES.OPERATOR] },
-  ask: { title: 'Soru sor', icon: 'chat', roles: [ROLES.USER, ROLES.OPERATOR] },
-  system: { title: 'Sistem', icon: 'server', roles: [ROLES.OPERATOR] },
+  overview: { title: 'Genel bakış', short: 'Özet', icon: 'home', key: 'o', roles: [ROLES.USER, ROLES.OPERATOR] },
+  ask: { title: 'Soru sor', short: 'Sor', icon: 'chat', key: 's', roles: [ROLES.USER, ROLES.OPERATOR] },
+  documents: { title: 'Belgeler', short: 'Belgeler', icon: 'files', key: 'b', roles: [ROLES.USER, ROLES.OPERATOR] },
+  system: { title: 'Sistem', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR] },
 });
 
 /** The roles of a decoded access token payload; every authenticated user is at least a verso-user. */
