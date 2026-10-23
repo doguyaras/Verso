@@ -62,6 +62,15 @@ Değişiklikler canlı yığına iki adımla alındı:
 - Tarayıcı eski stil dosyasını önbellekten getirdi. Ad `verso-fildisi-2.css` oldu.
 - `node --test scripts/panel.test.mjs`: 34/34. Tema testi dil anahtarının bağlantı olduğunu ve şablonda `onchange=` olmadığını kontrol ediyor.
 
+## Giriş ekranı: açık kitap (ek, aynı gün)
+
+- `node --test scripts/panel.test.mjs`: 34/34. Tema testi sol sayfanın metinlerini (en az 2 anahtar) ve dil anahtarını kontrol ediyor; motion testi levhadaki 4 boyalı katmanda `infinite` aramıyor.
+- **Canlı, 1440 × 900 açık tema:**
+  - Panel ve Keycloak aynı kitabı gösterdi: solda imzalı levha ve iki güvence, sağda "Giriş yapın", alt satır ve düğme ya da form.
+  - Keycloak'ta TR / EN anahtarı sağ sayfanın köşesinde.
+- **Mobil (375 px):** iki ekranda da yatay kaydırma yok (`scrollWidth` 375). Kitap tek sütun.
+- Keycloak stil dosyası `verso-kitap.css` oldu; yeniden oluşturmadan sonra yeni dosya yüklendi.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

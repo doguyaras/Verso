@@ -86,7 +86,7 @@ Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikis
 
 Ekranlar:
 
-- **Giriş:** kurumun kimlik sağlayıcısına yönlendirir. Paketteki demo Keycloak, Verso'nun kendi giriş temasıyla açılır: Türkçe, boyalı "Fildişi tuval" marka paneli, atılan imza, panelle aynı renkler.
+- **Giriş:** kurumun kimlik sağlayıcısına yönlendirir. Paketteki demo Keycloak, Verso'nun kendi giriş temasıyla açılır: masada açık bir kitap; sol sayfada imzası atılan boyalı levha, sağ sayfada giriş. Panelin kendi giriş ekranı da aynı.
 - **Genel bakış:** ilk kullanım listesi (belge yükle, ilk soruyu sor, gizlilik modunu incele), tıklanabilir sayılar (aranabilir, işleniyor, hata), son yüklenenler, bu oturumdaki sorular, kurulumun aşaması, hızlı soru, asistanın modu ve modelleri.
 - **Soru sor:**
   - Sohbet görünümünde bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.

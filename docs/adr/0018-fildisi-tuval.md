@@ -70,30 +70,35 @@
 - **Nereden servis edilir:** panel `/panel/fonts/`, Keycloak teması `resources/fonts/`. İki kopyanın aynı olduğunu test kontrol eder.
 - **CSP:** panele tek yönerge eklendi, `font-src 'self'` (data: ve dış adres yok). nginx `woff2`'yi `font/woff2` olarak döndürür. `ComposeConfigTest` başlığı birebir sabitler. Keycloak'ın varsayılan realm CSP'si font kısıtlamaz.
 
-**Giriş ekranı** (panel ve Keycloak aynı dil). Gül yaprakları kullanıcı isteğiyle yok.
-- **Boyalı gökyüzü:** köşeden vuran ışık, bulut lekeleri, yavaş kayan güneş (`@property`), ışık huzmeleri (`repeating-conic-gradient` + maske), altta iki sis katmanı, tuval dokusu ve gren.
-- **Kâğıt form:** dört altın köşe süsüyle. Panelde süsler `span`, Keycloak'ta tek öğe üstünde sekiz `linear-gradient` ile çizilir.
-- **Imleç ışığı** yalnız panelde, fare ve kalemle.
-- **Koyu temada** aynı tuval mürekkep olur: yavaş dönen altın varak parıltısı ve deniz mavisi ışık.
-- **Hareketin süresi sınırlı (WCAG 2.2.2):** ambiyans katmanları birkaç tur dönüp durur (en uzunu 80 sn). "Reduce motion" ile hiç oynamaz. Test, giriş katmanlarında `infinite` olmadığını kontrol eder.
-- **İmza 1,15 sn'de atılır** (önce 2,4 sn, sonra 1,6 sn; kullanıcı ikisini de yavaş buldu).
+**Giriş ekranı: masada açık bir kitap** (panel ve Keycloak aynı tasarım). "Verso" kitabın sol sayfasının adıdır.
+- **Nasıl seçildi:**
+  - İlk sürüm ikiye bölünmüş bir ekrandı: solda boyalı gökyüzü ve çok yazı, sağda kâğıt kart. Kullanıcı "çok fazla yazı var, arka plan dümdüz boş" dedi.
+  - On konsept animasyonlu önizlemeyle karşılaştırıldı: tam ekran tuval, kemerli pencere, galeri çerçevesi, ufuk, belge katmanları, Art Deco güneş, dev imza, sahne ışığı, kitap açılımı, mektup ve mühür. Kullanıcı kitap açılımını seçti.
+  - Deri kapaklı, kurdeleli ve kapağı çevrilen ayrıntılı bir sürüm "abartı" bulundu; sade kitap kaldı.
+- **Sol sayfa:**
+  - Altın çerçeveli boyalı bir levha; içinde gökyüzü, güneş, sis ve tuval dokusu. Levhada Verso imzası atılır (1,15 sn).
+  - Altında iki kısa güvence: "Veriniz kurum içinde kalır", "Her yanıt kaynağıyla".
+- **Sağ sayfa:** yalnız "Giriş yapın", "Şirket hesabınızla devam edin." ve kısa bir altın çizgi.
+  - Panelde altında giriş düğmesi var; Keycloak'ta form doğrudan kâğıdın üstündedir, ayrı bir kart yoktur.
+- **Başlık yok.** On üç cümle denendi; kullanıcı hiçbirini beğenmedi. Araştırma gerekçeyi verdi:
+  - İncelenen 13 gerçek giriş sayfasının 10'unda başlık yok (Linear, Figma, Stripe, Slack, ChatGPT, Glean gibi).
+  - Reddedilen cümleler aynı fikri fiilsiz isim öbekleriyle tekrarlıyordu.
+  - Kullanıcı "başlık hiç olmasın"ı seçti. Kitap ve imza konuşur.
+  - Notlar repoya girmedi.
+- **Hareket kısa ve tek seferliktir:**
+  - Kitap yerine oturur, levhadaki ışık ve sis 4 sn'de durur, imza atılır, sağ sayfa sırayla gelir, düğmenin üstünden bir kez ışık geçer.
+  - "Reduce motion" ile hiçbiri oynamaz. Test, giriş katmanlarında `infinite` olmadığını kontrol eder (WCAG 2.2.2).
+- **Koyu tema:** aynı kitap koyu bir masada, levha aydınlık kalır. Keycloak her zaman açıktır (`darkMode=false`).
+- **Mobil:** kitap tek sayfaya iner; üstte levha, altta giriş.
 - **Keycloak form düzeltmeleri:**
   - PatternFly'ın iki kenarlığından (kutu + alt çizgi) yalnız kutu kalır; odakta tek altın halka.
   - Otomatik doldurma, temanın alan rengine boyanır.
   - Şifre alanı ve göz düğmesi tek alan gibi görünür.
-  - Dil seçimi sayfanın sağ üstünde TR / EN anahtarıdır: düz bağlantılar. keycloak.v2'nin `onchange`'li `select`'i kalktı; şablonda satır içi script kalmadı.
-  - Kart 440 px'tir. İçinde 10 px içeriden altın ince çerçeve ve üstte küçük bir elmas var. Başlığın altında yalnız giriş sayfasında "Şirket hesabınızla devam edin." ve kısa bir altın çizgi bulunur. Alanlar 48 px'tir.
-  - Marka sütunu sol yarıda 520 px genişlikte ortalanır; geniş ekranda köşeye yapışmaz.
-- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` → `verso-fildisi-2.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
+  - Dil seçimi TR / EN anahtarıdır: düz bağlantılar. keycloak.v2'nin `onchange`'li `select`'i kalktı; şablonda satır içi script kalmadı. Kitabın gölge filtresi yüzünden anahtar ekranın değil sağ sayfanın sağ üst köşesinde durur.
+- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` → `verso-fildisi-2.css` → `verso-kitap.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
 
 **Ürün metni ve ekranlar.**
-- **Slogan:** "Kurumunuza uyum sağlayan yapay zekâ katmanı."
-- **Giriş başlığı:** "Kurumunuzun bilgisine, *kurumunuzun içinden* ulaşın."
-- **Üç güven maddesi.** Hepsi bugün doğru; yerel mod koşulu açıkça yazılır.
-  - "Her yanıt kaynağıyla".
-  - "Veriniz kurum içinde kalır; yerel modda sorular da dışarı çıkmaz".
-  - "Şirket hesabınızla giriş".
-- **Danışmanlık satırı:** "Kurulumu ekibimiz yapar, sistem sizde kalır."
+- **Konumlandırma cümlesi** (ürün ve satış metinleri için): "Kurumunuza uyum sağlayan yapay zekâ katmanı." Giriş ekranında ve menüde yazmaz; kullanıcı menüde "yapay zeka katmanı diye bir şey yazmasına gerek yok" dedi.
 - **"KVKK uyumlu" yazılmaz;** genel bir uyum iddiası hukuki inceleme ister.
 - **Menü** (beş ekran): Genel bakış · Soru sor · Bilgi kaynakları · Kurulum durumu · Sistem ve güvenlik (operatör). Mobil alt çubuk dört sekmede kalır; Kurulum durumu'na Genel bakış kartından gidilir.
 - **Bilgi kaynakları:** eski Belgeler ekranı. Altında "Bağlantılar" kartları var: SharePoint ve dosya paylaşımları, talep yönetimi, ERP. Hepsi "Planlandı" rozetli; çalışıyormuş gibi gösterilmez.

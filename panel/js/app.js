@@ -264,34 +264,6 @@ function buildShell() {
     mobileAccount);
 }
 
-/** The headline, one span per word: the words rise one after another (CSS, delay from --i). */
-function words(...parts) {
-  let i = 0;
-  const split = (text, wrap) => text.split(' ').filter(Boolean).map((word) => {
-    const span = el('span', { class: 'word' }, wrap ? wrap(word) : word);
-    span.style.setProperty('--i', String(i++));
-    return [span, ' '];
-  }).flat();
-  return parts.flatMap((part) => (typeof part === 'string' ? split(part) : split(part.text, (w) => el('em', {}, w))));
-}
-
-/** A soft light that follows the pointer over the canvas (mice and pens only; it is decoration). */
-function spotlight(panel) {
-  if (!matchMedia('(pointer: fine)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  let frame = 0;
-  panel.addEventListener('pointermove', (event) => {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
-      const box = panel.getBoundingClientRect();
-      panel.style.setProperty('--mx', `${event.clientX - box.left}px`);
-      panel.style.setProperty('--my', `${event.clientY - box.top}px`);
-      panel.classList.add('lit');
-    });
-  });
-  panel.addEventListener('pointerleave', () => panel.classList.remove('lit'));
-}
-
 function showSignIn(problem) {
   view += 1;
   if (typeof cleanup === 'function') cleanup();
@@ -299,40 +271,23 @@ function showSignIn(problem) {
   $('#shell').hidden = true;
   const gate = $('#gate');
   gate.hidden = false;
-  const mark = signature({ height: 72, ink: 'var(--signature-ink)', tip: 'var(--accent-fill)', animated: true });
+  const mark = signature({ height: 84, ink: 'var(--ink-1)', tip: 'var(--accent-fill)', animated: true });
   const paint = (name) => el('div', { class: `paint ${name}`, 'aria-hidden': 'true' });
-  const panel = el('div', { class: 'brand-panel' },
-    paint('sky'), paint('sun'), paint('rays'), paint('mist far'), paint('mist'), paint('glint'), paint('weave'), paint('grain'),
-    el('div', { class: 'brand-row' }, mark, el('small', {}, 'Kurumunuza uyum sağlayan yapay zekâ katmanı')),
-    el('h2', {}, ...words('Kurumunuzun bilgisine,', { text: 'kurumunuzun içinden' }, 'ulaşın.')),
-    el('p', {}, 'Verso şirketinizin sistemlerine uyum sağlar: belgelerinizi okur, ekibinizin sorularını kaynağıyla cevaplar ve işi hızlandırır.'),
-    el('ul', { class: 'trust' },
-      el('li', {}, el('span', { class: 'trust-icon' }, icon('quote', 'sm')),
-        el('div', {}, el('strong', {}, 'Her yanıt kaynağıyla'), el('span', {}, 'Hangi belgeden, hangi sayfadan geldiğini görürsünüz.'))),
-      el('li', {}, el('span', { class: 'trust-icon' }, icon('shield', 'sm')),
-        el('div', {}, el('strong', {}, 'Veriniz kurum içinde kalır'), el('span', {}, 'Verso kendi altyapınızda çalışır; yerel modda sorular da dışarı çıkmaz.'))),
-      el('li', {}, el('span', { class: 'trust-icon' }, icon('building', 'sm')),
-        el('div', {}, el('strong', {}, 'Şirket hesabınızla giriş'), el('span', {}, 'Ayrı şifre yok; erişimi kurumunuzun kimlik sistemi yönetir.')))),
-    el('div', { class: 'brand-foot' }, 'Kurulumu ekibimiz yapar, sistem sizde kalır.'));
-  spotlight(panel);
-  const corner = (where) => el('span', { class: `corner ${where}`, 'aria-hidden': 'true' });
   gate.replaceChildren(el('section', { class: 'signin', 'aria-labelledby': 'signin-title' },
-    panel,
-    el('div', { class: 'signin-form' }, el('div', { class: 'signin-card' },
-      corner('tl'), corner('tr'), corner('bl'), corner('br'),
-      el('h3', { id: 'signin-title' }, 'Giriş yapın'),
-      el('p', {}, 'Şirket hesabınızla devam edin; giriş sonrası buraya dönersiniz.'),
-      problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
-      el('button', { class: 'button lg block sheen', type: 'button', onclick: (event) => {
-        event.currentTarget.setAttribute('aria-busy', 'true');
-        sessionStorage.removeItem(AUTO_SIGN_IN);
-        signIn();
-      } }, icon('key'), 'Kurum hesabıyla giriş yap'),
-      el('ol', { class: 'signin-steps', 'aria-label': 'Nasıl çalışır' },
-        el('li', {}, el('b', {}, '1'), 'Belgelerinizi ekleyin (PDF, Word, TXT, MD).'),
-        el('li', {}, el('b', {}, '2'), 'Türkçe sorunuzu yazın.'),
-        el('li', {}, el('b', {}, '3'), 'Cevabı, kaynağına tıklayarak doğrulayın.')),
-      el('p', { class: 'signin-note' }, icon('lock', 'sm'), 'Oturum bilgisi yalnız bu sekmenin belleğinde tutulur.')))));
+    el('div', { class: 'book' },
+      el('div', { class: 'leaf left' },
+        el('div', { class: 'plate' }, paint('sky'), paint('sun'), paint('mist'), paint('weave'), mark),
+        el('div', { class: 'leaf-foot' }, el('span', {}, 'Veriniz kurum içinde kalır'), el('span', {}, 'Her yanıt kaynağıyla'))),
+      el('div', { class: 'leaf right' },
+        el('h3', { id: 'signin-title' }, 'Giriş yapın'),
+        el('p', { class: 'sub' }, 'Şirket hesabınızla devam edin.'),
+        problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
+        el('button', { class: 'button lg sheen', type: 'button', onclick: (event) => {
+          event.currentTarget.setAttribute('aria-busy', 'true');
+          sessionStorage.removeItem(AUTO_SIGN_IN);
+          signIn();
+        } }, icon('key'), 'Kurum hesabıyla giriş yap'),
+        el('p', { class: 'signin-note' }, icon('lock', 'sm'), 'Oturum yalnız bu sekmede tutulur.')))));
   sign(mark, { delay: 250 });
 }
 
