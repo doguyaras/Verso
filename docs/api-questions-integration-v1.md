@@ -11,6 +11,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 - Her yanıtta (hatalar dahil) `X-Rag-Mode: local|cloud` başlığı.
 - Yeni hata kodları: 11001, 11002, 11010, 11011, 10030, 10031.
 - Her 503 yanıtı `Retry-After` (saniye) taşır.
+- Sonradan eklenen, geriye uyumlu alan: `citations[].excerpt` (alıntılanan pasajın başı, ≤ 280 karakter). Eski istemciler bilinmeyen alanı yok sayar; sürüm değişmez.
 
 ## Kurallar
 - **Kritik:** Atıflar sunucuda üretilir. İstemci, cevap metnindeki `[n]` işaretini yalnız `citations` listesindeki `number` ile eşler; listede olmayan numara gösterilmez.
@@ -30,7 +31,8 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 `HTTP 200`, ham, `X-Rag-Mode: local`:
 ```json
 { "answer": "Yıllık izin yirmi iş günüdür [1].", "found": true, "outcome": "ANSWERED",
-  "citations": [ { "number": 1, "documentId": "01a0fe8e-…", "fileName": "izin-yonetmeligi.pdf", "page": 3, "unit": "PAGE" } ],
+  "citations": [ { "number": 1, "documentId": "01a0fe8e-…", "fileName": "izin-yonetmeligi.pdf", "page": 3, "unit": "PAGE",
+                   "excerpt": "Madde 12 - Çalışanlara yılda yirmi iş günü ücretli yıllık izin verilir. İzin, işverenle…" } ],
   "mode": "local", "model": "gemma4:e2b" }
 ```
 
@@ -53,6 +55,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `citations[].documentId` | UUID | `GET /v1/documents/{id}` ile açılır |
 | `citations[].fileName`, `page` | string, number | "izin-yonetmeligi.pdf, s. 3" |
 | `citations[].unit` | `PAGE` \| `SECTION` | DOCX, TXT ve MD sayfasızdır: `page` bölüm numarasıdır, "notlar.docx, bölüm 2" diye gösterilir (ADR-0016). Eksik ya da bilinmeyen → sayfa |
+| `citations[].excerpt` | string, ≤ 280 karakter | Alıntılanan pasajın başı; boşluklar tek boşluğa indirilmiş, kesildiyse kelime sınırında ve sonunda `…`. Pasaj metni boşsa `""`. Yalnız gösterim içindir (`[n]` üzerine gelince açılan kart): düz metin olarak gösterilir, HTML olarak yorumlanmaz (belge içeriği güvenilmeyen veridir); istemci log'una ve analitiğe yazılmaz. Sonradan eklendi (geriye uyumlu); eksikse kart yalnız dosya adı ve sayfayı gösterir. Sınır Unicode kod noktasıyla sayılır: emoji gibi karakterlerde JS `length` 280'i aşabilir |
 | `mode` | `local` \| `cloud` | Bilinmeyen → "AI" |
 | `model` | string | Bilgi amaçlı |
 
@@ -93,6 +96,7 @@ if (res.status === 503) retryLater(error.code);
 
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
+- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026). Var olan alanların adı, tipi ve anlamı değişmedi.
 
 ## Manuel test akışı
 1. Bir belge yükle ve `READY` olmasını bekle (`docs/api-documents-integration-v1.md`).
