@@ -69,6 +69,7 @@ jobs:
           bash scripts/dev-secrets.sh
           docker compose config --quiet
           docker compose --profile drill config --quiet
+          docker compose -f compose.yaml -f deploy/compose.gpu.yaml config --quiet   # GPU yok: config yalniz birlesimi dogrular
           # review-gate davranisi "script ve hook testleri" adiminda (scripts/review-gate.test.js)
           # base'te var olan bir V dosyasi: hook engellemeli (exit 2)
           FIRST=$(git ls-files '*/db/migration/V*.sql' | head -1)

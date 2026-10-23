@@ -16,10 +16,10 @@ Verso answers questions about your own documents (PDF, Word, TXT, Markdown) in T
   - citation hit rate 1.00;
   - correct fact in the answer 0.96;
   - "not found" accuracy 0.875 (the threshold stopped 4 of 4, the model 3 of 4; the miss was a correct refusal in its own words);
-  - median answer time 21–28 s on CPU (two runs).
+  - median answer time 21–28 s on CPU (two runs), 1.3 s on an NVIDIA GPU (`deploy/compose.gpu.yaml`) with the same scores.
 - **Engineering:**
   - A modular monolith with machine-checked architecture rules.
-  - 395 Java tests (the database ones on a real PostgreSQL) plus Node suites for the scripts, hooks and panel, and about 230 mutation checks that prove the tests catch what they claim to.
+  - About 400 Java tests (the database ones on a real PostgreSQL) plus Node suites for the scripts, hooks and panel, and about 230 mutation checks that prove the tests catch what they claim to.
   - An ADR for every decision.
   - Encrypted backups with an automated restore drill in CI.
 - **Run it:** the four commands below; the last one is the demo.
@@ -67,7 +67,13 @@ Soru: Şirketin borsa kodu nedir?
   (kaynak yok, local / gemma4:e2b)
 ```
 
-CPU'da bir cevap 20–60 sn sürer. Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde bu tür hata oranı %4'tür. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
+CPU'da bir cevap 20–60 sn sürer. NVIDIA GPU'lu bir makinede Ollama'yı GPU ile açarsan (sürücü ve Docker GPU desteği gerekir) medyan 1,3 sn'ye iner, cevapların kalitesi değişmez:
+
+```bash
+docker compose -f compose.yaml -f deploy/compose.gpu.yaml up -d --build --wait
+```
+
+Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde bu tür hata oranı %4'tür. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
 ## Panel
 
@@ -317,7 +323,7 @@ docker compose up -d --build --wait
 
 - **Bellek:** container sınırlarının toplamı yaklaşık 10,6 GB'dır (uygulama 1,5 GB, kenar proxy 64 MB, Ollama 6 GB (embedding ve chat modeli birlikte yüklü), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
 - **Disk ve ağ:** ilk açılış yaklaşık 8,5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB, gemma4:e2b modeli 3,5 GB, nginx imajı 23 MB); buna Keycloak, PostgreSQL, Flyway ve Temurin imajları ile `--build` sırasında Maven bağımlılıkları eklenir. Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
-- **Embedding:** CPU'da yapılır; Ollama 2 CPU ile sınırlıdır (`OLLAMA_CPUS`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
+- **Embedding:** varsayılan olarak CPU'da yapılır; Ollama 2 CPU ile sınırlıdır (`OLLAMA_CPUS`). `deploy/compose.gpu.yaml` ile embedding ve chat NVIDIA GPU'da çalışır (`docs/capacity.md`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
 

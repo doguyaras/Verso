@@ -55,7 +55,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Kararlar | `docs/adr/`, indeks `docs/decisions.md` |
 | CI | `.github/workflows/ci.yml` |
 | Migration'lar ve kuralları | `services/document/document-core/src/main/resources/db/migration/document/` (+ `afterMigrate.sql`), `MigrationConventionsTest` |
-| Compose, image, Postgres init | `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `deploy/postgres/initdb/`, `deploy/compose.local.yaml` |
+| Compose, image, Postgres init | `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `deploy/postgres/initdb/`, `deploy/compose.local.yaml`, `deploy/compose.gpu.yaml` (Ollama NVIDIA GPU'da; yalnız cihaz ayrımı) |
 | Secret dosyaları | `secrets/` (git dışı; `scripts/dev-secrets.sh`; eşleme `secrets/README.md`) |
 | Kimlik (resource server, demo IdP) | `platform/platform-security/` (`JwtValidation`, `PlatformSecurityAutoConfiguration`, test-jar `TestIdentityProvider`), `deploy/keycloak/`, `deploy/postgres/initdb/30-keycloak.sh`, `scripts/{auth-smoke,demo-token}.sh` |
 | Panel (faz 10, ADR-0015) | `panel/` (bağımlılıksız ES modülleri; `index.html`, `js/{app,auth,api,config,render,roles}.js`), `scripts/panel.test.mjs`, kenar proxy'de `/panel/` ve CSP (`deploy/edge/nginx.conf`), realm'de `verso-panel` istemcisi ve `verso-operator` rolü, `GET /v1/info` (`qa-core` `InfoController`; uzak çağrı yok), `scripts/keycloak-reimport.sh` |
@@ -95,4 +95,4 @@ Secret değerleri, üretim host adları, CI token'ları, kişisel veri örnekler
 
 ## 8. Net Kanıt Bulunamayan Alanlar
 
-- Sıcak yol bütçeleri faz 8'de yalnız tek bir geliştirici makinesinde (CPU, GPU yok) ölçüldü (`docs/capacity.md`); üretim p99'u ölçülmedi, bütçeler başlangıç ayarı olarak kalır (ADR-0008).
+- Sıcak yol bütçeleri yalnız tek bir geliştirici makinesinde ölçüldü: CPU faz 8'de, NVIDIA GPU 2026-10-23'te (`docs/capacity.md`). Üretim p99'u ölçülmedi, bütçeler başlangıç ayarı olarak kalır (ADR-0008).

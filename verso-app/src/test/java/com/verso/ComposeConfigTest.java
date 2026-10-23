@@ -67,7 +67,8 @@ class ComposeConfigTest {
     @Test
     void composeSettings_whenReferenced_areDocumentedInEnvExample() throws IOException {
         Set<String> used = new TreeSet<>();
-        for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml")) {
+        for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml",
+                "deploy/compose.gpu.yaml")) {
             Matcher m = COMPOSE_VAR.matcher(read(file));
             while (m.find()) used.add(m.group(1));
         }
@@ -231,6 +232,29 @@ class ComposeConfigTest {
         assertThat((Map<String, Object>) ((Map<String, Object>) cloud.get("networks")).get("egress")).doesNotContainKey("internal");
         services().forEach((name, definition) -> assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets")))
                 .as(name).doesNotContain("SECRET_CLOUD_API_KEY"));
+    }
+
+    /**
+     * The GPU overlay only reserves the device for Ollama. Anything else in it (a network with a gateway, a published
+     * port, a writable model volume) would quietly undo local mode's "no route out" (llm-rules 8.2) on GPU hosts.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void gpuOverlay_whenComposed_onlyReservesTheGpuForOllama() throws IOException {
+        Map<String, Object> gpu = new Yaml().load(read("deploy/compose.gpu.yaml"));
+        assertThat(gpu.keySet()).containsExactly("services");
+        Map<String, Object> services = (Map<String, Object>) gpu.get("services");
+        assertThat(services.keySet()).containsExactly("ollama");
+        Map<String, Object> ollama = (Map<String, Object>) services.get("ollama");
+        assertThat(ollama.keySet()).containsExactly("deploy");
+        Map<String, Object> resources = (Map<String, Object>) ((Map<String, Object>) ollama.get("deploy")).get("resources");
+        assertThat(resources.keySet()).containsExactly("reservations");
+        List<Map<String, Object>> devices = (List<Map<String, Object>>)
+                ((Map<String, Object>) resources.get("reservations")).get("devices");
+        assertThat(devices).singleElement().satisfies(d -> {
+            assertThat(d).containsEntry("driver", "nvidia");
+            assertThat((List<String>) d.get("capabilities")).containsExactly("gpu");
+        });
     }
 
     /**

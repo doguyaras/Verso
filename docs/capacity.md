@@ -29,6 +29,31 @@
    - **Çözmediği:** üretim sürerken gelen sorunun embedding'i de aynı Ollama'yı bekler ve 10 sn'ye sığmayabilir; o kullanıcı 11002 yerine 10030 alır. Eşzamanlı ölçümde reddedilen 5 isteğin 3'ü buydu. Çözümü ayrı bir embedding sunucusu (Ollama instance'ı) ya da GPU'dur.
 3. **Benzerlik eşiği 0,45'ten 0,50'ye çıktı** (`eval/README.md`). Cevaplanamaz soruların yarısı modele hiç gitmeden "bulunamadı" alıyor. Bu, CPU'da her soru için yaklaşık 30 sn tasarruf demek.
 
+## GPU (2026-10-23)
+
+Aynı makine ve yığın; tek fark Ollama'nın GPU'yu kullanması: `docker compose -f compose.yaml -f deploy/compose.gpu.yaml up -d --wait`. Overlay yalnız GPU'yu ayırır; ağlar, model volume'ü ve bellek sınırı değişmez, local modun dışarı yolu yine yoktur (`ComposeConfigTest.gpuOverlay_*`).
+
+- **GPU:** NVIDIA GeForce RTX 4070 Ti SUPER, 16 GB; sürücü 610.88; Docker Desktop (WSL 2). Ollama 0.35.1 CUDA ile buldu; iki model de `100% GPU`.
+- **Uygulama ayarları değişmedi:** `chat-concurrency` 1, chat bekleme 5 sn, embedding bulkhead'i 4, eşik 0,50 (`config/verso.yml`).
+- **Commit:** `fe906876615f`. Ham sonuçlar: `eval/results/e2e-gemma4_e2b-gpu.json`, `load-gpu.json`, `load-gpu-chat-c6.json`.
+
+| Senaryo | CPU (faz 8) | GPU |
+|---|---|---|
+| Eval seti, sıralı (33 soru) | p50 21–28 sn, p95 37–45 sn | **p50 1,3 sn, p95 5,4 sn**; en çok 65 sn (ilk soru: chat modelinin diskten GPU'ya yüklenmesi) |
+| Eval kalitesi | atıf isabeti 1,00, doğru bilgi 0,96, "bulunamadı" 0,875 | **Aynı** (bütün metrikler birebir) |
+| Yükleme (12 eşzamanlı) | 7 kabul, ~29 belge/dk | 10 kabul, 8 sn'de READY: **~73 belge/dk** |
+| Yalnız retrieval (20 istemci, 30 sn) | ~7,7 soru/sn, p50 0,49 sn | **~38 soru/sn** (1151 cevap), p50 0,10 sn, p95 0,18 sn; 96 istek embedding bulkhead'inde 503 10030 |
+| Chat, 3 eşzamanlı istemci, 6 soru | (2 istemcide) 6 sorunun 1'i cevaplandı, 84 sn | **6/6 cevaplandı**, p50 3,8 sn, p95 5,8 sn (sıra beklemesi dahil) |
+| Chat, 6 eşzamanlı istemci, 18 soru | – | 5 cevap; 8 × 503 11002 (chat slotu), 5 × 503 10030 (embedding bulkhead'i). Bir cevap 15,5 sn sürdü |
+
+**Bulgular:**
+
+1. **Tek cevabın medyan süresi 15–20 kat kısaldı; ADR-0008'in local-GPU bütçesi (15 sn) p95'te rahat tutuyor.** İstisna soğuk açılıştır: Ollama açıldıktan ya da 30 dk boş kaldıktan sonra (`OLLAMA_KEEP_ALIVE`) ilk soru modeli diskten yükler, bu ölçümde 65 sn.
+2. **Kalite değişmedi.** GPU yalnız hızı değiştirir; aynı model aynı cevapları verdi (33 sorunun metrikleri birebir).
+3. **GPU'da darboğaz model değil, uygulamanın bulkhead'leri.** 3 istemcide her soru cevaplandı, çünkü bir cevap 1–5 sn sürüyor ve sıradaki soru 5 sn'lik chat beklemesine sığıyor. 6 istemcide aynı anda bir chat (`chat-concurrency` 1) ve dört soru embedding'i sınırı reddetmeye başladı. Bu ayarlar CPU için ölçülmüştü (bulgu 2); GPU'da `chat-concurrency` ve Ollama'nın `OLLAMA_NUM_PARALLEL` değerini birlikte artırmak sonraki adım. Ölçülmeden değiştirilmedi.
+
+**Sınırlar:** her senaryo tek koşudur. Eval koşusunun başında aynı makinede bir Maven testi çalışıyordu; ilk soruların süresini etkilemiş olabilir. 6 istemcili koşuda 6 yüklemenin 2'si yükleme sınırına (503 10014) takıldı; o belgelere ait sorular "bulunamadı" döndü. Bu yüzden o satır yalnız doygunluğun nerede başladığını gösterir.
+
 ## Ölçümün sınırları
 
 - Yük kapalı döngüdür: her istemci cevabını bekleyip sonraki isteği gönderir. Aşırı yükte gecikmeler, açık bir geliş hızının göstereceğinden iyi görünür.
@@ -46,11 +71,13 @@
 
 Bu kurulum bir demo ve küçük bir ekip için yeterlidir. Aynı anda soru soran birkaç kullanıcıyı kaldırmaz.
 
+GPU'lu aynı makinede (`deploy/compose.gpu.yaml`, yukarıdaki bölüm): cevap başına ~1–5 sn, dakikada ~50 cevap; 3 eşzamanlı kullanıcı reddedilmeden cevap alır, 6'da bulkhead'ler reddetmeye başlar.
+
 ## Ölçeklemek için
 
 | Seçenek | Ne değişir | Bedeli |
 |---|---|---|
-| GPU'lu host | Chat süresi saniyelere iner (ADR-0008 local-GPU bütçesi 15 sn); `chat-concurrency` ve Ollama'nın `OLLAMA_NUM_PARALLEL` değeri artırılabilir | Donanım |
+| GPU'lu host (`deploy/compose.gpu.yaml`) | Ölçüldü: chat p50 1,3 sn, p95 5,4 sn; kalite aynı (yukarıdaki GPU bölümü). Sonraki adım: `chat-concurrency` ve Ollama'nın `OLLAMA_NUM_PARALLEL` değerini birlikte artırıp ölçmek | Donanım; NVIDIA sürücüsü ve Docker GPU desteği |
 | Embedding için ayrı Ollama | Soru embedding'leri chat üretimiyle CPU paylaşmaz; 10030'lar kalkar | Bir container daha, bellek |
 | Ollama'ya daha çok CPU (`OLLAMA_CPUS`) | Tek cevabın süresi kısalır; eşzamanlılık değişmez | Uygulama ve veritabanıyla CPU paylaşımı |
 | Daha küçük chat modeli (`VERSO_CHAT_MODEL`) | Süre kısalır | Türkçe kalite düşer; eval setiyle yeniden ölçülmeli |
