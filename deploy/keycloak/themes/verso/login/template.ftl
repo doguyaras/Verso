@@ -155,9 +155,6 @@
 <aside class="verso-brand" aria-label="Verso">
   <div class="verso-plate">
   <div class="verso-paint verso-sky" aria-hidden="true"></div>
-  <div class="verso-paint verso-sun" aria-hidden="true"></div>
-  <div class="verso-paint verso-mist" aria-hidden="true"></div>
-  <div class="verso-paint verso-weave" aria-hidden="true"></div>
 <#-- signature:start -->
 <svg class="verso-signature" viewBox="16 81 425 169" role="img" aria-label="Verso" focusable="false">
   <defs><mask id="verso-signature-mask" maskUnits="userSpaceOnUse" x="16" y="81" width="425" height="169" fill="none" stroke="#fff" stroke-width="17.5" stroke-linecap="round" stroke-linejoin="round">
@@ -178,7 +175,7 @@
 </svg>
 <#-- signature:end -->
   </div>
-  <div class="verso-leaf-foot"><span>${msg("versoTrustLocalTitle")}</span><span>${msg("versoTrustCitedTitle")}</span></div>
+  <div class="verso-caption">${msg("versoTagline")}</div>
 </aside>
 <div class="${properties.kcLogin!}">
 <#-- Verso (ADR-0018): the language switch is a TR / EN toggle at the top right of the page, plain links (no script). -->
@@ -283,6 +280,7 @@
         <div class="${properties.kcLoginMainFooter!}">
             <@loginFooter.content/>
         </div>
+        <div class="verso-assure"><span>${msg("versoTrustLocalTitle")}</span><span>${msg("versoTrustCitedTitle")}</span></div>
     </main>
   </div>
 </div>

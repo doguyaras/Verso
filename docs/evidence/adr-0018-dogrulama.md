@@ -71,6 +71,13 @@ Değişiklikler canlı yığına iki adımla alındı:
 - **Mobil (375 px):** iki ekranda da yatay kaydırma yok (`scrollWidth` 375). Kitap tek sütun.
 - Keycloak stil dosyası `verso-kitap.css` oldu; yeniden oluşturmadan sonra yeni dosya yüklendi.
 
+## Levha tonları (ek, aynı gün)
+
+- Levhaya eklenen sis ve tuval dokusu tonları soldurdu. Levha, önizlemedeki durağan gökyüzüne döndürüldü (tek katman).
+- "Kurumunuza uyum sağlayan yapay zekâ" levhanın altına geri geldi. Güvenceler sağ sayfada, düğmenin altında.
+- Canlı: 1440 × 900 açık temada panel ve Keycloak önizlemeyle aynı tonlarda. Keycloak stil dosyası `verso-kitap-2.css`.
+- `node --test scripts/panel.test.mjs`: 34/34. Tema testi kitabın bütün metin anahtarlarını (en az 4) iki dilde arıyor.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

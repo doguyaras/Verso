@@ -276,10 +276,11 @@ function showSignIn(problem) {
   gate.replaceChildren(el('section', { class: 'signin', 'aria-labelledby': 'signin-title' },
     el('div', { class: 'book' },
       el('div', { class: 'leaf left' },
-        el('div', { class: 'plate' }, paint('sky'), paint('sun'), paint('mist'), paint('weave'), mark),
-        el('div', { class: 'leaf-foot' }, el('span', {}, 'Veriniz kurum içinde kalır'), el('span', {}, 'Her yanıt kaynağıyla'))),
+        el('div', { class: 'plate' }, paint('sky'), mark),
+        el('div', { class: 'plate-caption' }, 'Kurumunuza uyum sağlayan yapay zekâ')),
       el('div', { class: 'leaf right' },
         el('h3', { id: 'signin-title' }, 'Giriş yapın'),
+        el('div', { class: 'rule', 'aria-hidden': 'true' }),
         el('p', { class: 'sub' }, 'Şirket hesabınızla devam edin.'),
         problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
         el('button', { class: 'button lg sheen', type: 'button', onclick: (event) => {
@@ -287,7 +288,7 @@ function showSignIn(problem) {
           sessionStorage.removeItem(AUTO_SIGN_IN);
           signIn();
         } }, icon('key'), 'Kurum hesabıyla giriş yap'),
-        el('p', { class: 'signin-note' }, icon('lock', 'sm'), 'Oturum yalnız bu sekmede tutulur.')))));
+        el('div', { class: 'assure' }, el('span', {}, 'Veriniz kurum içinde kalır'), el('span', {}, 'Her yanıt kaynağıyla'))))));
   sign(mark, { delay: 250 });
 }
 

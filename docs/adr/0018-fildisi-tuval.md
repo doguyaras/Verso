@@ -76,17 +76,18 @@
   - On konsept animasyonlu önizlemeyle karşılaştırıldı: tam ekran tuval, kemerli pencere, galeri çerçevesi, ufuk, belge katmanları, Art Deco güneş, dev imza, sahne ışığı, kitap açılımı, mektup ve mühür. Kullanıcı kitap açılımını seçti.
   - Deri kapaklı, kurdeleli ve kapağı çevrilen ayrıntılı bir sürüm "abartı" bulundu; sade kitap kaldı.
 - **Sol sayfa:**
-  - Altın çerçeveli boyalı bir levha; içinde gökyüzü, güneş, sis ve tuval dokusu. Levhada Verso imzası atılır (1,15 sn).
-  - Altında iki kısa güvence: "Veriniz kurum içinde kalır", "Her yanıt kaynağıyla".
-- **Sağ sayfa:** yalnız "Giriş yapın", "Şirket hesabınızla devam edin." ve kısa bir altın çizgi.
-  - Panelde altında giriş düğmesi var; Keycloak'ta form doğrudan kâğıdın üstündedir, ayrı bir kart yoktur.
+  - Altın çerçeveli boyalı bir levha, onaylanan önizlemedeki tonlarla durağan: açık fildişiden koyu altına inen gökyüzü, birkaç bulut, sol üstten ışık. Levhada Verso imzası atılır (1,15 sn).
+  - Sis ve tuval dokusu da denendi, ama renkleri soldurdu; kullanıcı "bu renk tonları güzeldi, geri al" dedi.
+  - Levhanın altında italik "Kurumunuza uyum sağlayan yapay zekâ"; kullanıcı bu yazının kalmasını istedi.
+- **Sağ sayfa:** "Giriş yapın", kısa bir altın çizgi, "Şirket hesabınızla devam edin.", giriş düğmesi ya da Keycloak formu, altında iki küçük güvence: "Veriniz kurum içinde kalır", "Her yanıt kaynağıyla".
+  - Keycloak'ta form doğrudan kâğıdın üstündedir, ayrı bir kart yoktur.
 - **Başlık yok.** On üç cümle denendi; kullanıcı hiçbirini beğenmedi. Araştırma gerekçeyi verdi:
   - İncelenen 13 gerçek giriş sayfasının 10'unda başlık yok (Linear, Figma, Stripe, Slack, ChatGPT, Glean gibi).
   - Reddedilen cümleler aynı fikri fiilsiz isim öbekleriyle tekrarlıyordu.
   - Kullanıcı "başlık hiç olmasın"ı seçti. Kitap ve imza konuşur.
   - Notlar repoya girmedi.
 - **Hareket kısa ve tek seferliktir:**
-  - Kitap yerine oturur, levhadaki ışık ve sis 4 sn'de durur, imza atılır, sağ sayfa sırayla gelir, düğmenin üstünden bir kez ışık geçer.
+  - Kitap yerine oturur, imza atılır, sağ sayfa sırayla gelir, düğmenin üstünden bir kez ışık geçer; levha durağandır.
   - "Reduce motion" ile hiçbiri oynamaz. Test, giriş katmanlarında `infinite` olmadığını kontrol eder (WCAG 2.2.2).
 - **Koyu tema:** aynı kitap koyu bir masada, levha aydınlık kalır. Keycloak her zaman açıktır (`darkMode=false`).
 - **Mobil:** kitap tek sayfaya iner; üstte levha, altta giriş.
@@ -95,7 +96,7 @@
   - Otomatik doldurma, temanın alan rengine boyanır.
   - Şifre alanı ve göz düğmesi tek alan gibi görünür.
   - Dil seçimi TR / EN anahtarıdır: düz bağlantılar. keycloak.v2'nin `onchange`'li `select`'i kalktı; şablonda satır içi script kalmadı. Kitabın gölge filtresi yüzünden anahtar ekranın değil sağ sayfanın sağ üst köşesinde durur.
-- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` → `verso-fildisi-2.css` → `verso-kitap.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
+- **Önbellek:** stil dosyası `verso-tuval.css` → `verso-fildisi.css` → `verso-fildisi-2.css` → `verso-kitap.css` → `verso-kitap-2.css` oldu, çünkü tarayıcılar tema dosyalarını 30 gün tutar.
 
 **Ürün metni ve ekranlar.**
 - **Konumlandırma cümlesi** (ürün ve satış metinleri için): "Kurumunuza uyum sağlayan yapay zekâ katmanı." Giriş ekranında ve menüde yazmaz; kullanıcı menüde "yapay zeka katmanı diye bir şey yazmasına gerek yok" dedi.
