@@ -10,7 +10,7 @@
   - `document`: kodda var (faz 4, ADR-0011). Yükleme, PDF / DOCX / TXT / MD ayrıştırma (ADR-0016), chunk, embedding, ingestion worker; retrieval faz 5.
   - `qa`: kodda var (faz 5, ADR-0012). Retrieval `document-api` üzerinden, prompt, chat modeli, sunucuda atıf; kendi tablosu yok.
 - **Yeniden değerlendirme eşiği:** ADR-0001.
-- **Repo:** Maven multi-module monorepo; `platform/*` starter'ları, `verso-app`, (planlı) `services/<domain>/<domain>-api|core`.
+- **Repo:** Maven multi-module monorepo; `platform/*` starter'ları, `verso-app`, `services/<domain>/<domain>-api|core` (`document`, `qa`), `panel/`.
 
 ## 2. Servis kimlik tablosu
 
@@ -66,10 +66,10 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Bileşen | Sürüm | Not |
 |---|---|---|
 | Java / Spring Boot / Spring Modulith | 25 / 4.1.1 / 2.1.1 | `docs/versions.md` |
-| Spring AI (planlı) | 2.0.x | Boot 4 hattı; 1.x yalnız Boot 3 |
+| Spring AI | 2.0.1 (`spring-ai-bom`) | Boot 4 hattı; 1.x yalnız Boot 3; Ollama, Anthropic ve OpenAI starter'ları (ADR-0012, ADR-0013) |
 | PostgreSQL + pgvector | 18.6 + 0.8.7 (digest ile pinli) | tek instance; şema + iki rol/modül; `extensions` şeması; ADR-0009 |
 | Flyway | 12.4.0 | migration rolüyle; `baseline-on-migrate` kapalı |
-| Ollama (planlı) | – | local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla |
+| Ollama | 0.35.1 (digest ile pinli) | bge-m3 (embedding), gemma4:e2b (chat); local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla |
 | Keycloak (demo IdP) | 26.7.5 (digest ile pinli) | prod modu, kendi `keycloak` veritabanı ve rolü; realm `verso` ES256; yalnız 127.0.0.1:8180 (ADR-0005, ADR-0010) |
 | Gözlem (faz 7, `obs` profili, ADR-0014) | Alloy → Loki (yalnız verso-app, migrate, edge, backup log'ları), Prometheus + Alertmanager (6 alarm, runbook'lar), Grafana (iç ağda; `obs-edge` ile 127.0.0.1:3000) | Prometheus scrape'i token'sız yalnız ayrı management portunda |
 
@@ -78,7 +78,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 ```bash
 ./mvnw -B -ntp verify                                              # tüm testler (JAVA_HOME = JDK 25)
 ./mvnw -B -ntp -pl verso-app -am test -Dtest=ConfigDriftTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false
-node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js
+node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js scripts/panel.test.mjs
 GITLEAKS=~/.local/bin/gitleaks.exe node --test scripts/gitleaks-check.test.js scripts/pre-commit.test.js
 bash scripts/mutation-check.sh                                     # negatif doğrulama (~40 dk); ONLY="M20 M41" tek tek
 bash scripts/dev-secrets.sh && docker compose up -d --build --wait  # yığın (ADR-0009)
@@ -95,4 +95,4 @@ Secret değerleri, üretim host adları, CI token'ları, kişisel veri örnekler
 
 ## 8. Net Kanıt Bulunamayan Alanlar
 
-- Sıcak yol bütçeleri ölçülmedi; başlangıç ayarıdır (ADR-0008). Ölçüm faz 5'te.
+- Sıcak yol bütçeleri faz 8'de yalnız tek bir geliştirici makinesinde (CPU, GPU yok) ölçüldü (`docs/capacity.md`); üretim p99'u ölçülmedi, bütçeler başlangıç ayarı olarak kalır (ADR-0008).

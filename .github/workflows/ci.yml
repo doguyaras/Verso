@@ -3,7 +3,7 @@
 #           (2) permissions en dar, (3) gercek DB testleri her PR'da kosar (gomulu PostgreSQL veya Testcontainers),
 #           (4) mimari/tutarlilik testleri "0 test = basarisiz" (failIfNoTests + toplam sayi korumasi),
 #           (5) migration degismezligi PR'in base'ine karsi, (6) hook'lar kuru calistirilir (bozuk hook = sessiz gate).
-# Verso uyarlamasi (ADR-0007): RabbitMQ servisi, redis/pgbouncer kurulumu ve frontend job'i yok (Verso'da broker ve panel yok);
+# Verso uyarlamasi (ADR-0007): RabbitMQ servisi, redis/pgbouncer kurulumu ve ayri frontend job'i yok (Verso'da broker yok; panel bagimliliksiz, testleri "script ve hook testleri" adiminda);
 # Maven Wrapper kullanilir; gitleaks ikilisi SHA-256 ile dogrulanir. SHA'lar 2026-10-02'de git ls-remote ile tag'lere karsi dogrulandi.
 name: ci
 on:

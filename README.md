@@ -2,7 +2,7 @@
 
 > **Private document Q&A with source citations. Spring AI + local LLMs.**
 
-Verso answers questions about your own PDF documents in Turkish and cites every answer with document name and page. In `local` mode the embedding and chat models run on Ollama inside your infrastructure and nothing of Verso can reach the internet: the application, its database and the model server sit on internal networks only, and a script proves it on the running stack. `cloud` mode swaps only the chat model for Anthropic or an OpenAI-compatible API, by configuration; documents, full texts and vectors stay home. Every response says which mode answered (`X-Rag-Mode`).
+Verso answers questions about your own documents (PDF, Word, TXT, Markdown) in Turkish and cites every answer with document name and page or section. In `local` mode the embedding and chat models run on Ollama inside your infrastructure and nothing of Verso can reach the internet: the application, its database and the model server sit on internal networks only, and a script proves it on the running stack. `cloud` mode swaps only the chat model for Anthropic or an OpenAI-compatible API, by configuration; documents, full texts and vectors stay home. Every response says which mode answered (`X-Rag-Mode`).
 
 **English summary**
 
@@ -19,7 +19,7 @@ Verso answers questions about your own PDF documents in Turkish and cites every 
   - median answer time 21–28 s on CPU (two runs).
 - **Engineering:**
   - A modular monolith with machine-checked architecture rules.
-  - About 350 tests (the database ones on a real PostgreSQL), and 200 mutation checks that prove the tests catch what they claim to.
+  - 395 Java tests (the database ones on a real PostgreSQL) plus Node suites for the scripts, hooks and panel, and about 230 mutation checks that prove the tests catch what they claim to.
   - An ADR for every decision.
   - Encrypted backups with an automated restore drill in CI.
 - **Run it:** the four commands below; the last one is the demo.
