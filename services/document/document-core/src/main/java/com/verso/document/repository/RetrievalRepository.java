@@ -102,7 +102,7 @@ public class RetrievalRepository {
                         ORDER BY f.score DESC, similarity DESC, c.id
                         LIMIT :k
                         """.formatted(OR_QUERY))
-                .param("q", vector).param("account", accountId).param("model", model).param("question", questionText)
+                .param("q", vector).param("account", accountId).param("model", model).param("question", queryText(questionText))
                 .param("vectorK", vectorK).param("lexicalK", lexicalK).param("rrfK", rrfK).param("k", topK)
                 .query((rs, n) -> new Candidate(rs.getObject("id", UUID.class), rs.getObject("document_id", UUID.class),
                         rs.getString("file_name"), rs.getInt("page_number"),
@@ -150,10 +150,18 @@ public class RetrievalRepository {
                         FROM shared JOIN frequency ON frequency.lexeme = shared.lexeme
                         GROUP BY shared.id
                         """.formatted(TEXT_SEARCH_CONFIG))
-                .param("question", questionText).param("ids", chunkIds).param("account", accountId)
+                .param("question", queryText(questionText)).param("ids", chunkIds).param("account", accountId)
                 .param("model", model).param("cap", cap)
                 .query((rs, n) -> Map.entry(rs.getObject("id", UUID.class), rs.getLong("chunks")))
                 .list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    /**
+     * PostgreSQL text cannot hold U+0000, which a JSON question may carry: as a parameter it fails the whole search
+     * (500). For full-text matching a space is equivalent, it only separates words.
+     */
+    static String queryText(String question) {
+        return question.replace('\u0000', ' ');
     }
 
     /** True when the account has chunks embedded by another model: comparing them would be meaningless (6.1). */

@@ -310,6 +310,14 @@ class RetrievalTest {
                 .as("passages without a shared rare term").allSatisfy(p -> assertThat(p.specificTermShare()).isEqualTo(1.0));
     }
 
+    /** Regression (ADR-0022 verify): a U+0000 in the question reached the full-text query as text and failed with 500. */
+    @Test
+    void search_whenTheQuestionHoldsANulCharacter_stillSearches() {
+        UUID code = ready(alice, "Error SAT-E027 means the budget is exceeded.");
+        assertThat(retrieval.search(alice, "What is\u0000SAT-E027?", 5)).first()
+                .satisfies(p -> assertThat(p.documentId()).isEqualTo(code));
+    }
+
     /** ADR-0022: a term in 10 % or more of the account's chunks is common and reads as 1, not as its share. */
     @Test
     void search_whenTheSharedTermIsCommon_reportsShareOne() {

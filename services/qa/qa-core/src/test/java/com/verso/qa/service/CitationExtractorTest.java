@@ -39,8 +39,8 @@ class CitationExtractorTest {
     private final CitationExtractor extractor = new CitationExtractor(properties(1500));
 
     private static QaProperties properties(int maxPassageChars) {
-        return new QaProperties(5, 0.5, maxPassageChars, 1, Duration.ofSeconds(5), 2, Duration.ofSeconds(15),
-                Duration.ofSeconds(90), Duration.ofSeconds(30));
+        return new QaProperties(5, 0.5, 0.5, 0.045, 0.5, maxPassageChars, 1, Duration.ofSeconds(5), 2,
+                Duration.ofSeconds(15), Duration.ofSeconds(90), Duration.ofSeconds(30));
     }
 
     @Test
