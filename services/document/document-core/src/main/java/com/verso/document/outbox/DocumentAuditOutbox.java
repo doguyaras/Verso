@@ -43,10 +43,22 @@ public class DocumentAuditOutbox {
 
     /** Must run inside the document transaction of the change it reports (MANDATORY; the store refuses otherwise). */
     public void append(AuditEvent event) {
+        write(event, null);
+    }
+
+    /**
+     * The same for a change without a caller (ADR-0038: a connector's sync through {@code DocumentIngestion}): the actor
+     * is {@code system:<component>}.
+     */
+    public void appendSystem(String component, AuditEvent event) {
+        write(event, component);
+    }
+
+    private void write(AuditEvent event, String systemComponent) {
         AuditRecord record;
         String payload;
         try {
-            record = trail.capture(event);
+            record = systemComponent == null ? trail.capture(event) : trail.captureSystem(systemComponent, event);
             payload = json.writeValueAsString(record);
         } catch (RuntimeException e) {
             captureFailed.increment();

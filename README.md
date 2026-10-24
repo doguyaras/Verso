@@ -249,6 +249,20 @@ Kurulum ekibinin her müşteriye teslim ettiği Türkçe KVKK şablonları [`doc
 
 Panelde yapay zekâ ile yazışıldığı her zaman söylenir: soru kutusunun altındaki satır, ilk kullanımda kapatılabilir bir kart; üretilmiş cevap `data-ai-generated="true"` taşır ve Markdown dışa aktarımı "Yapay zekâ ile üretildi · <ürün adı>" satırıyla biter.
 
+## Dosya paylaşımı bağlayıcısı (SMB)
+
+Bir Windows ya da Samba paylaşımındaki klasörü bir bilgi alanına eşitler ([ADR-0038](docs/adr/0038-smb-baglayicisi.md), API: [docs/api-connectors-integration-v1.md](docs/api-connectors-integration-v1.md)). Yeni ve değişen dosyalar belge olarak alınır, kaynakta silinen dosya Verso'da bütün türevleriyle silinir (ADR-0034). Okuma yetkisini hedef bilgi alanının erişimleri belirler: **alana erişimi olan herkes eşitlenen her dosyayı görür**. NTFS izinleri bu sürümde aktarılmaz; paylaşımı ve öneki buna göre seç (ör. herkese açık politika klasörü, İK'nın kendi alanına İK klasörü).
+
+Kurulum ekibi için:
+
+1. **Servis hesabı.** Etki alanında yalnız bu iş için bir hesap aç (ör. `svc-verso`). Paylaşımda ve NTFS'te yalnız **okuma** izni ver; yazma, silme, sahiplik yok. Hesabın parolasını secret dosyasına yaz (satır sonu olmadan): `printf '%s' '<parola>' > secrets/SECRET_CONNECTOR_SMB_PASSWORD`. Değer veritabanına, log'a ve API yanıtına hiç girmez; parola değişince dosyayı güncelleyip `verso-app`'i yeniden başlat. Başka bir hesap için `SECRET_CONNECTOR_<AD>` biçiminde ikinci bir dosya ve overlay'de `secrets:` satırı eklenir.
+2. **Sunucu tarafı.** SMB imzalama açık olsun (Verso imzasız oturumu reddeder). Samba'da `wide links = no` (varsayılan) kalsın: sunucunun kendisi çözdüğü bağlantılar istemciye düz klasör görünür ve paylaşım dışına çıkabilir. Windows'taki sembolik bağlantı ve junction'lar Verso tarafından izlenmez.
+3. **Ağ.** Uygulama varsayılan olarak hiçbir ağa çıkamaz. `.env`'de izinli iç ağları yaz (yalnız özel aralıklar; en dar hali sunucunun kendisi): `VERSO_CONNECTOR_ALLOWED_NETWORKS=10.20.30.40/32`. Yığını overlay ile aç: `docker compose -f compose.yaml -f deploy/compose.smb.yaml up -d --wait`. Overlay uygulamaya sabit alt ağlı (`VERSO_SMB_SUBNET`, varsayılan `172.31.250.0/24`) ve `verso-smb` adlı arayüzlü tek bir ağ ekler. Bu ağın internete çıkmaması için host güvenlik duvarında yalnız dosya sunucusunun 445 portuna izin ver (Linux, `DOCKER-USER` zinciri; komutlar `deploy/compose.smb.yaml` başındadır). Local mod kanıtı bu overlay'le `scripts/prove-local-mode.sh`'ın 1. adımında `smb` ağını raporlar (beklenen); kanıt güvenlik duvarı kuralı ve 2. adımdır. Uygulama ayrıca her bağlantıda sunucu adının çözüldüğü **bütün** adresleri izinli listeyle karşılaştırır; loopback, link-local ve metadata adresleri her zaman reddedilir. Sıkı kurulumda sunucuyu IP adresiyle tanımla.
+4. **Bağlayıcı.** `verso-admin` önce bilgi alanını oluşturur ve erişimleri verir, sonra `POST /v1/admin/connectors` ile sunucu, paylaşım, önek, hesap, `credentialRef`, hedef alan, isteğe bağlı `includeGlobs` / `excludeGlobs`, en büyük dosya boyu (en çok 20 MB) ve eşitleme aralığını (5 dk – 1 hafta) verir. İlk eşitleme hemen başlar; `GET /v1/admin/connectors/{id}` `health` alanı (`OK`, `FAILING`, `STALE` …) ve `/runs` geçmişi gösterir.
+5. **İzleme.** Üç eşitleme aralığı boyunca başarılı eşitleme yoksa `ConnectorSyncStale` alarmı çalar ([runbook](docs/runbooks/connector-sync-stale.md)). Bir koşu izlenen dosyaların %20'sinden fazlasını silecekse silmeyi bekletir; gerçekten silindiyse tek koşu için `{"confirmMassDeletion": true}` ile onaylanır.
+
+Yalnız PDF, DOCX, TXT ve MD dosyaları alınır (ADR-0016 sınırlarıyla); Office kilit dosyaları (`~$…`), çevrimdışı (HSM) dosyalar ve bağlantılar atlanır. Bir koşu en çok 500 dosya ve 2 GB indirir, kalan iş birkaç dakika sonra devam eder.
+
 ## Ölçümler
 
 | Ölçüm | Sonuç | Kaynak |
@@ -291,7 +305,7 @@ Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API, `/v1` audience `verso-api`; MCP `/mcp` audience `verso-mcp`, varsayılan kapalı), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999 | `VersoApp` |
+| verso-app | 8080 (API, `/v1` audience `verso-api`; MCP `/mcp` audience `verso-mcp`, varsayılan kapalı), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026); `connector` / `svc_connector`, `svc_connector_migrate` (ADR-0038) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999, connector 14000–14999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -303,6 +317,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 | qa | 11000–11999 | soru-cevap, model çağrısı |
 | audit | 12000–12999 | denetim kaydı sorgusu ve dışa aktarımı |
 | privacy | 13000–13999 | KVKK ilgili kişi başvurusu ve cevap karartma (ADR-0034) |
+| connector | 14000–14999 | dosya paylaşımı bağlayıcısı yönetimi (ADR-0038) |
 | validation | 90000–90099 | ortak: bean validation, binding, 404/405/415, API sürümü |
 | security | 90100–90199 | ortak: kimlik ve yetki (faz 3) |
 | system | 99997–99999 | ortak: geçici olarak kullanılamıyor (503), upstream, beklenmeyen |
@@ -448,6 +463,8 @@ Yükseltmeden önce alınmış yedekte `qa` şeması yoktur; restore provası on
 **Denetim kaydı olan bir sürüme yükseltme (ADR-0026).** `audit` şeması ve rolleri (`svc_audit`, `svc_audit_migrate`) var olan bir volume'de yoktur; uygulama açılmaz. Konuşma geçmişi yükseltmesiyle aynı yol: `bash scripts/dev-secrets.sh` (yalnız eksik `SECRET_DB_AUDIT_*` dosyalarını üretir), `docker compose up -d --wait postgres`, `40-modules.sh` (idempotent: var olan `document` ve `qa` rollerinin parolasına dokunmaz), sonra `docker compose up -d --build --wait` (`migrate` container'ı `audit` tablosunu kurar). Yükseltmeden önce alınmış yedekte `audit` şeması yoktur; restore provası onu reddeder, yükseltmeden sonra yeni yedek al. Üretimde `secrets/` dosyalarını kendi gizli yönetiminden ver (`secrets/README.md`) ve `deploy/prod.env.example`'a `VERSO_AUDIT_RETENTION_DAYS` ekle.
 
 **Outbox'lı denetim kaydına yükseltme (ADR-0039).** Yeni rol, secret ya da şema yok; `document.outbox_event`, `qa.outbox_event` ve `audit.event.event_id` migration'larla gelir. Sıra her zamanki: `docker compose up -d --build --wait` (`migrate` önce çalışır; yeni imaj `event_id` sütunu olmadan açılmaz, eski imaj yeni sütunu yok sayar). Kendi config dosyasını tutan kurulumlar: `spring.datasource.*` ve `spring.flyway.url/user/password` anahtarları `verso.document.datasource.*` ve `verso.document.flyway.*` oldu (Boot'un kendi DataSource ve Flyway'i kapalı); `deploy/prod.env.example`'a `VERSO_INGESTION_ENABLED=true` ekle. Denetim kayıtları artık iş değişikliğiyle aynı transaction'da modülün outbox'ına yazılır ve commit'ten hemen sonra teslim edilir; denetim veritabanı yokken kaybolmaz, bekler (`outbox_oldest_pending_age_seconds`, [runbook](docs/runbooks/outbox-stuck.md)). `VERSO_INGESTION_ENABLED=false` aynı imajı yalnız API olarak çalıştırır (ingestion worker'ı yok; yüklenen belgeler `PENDING` kalır), bugün tek süreç kullanıldığı için `true` kalır.
+
+**Bağlayıcı modülü olan bir sürüme yükseltme (ADR-0038).** `connector` şeması ve rolleri (`svc_connector`, `svc_connector_migrate`) var olan bir volume'de yoktur; denetim kaydı yükseltmesiyle aynı yol: `bash scripts/dev-secrets.sh` (yalnız eksik `SECRET_DB_CONNECTOR_*` dosyalarını üretir), `docker compose up -d --wait postgres`, `40-modules.sh`, sonra `docker compose up -d --build --wait`. SMB kullanmayan kurulum overlay'i açmaz; `VERSO_CONNECTOR_ALLOWED_NETWORKS` boş kalır. Yükseltmeden sonra yeni yedek al.
 
 **Bilgi alanları olan bir sürüme yükseltme (ADR-0028).** Yeni şema, secret ya da ortam değişkeni yok. Adımlar:
 

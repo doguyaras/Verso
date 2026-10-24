@@ -42,6 +42,11 @@
       <groupId>com.verso</groupId>
       <artifactId>audit-core</artifactId>
     </dependency>
+    <!-- SMB file-share connector (ADR-0038): its own schema "connector", pool and Flyway. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>connector-core</artifactId>
+    </dependency>
     <!-- KVKK data-subject requests and answer redaction (ADR-0034): no schema of its own, only the other modules' apis. -->
     <dependency>
       <groupId>com.verso</groupId>
@@ -114,6 +119,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- GithubAnnotations: failed tests as check-run annotations on CI (version from the Boot BOM). -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

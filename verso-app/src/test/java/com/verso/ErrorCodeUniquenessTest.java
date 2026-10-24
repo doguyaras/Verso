@@ -30,7 +30,8 @@ class ErrorCodeUniquenessTest {
             "document", new int[]{10000, 10999},
             "qa", new int[]{11000, 11999},
             "audit", new int[]{12000, 12999},
-            "privacy", new int[]{13000, 13999});
+            "privacy", new int[]{13000, 13999},
+            "connector", new int[]{14000, 14999});
 
     @Test
     void errorCodes_whenScanned_areUniqueAndInsideTheirBlock() {

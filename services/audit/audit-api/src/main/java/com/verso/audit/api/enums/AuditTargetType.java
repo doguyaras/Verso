@@ -5,6 +5,8 @@ public enum AuditTargetType {
     DOCUMENT,
     /** A shared collection (ADR-0028). */
     COLLECTION,
+    /** A file-share connector (ADR-0038). */
+    CONNECTOR,
     CONVERSATION,
     TURN,
     /** The usage metrics endpoint (no id). */

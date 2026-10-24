@@ -41,6 +41,9 @@ class MigrateModeTest {
         args.add("--verso.audit.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
         args.add("--verso.audit.flyway.user=svc_audit_migrate");
         args.add("--verso.audit.flyway.password=" + VersoPostgres.secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"));
+        args.add("--verso.connector.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
+        args.add("--verso.connector.flyway.user=svc_connector_migrate");
+        args.add("--verso.connector.flyway.password=" + VersoPostgres.secret("SECRET_DB_CONNECTOR_MIGRATE_PASSWORD"));
         // Deploy profile values compose would give; the application password is deliberately absent.
         args.add("--DB_HOST=unused");
         args.add("--DB_PORT=1");
@@ -62,15 +65,22 @@ class MigrateModeTest {
             // ADR-0026: the same for the audit schema (no svc_audit password in this container either).
             assertThat(context.getBeanNamesForType(com.verso.audit.config.AuditSchemaMigration.class)).hasSize(1);
             assertThat(context.getBeanNamesForType(com.verso.audit.repository.AuditDatabase.class)).isEmpty();
+            // ADR-0038: and for the connector schema; no sync worker either.
+            assertThat(context.getBeanNamesForType(com.verso.connector.config.ConnectorSchemaMigration.class)).hasSize(1);
+            assertThat(context.getBeanNamesForType(com.verso.connector.repository.ConnectorDatabase.class)).isEmpty();
+            assertThat(context.getBeanNamesForType(com.verso.connector.worker.ConnectorSyncWorker.class)).isEmpty();
         }
         try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
                 VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
              Statement st = admin.createStatement();
              ResultSet rs = st.executeQuery("select schemaname, tableowner from pg_tables where schemaname in "
-                     + "('document', 'qa', 'audit') and tablename = 'flyway_schema_history' order by schemaname")) {
+                     + "('document', 'qa', 'audit', 'connector') and tablename = 'flyway_schema_history' order by schemaname")) {
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString(1)).isEqualTo("audit");
             assertThat(rs.getString(2)).isEqualTo("svc_audit_migrate");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("connector");
+            assertThat(rs.getString(2)).isEqualTo("svc_connector_migrate");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString(2)).isEqualTo("svc_document_migrate");
             assertThat(rs.next()).isTrue();

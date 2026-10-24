@@ -90,6 +90,12 @@ public class CollectionRepository {
                 .param("id", id).query(UUID.class).optional().isPresent();
     }
 
+    /** Whether the collection exists; no reader check (a connector's target, ADR-0038). */
+    public boolean exists(UUID id) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM document.collection WHERE id = :id)").param("id", id)
+                .query(Boolean.class).single();
+    }
+
     public Optional<CollectionRow> find(String[] principals, UUID id) {
         return jdbc.sql(SELECT + " WHERE c.id = :id").param("principals", principals).param("id", id).query(ROW).optional();
     }

@@ -45,6 +45,14 @@ verso:
     flyway:
       url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
       user: svc_audit_migrate
+  # The connector schema's own roles (ADR-0038), on the same local database; passwords from secrets/ like the others.
+  connector:
+    datasource:
+      url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
+      username: svc_connector
+    flyway:
+      url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
+      user: svc_connector_migrate
   # The docling sidecar (ADR-0032) is off for an IDE run; a sidecar started by hand on 127.0.0.1:5001 can be used by
   # setting VERSO_DOCLING_ENABLED=true.
   document:

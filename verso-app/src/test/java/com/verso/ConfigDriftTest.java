@@ -61,6 +61,11 @@ class ConfigDriftTest {
             "verso.audit.datasource.username",
             "verso.audit.flyway.url",
             "verso.audit.flyway.user",
+            // The connector schema's own connection and Flyway (ADR-0038).
+            "verso.connector.datasource.url",
+            "verso.connector.datasource.username",
+            "verso.connector.flyway.url",
+            "verso.connector.flyway.user",
             "spring.ai.ollama.base-url",
             // The docling sidecar's switch and address (ADR-0032).
             "verso.document.docling.enabled",

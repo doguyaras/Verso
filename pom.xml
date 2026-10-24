@@ -23,6 +23,8 @@
     <module>services/privacy/privacy-api</module>
     <module>services/privacy/privacy-core</module>
     <module>services/mcp/mcp-core</module>
+    <module>services/connector/connector-api</module>
+    <module>services/connector/connector-core</module>
     <module>verso-app</module>
   </modules>
 
@@ -47,6 +49,10 @@
     <!-- Flyway library and CLI image move together (ADR-0009 #4). Boot 4.1.2 manages 12.4.0; 13.x is pinned here so the
          CLI used by the restore drill validates with the same major (docs/versions.md). -->
     <flyway.version>13.11.1</flyway.version>
+    <!-- SMB2/3 client of the file-share connector (ADR-0038): Apache-2.0, maintained; jcifs-ng is LGPL (docs/versions.md). -->
+    <smbj.version>0.15.0</smbj.version>
+    <!-- smbj's crypto provider (NTLM, signing, SMB3 encryption); managed so the tree converges on one version. -->
+    <bcprov.version>1.85.2</bcprov.version>
 
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
@@ -170,6 +176,26 @@
         <groupId>com.verso</groupId>
         <artifactId>mcp-core</artifactId>
         <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>connector-api</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>connector-core</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.hierynomus</groupId>
+        <artifactId>smbj</artifactId>
+        <version>${smbj.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bcprov.version}</version>
       </dependency>
       <dependency>
         <groupId>com.verso</groupId>

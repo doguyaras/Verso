@@ -139,3 +139,18 @@ groups:
         annotations:
           summary: Outbox rows gave up and wait for the failure retention.
           runbook: docs/runbooks/outbox-stuck.md
+
+      # A file-share connector (ADR-0038) has had no successful sync for three schedule intervals: the index silently
+      # falls behind its source (the top complaint about other products: "success" in the UI, a stopped index behind).
+      # The lag grows at scrape time from the last success, whatever the last run reported. The factor 3 is
+      # verso.connector.stale-factor; the API shows the same connector as STALE.
+      - alert: ConnectorSyncStale
+        expr: |
+          max by (connector) (verso_connector_sync_lag_seconds{job="verso"})
+            > 3 * max by (connector) (verso_connector_schedule_seconds{job="verso"})
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: A file-share connector has not synced successfully for three schedule intervals.
+          runbook: docs/runbooks/connector-sync-stale.md

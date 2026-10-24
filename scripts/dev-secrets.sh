@@ -18,6 +18,9 @@ NAMES=(
   SECRET_DB_QA_PASSWORD                # svc_qa: application, DML only on qa (ADR-0023)
   SECRET_DB_AUDIT_MIGRATE_PASSWORD     # svc_audit_migrate: owner of the audit schema, Flyway (ADR-0026)
   SECRET_DB_AUDIT_PASSWORD             # svc_audit: application, INSERT and SELECT only on audit (ADR-0026)
+  SECRET_DB_CONNECTOR_MIGRATE_PASSWORD # svc_connector_migrate: owner of the connector schema, Flyway (ADR-0038)
+  SECRET_DB_CONNECTOR_PASSWORD         # svc_connector: application, DML only on connector (ADR-0038)
+  SECRET_CONNECTOR_SMB_PASSWORD        # SMB connector service account (ADR-0038); a placeholder until you write the real one
   SECRET_DB_BACKUP_PASSWORD           # verso_backup: pg_read_all_data, pg_dump only
   SECRET_BACKUP_ENCRYPTION_KEY         # gpg passphrase for backup files
   SECRET_DB_KEYCLOAK_PASSWORD          # keycloak: the demo IdP's own database (ADR-0010)
@@ -49,7 +52,7 @@ echo "dev-secrets: $created created, $(( ${#NAMES[@]} - created )) kept ($DIR)"
 # New secrets do not reach an existing database: the init scripts ran once, with the old values (review E3).
 if [ "$created" -gt 0 ] && command -v docker >/dev/null 2>&1    && docker volume inspect "${COMPOSE_PROJECT_NAME:-verso}_pgdata" >/dev/null 2>&1; then
   echo "dev-secrets: WARNING volume ${COMPOSE_PROJECT_NAME:-verso}_pgdata already exists; its roles keep the old passwords." >&2
-  echo "dev-secrets: a secret of a NEW module (e.g. SECRET_DB_QA_*, SECRET_DB_AUDIT_*) is fine: run initdb/40-modules.sh once (README \"Yükseltme\")." >&2
+  echo "dev-secrets: a secret of a NEW module (e.g. SECRET_DB_AUDIT_*, SECRET_DB_CONNECTOR_*) is fine: run initdb/40-modules.sh once (README \"Yükseltme\")." >&2
   echo "dev-secrets: either restore the old secret files, or recreate the database: docker compose down -v" >&2
   echo "dev-secrets: (down -v also deletes the backups volume; copy the backups first)" >&2
 fi

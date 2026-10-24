@@ -44,7 +44,8 @@ class ModuleConsistencyTest {
         // The upgrade path for existing volumes and the restore drill's role checks (ADR-0023) know every module too.
         assertThat(modules("deploy/postgres/initdb/40-modules.sh")).isEqualTo(roles);
         assertThat(modules("deploy/backup/restore-check.sh")).isEqualTo(roles);
-        assertThat(roles).as("ADR-0023, ADR-0026: qa and audit have their own schemas").containsExactly("document", "qa", "audit");
+        assertThat(roles).as("ADR-0023, ADR-0026, ADR-0038: qa, audit and connector have their own schemas")
+                .containsExactly("document", "qa", "audit", "connector");
     }
 
     @Test

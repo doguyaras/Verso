@@ -109,6 +109,21 @@ public class DocumentRepository {
                 .param("admin", admin).query(ROW).optional();
     }
 
+    /**
+     * The id of the source's document with this key (ADR-0038): a connector is not a reader, so no principal filter;
+     * the key belongs to that source account only.
+     */
+    public Optional<UUID> findIdByIdempotencyKey(String accountId, UUID idempotencyKey) {
+        return jdbc.sql("SELECT id FROM document.document WHERE account_id = :account AND idempotency_key = :key")
+                .param("account", accountId).param("key", idempotencyKey).query(UUID.class).optional();
+    }
+
+    /** Those of the ids that are documents of the collection (a connector's reconciliation, ADR-0038). */
+    public List<UUID> presentInCollection(UUID collectionId, Collection<UUID> ids) {
+        return jdbc.sql("SELECT id FROM document.document WHERE collection_id = :collection AND id = ANY(:ids)")
+                .param("collection", collectionId).param("ids", ids.toArray(UUID[]::new)).query(UUID.class).list();
+    }
+
     /** A document the account uploaded, wherever it lives (worker and tests; not a reader check). */
     public Optional<DocumentRow> find(String accountId, UUID id) {
         return jdbc.sql(SELECT + " WHERE d.account_id = :account AND d.id = :id")

@@ -70,6 +70,9 @@ x-db-env: &db-env
   VERSO_MCP_SHOW_DOCUMENT_NAMES: ${VERSO_MCP_SHOW_DOCUMENT_NAMES:-true}
   # The process role (ADR-0039): true runs the ingestion worker in this process (the only process today).
   VERSO_INGESTION_ENABLED: ${VERSO_INGESTION_ENABLED:-true}
+  # Internal networks the SMB connector may reach (ADR-0038), CIDR, private ranges only; empty: none. The application
+  # has no route to them in this file: deploy/compose.smb.yaml adds the network and the service account secret.
+  VERSO_CONNECTOR_ALLOWED_NETWORKS: ${VERSO_CONNECTOR_ALLOWED_NETWORKS:-}
 
 x-ollama-image: &ollama-image ollama/ollama:0.40.10@sha256:4c5b27871a3239a717048f9b93057680a51b60c8119a7016aebb57f938e25e35
 
@@ -95,6 +98,8 @@ services:
       - SECRET_DB_QA_PASSWORD
       - SECRET_DB_AUDIT_MIGRATE_PASSWORD
       - SECRET_DB_AUDIT_PASSWORD
+      - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
+      - SECRET_DB_CONNECTOR_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
       - SECRET_DB_KEYCLOAK_PASSWORD
     volumes:
@@ -112,7 +117,7 @@ services:
       start_period: 30s
 
   # One-shot migration with the application image (ADR-0009, review S4): only this container holds the migration
-  # roles' passwords. It runs Flyway for every module schema (document, qa, audit; ADR-0023, ADR-0026) without a web server and
+  # roles' passwords. It runs Flyway for every module schema (document, qa, audit, connector; ADR-0023, ADR-0026, ADR-0038) without a web server and
   # without the application DataSource, then exits.
   migrate:
     <<: *java-service-defaults
@@ -137,6 +142,7 @@ services:
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
       - SECRET_DB_QA_MIGRATE_PASSWORD
       - SECRET_DB_AUDIT_MIGRATE_PASSWORD
+      - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
     networks: [backend]
     depends_on:
       postgres:
@@ -155,6 +161,7 @@ services:
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_QA_PASSWORD
       - SECRET_DB_AUDIT_PASSWORD
+      - SECRET_DB_CONNECTOR_PASSWORD
     # Not published: the edge proxy is the way in (ADR-0013).
     depends_on:
       postgres:
@@ -522,6 +529,8 @@ services:
       - SECRET_DB_QA_PASSWORD
       - SECRET_DB_AUDIT_MIGRATE_PASSWORD
       - SECRET_DB_AUDIT_PASSWORD
+      - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
+      - SECRET_DB_CONNECTOR_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
     volumes:
       - ./deploy/postgres/initdb/05-settings.sh:/docker-entrypoint-initdb.d/05-settings.sh:ro
@@ -552,6 +561,7 @@ services:
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_QA_PASSWORD
       - SECRET_DB_AUDIT_PASSWORD
+      - SECRET_DB_CONNECTOR_PASSWORD
       - SECRET_BACKUP_ENCRYPTION_KEY
     volumes:
       - ./deploy/backup:/opt/verso:ro
@@ -623,6 +633,25 @@ services:
       restore-db:
         condition: service_healthy
 
+  # The same validate for the schema "connector" (ADR-0038).
+  restore-flyway-connector:
+    profiles: ["drill"]
+    <<: *hardening
+    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$(cat /run/secrets/SECRET_DB_CONNECTOR_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_connector_migrate -schemas=connector -defaultSchema=connector -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
+    environment:
+      REDGATE_DISABLE_TELEMETRY: "true"
+    secrets:
+      - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
+    volumes:
+      - ./services/connector/connector-core/src/main/resources/db/migration/connector:/flyway/migrations:ro
+    tmpfs:
+      - /tmp:size=64m
+    networks: [drill]
+    depends_on:
+      restore-db:
+        condition: service_healthy
+
 secrets:
   SECRET_POSTGRES_SUPERUSER_PASSWORD:
     file: ./secrets/SECRET_POSTGRES_SUPERUSER_PASSWORD
@@ -638,6 +667,10 @@ secrets:
     file: ./secrets/SECRET_DB_AUDIT_MIGRATE_PASSWORD
   SECRET_DB_AUDIT_PASSWORD:
     file: ./secrets/SECRET_DB_AUDIT_PASSWORD
+  SECRET_DB_CONNECTOR_MIGRATE_PASSWORD:
+    file: ./secrets/SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
+  SECRET_DB_CONNECTOR_PASSWORD:
+    file: ./secrets/SECRET_DB_CONNECTOR_PASSWORD
   SECRET_DB_BACKUP_PASSWORD:
     file: ./secrets/SECRET_DB_BACKUP_PASSWORD
   SECRET_BACKUP_ENCRYPTION_KEY:

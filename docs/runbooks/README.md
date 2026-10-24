@@ -22,6 +22,7 @@ docker compose --profile obs up -d --wait
 | `AuditEventNotStored` | page | [audit-write-failed.md](audit-write-failed.md) |
 | `OutboxOldestPendingTooOld` (ADR-0039) | page | [outbox-stuck.md](outbox-stuck.md) |
 | `OutboxDeadRows` (ADR-0039) | page | [outbox-stuck.md](outbox-stuck.md) |
+| `ConnectorSyncStale` (yalnız tanımlı bir dosya paylaşımı bağlayıcısı varken, ADR-0038) | ticket | [connector-sync-stale.md](connector-sync-stale.md) |
 
 - **page:** kullanıcıyı etkiler, hemen bakılır.
 - **ticket:** bir sonraki iş günü bakılır.

@@ -45,6 +45,7 @@ public final class VersoPostgres {
         for (String name : new String[]{"SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_DOCUMENT_PASSWORD",
                 "SECRET_DB_QA_MIGRATE_PASSWORD", "SECRET_DB_QA_PASSWORD",
                 "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_AUDIT_PASSWORD",
+                "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD", "SECRET_DB_CONNECTOR_PASSWORD",
                 "SECRET_DB_BACKUP_PASSWORD", "SECRET_DB_KEYCLOAK_PASSWORD"}) {
             SECRETS.put(name, randomPassword());
         }
@@ -80,6 +81,13 @@ public final class VersoPostgres {
                     "verso.audit.flyway.url=" + POSTGRES.getJdbcUrl(),
                     "verso.audit.flyway.user=svc_audit_migrate",
                     "verso.audit.flyway.password=" + secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"),
+                    // The connector schema's own roles (ADR-0038).
+                    "verso.connector.datasource.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.connector.datasource.username=svc_connector",
+                    "verso.connector.datasource.password=" + secret("SECRET_DB_CONNECTOR_PASSWORD"),
+                    "verso.connector.flyway.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.connector.flyway.user=svc_connector_migrate",
+                    "verso.connector.flyway.password=" + secret("SECRET_DB_CONNECTOR_MIGRATE_PASSWORD"),
                     // Several cached test contexts share one container: small pools keep them far below
                     // max_connections (phase 2 spring review C4).
                     "verso.document.datasource.maximum-pool-size=3",
@@ -87,7 +95,9 @@ public final class VersoPostgres {
                     "verso.qa.datasource.maximum-pool-size=2",
                     "verso.qa.datasource.minimum-idle=0",
                     "verso.audit.datasource.maximum-pool-size=2",
-                    "verso.audit.datasource.minimum-idle=0")
+                    "verso.audit.datasource.minimum-idle=0",
+                    "verso.connector.datasource.maximum-pool-size=2",
+                    "verso.connector.datasource.minimum-idle=0")
                     .applyTo(context);
         }
     }

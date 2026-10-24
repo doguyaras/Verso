@@ -21,10 +21,24 @@ public final class AuditTables {
         try (Connection admin = admin(); Statement st = admin.createStatement()) {
             st.execute("TRUNCATE audit.event");
             // Records still waiting for delivery (ADR-0039) belong to the log being reset.
-            st.execute("TRUNCATE document.outbox_event, qa.outbox_event");
+            st.execute("TRUNCATE document.outbox_event, qa.outbox_event, connector.outbox_event");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the audit schema", e);
         }
+    }
+
+    /**
+     * The count once it reaches {@code expected}, or the last count after 10 s: outbox records (ADR-0039) reach the
+     * audit log right after the commit, but on another thread.
+     */
+    public static long awaitCount(long expected, String sql, Object... params) {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+        long value = count(sql, params);
+        while (value != expected && System.nanoTime() - deadline < 0) {
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(100));
+            value = count(sql, params);
+        }
+        return value;
     }
 
     /** A single long value of a query run as the superuser. */

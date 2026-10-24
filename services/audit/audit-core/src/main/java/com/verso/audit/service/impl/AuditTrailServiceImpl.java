@@ -30,6 +30,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class AuditTrailServiceImpl implements AuditTrail {
 
+    private static final java.util.regex.Pattern SYSTEM_COMPONENT = java.util.regex.Pattern.compile("[a-z][a-z0-9-]{2,40}");
+
     private final AuditEventRepository repository;
     private final AuditMetrics metrics;
     private final CallerRoles roles;
@@ -55,6 +57,16 @@ public class AuditTrailServiceImpl implements AuditTrail {
         String traceId = RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes web
                 ? TraceIds.current(web.getRequest()) : TraceIds.current(null);
         return new AuditRecord(UUID.randomUUID(), jwt.getToken().getSubject(), roles.of(authentication), traceId,
+                event.mode() != null ? event.mode() : installationMode, event);
+    }
+
+    @Override
+    public AuditRecord captureSystem(String component, AuditEvent event) {
+        if (component == null || !SYSTEM_COMPONENT.matcher(component).matches()) {
+            throw new IllegalArgumentException("component must be a fixed lowercase word");
+        }
+        // No request on a worker thread: the trace id comes from the MDC when a span set one, otherwise a new one.
+        return new AuditRecord(UUID.randomUUID(), "system:" + component, java.util.List.of(), TraceIds.current(null),
                 event.mode() != null ? event.mode() : installationMode, event);
     }
 

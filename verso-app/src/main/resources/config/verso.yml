@@ -273,6 +273,57 @@ verso:
     # Failure retention: DEAD rows are deleted after this; the alert OutboxDeadRows fires on the first one.
     dead-retention: 30d
     purge-interval: 1h
+  # SMB file-share connector (ADR-0038): the module's own schema "connector", its own pool as svc_connector (DML) and
+  # its own Flyway as svc_connector_migrate (owner, DDL), like audit (ADR-0026). Passwords from /run/secrets
+  # (SECRET_DB_CONNECTOR_PASSWORD, SECRET_DB_CONNECTOR_MIGRATE_PASSWORD), no fallback. A connector's service account
+  # password is a secret file too, named by the connector (credentialRef, only SECRET_CONNECTOR_* names, e.g.
+  # SECRET_CONNECTOR_SMB_PASSWORD from deploy/compose.smb.yaml); it is read through the config tree at sync time and
+  # never stored. Starting values; see ConnectorProperties for each limit.
+  connector:
+    datasource:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      username: svc_connector
+      password: ${SECRET_DB_CONNECTOR_PASSWORD}
+      # One sync worker per instance and the admin endpoints; connection budget in ADR-0038.
+      maximum-pool-size: 3
+      minimum-idle: 0
+      connection-timeout: 2s
+    flyway:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      user: svc_connector_migrate
+      password: ${SECRET_DB_CONNECTOR_MIGRATE_PASSWORD}
+      locations: classpath:db/migration/connector
+      schema: connector
+    # Egress (ADR-0038, security-rules 5): CIDR blocks of the internal networks a connector may reach, private ranges
+    # only (10/8, 172.16/12, 192.168/16, fc00::/7). Empty: no connector can connect. Every address a host name resolves
+    # to must be inside; loopback, link-local and metadata addresses never are.
+    allowed-networks: ${VERSO_CONNECTOR_ALLOWED_NETWORKS:}
+    sync-enabled: true
+    poll-interval: PT30S
+    poll-initial-delay: PT30S
+    lease: PT10M
+    max-connectors: 50
+    # Rate limits of one run; what is left runs continuation-delay later.
+    max-files-per-run: 500
+    max-bytes-per-run: 2GB
+    max-listed-entries: 100000
+    max-depth: 32
+    continuation-delay: PT2M
+    item-retry-base: PT5M
+    item-retry-max: PT24H
+    failure-retry-base: PT1M
+    # Deletion safety: a run that would delete more than 20% of the tracked files (and more than 20 files) deletes
+    # nothing until an admin confirms it for one run (POST /v1/admin/connectors/{id}/sync, confirmMassDeletion).
+    deletion-safety-percent: 20
+    deletion-safety-minimum: 20
+    # STALE (API) and the ConnectorSyncStale alert: no successful sync for this many schedule intervals.
+    stale-factor: 3
+    keep-runs: 100
+    smb:
+      connect-timeout: PT10S
+      timeout: PT60S
+      signing-required: true
+      encrypt-data: false
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
     # The document module's own pool (ADR-0039), as svc_document (DML only), and its own Flyway as
@@ -390,6 +441,9 @@ logging:
     # messages (llm-rules 2.1); McpRequestGuard logs refused MCP requests with the status only (ADR-0031).
     io.modelcontextprotocol: OFF
     org.springframework.ai.mcp.server.webmvc.transport: OFF
+    # The SMB client (smbj, ADR-0038) writes UNC paths (server, share, folder names) and server messages into its own
+    # warnings; the connector logs fixed codes and ids instead (SourceException), so the library stays silent.
+    com.hierynomus: OFF
 ---
 # Structured (JSON) logs outside the local profile (reference 8.1): Loki/OTLP read fields, not regexes.
 spring:

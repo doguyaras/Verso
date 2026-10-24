@@ -68,7 +68,7 @@ class ComposeConfigTest {
     void composeSettings_whenReferenced_areDocumentedInEnvExample() throws IOException {
         Set<String> used = new TreeSet<>();
         for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml",
-                "deploy/compose.gpu.yaml")) {
+                "deploy/compose.gpu.yaml", "deploy/compose.smb.yaml")) {
             Matcher m = COMPOSE_VAR.matcher(read(file));
             while (m.find()) used.add(m.group(1));
         }
@@ -84,10 +84,11 @@ class ComposeConfigTest {
     @Test
     void migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService() {
         // One application role per module schema (ADR-0023); never a migration role.
-        assertThat(secrets("verso-app")).containsExactly("SECRET_DB_DOCUMENT_PASSWORD", "SECRET_DB_QA_PASSWORD", "SECRET_DB_AUDIT_PASSWORD");
+        assertThat(secrets("verso-app")).containsExactly("SECRET_DB_DOCUMENT_PASSWORD", "SECRET_DB_QA_PASSWORD", "SECRET_DB_AUDIT_PASSWORD",
+                "SECRET_DB_CONNECTOR_PASSWORD");
         assertThat(environment("verso-app")).containsEntry("SPRING_FLYWAY_ENABLED", "false");
         assertThat(secrets("migrate")).containsExactly("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_QA_MIGRATE_PASSWORD",
-                "SECRET_DB_AUDIT_MIGRATE_PASSWORD");
+                "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD");
         assertThat(service("migrate")).containsEntry("restart", "no");
         assertThat(secrets("keycloak")).as("the IdP gets its own secrets only").containsExactlyInAnyOrder(
                 "SECRET_DB_KEYCLOAK_PASSWORD", "SECRET_KEYCLOAK_ADMIN_PASSWORD", "SECRET_KEYCLOAK_CI_CLIENT_SECRET",
@@ -312,6 +313,36 @@ class ComposeConfigTest {
     }
 
     /**
+     * ADR-0038: the SMB overlay gives only the application one extra network, with a fixed subnet and interface name for
+     * the host firewall rule, and the service account's secret; nothing is published, local mode stays local, and the
+     * base stack neither has the network nor the secret. The allowlist defaults to empty (no connector can connect).
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void smbOverlay_whenComposed_addsOnlyTheApplicationsRouteAndSecret() throws IOException {
+        Map<String, Object> base = new Yaml().load(read("compose.yaml"));
+        assertThat((Map<String, Object>) base.get("networks")).doesNotContainKey("smb");
+        assertThat((Map<String, Object>) base.get("x-db-env"))
+                .containsEntry("VERSO_CONNECTOR_ALLOWED_NETWORKS", "${VERSO_CONNECTOR_ALLOWED_NETWORKS:-}");
+        services().forEach((name, definition) -> assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets")))
+                .as(name).doesNotContain("SECRET_CONNECTOR_SMB_PASSWORD"));
+
+        Map<String, Object> overlay = new Yaml().load(read("deploy/compose.smb.yaml"));
+        assertThat(overlay.keySet()).containsExactlyInAnyOrder("services", "networks", "secrets");
+        Map<String, Object> services = (Map<String, Object>) overlay.get("services");
+        assertThat(services.keySet()).containsExactly("verso-app");
+        Map<String, Object> app = (Map<String, Object>) services.get("verso-app");
+        assertThat(app.keySet()).containsExactlyInAnyOrder("networks", "secrets");
+        assertThat((List<String>) app.get("networks")).containsExactly("smb");
+        assertThat((List<String>) app.get("secrets")).containsExactly("SECRET_CONNECTOR_SMB_PASSWORD");
+        Map<String, Object> smb = (Map<String, Object>) ((Map<String, Object>) overlay.get("networks")).get("smb");
+        assertThat(String.valueOf(smb.get("driver_opts"))).contains("com.docker.network.bridge.name=verso-smb");
+        assertThat(String.valueOf(smb.get("ipam"))).contains("subnet=${VERSO_SMB_SUBNET:-172.31.250.0/24}");
+        assertThat(read("deploy/compose.smb.yaml")).doesNotContain("ports:").doesNotContain("VERSO_AI_MODE")
+                .contains("iptables -I DOCKER-USER -i verso-smb -j DROP");
+    }
+
+    /**
      * ADR-0014: the observability stack is opt-in (profile "obs"), on the internal "obs" network; Prometheus also on
      * "backend" (it scrapes the application), Grafana also on "default" (its published port). Alloy reads the Docker
      * socket read-only and has no published port. Grafana does not call home.
@@ -352,7 +383,7 @@ class ComposeConfigTest {
         Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
         List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
                 .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
-        assertThat(alerts).hasSize(11);
+        assertThat(alerts).hasSize(12);
         assertThat(ROOT.resolve("deploy/obs/prometheus/alerts.test.yml")).as("promtool unit tests").exists();
         for (Map<String, Object> alert : alerts) {
             String name = String.valueOf(alert.get("alert"));

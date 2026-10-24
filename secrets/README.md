@@ -15,6 +15,8 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_DB_QA_PASSWORD` | postgres (init), uygulama | `svc_qa`: `qa` şemasında yalnız DML; geçmiş, geri bildirim ve kullanım sayaçları (ADR-0023) |
 | `SECRET_DB_AUDIT_MIGRATE_PASSWORD` | postgres (init), `migrate` | `svc_audit_migrate`: `audit` şemasının sahibi, DDL (ADR-0026) |
 | `SECRET_DB_AUDIT_PASSWORD` | postgres (init), uygulama | `svc_audit`: `audit` şemasında yalnız INSERT ve SELECT; denetim kaydı (ADR-0026) |
+| `SECRET_DB_CONNECTOR_MIGRATE_PASSWORD` | postgres (init), `migrate` | `svc_connector_migrate`: `connector` şemasının sahibi, DDL (ADR-0038) |
+| `SECRET_DB_CONNECTOR_PASSWORD` | postgres (init), uygulama | `svc_connector`: `connector` şemasında yalnız DML; bağlayıcı ayarları ve dosya eşitleme durumu (ADR-0038) |
 | `SECRET_DB_BACKUP_PASSWORD` | backup servisi | `verso_backup`: `pg_read_all_data`, yalnız okuma |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup servisi, restore provası | Yedek dosyalarının gpg (AES256) parolası |
 | `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü: demo IdP'nin kendi veritabanı (ADR-0010) |
@@ -23,6 +25,7 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_KEYCLOAK_DEMO_USER_PASSWORD` | keycloak | `verso` realm'indeki `demo` kullanıcısının parolası |
 | `SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD` | keycloak | `verso` realm'indeki `admin` kullanıcısının (panel operatörü) parolası |
 | `SECRET_GRAFANA_ADMIN_PASSWORD` | grafana (`obs` profili) | Grafana'nın `admin` kullanıcısı (`127.0.0.1:3000`, ADR-0014) |
+| `SECRET_CONNECTOR_SMB_PASSWORD` | uygulama, yalnız SMB overlay'i (`deploy/compose.smb.yaml`) | SMB bağlayıcısının salt okunur servis hesabının parolası; bağlayıcı bu adı `credentialRef` ile anar, değer veritabanına, log'a ve yanıta hiç girmez. Script yalnız yer tutucu üretir, gerçek parolayı sen yazarsın (`printf`, satır sonu olmadan). Başka hesaplar için `SECRET_CONNECTOR_<AD>` biçiminde dosya eklenir (ADR-0038) |
 | `SECRET_CLOUD_API_KEY` | uygulama, yalnız cloud overlay'i | Bulut sağlayıcısının API anahtarı; script üretmez, sen yazarsın (ADR-0013) |
 
 Keycloak secret'larını `deploy/keycloak/start.sh` okur ve yalnız Keycloak sürecinin ortamına verir; compose ortamına girmezler.

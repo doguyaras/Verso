@@ -42,6 +42,8 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 | Belge metni (sayfa) ve dosya adı | `document.document_page`, `document.document` (`file_name`) | Aynı | Aynı `DELETE` (`ON DELETE CASCADE`) |
 | Parçalar (chunk), embedding vektörleri ve tam metin indeksi | `document.document_chunk` (`embedding`, `search_vector`) | Aynı | Aynı `DELETE` (llm-rules 4.2) |
 | Belge okuyucu listesi | `document.document_principal` | Aynı | Aynı `DELETE`. Bütün şemalarda belgeye bağlı satır kalmadığı testlidir; yalnız aşağıdaki atıf referansı, anonim sayaç ve denetim satırı kimliği bilerek kalır (`SubjectRequestApiTest`, ADR-0034) |
+| Dosya paylaşımı bağlayıcısının eşitlediği dosyalar (yeni veri kaynağı, ADR-0038): orijinal dosya, metin, parçalar, vektörler, okuyucu listesi | Yukarıdaki `document.*` tabloları; sahibi bir kişi değil `connector:<bağlayıcı id>` | Dosya kaynakta (SMB paylaşımı) durdukça; kaynakta silinen ya da kapsamdan çıkan dosya bir sonraki eşitlemede bütün türevleriyle silinir | Kaynakta silmek; bağlayıcıyı silmek (`DELETE /v1/admin/connectors/{id}`: bütün belgeleri gider); tek belge `DELETE /v1/documents/{id}` (dosya kaynakta durdukça bir sonraki eşitlemede geri gelir) |
+| Bağlayıcı ayarları ve eşitleme durumu: sunucu, paylaşım, hesap adı, dosya yolları ve adları, boyut, değişiklik zamanı, içerik özeti (SHA-256), hata kodu; koşu sayıları | `connector.connector`, `connector.connector_item`, `connector.sync_run` | Bağlayıcı durdukça; koşu satırlarının son 100'ü | Bağlayıcıyı silmek (satırlar cascade ile gider). Servis hesabının **parolası saklanmaz**: kurulumdaki `SECRET_CONNECTOR_SMB_PASSWORD` secret dosyasındadır |
 | Soru, cevap, konuşma başlığı | `qa.turn`, `qa.conversation` | Konuşmanın **başlangıcından** `VERSO_HISTORY_RETENTION_DAYS` gün (varsayılan **90**, aralık 1-3650) ya da kullanıcı silene kadar | `DELETE /v1/conversations/{id}`, `DELETE /v1/conversations`; kişinin başvurusunda `POST /v1/admin/subjects/delete`; süre dolunca saatlik iş (`HistoryRetentionJob`) |
 | Atıf referansı (belge kimliği, sayfa) | `qa.turn_citation` | Turla birlikte. **Pasaj metni saklanmaz** | Turla birlikte |
 | Cevap puanı ve gerekçesi | `qa.turn_feedback` | Turla birlikte | Turla birlikte |
@@ -81,6 +83,7 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 - Uygulama, veritabanı ve model sunucusu yalnız `internal: true` Docker ağlarındadır; uygulamanın HTTP istemcileri yalnız iç adreslere bağlanabilir; mod ile model ayarı tutarsızsa uygulama açılmaz (ADR-0006, ADR-0013, llm-rules 1.1).
 - Kanıt: [05-egress-kaniti.md](05-egress-kaniti.md). Yapay zekâ modunu her HTTP yanıtı `X-Rag-Mode` ile bildirir (llm-rules 1.3).
 - Tek bilinçli istisna: model dosyaları kurulumda bir kez indirilir (`ollama-pull`, `default` ağ); çalışma zamanındaki Ollama'nın internet erişimi yoktur (llm-rules 8.2).
+- **Veri kaynağı olarak dosya paylaşımı (isteğe bağlı, ADR-0038):** bağlayıcı kurumun iç ağındaki SMB sunucusundan dosyaları **okur** (salt okunur servis hesabı). Bağlantı yalnız kurulumun izin verdiği özel ağ bloklarına (`VERSO_CONNECTOR_ALLOWED_NETWORKS`; boşsa hiçbir yere) yapılır; loopback, link-local ve metadata adresleri reddedilir. Bunun için `deploy/compose.smb.yaml` uygulamaya tek bir iç olmayan ağ ekler; o ağın internete çıkmaması host güvenlik duvarı kuralıyla sağlanır (README "Dosya paylaşımı bağlayıcısı"). Bağlayıcı sunucuya hiçbir şey yazmaz; dosya adları ve yolları log'a girmez: {{BAGLAYICI_KAYNAKLARI}}.
 - Yurt dışı aktarım: yok. KVKK md. 9 aktarımı bu modda doğmaz; yine de kurum kendi değerlendirmesini yapar **[genel]**: {{LOCAL_MOD_DEGERLENDIRMESI}}.
 
 ### 5.2 `cloud` mod (isteğe bağlı; yalnız {{CLOUD_ONAY_TARIHI}} tarihli yazılı karardan sonra)
@@ -149,6 +152,7 @@ Olasılık ve etki: {{DUSUK_ORTA_YUKSEK}} ile doldurulur. "Verso'daki önlem" s�
 | R10 | Model sunucusuna yetkisiz erişim (Ollama kimlik doğrulamasız) | Ollama'nın host portu yok, yalnız `internal` ağ | Ağ yapılandırması bozulursa açılır | Kurulumda ağ ve güvenlik duvarı denetimi; Ollama'ya host portu eklenmez | {{R10}} |
 | R11 | Silinen kişinin/belgenin izleri | Belge silme türevleri siler (bütün şemalarda testli); kullanıcı geçmişini siler; yönetici kişi başvurusuyla geçmişi ve kişisel belgeleri siler, silinen belgeden alıntı yapan cevapları karartır (ADR-0034) | Belge imha süresi yok; bilgi alanı belgeleri ve denetim satırları başvuruda kalır; belge metninde adla arama yok; karartma yöneticinin kararına bağlı; yedek +7 gün | Bölüm 3.1 süreçleri; `docs/runbooks/kvkk-basvurusu.md` | {{R11}} |
 | R12 | Gözlem yığınından sızıntı | Loglarda içerik yok; Loki 7 gün; Grafana dış paylaşım kapalı | Yanlış yapılandırma | Gözlem yığınına erişim kısıtlı | {{R12}} |
+| R14 | Dosya paylaşımı bağlayıcısıyla aşırı paylaşım: paylaşımda yalnız bir birimin okuyabildiği dosya, daha geniş bir bilgi alanına eşitlenir | Okuma yetkisini hedef bilgi alanının erişimleri verir; hesabın göremediği dosya listelenmez; `excludeGlobs` ile klasör dışarıda bırakılır; hedef alan sonradan değiştirilemez; her ekleme ve silme denetim kaydında belge kimliğiyle (ADR-0038) | NTFS izinleri bu sürümde aktarılmaz: alana erişimi olan herkes eşitlenen her dosyayı görür | Bağlayıcıyı yalnız alanın okuyucu kitlesiyle aynı erişim düzeyindeki bir klasöre kur; servis hesabına yalnız o klasörlerde okuma ver: {{BAGLAYICI_KAPSAMI}} | {{R14}} |
 | R13 | Modelin kurum dışına bilgi sızdırması (egress) | `local` modda ağ, istemci ve açılış kontrolü; kanıt betiği | Host düzeyi ayarlar kapsam dışı | [05](05-egress-kaniti.md) kontrolleri; kurum güvenlik duvarı | {{R13}} |
 
 ## 9. Teknik ve idari tedbirler (özet)
@@ -175,9 +179,10 @@ Olasılık ve etki: {{DUSUK_ORTA_YUKSEK}} ile doldurulur. "Verso'daki önlem" s�
 | İddia | Dosya |
 |---|---|
 | Saklama süreleri, anahtarlar | `verso-app/src/main/resources/config/verso.yml`, `deploy/prod.env.example` |
-| Tablolar | `services/{document,qa,audit}/*-core/src/main/resources/db/migration/*` |
+| Tablolar | `services/{document,qa,audit,connector}/*-core/src/main/resources/db/migration/*` |
 | Geçmiş, metrikler, k-anonimlik | `docs/adr/0023-qa-semasi-gecmis-ve-metrikler.md` |
 | Denetim kaydı | `docs/adr/0026-denetim-kaydi.md` |
+| Dosya paylaşımı bağlayıcısı (veri kaynağı, egress, izin) | `docs/adr/0038-smb-baglayicisi.md`, `deploy/compose.smb.yaml` |
 | Local / cloud mod, egress | `docs/adr/0006-ai-calisma-modu.md`, `docs/adr/0013-cloud-modu-ve-egress.md`, `docs/ai/llm-rules.md` |
 | Log gizliliği | `docs/ai/security-rules.md` bölüm 4, `docs/ai/llm-rules.md` bölüm 2 |
 | Panel ve tarayıcı deposu | `docs/adr/0015-panel.md`, `docs/adr/0027-yapay-zeka-bildirimi-ve-uyum-paketi.md` |

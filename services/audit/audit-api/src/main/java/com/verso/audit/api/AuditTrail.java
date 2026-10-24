@@ -23,6 +23,15 @@ public interface AuditTrail {
     AuditRecord capture(AuditEvent event);
 
     /**
+     * The same for background work that has no caller (ADR-0038: a connector sync): the actor is
+     * {@code system:<component>} with no roles, so a reader never takes it for a person's action. The component is a
+     * fixed lowercase word chosen in code ({@code [a-z][a-z0-9-]{2,40}}), never input.
+     *
+     * @throws IllegalArgumentException for a component that is not such a word
+     */
+    AuditRecord captureSystem(String component, AuditEvent event);
+
+    /**
      * Stores the record once: a second call with the same event id changes nothing (the relay may deliver twice).
      *
      * @return true when this call wrote the row, false when it was already there

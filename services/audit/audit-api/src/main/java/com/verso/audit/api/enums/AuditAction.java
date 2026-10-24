@@ -49,5 +49,21 @@ public enum AuditAction {
      */
     MCP_SEARCH,
     /** An MCP client read one passage by id (ADR-0031); the target is the passage, the outcome FOUND or NOT_FOUND. */
-    MCP_FETCH
+    MCP_FETCH,
+    /** A verso-admin created a file-share connector (ADR-0038); never its host, path or credential name. */
+    CONNECTOR_CREATED,
+    /** A verso-admin changed a connector's settings. */
+    CONNECTOR_UPDATED,
+    /** A verso-admin deleted a connector; its documents are removed by the sync worker afterwards. */
+    CONNECTOR_DELETED,
+    /** A verso-admin asked for a sync now. */
+    CONNECTOR_SYNC_REQUESTED,
+    /** A sync run started (recorded by the system actor of the connector worker). */
+    CONNECTOR_SYNC_STARTED,
+    /** A sync run ended; the detail is its status (SUCCEEDED, PARTIAL, FAILED). */
+    CONNECTOR_SYNC_FINISHED,
+    /** A file of a connector became a document (new or changed at the source); the target is the document id. */
+    CONNECTOR_DOCUMENT_ADDED,
+    /** A connector's document was deleted because its file left the source (or the connector was deleted). */
+    CONNECTOR_DOCUMENT_DELETED
 }

@@ -25,4 +25,5 @@ cleanup
 # One Flyway validate per module schema (ADR-0023).
 "${DC[@]}" run --rm --no-TTY restore-flyway-qa
 "${DC[@]}" run --rm --no-TTY restore-flyway-audit
+"${DC[@]}" run --rm --no-TTY restore-flyway-connector
 echo "restore-drill: OK seconds=$(( $(date +%s) - started ))"

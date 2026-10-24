@@ -1,0 +1,41 @@
+# SMB connector overlay (ADR-0038): gives the application a route to the file server and the service account's
+# password. Local mode stays local: the overlay does not switch the AI mode, and the application still has no route
+# to the internet once the host firewall rule below is in place.
+#
+#   printf '%s' "<service account password>" > secrets/SECRET_CONNECTOR_SMB_PASSWORD     # once; never committed
+#   # .env: VERSO_CONNECTOR_ALLOWED_NETWORKS=10.20.30.40/32   (the file server, or its subnet; private ranges only)
+#   docker compose -f compose.yaml -f deploy/compose.smb.yaml up -d --wait
+#
+# Two layers keep the internet closed (README "SMB bağlayıcısı"):
+#  1. the application's own allowlist (VERSO_CONNECTOR_ALLOWED_NETWORKS): every address a connector's host resolves to
+#     must lie inside, loopback, link-local and metadata addresses never do;
+#  2. the network: "smb" is a plain bridge with a fixed subnet and interface name, so the host firewall can allow it
+#     exactly one destination. Without that rule the bridge would also reach the internet through the host's NAT, so
+#     the rule is part of the installation (DOCKER-USER chain, Linux hosts):
+#       iptables -I DOCKER-USER -i verso-smb -j DROP
+#       iptables -I DOCKER-USER -i verso-smb -p tcp -d <file server IP> --dport 445 -j ACCEPT
+#       iptables -I DOCKER-USER -i verso-smb -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+#     (inserted in this order they end up ACCEPT-established, ACCEPT-445, DROP).
+# Known limits (ADR-0038): scripts/prove-local-mode.sh step 1 reports "smb" as a network with a gateway, by design;
+# the proof with this overlay is the firewall rule plus step 2 (a public address does not answer). Docker's embedded DNS
+# answers public names on a non-internal network, so a strict installation gives the connector an IP literal as host.
+services:
+  verso-app:
+    # Added to backend and models (compose merges the lists); nothing else of the stack joins "smb".
+    networks: [smb]
+    secrets:
+      # The connector names this file (credentialRef); the config tree reads it at sync time, no placeholder, no fallback.
+      - SECRET_CONNECTOR_SMB_PASSWORD
+
+networks:
+  smb:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: verso-smb
+    ipam:
+      config:
+        - subnet: ${VERSO_SMB_SUBNET:-172.31.250.0/24}
+
+secrets:
+  SECRET_CONNECTOR_SMB_PASSWORD:
+    file: ./secrets/SECRET_CONNECTOR_SMB_PASSWORD
