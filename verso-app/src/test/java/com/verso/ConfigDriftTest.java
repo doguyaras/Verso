@@ -70,7 +70,9 @@ class ConfigDriftTest {
             // The token shape of the IdP (ADR-0019); the authority prefixes are the same everywhere.
             "verso.security.authorities.roles-claim",
             "verso.security.authorities.client-roles-claim",
-            "verso.security.authorities.groups-claim");
+            "verso.security.authorities.groups-claim",
+            // The public URL of the MCP endpoint (ADR-0031): the RFC 9728 resource differs per environment.
+            "verso.mcp.resource");
 
     /** Security prefixes whose keys AND values must match (allowlist paths and actors). */
     private static final Set<String> MIRRORED_VALUE_PREFIXES = Set.of("service-jwt.internal-access");

@@ -22,6 +22,7 @@
     <module>services/qa/qa-core</module>
     <module>services/privacy/privacy-api</module>
     <module>services/privacy/privacy-core</module>
+    <module>services/mcp/mcp-core</module>
     <module>verso-app</module>
   </modules>
 
@@ -167,6 +168,11 @@
       </dependency>
       <dependency>
         <groupId>com.verso</groupId>
+        <artifactId>mcp-core</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
         <artifactId>document-core</artifactId>
         <version>${revision}</version>
         <type>test-jar</type>
@@ -199,6 +205,13 @@
         <groupId>io.swagger.core.v3</groupId>
         <artifactId>swagger-annotations</artifactId>
         <version>2.2.50</version>
+      </dependency>
+      <!-- Convergence (ADR-0031): the MCP Java SDK 2.0.0 asks for 3.0.0, Spring AI's chat client for 3.0.1; the newer
+           patch wins. The SDK validates tool output against the tools' output schemas with it. -->
+      <dependency>
+        <groupId>com.networknt</groupId>
+        <artifactId>json-schema-validator</artifactId>
+        <version>3.0.1</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

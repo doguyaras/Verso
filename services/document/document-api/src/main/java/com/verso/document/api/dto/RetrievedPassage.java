@@ -17,10 +17,21 @@ import java.util.UUID;
  *       {@link com.verso.document.api.DocumentRetrieval#TERM_SHARE_LIMIT}).</li>
  * </ul>
  *
- * {@code collectionId} and {@code collectionName} are null for a personal document.
+ * {@code collectionId} and {@code collectionName} are null for a personal document. {@code passageId} (ADR-0031, added
+ * last, so the change is additive) is the chunk's id: a caller can read the same passage again with
+ * {@link com.verso.document.api.DocumentRetrieval#passage}, under the same access rule; null where a caller built the
+ * passage itself.
  */
 public record RetrievedPassage(UUID documentId, String fileName, int pageNumber, SourceUnit unit, String content,
-                               double similarity, double specificTermShare, UUID collectionId, String collectionName) {
+                               double similarity, double specificTermShare, UUID collectionId, String collectionName,
+                               UUID passageId) {
+
+    /** A passage without its chunk id. */
+    public RetrievedPassage(UUID documentId, String fileName, int pageNumber, SourceUnit unit, String content,
+                            double similarity, double specificTermShare, UUID collectionId, String collectionName) {
+        this(documentId, fileName, pageNumber, unit, content, similarity, specificTermShare, collectionId,
+                collectionName, null);
+    }
 
     /** A passage of a personal document. */
     public RetrievedPassage(UUID documentId, String fileName, int pageNumber, SourceUnit unit, String content,

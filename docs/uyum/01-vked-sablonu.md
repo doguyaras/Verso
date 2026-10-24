@@ -90,6 +90,15 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 - Banka, ödeme kuruluşu, SPK'ya tabi kurum ve kamu kurulumlarında `cloud` mod kapalıdır: [06](06-sektor-notlari.md).
 - Sağlayıcı hata metni yanıta ve log'a girmez (llm-rules 2.3).
 
+### 5.3 MCP erişim kanalı (isteğe bağlı; varsayılan kapalı, ADR-0031)
+
+- **Ne:** çalışanın kurumca onaylanmış yapay zekâ istemcisi (Claude, ChatGPT, Copilot Studio, iç ajanlar) Verso'yu salt okunur bir bilgi kaynağı olarak kullanır: `verso_search` (pasaj arama) ve `verso_fetch` (tek pasaj). Yeni bir **erişim kanalıdır**; panelden ayrı değerlendirilir. Açılması `VERSO_MCP_ENABLED` ile ve yalnız {{MCP_ONAY_TARIHI}} tarihli yazılı karardan sonra olur. Onaylanan istemciler: {{MCP_ISTEMCILERI}}.
+- **Kim adına:** her çağrı, çalışanın kendi oturumuyla (IdP'den aldığı, yalnız `/mcp` için geçerli `verso-mcp` audience'lı token) ve paneldeki aynı okuma yetkisiyle çalışır: kişisel belgeleri ve grubunun bilgi alanları (ADR-0028). Servis hesabı, paylaşılan anahtar ya da yönetici yetkisi yoktur; MCP token'ı `verso-admin` rolü taşımaz.
+- **Ne çıkar:** yalnız okuyabildiği belgelerden, soruya benzerliği en az `verso.mcp.min-score: 0.30` olan pasajlar; arama başına en çok `verso.mcp.max-results: 10` sonuç, sonuç başına en çok 600 karakterlik alıntı (`verso.mcp.excerpt-max-chars`), tek pasaj için en çok 4000 karakter (`verso.mcp.passage-max-chars`). Belge ve bilgi alanı adı da gider; `VERSO_MCP_SHOW_DOCUMENT_NAMES=false` iken ad yerine kısa belge kimliği gider. Dosya, tam belge ve vektör gitmez.
+- **Nereye:** pasajlar MCP istemcisine, oradan istemcinin kendi modeline gider. Verso'nun kendisi dışarıya bağlantı açmaz (`local` modun egress kanıtı değişmez); ancak istemci bir bulut hizmetiyse (ChatGPT, Claude, Copilot) pasajlar o sağlayıcıya ulaşır. Bu, `local` modda da **yurt dışına aktarım** olabilir; sağlayıcı, konumu ve aktarım mekanizması kurum hukuk birimi teyit etmeli: {{MCP_AKTARIM_MEKANIZMASI}}. İstemcinin sağlayıcısı ayrı bir alıcıdır; Bölüm 2'deki tabloya eklenir.
+- **Ne saklanır:** sorgu metni saklanmaz ve loglanmaz. Her araç çağrısı denetim kaydına `MCP_SEARCH` ya da `MCP_FETCH` olarak, yalnız kimliklerle (çağıranın `sub`'ı, dönen belge kimlikleri, sonuç sözcüğü) yazılır; saklama süresi denetim kaydınınkidir.
+- **Aydınlatma:** kanal açılırsa [02](02-aydinlatma-metni-calisan.md) bu kanalı ve istemcilerin sağlayıcılarını sayacak şekilde güncellenir.
+
 ## 6. Hukuki sebep, aydınlatma, haklar
 
 - **Hukuki sebep:** girdi (soru), çıktı (cevap) ve belgeler için ayrı analiz yapılır **[repo: KVKK Üretken YZ Rehberi]**. Kurumun belirlediği sebep: {{HUKUKI_SEBEP_GIRDI}} / {{HUKUKI_SEBEP_CIKTI}} / {{HUKUKI_SEBEP_BELGELER}}. Dayanak maddeler (KVKK md. 5, özel nitelikli veri için md. 6) **[genel]** kurum hukuk birimi teyit etmeli.

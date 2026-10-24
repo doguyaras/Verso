@@ -41,6 +41,8 @@ CSV enjeksiyonuna karşı `=`, `+`, `-`, `@` (ve sekme/CR) ile başlayan her hü
 | `ADMIN_METRICS_VIEWED` | `GET /v1/admin/metrics` | `METRICS` / `null` | – |
 | `AUDIT_EXPORTED` | CSV alındı | `AUDIT_LOG` / `null` | – |
 | `ACCESS_DENIED` | kimlikli ama rolsüz çağıran bir yönetici ucuna geldi (`outcome` = `DENIED`) | `ADMIN_API` / `null` | `detailCode` = `ADMIN_METRICS` / `ADMIN_AUDIT` |
+| `MCP_SEARCH` (ADR-0031) | bir MCP istemcisi `verso_search` ile aradı | `PASSAGE` / `null` | `detailCode` = `RESULTS` / `NO_RESULTS`, `citationDocumentIds` = dönen belgeler; sorgu yok |
+| `MCP_FETCH` (ADR-0031) | bir MCP istemcisi `verso_fetch` ile pasaj okudu | `PASSAGE` / pasaj id (geçersiz kimlikte `null`) | `detailCode` = `FOUND` / `NOT_FOUND`, `citationDocumentIds` = okunan belge |
 
 Kaydedilmeyenler: değişiklik yapmayan başarısız işlemler (404, 400), okumalar, kimliksiz istekler (401). Yeniden indeksleme eylemi yoktur (böyle bir uç henüz yok).
 

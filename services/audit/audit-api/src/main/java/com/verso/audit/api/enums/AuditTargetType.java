@@ -18,5 +18,7 @@ public enum AuditTargetType {
      * ({@code UUID.nameUUIDFromBytes("verso:subject:" + sub)}), not the sub itself: it proves the request was handled
      * and can be recomputed from the sub, yet the row does not spell the subject out.
      */
-    SUBJECT
+    SUBJECT,
+    /** A passage (chunk) of a document, read through the MCP server (ADR-0031); the id is the chunk's. */
+    PASSAGE
 }

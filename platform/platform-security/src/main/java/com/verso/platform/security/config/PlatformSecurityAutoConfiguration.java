@@ -197,6 +197,31 @@ public class PlatformSecurityAutoConfiguration {
         return http.build();
     }
 
+    /** Order of {@link #versoWellKnownSecurity}: before the API chain, after a module's own chain for the same path. */
+    public static final int WELL_KNOWN_CHAIN_ORDER = API_CHAIN_ORDER - 5;
+
+    /**
+     * Spring Security 7's resource server answers GET /.well-known/oauth-protected-resource/** by itself, before
+     * authentication, with a resource taken from the request's Host header and a claim of certificate-bound tokens that
+     * Verso does not issue. The API is not announced that way: this chain takes the path away from the API chain and
+     * lets it fall through to the application, a 404 like any unknown path. A module that is an RFC 9728 protected
+     * resource (the MCP server, ADR-0031) serves its own, configured metadata from a chain with a lower order.
+     */
+    @Bean
+    @Order(WELL_KNOWN_CHAIN_ORDER)
+    SecurityFilterChain versoWellKnownSecurity(HttpSecurity http) throws Exception {
+        http.securityMatcher("/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/**")
+                .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .anonymous(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
+
     /** Firewall rejections (non-normalised paths) in the envelope; picked up by Spring Security as a bean. */
     @Bean
     EnvelopeRequestRejectedHandler envelopeRequestRejectedHandler(

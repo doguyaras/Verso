@@ -42,5 +42,12 @@ public enum AuditAction {
     /** A verso-admin deleted a data subject's history and personal documents (erasure request, ADR-0034). */
     SUBJECT_DELETED,
     /** A verso-admin replaced the answers that cited a deleted document with a fixed notice (ADR-0034). */
-    ANSWERS_REDACTED
+    ANSWERS_REDACTED,
+    /**
+     * An MCP client searched the caller's passages (ADR-0031); the detail is the outcome word, the citation list the
+     * documents returned. Never the query.
+     */
+    MCP_SEARCH,
+    /** An MCP client read one passage by id (ADR-0031); the target is the passage, the outcome FOUND or NOT_FOUND. */
+    MCP_FETCH
 }

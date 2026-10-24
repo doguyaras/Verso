@@ -221,9 +221,22 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
   - Uygulama, veritabanı ve model sunucusu yalnız iç Docker ağlarındadır. API'ye bir kenar proxy üzerinden ulaşılır.
   - Uygulamanın HTTP istemcileri yalnız iç adreslere bağlanabilir.
   - Mod ile model ayarları tutarsızsa uygulama başlamaz.
+- **MCP sunucusu açıksa** (varsayılan kapalı) her iki modda da pasajlar çağıranın yapay zekâ istemcisine çıkar; istemci bulutta ise oradan sağlayıcısına gider (aşağıda "Yapay zekâ istemcileri için MCP sunucusu").
 - **Cloud modda** pasajlar (kişisel veri içerebilir) yurt dışındaki bir sağlayıcıya aktarılabilir. Bu modu açma kararı ve hukuki dayanağı veri sorumlusunundur.
 - **Log'lar** belge içeriği, soru, cevap ya da dosya adı taşımaz; yalnız id, süre ve sayı taşır. Bu, test edilir ve gözlem yığınında uçtan uca kontrol edilir.
 - Bu bölüm tasarım kararlarını anlatır; hukuki tavsiye değildir.
+
+## Yapay zekâ istemcileri için MCP sunucusu
+
+Çalışanların kurumca onaylanmış yapay zekâ istemcileri (Claude, ChatGPT, Copilot Studio, iç ajanlar) Verso'yu **salt okunur**, atıflı bir bilgi kaynağı olarak kullanabilir ([ADR-0031](docs/adr/0031-mcp-sunucusu.md), istemci kurulumu [`docs/api-mcp-integration-v1.md`](docs/api-mcp-integration-v1.md)).
+
+- **Varsayılan kapalı.** `VERSO_MCP_ENABLED=true` uygulamayı ve kenar proxy'nin `/mcp` yolunu birlikte açar; `VERSO_MCP_RESOURCE` uç adresinin dışarıdan görünen https adresidir.
+- İki araç: `verso_search` (pasaj arama: belge adı, sayfa, alıntı, benzerlik) ve `verso_fetch` (tek pasajın tam metni). ChatGPT'nin `search`/`fetch` biçimine uyar. Üretilmiş cevap aracı yok.
+- **Çağıranın kimliğiyle çalışır:** IdP'den alınan, yalnız `/mcp`'de geçerli token (`aud` `verso-mcp`); paneldeki aynı okuma yetkisi (kişisel belgeler ve grubunun bilgi alanları). Servis hesabı, paylaşılan anahtar, dinamik istemci kaydı ve token iletimi yok. Token'sız istek `401` ile RFC 9728 metadata adresini öğrenir.
+- Sınırlar: sorgu en çok 1000 karakter, en çok 10 sonuç, alıntı 600 ve pasaj 4000 karakter; benzerliği 0,30'un altındaki pasaj hiç dönmez; instance başına 2 eşzamanlı çağrı. Pasaj metni güvenilmeyen içerik olarak işaretlenir, görünmeyen karakterler atılır.
+- Her arama ve okuma denetim kaydına yalnız kimliklerle yazılır (`MCP_SEARCH`, `MCP_FETCH`); sorgu saklanmaz ve loglanmaz.
+- **Veri nereye gider:** Verso dışarı bağlantı açmaz, `local` mod değişmez. Ancak pasajlar istemciye, oradan istemcinin modeline gider; istemci bulutta ise bu bir aktarımdır. Açmadan önce VKED'in MCP bölümü doldurulur ([`docs/uyum/01-vked-sablonu.md`](docs/uyum/01-vked-sablonu.md), 5.3).
+- Desteklenen MCP sürümü: 2025-11-25 (Spring AI 2.0.1, MCP Java SDK 2.0.0).
 
 ## Uyum paketi
 
@@ -278,7 +291,7 @@ Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999 | `VersoApp` |
+| verso-app | 8080 (API, `/v1` audience `verso-api`; MCP `/mcp` audience `verso-mcp`, varsayılan kapalı), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -442,6 +455,12 @@ Yükseltmeden önce alınmış yedekte `qa` şeması yoktur; restore provası on
 4. Yönetici panelde "Bilgi alanları"nı açar, alanı oluşturur, grup yolunu (`/hukuk`) yazarak erişim verir, sonra "Bilgi kaynakları"nda yükleme yeri olarak alanı seçer.
 
 Grup üyeliği değişikliği kullanıcının bir sonraki oturum anahtarında (en çok 300 sn) geçerli olur. Alandan kaldırılan erişim sonraki istekte geçerlidir. Keycloak'ta grubu yeniden adlandırmak o yola verilmiş erişimi düşürür; yeni yolla yeniden verin. Geri dönmeden önce paylaşımlı belgeleri kişisel alana taşıyın ya da silin: eski sürüm onları yükleyenin belgesi sayar.
+
+**MCP sunucusu olan bir sürüme yükseltme (ADR-0031).** Yeni şema, migration ya da secret yok; MCP kapalı gelir. Açmak için:
+
+1. VKED'in MCP bölümünü ([`docs/uyum/01-vked-sablonu.md`](docs/uyum/01-vked-sablonu.md), 5.3) ve onaylı istemci listesini tamamla.
+2. Paketteki realm'i kullanıyorsan `verso-mcp` scope'u ve `verso-mcp-inspector` istemcisi için `bash scripts/keycloak-reimport.sh` (demo oturumları gider). Kurumun IdP'sinde `verso-mcp` audience'ı veren bir scope ve her istemci için kayıt aç ([`docs/api-mcp-integration-v1.md`](docs/api-mcp-integration-v1.md)).
+3. `.env`'de `VERSO_MCP_ENABLED=true` ve `VERSO_MCP_RESOURCE=https://<dış adres>/mcp`, sonra `docker compose up -d --wait` (uygulama ve kenar proxy birlikte açılır).
 
 **Denetim kaydının saklama süresi.** Satırlar `VERSO_AUDIT_RETENTION_DAYS` gün (varsayılan 365, 30–3650) tutulur, sonra 6 saatte bir çalışan iş yalnız veritabanındaki `audit.purge_expired` fonksiyonuyla siler; fonksiyon 30 günden yeni bir sınırı reddeder, yani ele geçirilen bir uygulama yakın geçmişi silemez. Süreyi veri sorumlusu kurum belirler (KVKK md. 4/2-d, md. 12); gerekçe ADR-0026'dadır. Kayıt yazılamazsa istek yine başarılı olur, `AuditEventNotStored` alarmı çalar (`docs/runbooks/audit-write-failed.md`).
 

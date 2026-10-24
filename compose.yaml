@@ -64,6 +64,10 @@ x-db-env: &db-env
   # The docling sidecar (ADR-0032) is off here; deploy/compose.docling.yaml adds it and switches it on.
   VERSO_DOCLING_ENABLED: "false"
   VERSO_DOCLING_URL: http://docling:5001
+  # Read-only MCP server (ADR-0031), off by default; the same variable picks the edge's /mcp route file below.
+  VERSO_MCP_ENABLED: ${VERSO_MCP_ENABLED:-false}
+  VERSO_MCP_RESOURCE: ${VERSO_MCP_RESOURCE:-http://localhost:8080/mcp}
+  VERSO_MCP_SHOW_DOCUMENT_NAMES: ${VERSO_MCP_SHOW_DOCUMENT_NAMES:-true}
 
 x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
 
@@ -328,6 +332,8 @@ services:
       - ./deploy/edge/nginx.conf:/etc/nginx/nginx.conf:ro
       # The mode on the proxy's own error responses; the cloud overlay mounts mode-cloud.conf.
       - ./deploy/edge/mode-local.conf:/etc/nginx/mode.conf:ro
+      # Whether /mcp and its RFC 9728 metadata are routed (ADR-0031): mcp-false.conf or mcp-true.conf.
+      - ./deploy/edge/mcp-${VERSO_MCP_ENABLED:-false}.conf:/etc/nginx/mcp.conf:ro
       # The panel (ADR-0015): static files, served at /panel/.
       - ./panel:/usr/share/verso-panel:ro
       # The installation's branding (ADR-0021): branding.json and its logo, served at /branding.json and /branding/.

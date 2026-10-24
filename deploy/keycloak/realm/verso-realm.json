@@ -46,7 +46,112 @@
       }
     ]
   },
+  "clientScopes": [
+    {
+      "name": "basic",
+      "description": "OpenID Connect scope for add all basic claims to the token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "auth_time",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "AUTH_TIME",
+            "claim.name": "auth_time",
+            "jsonType.label": "long",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verso-mcp",
+      "description": "Verso MCP server (ADR-0031): an access token for /mcp only, audience verso-mcp, with the user's groups",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Verso belgelerinizde salt okunur arama"
+      },
+      "protocolMappers": [
+        {
+          "name": "verso-mcp audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "verso-mcp",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
   "clients": [
+    {
+      "clientId": "verso-mcp-inspector",
+      "name": "MCP Inspector on this computer (authorization code + PKCE; demo client of ADR-0031)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "http://localhost:6274/oauth/callback",
+        "http://localhost:6274/oauth/callback/debug"
+      ],
+      "webOrigins": [
+        "http://localhost:6274"
+      ],
+      "attributes": {
+        "access.token.header.type.rfc9068": "true",
+        "pkce.code.challenge.method": "S256",
+        "oauth2.device.authorization.grant.enabled": "false"
+      },
+      "protocolMappers": [],
+      "defaultClientScopes": [
+        "basic",
+        "verso-mcp"
+      ],
+      "optionalClientScopes": [],
+      "consentRequired": true
+    },
     {
       "clientId": "verso-cli",
       "name": "Verso command line (device authorization grant)",

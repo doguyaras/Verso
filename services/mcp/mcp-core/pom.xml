@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.verso</groupId>
+    <artifactId>verso</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>mcp-core</artifactId>
+  <description>Read-only MCP server (ADR-0031): verso_search and verso_fetch over Streamable HTTP, stateless, as the
+    calling user; its own token audience, RFC 9728 metadata, an audit event per tool call. Off by default.</description>
+
+  <properties>
+    <failIfNoTests>true</failIfNoTests>
+  </properties>
+
+  <dependencies>
+    <!-- DocumentRetrieval: the only way into the document module (ADR-0003). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>document-api</artifactId>
+    </dependency>
+    <!-- AuditEvent: what the module publishes for the audit log (ADR-0026). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>audit-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-core</artifactId>
+    </dependency>
+    <!-- JwtValidation, CallerGroups and the envelope entry point (ADR-0010, ADR-0019). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+</project>

@@ -77,10 +77,12 @@ class KeycloakRealmTest {
     void clients_whenDeclared_useOnlyDeviceFlowClientCredentialsOrThePanelsCodeFlow() throws IOException {
         List<Map<String, Object>> clients = list(realm().get("clients"));
         assertThat(clients).extracting(c -> c.get("clientId"))
-                .containsExactlyInAnyOrder("verso-cli", "verso-ci", "verso-panel", "admin-cli");
+                .containsExactlyInAnyOrder("verso-cli", "verso-ci", "verso-panel", "admin-cli", "verso-mcp-inspector");
         for (Map<String, Object> client : clients) {
             if (Boolean.FALSE.equals(client.get("enabled"))) continue;
             String id = (String) client.get("clientId");
+            // Its audience comes from the verso-mcp scope, never verso-api (ADR-0031; its own test below).
+            if ("verso-mcp-inspector".equals(id)) continue;
             assertThat(client.get("directAccessGrantsEnabled")).as(id + " password grant").isEqualTo(false);
             assertThat(client.get("implicitFlowEnabled")).as(id + " implicit").isEqualTo(false);
             assertThat(client.get("standardFlowEnabled")).as(id + " authorization code")
@@ -186,6 +188,45 @@ class KeycloakRealmTest {
         assertThat(rolesByUser.get("demo")).contains("verso-user").doesNotContain("verso-admin");
         assertThat(rolesByUser).as("only the admin account is a verso-admin")
                 .allSatisfy((name, roles) -> assertThat(roles.contains("verso-admin")).isEqualTo("admin".equals(name)));
+    }
+
+    /**
+     * ADR-0031: the MCP client's tokens are for /mcp only. The verso-mcp scope adds the audience verso-mcp and the
+     * groups (full path, access token only); the client has no verso-api mapper and no role scope (fullScopeAllowed
+     * off: an MCP token never carries verso-admin), a code flow with PKCE S256 to exact local redirects, and a consent
+     * screen: the user sees that an AI client is about to read their documents.
+     */
+    @Test
+    void mcpClient_whenImported_getsOnlyTheMcpAudienceWithPkceAndConsent() throws IOException {
+        Map<String, Object> scope = list(realm().get("clientScopes")).stream()
+                .filter(s -> "verso-mcp".equals(s.get("name"))).findFirst().orElseThrow();
+        List<Map<String, Object>> scopeMappers = list(scope.get("protocolMappers"));
+        assertThat(scopeMappers).extracting(m -> m.get("protocolMapper"))
+                .containsExactlyInAnyOrder("oidc-audience-mapper", "oidc-group-membership-mapper");
+        assertThat(scopeMappers).anySatisfy(m -> {
+            assertThat(map(m.get("config")).get("included.custom.audience")).isEqualTo("verso-mcp");
+            assertThat(map(m.get("config")).get("access.token.claim")).isEqualTo("true");
+            assertThat(map(m.get("config")).get("id.token.claim")).isEqualTo("false");
+        });
+        // Declaring scopes replaces Keycloak's defaults, so the one every client names is declared too.
+        assertThat(list(realm().get("clientScopes"))).extracting(s -> s.get("name")).contains("basic");
+        Map<String, Object> client = client("verso-mcp-inspector");
+        Map<String, Object> attributes = map(client.get("attributes"));
+        assertThat(client.get("publicClient")).isEqualTo(true);
+        assertThat(client.get("standardFlowEnabled")).isEqualTo(true);
+        assertThat(client.get("implicitFlowEnabled")).isEqualTo(false);
+        assertThat(client.get("directAccessGrantsEnabled")).isEqualTo(false);
+        assertThat(client.get("serviceAccountsEnabled")).isEqualTo(false);
+        assertThat(client.get("fullScopeAllowed")).isEqualTo(false);
+        assertThat(client.get("consentRequired")).isEqualTo(true);
+        assertThat(attributes.get("pkce.code.challenge.method")).isEqualTo("S256");
+        assertThat(attributes.get("access.token.header.type.rfc9068")).isEqualTo("true");
+        assertThat(attributes.get("oauth2.device.authorization.grant.enabled")).isEqualTo("false");
+        assertThat(client.get("defaultClientScopes")).isEqualTo(List.of("basic", "verso-mcp"));
+        assertThat(client.get("optionalClientScopes")).isEqualTo(List.of());
+        assertThat(list(client.get("protocolMappers"))).isEmpty();
+        assertThat(client.get("redirectUris")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .allSatisfy(uri -> assertThat((String) uri).startsWith("http://localhost:6274/").doesNotContain("*"));
     }
 
     /** The repository is public: every secret in the realm is a placeholder that start.sh fills from /run/secrets. */

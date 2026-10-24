@@ -77,11 +77,29 @@ test('pack: configuration keys named in the pack exist in verso.yml', () => {
   const yml = read('verso-app/src/main/resources/config/verso.yml');
   const keys = { 'verso.qa.top-k': /^ {2}qa:\n {4}top-k:/m, 'verso.qa.metrics.unanswered-min-users': /unanswered-min-users:/,
     'verso.qa.history.retention-days': /history:\n {6}retention-days:/, 'verso.audit.retention-days': /audit:[\s\S]*?\n {4}retention-days:/,
-    'verso.qa.metrics.show-unanswered-questions': /show-unanswered-questions:/, 'verso.qa.metrics.show-document-names': /show-document-names:/ };
+    'verso.qa.metrics.show-unanswered-questions': /show-unanswered-questions:/, 'verso.qa.metrics.show-document-names': /show-document-names:/,
+    'verso.mcp.min-score': /^ {2}mcp:[\s\S]*?\n {4}min-score:/m, 'verso.mcp.max-results': /^ {2}mcp:[\s\S]*?\n {4}max-results:/m,
+    'verso.mcp.excerpt-max-chars': /^ {2}mcp:[\s\S]*?\n {4}excerpt-max-chars:/m,
+    'verso.mcp.passage-max-chars': /^ {2}mcp:[\s\S]*?\n {4}passage-max-chars:/m };
   const named = new Set();
   for (const text of Object.values(texts)) for (const m of text.matchAll(/`(verso\.[a-z.-]+)(?::[^`]*)?`/g)) named.add(m[1]);
   for (const key of named) assert.ok(key in keys || METRICS.has(key), `${key}: add it to this test's key table or fix the pack`);
   for (const [key, pattern] of Object.entries(keys)) assert.match(yml, pattern, key);
+});
+
+test('pack: the MCP channel (ADR-0031) is off by default and its limits equal the configuration', () => {
+  const yml = read('verso-app/src/main/resources/config/verso.yml');
+  const mcp = yml.match(/^ {2}mcp:\n([\s\S]*?)\n(?=\S| {2}\S)/m)[1];
+  const value = (key) => mcp.match(new RegExp(`\\n? {4}${key}: ([^\\s#]+)`))[1];
+  const vked = texts['01-vked-sablonu.md'];
+  assert.match(yml, /enabled: \$\{VERSO_MCP_ENABLED:false\}/);
+  assert.match(mcp, /show-document-names: \$\{VERSO_MCP_SHOW_DOCUMENT_NAMES:true\}/);
+  assert.match(vked, new RegExp(`\`verso\\.mcp\\.min-score: ${value('min-score').replace('.', '\\.')}\``));
+  assert.match(vked, new RegExp(`\`verso\\.mcp\\.max-results: ${value('max-results')}\``));
+  assert.match(vked, new RegExp(`en çok ${value('excerpt-max-chars')} karakterlik alıntı`));
+  assert.match(vked, new RegExp(`en çok ${value('passage-max-chars')} karakter \\(\`verso\\.mcp\\.passage-max-chars\`\\)`));
+  assert.match(vked, /`VERSO_MCP_ENABLED`/);
+  assert.match(vked, /`MCP_SEARCH` ya da `MCP_FETCH`/);
 });
 
 test('pack: endpoints named in the pack are mapped by a controller', () => {

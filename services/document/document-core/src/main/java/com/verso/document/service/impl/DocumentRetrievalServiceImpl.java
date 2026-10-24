@@ -1,6 +1,7 @@
 package com.verso.document.service.impl;
 
 import com.verso.document.api.DocumentRetrieval;
+import com.verso.document.api.dto.Passage;
 import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.config.DocumentProperties;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -123,8 +125,17 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
             Map<UUID, Double> shares = settings.lexicalCandidates() == 0 ? Map.of() : termShares(principals, model, question, found);
             return found.stream().map(c -> new RetrievedPassage(c.documentId(), c.fileName(), c.pageNumber(), c.unit(),
                     c.content(), c.similarity(), shares.getOrDefault(c.chunkId(), 1.0), c.collectionId(),
-                    c.collectionName())).toList();
+                    c.collectionName(), c.chunkId())).toList();
         });
+    }
+
+    @Override
+    public Optional<Passage> passage(Reader reader, UUID passageId) {
+        if (passageId == null) return Optional.empty();
+        String[] principals = reader.principals().toArray(String[]::new);
+        Optional<Candidate> found = readOnly.execute(status -> repository.passage(principals, passageId));
+        return found == null ? Optional.empty() : found.map(c -> new Passage(c.chunkId(), c.documentId(), c.fileName(),
+                c.pageNumber(), c.unit(), c.content(), c.collectionId(), c.collectionName()));
     }
 
     /**

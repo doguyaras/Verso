@@ -4,6 +4,7 @@ import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.api.enums.SourceUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -122,6 +123,28 @@ public class RetrievalRepository {
                         rs.getDouble("similarity"), rs.getObject("collection_id", UUID.class),
                         rs.getString("collection_name")))
                 .list();
+    }
+
+    /**
+     * One chunk by id (ADR-0031) when its document is READY and one of the reader's principals reaches it, in the same
+     * statement (ADR-0028): an unknown id and an unreadable one both return nothing. Any embedding model: the text is
+     * read, not compared.
+     */
+    public Optional<Candidate> passage(String[] principals, UUID chunkId) {
+        return jdbc.sql("""
+                        SELECT c.id, c.document_id, d.file_name, d.format, c.page_number, c.content,
+                               d.collection_id, col.name AS collection_name
+                        FROM document.document_chunk c
+                        JOIN document.document d ON d.id = c.document_id
+                        LEFT JOIN document.collection col ON col.id = d.collection_id
+                        WHERE c.id = :id AND d.status = 'READY' AND %s
+                        """.formatted(READABLE_CHUNK))
+                .param("id", chunkId).param("principals", principals)
+                .query((rs, n) -> new Candidate(rs.getObject("id", UUID.class), rs.getObject("document_id", UUID.class),
+                        rs.getString("file_name"), rs.getInt("page_number"),
+                        DocumentFormat.valueOf(rs.getString("format")).unit(), rs.getString("content"), 0,
+                        rs.getObject("collection_id", UUID.class), rs.getString("collection_name")))
+                .optional();
     }
 
     /** Chunks the reader can search with this model: the denominator of a term share. From the document rows. */

@@ -67,6 +67,10 @@ verso:
       roles-claim: realm_access.roles
       client-roles-claim: ""
       groups-claim: groups
+  # The MCP endpoint of an IDE run (ADR-0031): the application itself on 8080, no edge proxy. Still off unless
+  # VERSO_MCP_ENABLED=true.
+  mcp:
+    resource: http://localhost:8080/mcp
 management:
   endpoint:
     health:

@@ -1,8 +1,11 @@
 package com.verso.document.api;
 
+import com.verso.document.api.dto.Passage;
 import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * In-process contract for other modules (ADR-0003, ADR-0007 #24): the passages of the READY documents a reader may read
@@ -34,4 +37,14 @@ public interface DocumentRetrieval {
     default List<RetrievedPassage> search(String accountId, String question, int topK) {
         return search(Reader.personal(accountId), question, topK);
     }
+
+    /**
+     * One passage by its id (ADR-0031), when its document is READY and the reader's principals reach it, checked in
+     * the query (ADR-0028). An id that does not exist and one the reader may not read are the same empty result: the
+     * caller cannot learn that a passage exists. No model call.
+     *
+     * @param reader    the validated token's sub and groups (never taken from a request)
+     * @param passageId a {@link RetrievedPassage#passageId()}
+     */
+    Optional<Passage> passage(Reader reader, UUID passageId);
 }

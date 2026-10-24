@@ -47,6 +47,11 @@
       <groupId>com.verso</groupId>
       <artifactId>privacy-core</artifactId>
     </dependency>
+    <!-- Read-only MCP server (ADR-0031): off by default (VERSO_MCP_ENABLED). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>mcp-core</artifactId>
+    </dependency>
     <!-- /actuator/prometheus for the observability stack (ADR-0014; reference 8.7). Version from the Boot BOM. -->
     <dependency>
       <groupId>io.micrometer</groupId>
