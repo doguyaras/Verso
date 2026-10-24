@@ -50,6 +50,11 @@ class ConfigDriftTest {
             "spring.datasource.username",
             "spring.flyway.url",
             "spring.flyway.user",
+            // The qa schema's own connection and Flyway (ADR-0023): same database, its own roles.
+            "verso.qa.datasource.url",
+            "verso.qa.datasource.username",
+            "verso.qa.flyway.url",
+            "verso.qa.flyway.user",
             "spring.ai.ollama.base-url",
             "spring.security.oauth2.resourceserver.jwt.",
             "verso.security.jwt.issuer",

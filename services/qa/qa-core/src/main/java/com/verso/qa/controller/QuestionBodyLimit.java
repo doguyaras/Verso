@@ -22,14 +22,16 @@ public class QuestionBodyLimit implements HandlerInterceptor, WebMvcConfigurer {
     /** 1000 characters of up to 4 UTF-8 bytes, escaped JSON included, with room to spare. */
     static final long MAX_BODY_BYTES = 16 * 1024;
 
+    /** The conversation bodies (a title, a rating) are smaller still; the same bound keeps them off the heap (ADR-0023). */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(this).addPathPatterns("/v1/questions");
+        registry.addInterceptor(this).addPathPatterns("/v1/questions", "/v1/conversations/**");
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if (!"POST".equals(request.getMethod())) return true;
+        String method = request.getMethod();
+        if (!"POST".equals(method) && !"PATCH".equals(method) && !"PUT".equals(method)) return true;
         long length = request.getContentLengthLong();
         if (length < 0) throw new QaServiceException(QaErrorCode.QUESTION_LENGTH_REQUIRED, "NO_CONTENT_LENGTH");
         if (length > MAX_BODY_BYTES) throw new QaServiceException(QaErrorCode.QUESTION_BODY_TOO_LARGE, "BODY_TOO_LARGE");

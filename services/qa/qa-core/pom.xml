@@ -12,7 +12,7 @@
 
   <artifactId>qa-core</artifactId>
   <description>Question answering (ADR-0006, ADR-0008, llm-rules 3): retrieval through document-api, prompt, local or
-    cloud chat model, server-side citations.</description>
+    cloud chat model, server-side citations; conversation history, feedback and usage metrics (ADR-0023).</description>
 
   <properties>
     <!-- 0 tests = failure (reference Ek B lesson 2). A property, not plugin config, so a filtered run
@@ -46,6 +46,21 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <!-- History, feedback and usage rollups in the module's own schema "qa" (ADR-0023): its own pool (HikariCP),
+         JdbcClient and Flyway, connected as svc_qa / svc_qa_migrate; never the application DataSource. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <!-- The qa pool's health indicator for the readiness group (ADR-0023). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-health</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.modulith</groupId>

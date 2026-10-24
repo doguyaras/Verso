@@ -55,6 +55,10 @@ x-db-env: &db-env
   # Read in cloud mode only (deploy/compose.cloud.yaml).
   CLOUD_CHAT_MODEL: ${VERSO_CLOUD_CHAT_MODEL:-claude-sonnet-5-5}
   OPENAI_BASE_URL: ${VERSO_OPENAI_BASE_URL:-https://api.openai.com/v1}
+  # Conversation history retention and the unanswered-questions policy (ADR-0023); the data controller decides.
+  VERSO_HISTORY_RETENTION_DAYS: ${VERSO_HISTORY_RETENTION_DAYS:-90}
+  VERSO_SHOW_UNANSWERED_QUESTIONS: ${VERSO_SHOW_UNANSWERED_QUESTIONS:-false}
+  VERSO_SHOW_DOCUMENT_NAMES: ${VERSO_SHOW_DOCUMENT_NAMES:-false}
 
 x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
 
@@ -76,6 +80,8 @@ services:
       - SECRET_POSTGRES_SUPERUSER_PASSWORD
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
       - SECRET_DB_DOCUMENT_PASSWORD
+      - SECRET_DB_QA_MIGRATE_PASSWORD
+      - SECRET_DB_QA_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
       - SECRET_DB_KEYCLOAK_PASSWORD
     volumes:
@@ -93,7 +99,8 @@ services:
       start_period: 30s
 
   # One-shot migration with the application image (ADR-0009, review S4): only this container holds the migration
-  # role's password. It runs Flyway without a web server and without the application DataSource, then exits.
+  # roles' passwords. It runs Flyway for every module schema (document, qa; ADR-0023) without a web server and
+  # without the application DataSource, then exits.
   migrate:
     <<: *java-service-defaults
     image: verso:${VERSO_IMAGE_TAG:-local}
@@ -113,6 +120,7 @@ services:
       <<: *db-env
     secrets:
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
+      - SECRET_DB_QA_MIGRATE_PASSWORD
     networks: [backend]
     depends_on:
       postgres:
@@ -129,6 +137,7 @@ services:
       SPRING_FLYWAY_ENABLED: "false"
     secrets:
       - SECRET_DB_DOCUMENT_PASSWORD
+      - SECRET_DB_QA_PASSWORD
     # Not published: the edge proxy is the way in (ADR-0013).
     depends_on:
       postgres:
@@ -487,6 +496,8 @@ services:
       - SECRET_POSTGRES_SUPERUSER_PASSWORD
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
       - SECRET_DB_DOCUMENT_PASSWORD
+      - SECRET_DB_QA_MIGRATE_PASSWORD
+      - SECRET_DB_QA_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
     volumes:
       - ./deploy/postgres/initdb/05-settings.sh:/docker-entrypoint-initdb.d/05-settings.sh:ro
@@ -515,6 +526,7 @@ services:
     secrets:
       - SECRET_POSTGRES_SUPERUSER_PASSWORD
       - SECRET_DB_DOCUMENT_PASSWORD
+      - SECRET_DB_QA_PASSWORD
       - SECRET_BACKUP_ENCRYPTION_KEY
     volumes:
       - ./deploy/backup:/opt/verso:ro
@@ -548,6 +560,25 @@ services:
       restore-db:
         condition: service_healthy
 
+  # The same validate for the schema "qa" (ADR-0023): one step per module schema, each as its own migration role.
+  restore-flyway-qa:
+    profiles: ["drill"]
+    <<: *hardening
+    image: flyway/flyway:12.4.0@sha256:5be18367a9b3979a9f37234c371b80da457a448fb9577bd94d4bf24d923fafac
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_QA_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_qa_migrate -schemas=qa -defaultSchema=qa -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
+    environment:
+      REDGATE_DISABLE_TELEMETRY: "true"
+    secrets:
+      - SECRET_DB_QA_MIGRATE_PASSWORD
+    volumes:
+      - ./services/qa/qa-core/src/main/resources/db/migration/qa:/flyway/migrations:ro
+    tmpfs:
+      - /tmp:size=64m
+    networks: [drill]
+    depends_on:
+      restore-db:
+        condition: service_healthy
+
 secrets:
   SECRET_POSTGRES_SUPERUSER_PASSWORD:
     file: ./secrets/SECRET_POSTGRES_SUPERUSER_PASSWORD
@@ -555,6 +586,10 @@ secrets:
     file: ./secrets/SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
   SECRET_DB_DOCUMENT_PASSWORD:
     file: ./secrets/SECRET_DB_DOCUMENT_PASSWORD
+  SECRET_DB_QA_MIGRATE_PASSWORD:
+    file: ./secrets/SECRET_DB_QA_MIGRATE_PASSWORD
+  SECRET_DB_QA_PASSWORD:
+    file: ./secrets/SECRET_DB_QA_PASSWORD
   SECRET_DB_BACKUP_PASSWORD:
     file: ./secrets/SECRET_DB_BACKUP_PASSWORD
   SECRET_BACKUP_ENCRYPTION_KEY:

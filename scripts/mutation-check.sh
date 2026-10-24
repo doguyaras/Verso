@@ -325,7 +325,7 @@ backup $INIT/10-roles.sh; sub $INIT/10-roles.sh 's/\nREVOKE ALL ON DATABASE [^\n
 VY=verso-app/src/main/resources/config/verso.yml
 backup $VY; sub $VY 's/baseline-on-migrate: false/baseline-on-migrate: true/' \
   && expect_red "M70 baseline-on-migrate switched on" verso-app ConfigProfilesTest database_whenLocalProfile_isLocalhostWithTheProductionRoles; restore $VY
-MCT=services/document/document-core/src/test/java/com/verso/document/migration/MigrationConventionsTest.java
+MCT=services/document/document-core/src/test/java/com/verso/document/migration/MigrationConventions.java
 backup $MCT; sub $MCT 's/\n\s*Pattern\.compile\("\(\?i\)\\\\bcreate\\\\s\+schema\\\\b"\),//' \
   && expect_red "M71 CREATE SCHEMA allowed in migrations" services/document/document-core MigrationConventionsTest violations_whenFixturesBreakEachRule_areAllReported; restore $MCT
 backup compose.yaml; sub compose.yaml 's/(x-postgres-image: &postgres-image \S+)\@sha256:[0-9a-f]{64}/$1/' \
@@ -339,7 +339,7 @@ backup $INIT/05-settings.sh; sub $INIT/05-settings.sh 's/\nALTER SYSTEM SET log_
 AFTERERR=services/document/document-core/src/main/resources/db/migration/document/afterMigrateError.sql
 backup $AFTERERR; sub $AFTERERR 's/^REVOKE ALL ON [^\n]*\n//m' \
   && expect_red "M75 history left writable after a failed migrate" services/document/document-core MigrationConventionsTest callbacks_whenPresent_revokeTheHistoryTableFromTheApplicationRole; restore $AFTERERR
-backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n)(    # Not published)/$1      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n$2/' \
+backup compose.yaml; sub compose.yaml 's/(    secrets:\n      - SECRET_DB_DOCUMENT_PASSWORD\n      - SECRET_DB_QA_PASSWORD\n)(    # Not published)/$1      - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD\n$2/' \
   && expect_red "M76 application container gets the migration password" verso-app ComposeConfigTest migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService; restore compose.yaml
 backup .dockerignore; sub .dockerignore 's/\n\*\*\/\.env\n/\n/' \
   && expect_red "M77 nested .env files enter the build context" verso-app ComposeConfigTest dockerignore_whenBuilding_keepsSecretsAndEnvFilesOutAtEveryDepth; restore .dockerignore

@@ -34,6 +34,9 @@ class DeployConfigTest {
                     "OIDC_JWK_SET_URI=" + com.verso.support.TestIdp.IDP.jwkSetUri(),
                     "SECRET_DB_DOCUMENT_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_PASSWORD"),
                     "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
+                    "SECRET_DB_QA_PASSWORD=" + VersoPostgres.secret("SECRET_DB_QA_PASSWORD"),
+                    "SECRET_DB_QA_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_QA_MIGRATE_PASSWORD"),
+                    "verso.qa.datasource.maximum-pool-size=2",
                     // Compose gives every model setting too (x-db-env); the provider is read by auto-configuration conditions.
                     "VERSO_AI_MODE=local", "VERSO_CHAT_PROVIDER=ollama",
                     "spring.datasource.hikari.maximum-pool-size=2")
@@ -43,6 +46,30 @@ class DeployConfigTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    org.springframework.core.env.Environment environment;
+
+    /**
+     * ADR-0023: verso.yml's qa lines, resolved like compose resolves them, reach the database as svc_qa (the qa pool
+     * itself exists only in the web application), and the qa Flyway (any application type) ran as svc_qa_migrate.
+     */
+    @Test
+    void deployConfig_whenFedLikeCompose_connectsTheQaModuleAsItsOwnRole() throws java.sql.SQLException {
+        try (java.sql.Connection qa = java.sql.DriverManager.getConnection(
+                environment.getRequiredProperty("verso.qa.datasource.url"),
+                environment.getRequiredProperty("verso.qa.datasource.username"),
+                environment.getRequiredProperty("verso.qa.datasource.password"));
+             java.sql.Statement st = qa.createStatement();
+             java.sql.ResultSet rs = st.executeQuery("select current_user, current_setting('search_path')")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("svc_qa");
+            assertThat(rs.getString(2)).isEqualTo("qa, extensions");
+        }
+        assertThat(jdbc.queryForObject(
+                "select tableowner from pg_tables where schemaname = 'qa' and tablename = 'flyway_schema_history'",
+                String.class)).isEqualTo("svc_qa_migrate");
+    }
 
     @Test
     void deployConfig_whenFedLikeCompose_connectsAsTheApplicationRoleToTheVersoDatabase() {

@@ -18,7 +18,14 @@ started=$(date +%s)
 log() { printf '%s restore-check: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 fail() { log "FAILED: $*"; exit 1; }
 
-for f in SECRET_POSTGRES_SUPERUSER_PASSWORD SECRET_DB_DOCUMENT_PASSWORD SECRET_BACKUP_ENCRYPTION_KEY; do
+# One entry per module schema; must match deploy/postgres/initdb/10-roles.sh (ModuleConsistencyTest).
+MODULES=(document qa)
+
+for f in SECRET_POSTGRES_SUPERUSER_PASSWORD SECRET_BACKUP_ENCRYPTION_KEY; do
+  [ -r "$SECRETS/$f" ] && [ -s "$SECRETS/$f" ] || fail "secret $f missing or unreadable"
+done
+for schema in "${MODULES[@]}"; do
+  f="SECRET_DB_$(printf '%s' "$schema" | tr '[:lower:]' '[:upper:]')_PASSWORD"
   [ -r "$SECRETS/$f" ] && [ -s "$SECRETS/$f" ] || fail "secret $f missing or unreadable"
 done
 
@@ -72,27 +79,32 @@ fi
 tables=$(wc -l < "$manifest")
 rows=$(awk -F'|' '{s += $2} END {print s + 0}' "$manifest")
 
-# Grants checked by use as well (a catalog query passes without any privilege; review D1): the application role
-# reads every table of its schema, cannot read the Flyway history and cannot run DDL.
+# Grants checked by use as well (a catalog query passes without any privilege; review D1): each module's application
+# role reads every table of its own schema, cannot read its Flyway history and cannot run DDL (ADR-0023: per schema).
 as_app() {
-  PGUSER=svc_document PGPASSWORD="$(cat "$SECRETS/SECRET_DB_DOCUMENT_PASSWORD")" \
-    psql -X -q -t -A -v ON_ERROR_STOP=1 -c "$1"
+  local schema="$1" upper
+  upper="$(printf '%s' "$schema" | tr '[:lower:]' '[:upper:]')"
+  PGUSER="svc_$schema" PGPASSWORD="$(cat "$SECRETS/SECRET_DB_${upper}_PASSWORD")" \
+    psql -X -q -t -A -v ON_ERROR_STOP=1 -c "$2"
 }
 readable=0
-while IFS='|' read -r table _; do
-  case "$table" in
-    document.flyway_schema_history) continue ;;
-    document.*)
-      as_app "SELECT 1 FROM $table LIMIT 1;" >/dev/null 2>&1 || fail "application role cannot read $table"
-      readable=$((readable + 1))
-      ;;
-  esac
-done < "$manifest"
-if as_app "SELECT 1 FROM document.flyway_schema_history LIMIT 1;" >/dev/null 2>&1; then
-  fail "application role can read the Flyway history after restore"
-fi
-if as_app "CREATE TABLE document.restore_drill_probe (id int);" >/dev/null 2>&1; then
-  fail "application role could run DDL after restore"
-fi
+for schema in "${MODULES[@]}"; do
+  while IFS='|' read -r table _; do
+    case "$table" in
+      "$schema".flyway_schema_history) continue ;;
+      "$schema".*)
+        as_app "$schema" "SELECT 1 FROM $table LIMIT 1;" >/dev/null 2>&1 \
+          || fail "application role of $schema cannot read $table"
+        readable=$((readable + 1))
+        ;;
+    esac
+  done < "$manifest"
+  if as_app "$schema" "SELECT 1 FROM $schema.flyway_schema_history LIMIT 1;" >/dev/null 2>&1; then
+    fail "application role of $schema can read the Flyway history after restore"
+  fi
+  if as_app "$schema" "CREATE TABLE $schema.restore_drill_probe (id int);" >/dev/null 2>&1; then
+    fail "application role of $schema could run DDL after restore"
+  fi
+done
 
 log "ok file=$(basename "$file") tables=$tables rows=$rows acl_entries=$(wc -l < "$acl") app_readable_tables=$readable seconds=$(( $(date +%s) - started ))"

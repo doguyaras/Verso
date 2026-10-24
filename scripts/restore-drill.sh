@@ -22,4 +22,6 @@ cleanup
 "${DC[@]}" up --detach --wait restore-db >/dev/null
 "${DC[@]}" run --rm --no-TTY restore-runner
 "${DC[@]}" run --rm --no-TTY restore-flyway
+# One Flyway validate per module schema (ADR-0023).
+"${DC[@]}" run --rm --no-TTY restore-flyway-qa
 echo "restore-drill: OK seconds=$(( $(date +%s) - started ))"

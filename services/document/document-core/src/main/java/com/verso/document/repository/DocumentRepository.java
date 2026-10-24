@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -103,6 +104,30 @@ public class DocumentRepository {
     public boolean delete(String accountId, UUID id) {
         return jdbc.sql("DELETE FROM document.document WHERE account_id = :account AND id = :id")
                 .param("account", accountId).param("id", id).update() == 1;
+    }
+
+    /** The ids among {@code ids} that are documents of the account, with their file names (DocumentCatalog). */
+    public List<DocumentRow> findAll(String accountId, Collection<UUID> ids) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM document.document WHERE account_id = :account AND id = ANY(:ids)")
+                .param("account", accountId).param("ids", ids.toArray(UUID[]::new)).query(ROW).list();
+    }
+
+    /** Admin metrics only (ADR-0023): the documents among {@code ids}, whoever owns them. */
+    public List<DocumentRow> findAllAcrossAccounts(Collection<UUID> ids) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM document.document WHERE id = ANY(:ids)")
+                .param("ids", ids.toArray(UUID[]::new)).query(ROW).list();
+    }
+
+    /** Admin metrics only (ADR-0023): READY documents of every account outside {@code excluded}, oldest first. */
+    public List<DocumentRow> readyExcept(Collection<UUID> excluded, int limit) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM document.document WHERE status = 'READY' AND NOT (id = ANY(:ids)) "
+                        + "ORDER BY created_at, id LIMIT :limit")
+                .param("ids", excluded.toArray(UUID[]::new)).param("limit", limit).query(ROW).list();
+    }
+
+    public long countReadyExcept(Collection<UUID> excluded) {
+        return jdbc.sql("SELECT count(*) FROM document.document WHERE status = 'READY' AND NOT (id = ANY(:ids))")
+                .param("ids", excluded.toArray(UUID[]::new)).query(Long.class).single();
     }
 
     private static DocumentRow map(ResultSet rs, int rowNum) throws SQLException {

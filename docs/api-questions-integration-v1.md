@@ -14,6 +14,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 - Sonradan eklenen, geriye uyumlu alan: `GET /v1/info` yanıtında `roles` (ADR-0019).
 - Sonradan eklenen, geriye uyumlu alan: `citations[].excerpt` (alıntılanan pasajdan cevabın dayandığı kısım, ≤ 280 karakter). Eski istemciler bilinmeyen alanı yok sayar; sürüm değişmez.
 - 24 Ekim 2026: `excerpt` artık pasajın başı değil, atfı taşıyan cevap cümlesiyle en çok örtüşen pencere (ADR-0020). Alan, tip ve sınır aynı; istemci değişikliği gerekmez.
+- Sonradan eklenen, geriye uyumlu alanlar (ADR-0023, 24 Ekim 2026): istekte isteğe bağlı `conversationId`, yanıtta `conversationId` ve `turnId`. Her cevap kullanıcının geçmişine yazılır; geçmiş, puanlama ve yeni hata kodları (11020, 11022): [`docs/api-conversations-integration-v1.md`](api-conversations-integration-v1.md).
 
 ## Kurallar
 - **Kritik:** Atıflar sunucuda üretilir. İstemci, cevap metnindeki `[n]` işaretini yalnız `citations` listesindeki `number` ile eşler; listede olmayan numara gösterilmez.
@@ -60,6 +61,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `citations[].excerpt` | string, ≤ 280 karakter | Alıntılanan pasajın, bu `[n]`'i taşıyan cevap cümleleriyle en çok ortak sözcüğü ve sayısı olan bir ya da iki cümlesi (ADR-0020); örtüşme yoksa pasajın başı. Pasaj 280 karaktere sığıyorsa tamamı. Her zaman pasaj metnidir, model metni değildir. Boşluklar tek boşluğa indirilmiş; kesildiyse kelime sınırında, kesilen yerde `…` (sonda, uzun cümlenin ortasından başlıyorsa başta da). Pasaj metni boşsa `""`. Yalnız gösterim içindir (`[n]` üzerine gelince açılan kart): düz metin olarak gösterilir, HTML olarak yorumlanmaz (belge içeriği güvenilmeyen veridir); istemci log'una ve analitiğe yazılmaz. Sonradan eklendi (geriye uyumlu); eksikse kart yalnız dosya adı ve sayfayı gösterir. Sınır Unicode kod noktasıyla sayılır: emoji gibi karakterlerde JS `length` 280'i aşabilir |
 | `mode` | `local` \| `cloud` | Bilinmeyen → "AI" |
 | `model` | string | Bilgi amaçlı |
+| `conversationId`, `turnId` | UUID \| null | Cevabın kaydedildiği konuşma ve tur (ADR-0023); puanlama ve devam sorusu için. Kayıt başarısızsa ikisi de `null`: cevap gösterilir, puanlama gizlenir |
 
 #### fetch örneği
 ```js
@@ -96,9 +98,11 @@ if (res.status === 503) retryLater(error.code);
 | 90103 | 503 | Kimlik sağlayıcısına ulaşılamıyor | "Giriş servisi geçici olarak yok" | evet, `Retry-After` |
 | 99997 | 503 | Veritabanı geçici olarak yok | "Geçici sorun" | evet, `Retry-After` |
 
+İstek `conversationId` taşıyorsa iki kod daha gelebilir: 11020 (konuşma yok, model çağrılmaz) ve 11022 (konuşma dolu). Ekran davranışları [`docs/api-conversations-integration-v1.md`](api-conversations-integration-v1.md) tablosundadır; `conversationId` göndermeyen istemci bunları almaz.
+
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
-- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026). Var olan alanların adı, tipi ve anlamı değişmedi.
+- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026), istekte `conversationId` ve yanıtta `conversationId`/`turnId` (24 Ekim 2026, ADR-0023). Var olan alanların adı, tipi ve anlamı değişmedi.
 - `citations[].excerpt` seçimi (24 Ekim 2026, ADR-0020): pasajın başı yerine cevabın dayandığı pencere. Alan, tip ve 280 sınırı aynı; baştaki `…` yeni olabilir, düz metin olarak gösterilir.
 
 ## Manuel test akışı

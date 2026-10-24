@@ -34,8 +34,43 @@ class QaApiContractTest {
 
     @Test
     void types_whenExposed_areRecords() {
-        for (Class<?> type : List.of(QuestionRequest.class, AnswerResponse.class, Citation.class)) {
+        for (Class<?> type : List.of(QuestionRequest.class, AnswerResponse.class, Citation.class,
+                com.verso.qa.api.dto.ConversationSummary.class, com.verso.qa.api.dto.ConversationResponse.class,
+                com.verso.qa.api.dto.TurnResponse.class, com.verso.qa.api.dto.HistoryCitation.class,
+                com.verso.qa.api.dto.TurnFeedback.class, com.verso.qa.api.dto.FeedbackRequest.class,
+                com.verso.qa.api.dto.RenameConversationRequest.class, com.verso.qa.api.dto.UsageMetricsResponse.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
+    }
+
+    /** ADR-0023: the history fields come last, so the JSON of an answer only grows (additive change). */
+    @Test
+    void answerResponse_whenStored_keepsTheAnswerAndAddsItsIds() {
+        java.util.UUID conversation = java.util.UUID.randomUUID();
+        java.util.UUID turn = java.util.UUID.randomUUID();
+        AnswerResponse answer = new AnswerResponse("a", true, com.verso.qa.api.dto.AnswerOutcome.ANSWERED, List.of(),
+                "local", "m", null, null);
+        AnswerResponse stored = answer.stored(conversation, turn);
+        assertThat(stored.conversationId()).isEqualTo(conversation);
+        assertThat(stored.turnId()).isEqualTo(turn);
+        assertThat(stored.answer()).isEqualTo("a");
+        var components = AnswerResponse.class.getRecordComponents();
+        assertThat(components[components.length - 2].getName()).isEqualTo("conversationId");
+        assertThat(components[components.length - 1].getName()).isEqualTo("turnId");
+    }
+
+    /** The feedback rules a client can break before the server looks at the turn (ADR-0023). */
+    @Test
+    void feedbackRequest_whenReasonAndCitationDisagree_isInconsistent() {
+        var up = com.verso.qa.api.dto.FeedbackRating.UP;
+        var down = com.verso.qa.api.dto.FeedbackRating.DOWN;
+        var wrong = com.verso.qa.api.dto.FeedbackReason.WRONG_SOURCE;
+        var other = com.verso.qa.api.dto.FeedbackReason.OTHER;
+        assertThat(new com.verso.qa.api.dto.FeedbackRequest(up, null, null).isReasonOnlyWithDown()).isTrue();
+        assertThat(new com.verso.qa.api.dto.FeedbackRequest(up, other, null).isReasonOnlyWithDown()).isFalse();
+        assertThat(new com.verso.qa.api.dto.FeedbackRequest(down, wrong, 1).isCitationNumberOnlyWithWrongSource()).isTrue();
+        assertThat(new com.verso.qa.api.dto.FeedbackRequest(down, wrong, null).isCitationNumberOnlyWithWrongSource()).isFalse();
+        assertThat(new com.verso.qa.api.dto.FeedbackRequest(down, other, 2).isCitationNumberOnlyWithWrongSource()).isFalse();
+        assertThat(new com.verso.qa.api.dto.FeedbackRequest(down, null, null).isCitationNumberOnlyWithWrongSource()).isTrue();
     }
 }

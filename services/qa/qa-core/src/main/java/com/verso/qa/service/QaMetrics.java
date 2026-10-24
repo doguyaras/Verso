@@ -26,8 +26,14 @@ public class QaMetrics {
     private final Map<Outcome, Counter> outcomes = new EnumMap<>(Outcome.class);
     private final Timer retrieval;
     private final Timer chat;
+    private final MeterRegistry registry;
+    private final Map<String, Counter> notStored = new java.util.concurrent.ConcurrentHashMap<>();
 
     public QaMetrics(MeterRegistry registry, ModelCircuitBreaker circuit) {
+        this.registry = registry;
+        // Registered at 0 up front: a series that first appears at 1 has no increase() for the HistoryNotStored alert.
+        turnNotStoredCounter("failed");
+        turnNotStoredCounter("conversation_full");
         for (Outcome outcome : Outcome.values()) {
             outcomes.put(outcome, Counter.builder("verso.qa.questions").tag("outcome", outcome.name().toLowerCase(Locale.ROOT))
                     .description("Questions by outcome").register(registry));
@@ -42,6 +48,19 @@ public class QaMetrics {
 
     public void record(Outcome outcome) {
         outcomes.get(outcome).increment();
+    }
+
+    /**
+     * An answer that could not be stored in the history (ADR-0023): "failed" (database) or "conversation_full". The
+     * answer reached the caller anyway; a rising count means history and usage metrics are missing questions.
+     */
+    public void turnNotStored(String reason) {
+        turnNotStoredCounter(reason).increment();
+    }
+
+    private Counter turnNotStoredCounter(String reason) {
+        return notStored.computeIfAbsent(reason, r -> Counter.builder("verso.qa.history.not.stored").tag("reason", r)
+                .description("Answers that could not be stored in the history").register(registry));
     }
 
     public void retrievalTook(long millis) {

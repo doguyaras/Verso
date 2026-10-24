@@ -11,6 +11,8 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_POSTGRES_SUPERUSER_PASSWORD` | postgres container'ı | Init script'leri ve restore provası; uygulama bu rolü hiç görmez |
 | `SECRET_DB_DOCUMENT_MIGRATE_PASSWORD` | uygulama (Flyway) | `svc_document_migrate`: `document` şemasının sahibi, DDL |
 | `SECRET_DB_DOCUMENT_PASSWORD` | uygulama | `svc_document`: yalnız DML, DDL yetkisi yok |
+| `SECRET_DB_QA_MIGRATE_PASSWORD` | postgres (init), `migrate` | `svc_qa_migrate`: `qa` şemasının sahibi, DDL (ADR-0023) |
+| `SECRET_DB_QA_PASSWORD` | postgres (init), uygulama | `svc_qa`: `qa` şemasında yalnız DML; geçmiş, geri bildirim ve kullanım sayaçları (ADR-0023) |
 | `SECRET_DB_BACKUP_PASSWORD` | backup servisi | `verso_backup`: `pg_read_all_data`, yalnız okuma |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup servisi, restore provası | Yedek dosyalarının gpg (AES256) parolası |
 | `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü: demo IdP'nin kendi veritabanı (ADR-0010) |

@@ -112,3 +112,25 @@ tests:
         exp_alerts:
           - exp_labels: {severity: page}
             exp_annotations: {summary: "More than 5% of API requests fail with 5xx.", runbook: docs/runbooks/high-error-rate.md}
+
+  # Answers are not stored in the history (ADR-0023): one failed write every 2 minutes.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_history_not_stored_total{job="verso", reason="failed"}'
+        values: '0+0.125x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HistoryNotStored
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations: {summary: "Answers are not stored in the conversation history.", runbook: docs/runbooks/history-not-stored.md}
+
+  # Full conversations are the client's case: no alert.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_history_not_stored_total{job="verso", reason="conversation_full"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HistoryNotStored
+        exp_alerts: []

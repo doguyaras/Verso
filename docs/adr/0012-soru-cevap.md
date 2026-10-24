@@ -13,7 +13,7 @@ Faz 5, kullanıcının kendi belgelerine Türkçe soru sorup atıflı cevap alma
 
 **Modüller (ADR-0001, ADR-0003):**
 
-- Yeni `qa` modülü (`qa-api` + `qa-core`). Kendi tablosu yoktur. `document` modülüne yalnız `document-api`'deki `DocumentRetrieval` arayüzüyle erişir (`@ApplicationModule(allowedDependencies = "document :: api")`; `ModuleStructureTest`, `QaArchitectureTest`).
+- Yeni `qa` modülü (`qa-api` + `qa-core`). Kendi tablosu yoktur (ADR-0023 ile `qa` şeması geldi: geçmiş, geri bildirim, kullanım sayaçları). `document` modülüne yalnız `document-api`'deki `DocumentRetrieval` arayüzüyle erişir (`@ApplicationModule(allowedDependencies = "document :: api")`; `ModuleStructureTest`, `QaArchitectureTest`).
 - Embedding'i ve vektör aramasını `document` modülü yapar: aynı model ve aynı tablo bilgisi tek yerde kalır.
 
 **Retrieval (`DocumentRetrievalServiceImpl`):**

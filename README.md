@@ -33,6 +33,7 @@ Kurumlar yapay zekâ ile belgelerine soru sormak istiyor, ama belgeleri, sorular
 - Türkçe soru sorarsın; cevap yalnız senin belgelerinden gelir ve her bilginin yanında kaynağı (belge, sayfa) durur.
 - Belgelerde cevap yoksa "bulunamadı" der; uydurmaz.
 - Her hesap yalnız kendi belgelerini görür; sahiplik sorgunun içinde uygulanır.
+- Sorular ve cevaplar kullanıcının geçmişinde kaynak referanslarıyla durur; kullanıcı cevabı 👍/👎 ile puanlar, geçmişini silebilir. Geçmiş kurumun belirlediği süre kadar (varsayılan 90 gün) tutulur. Yönetici kullanım ve kalite sayılarını tek uçtan alır (ADR-0023).
 
 ## Hızlı başlangıç
 
@@ -171,7 +172,7 @@ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d
 
 Windows'ta (Git Bash) yerel `curl.exe`, argümandaki Türkçe harfleri bozar; gövdeyi UTF-8 bir dosyadan verin: `--data-binary @soru.json` (`scripts/demo.sh` böyle yapar).
 
-Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md).
+Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md), [`docs/api-conversations-integration-v1.md`](docs/api-conversations-integration-v1.md) (geçmiş, geri bildirim, yönetici metrikleri).
 
 ## Modlar ve KVKK md. 9
 
@@ -211,14 +212,14 @@ Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 b
 ```text
  tarayıcı (panel) / istemci ──► edge (nginx, 127.0.0.1:8080: /panel/ + API) ──► verso-app (Spring Boot, modüler monolit)
                                                               │  document modülü: yükleme, PDF, worker, embedding, arama
-                                                              │  qa modülü: eşik, prompt, chat, atıf
+                                                              │  qa modülü: eşik, prompt, chat, atıf, geçmiş, geri bildirim, metrikler
                           keycloak (OIDC, 127.0.0.1:8180) ◄────┤  platform: hata zarfı, güvenlik, log temizleyici
                                                               ├──► postgres 18 + pgvector (iç ağ)
                                                               └──► ollama: bge-m3 + gemma4:e2b (iç ağ, internetsiz)
  isteğe bağlı: prometheus · alertmanager · loki ◄ alloy · grafana (obs profili) · yedek ve restore provası
 ```
 
-Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0015). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
+Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0024). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
 
 ---
 
@@ -228,7 +229,7 @@ Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL) | document 10000–10999, qa 11000–11999 | `VersoApp` |
+| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023) | document 10000–10999, qa 11000–11999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -364,6 +365,24 @@ docker compose up -d --build --wait
 
 (`MSYS_NO_PATHCONV=1` yalnız Windows Git Bash için; diğer kabuklarda etkisizdir.)
 
+**Konuşma geçmişinden önceki bir kurulumdan yükseltme (ADR-0023).** `qa` şeması ve rolleri (`svc_qa`, `svc_qa_migrate`) init script'leri boş volume'de çalıştığı için var olan bir volume'de yoktur; uygulama açılmaz. Bir kez: secret'ları üret, postgres'i yeni secret'larla yeniden oluştur, idempotent script'i çalıştır (var olan rol ve şemalara dokunmaz), sonra yığını kaldır.
+
+```bash
+bash scripts/dev-secrets.sh && docker compose up -d --wait postgres
+```
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose exec -T -u postgres postgres bash /docker-entrypoint-initdb.d/40-modules.sh
+```
+
+```bash
+docker compose up -d --build --wait
+```
+
+Yükseltmeden önce alınmış yedekte `qa` şeması yoktur; restore provası onu Flyway `validate` adımında reddeder. Yükseltmeden sonra yeni bir yedek al: `docker compose run --rm backup once`.
+
+**Geçmişin saklama süresi ve yönetici panosunun politikaları.** Bir konuşma, başladığı andan itibaren `VERSO_HISTORY_RETENTION_DAYS` gün (varsayılan 90) tutulur, sonra saatlik bir iş bütün turları ve başlığıyla siler; kullanıcı kendi geçmişini her zaman silebilir. Süreyi veri sorumlusu kurum belirler (KVKK md. 4: amaç için gerekli süre). Yönetici panosu, en az 3 farklı kullanıcının sorduğu "bulunamadı" sorularını yalnız `VERSO_SHOW_UNANSWERED_QUESTIONS=true` ise gösterir (varsayılan kapalı; çalışan aydınlatma metni bu amacı kapsamalıdır). En çok ve hiç atıf alan belgelerin adları da yalnız `VERSO_SHOW_DOCUMENT_NAMES=true` ise görünür (varsayılan kapalı: bugün her belge tek bir hesabındır ve adıyla günlük atıf sayısı bir çalışanın ne aradığını gösterebilir). Üçü de `.env`'de; bu not hukuki tavsiye değildir.
+
 **Kaynaklar.**
 
 - **Bellek:** container sınırlarının toplamı yaklaşık 10,6 GB'dır (uygulama 1,5 GB, kenar proxy 64 MB, Ollama 6 GB (embedding ve chat modeli açılışta yüklenir ve bellekte kalır; ilk soru model yüklemesini beklemez, `docs/capacity.md`), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
@@ -382,7 +401,7 @@ bash scripts/restore-drill.sh
 
 - **RPO:** yedek aralığı (varsayılan 24 saat, `BACKUP_INTERVAL_SECONDS`).
 - **RTO hedefi:** 1 saat.
-- **Bağlantı bütçesi:** uygulama havuzu 10 + Flyway 1 + yedek 2 = 13; `max_connections` 100.
+- **Bağlantı bütçesi:** uygulama havuzu 10 + `qa` havuzu 4 + Flyway 2 (yalnız migrate anında) + yedek 2 = 18; `max_connections` 100 (ADR-0023).
 - **Kapsam:** yalnız Verso veritabanı. Demo Keycloak'un `keycloak` veritabanı yedeklenmez; realm dosyadan yeniden kurulur (ADR-0010).
 - **Bilinen sınır:** yedek aynı host'taki volume'dedir. Host dışına kopyalama üretim kurulumunun işidir (ADR-0009).
 - **`docker compose down -v`** veritabanıyla birlikte `backups` volume'ünü de siler; önce yedekleri kopyala.

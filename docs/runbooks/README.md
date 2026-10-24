@@ -17,6 +17,7 @@ docker compose --profile obs up -d --wait
 | `ModelUnavailable` | page | [model-unavailable.md](model-unavailable.md) |
 | `IngestionBacklog` | ticket | [ingestion-backlog.md](ingestion-backlog.md) |
 | `QaSlow` | ticket | [qa-slow.md](qa-slow.md) |
+| `HistoryNotStored` | ticket | [history-not-stored.md](history-not-stored.md) |
 
 - **page:** kullanıcıyı etkiler, hemen bakılır.
 - **ticket:** bir sonraki iş günü bakılır.

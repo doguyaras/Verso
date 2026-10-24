@@ -24,9 +24,27 @@ class ModuleConsistencyTest {
     private static final Path ROOT = VersoPostgres.repoRoot();
     private static final Pattern MODULES = Pattern.compile("(?m)^MODULES=\\(([^)]*)\\)");
 
+    /** ADR-0023: each module's migrations also obey the convention rules, with its own schema and application role. */
+    @Test
+    void everyModulesMigrations_whenScanned_followTheConventions() throws IOException {
+        for (String module : modules("deploy/postgres/initdb/10-roles.sh")) {
+            Path migrations = ROOT.resolve("services/" + module + "/" + module
+                    + "-core/src/main/resources/db/migration/" + module);
+            com.verso.document.migration.MigrationConventions rules =
+                    new com.verso.document.migration.MigrationConventions(module, "svc_" + module);
+            assertThat(rules.violations(migrations)).as(module).isEmpty();
+            assertThat(rules.callbackViolations(migrations)).as(module + " callbacks").isEmpty();
+        }
+    }
+
     @Test
     void initScripts_whenDeclaringModules_agree() throws IOException {
-        assertThat(modules("deploy/postgres/initdb/20-database.sh")).isEqualTo(modules("deploy/postgres/initdb/10-roles.sh"));
+        List<String> roles = modules("deploy/postgres/initdb/10-roles.sh");
+        assertThat(modules("deploy/postgres/initdb/20-database.sh")).isEqualTo(roles);
+        // The upgrade path for existing volumes and the restore drill's role checks (ADR-0023) know every module too.
+        assertThat(modules("deploy/postgres/initdb/40-modules.sh")).isEqualTo(roles);
+        assertThat(modules("deploy/backup/restore-check.sh")).isEqualTo(roles);
+        assertThat(roles).as("ADR-0023: the qa module has its own schema").containsExactly("document", "qa");
     }
 
     @Test
@@ -52,9 +70,13 @@ class ModuleConsistencyTest {
             assertThat(compose).as("restore drill validates the migrations of " + module)
                     .contains("./services/" + module + "/" + module + "-core/src/main/resources/db/migration/" + module
                             + ":/flyway/migrations");
+            // One validate step per module schema, as its own migration role (ADR-0009 open point, ADR-0023).
+            assertThat(compose).as("restore drill validates " + module + " as its migration role")
+                    .contains("-user=svc_" + module + "_migrate -schemas=" + module + " -defaultSchema=" + module + " ");
+            String service = module.equals("document") ? "restore-flyway" : "restore-flyway-" + module;
+            assertThat(read("scripts/restore-drill.sh")).as("restore-drill.sh runs " + service)
+                    .containsPattern("run --rm --no-TTY " + service + "\\R");
         }
-        // The drill validates one migration folder; a second module needs its own validate step (ADR-0009).
-        assertThat(modules).as("modules covered by the restore drill's single Flyway validate").hasSize(1);
     }
 
     private static List<String> modules(String script) throws IOException {

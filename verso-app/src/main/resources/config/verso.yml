@@ -166,6 +166,45 @@ verso:
     local-chat-timeout: 90s
     cloud-chat-timeout: 30s
     chat-wait: 5s
+    # The qa module's own schema "qa" (ADR-0023): its own pool as svc_qa (DML only) and its own Flyway as
+    # svc_qa_migrate (owner, DDL), the second module of reference 10.1's one-schema-two-roles rule. Passwords from
+    # /run/secrets (SECRET_DB_QA_PASSWORD, SECRET_DB_QA_MIGRATE_PASSWORD), no fallback. The migration runs whenever
+    # spring.flyway.enabled is on (compose: the migrate container only).
+    datasource:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      username: svc_qa
+      password: ${SECRET_DB_QA_PASSWORD}
+      # One short write per answer and a few reads; connection budget in ADR-0023.
+      maximum-pool-size: 4
+      minimum-idle: 1
+      # Short: the turn is written after the answer exists; waiting longer would only delay the answer.
+      connection-timeout: 2s
+    flyway:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      user: svc_qa_migrate
+      password: ${SECRET_DB_QA_MIGRATE_PASSWORD}
+      locations: classpath:db/migration/qa
+      schema: qa
+    # Conversation history (ADR-0023). retention-days is the installation's KVKK storage limit for questions and
+    # answers (default 90 days; VERSO_HISTORY_RETENTION_DAYS); the job deletes older turns every purge-interval.
+    history:
+      retention-days: ${VERSO_HISTORY_RETENTION_DAYS:90}
+      purge-enabled: true
+      purge-interval: PT1H
+      purge-initial-delay: PT5M
+      purge-batch-size: 500
+      max-turns-per-conversation: 200
+    # Admin usage metrics (ADR-0023). Question texts of unanswered questions are shown to admins only when the data
+    # controller turns this on (VERSO_SHOW_UNANSWERED_QUESTIONS, default off), and only for questions at least
+    # unanswered-min-users distinct accounts asked (k-anonymity; never below 3).
+    metrics:
+      time-zone: Europe/Istanbul
+      show-unanswered-questions: ${VERSO_SHOW_UNANSWERED_QUESTIONS:false}
+      # File names of the top and never cited documents (VERSO_SHOW_DOCUMENT_NAMES, default off: ids and counts only).
+      show-document-names: ${VERSO_SHOW_DOCUMENT_NAMES:false}
+      unanswered-min-users: 3
+      unanswered-limit: 20
+      max-range-days: 366
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
     max-file-size: 20MB

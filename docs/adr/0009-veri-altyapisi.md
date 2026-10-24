@@ -129,7 +129,7 @@ Altı review'ın bulgularıyla değişen kararlar. Bulgu ve kanıt eşlemesi `do
   - Backup servisinin healthcheck'i `last-success` yaşına bakar: iki aralık + 10 dakika.
   - `init: true` ile durdurma SIGTERM ile yapılır.
 - **Flyway telemetrisi.** Uygulamadaki OSS Flyway yalnız `NullFlywayTelemetryManager`'ı kaydeder; dışarı çağrı yapmaz (jar içeriğiyle doğrulandı). Restore provasındaki Redgate CLI için `REDGATE_DISABLE_TELEMETRY=true`.
-- **İkinci modül şeması (review A1). Açık karar, yeni bir ADR ister.**
+- **İkinci modül şeması (review A1). Açık karar, yeni bir ADR ister.** Karar verildi: ADR-0023 (seçenek 1, modül başına havuz ve Flyway; `qa` şeması).
   - **Sorun:** tüm uygulama tek bir DataSource ile `svc_document` olarak bağlanır. İkinci bir şema (örn. `qa`) bu havuzla çalışmaz.
   - **Yasak çözüm:** `svc_document`'a o şemaya yetki vermek (AGENTS.md §4).
   - **Flyway sınırı:** ikinci bir `Flyway` bean'i Boot'un auto-configured Flyway'ini sessizce devre dışı bırakır.

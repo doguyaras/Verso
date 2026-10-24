@@ -29,6 +29,6 @@ public class QuestionController {
     @PostMapping
     public ResponseEntity<AnswerResponse> ask(@CurrentAccount AccountId account, @Valid @RequestBody QuestionRequest request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
-                .body(service.ask(account, request.question()));
+                .body(service.ask(account, request.question(), request.conversationId()));
     }
 }

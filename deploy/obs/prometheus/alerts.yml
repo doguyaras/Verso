@@ -81,3 +81,15 @@ groups:
         annotations:
           summary: The 95th percentile of chat model calls is above 60 seconds.
           runbook: docs/runbooks/qa-slow.md
+
+      # Answers are returned but not stored in the conversation history (ADR-0023): the qa pool cannot write (wrong
+      # svc_qa password, missing "qa" schema, database). History and usage metrics then miss questions. A full
+      # conversation (reason="conversation_full") is the client's case, not an outage.
+      - alert: HistoryNotStored
+        expr: sum(increase(verso_qa_history_not_stored_total{job="verso", reason="failed"}[10m])) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Answers are not stored in the conversation history.
+          runbook: docs/runbooks/history-not-stored.md

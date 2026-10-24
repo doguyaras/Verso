@@ -14,7 +14,9 @@ NAMES=(
   SECRET_POSTGRES_SUPERUSER_PASSWORD   # postgres container only (init scripts, restore drill)
   SECRET_DB_DOCUMENT_MIGRATE_PASSWORD  # svc_document_migrate: schema owner, Flyway
   SECRET_DB_DOCUMENT_PASSWORD          # svc_document: application, DML only
-  SECRET_DB_BACKUP_PASSWORD            # verso_backup: pg_read_all_data, pg_dump only
+  SECRET_DB_QA_MIGRATE_PASSWORD        # svc_qa_migrate: owner of the qa schema, Flyway (ADR-0023)
+  SECRET_DB_QA_PASSWORD                # svc_qa: application, DML only on qa (ADR-0023)
+  SECRET_DB_BACKUP_PASSWORD           # verso_backup: pg_read_all_data, pg_dump only
   SECRET_BACKUP_ENCRYPTION_KEY         # gpg passphrase for backup files
   SECRET_DB_KEYCLOAK_PASSWORD          # keycloak: the demo IdP's own database (ADR-0010)
   SECRET_KEYCLOAK_ADMIN_PASSWORD       # keycloak: bootstrap admin of the master realm
@@ -45,6 +47,7 @@ echo "dev-secrets: $created created, $(( ${#NAMES[@]} - created )) kept ($DIR)"
 # New secrets do not reach an existing database: the init scripts ran once, with the old values (review E3).
 if [ "$created" -gt 0 ] && command -v docker >/dev/null 2>&1    && docker volume inspect "${COMPOSE_PROJECT_NAME:-verso}_pgdata" >/dev/null 2>&1; then
   echo "dev-secrets: WARNING volume ${COMPOSE_PROJECT_NAME:-verso}_pgdata already exists; its roles keep the old passwords." >&2
+  echo "dev-secrets: a secret of a NEW module (e.g. SECRET_DB_QA_*) is fine: run initdb/40-modules.sh once (README \"Yükseltme\")." >&2
   echo "dev-secrets: either restore the old secret files, or recreate the database: docker compose down -v" >&2
   echo "dev-secrets: (down -v also deletes the backups volume; copy the backups first)" >&2
 fi

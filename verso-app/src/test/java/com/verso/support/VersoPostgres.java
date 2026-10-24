@@ -26,7 +26,8 @@ import org.testcontainers.utility.MountableFile;
  * files, exactly as compose does.
  *
  * <p>Deliberately not {@code @ServiceConnection}: it would connect the application as the container's superuser and
- * hide every missing GRANT. The application connects as svc_document and Flyway as svc_document_migrate.
+ * hide every missing GRANT. The application connects as svc_document and Flyway as svc_document_migrate; the qa
+ * module as svc_qa and its Flyway as svc_qa_migrate (ADR-0023).
  */
 public final class VersoPostgres {
 
@@ -42,6 +43,7 @@ public final class VersoPostgres {
 
     static {
         for (String name : new String[]{"SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_DOCUMENT_PASSWORD",
+                "SECRET_DB_QA_MIGRATE_PASSWORD", "SECRET_DB_QA_PASSWORD",
                 "SECRET_DB_BACKUP_PASSWORD", "SECRET_DB_KEYCLOAK_PASSWORD"}) {
             SECRETS.put(name, randomPassword());
         }
@@ -63,10 +65,19 @@ public final class VersoPostgres {
                     "spring.flyway.url=" + POSTGRES.getJdbcUrl(),
                     "spring.flyway.user=svc_document_migrate",
                     "spring.flyway.password=" + secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
+                    // The qa schema's own roles (ADR-0023), exactly as compose gives them.
+                    "verso.qa.datasource.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.qa.datasource.username=svc_qa",
+                    "verso.qa.datasource.password=" + secret("SECRET_DB_QA_PASSWORD"),
+                    "verso.qa.flyway.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.qa.flyway.user=svc_qa_migrate",
+                    "verso.qa.flyway.password=" + secret("SECRET_DB_QA_MIGRATE_PASSWORD"),
                     // Several cached test contexts share one container: small pools keep them far below
                     // max_connections (phase 2 spring review C4).
                     "spring.datasource.hikari.maximum-pool-size=3",
-                    "spring.datasource.hikari.minimum-idle=0")
+                    "spring.datasource.hikari.minimum-idle=0",
+                    "verso.qa.datasource.maximum-pool-size=2",
+                    "verso.qa.datasource.minimum-idle=0")
                     .applyTo(context);
         }
     }

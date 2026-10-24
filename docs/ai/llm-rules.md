@@ -103,4 +103,5 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
   - Uçtan uca, GPU'da: atıf isabeti 0,866, doğru bilgi 0,848, "bulunamadı" 0,536.
   - 5 kısa kısaltma sorusu 0,50 eşiğinin altında kalıyor; bu açık hata olarak `eval/README.md` "Eşikler ve karar" altında yazılı.
   - Kanıt: `docs/evidence/eval-v2-dogrulama.md`.
+- ADR-0023 (konuşma geçmişi): soru ve cevap artık `qa` şemasında saklama süresi kadar tutulur; pasaj metni saklanmaz, yalnız atıf referansı (belge, sayfa). 2.1 geçmiş ve puanlama yollarında (yazma hatası dahil) `ConversationApiTest`, yönetici metriklerinde `UnansweredQuestionsTest` ile doğrulandı (işaretli soru, cevap ve başlık hiçbir log olayında yok). Geçmiş prompt'a girmez (`ConversationApiTest`: devam sorusunun prompt'unda önceki soru yok); girdiğinde bu dosyaya kural ve `verso-llm-review` gerekir.
 - Doğrulaması henüz yazılmamış kurallar: 9.1 (faz 9).

@@ -34,6 +34,10 @@ class MigrateModeTest {
         args.add("--spring.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
         args.add("--spring.flyway.user=svc_document_migrate");
         args.add("--spring.flyway.password=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"));
+        // The qa schema's Flyway (ADR-0023) runs in the same one-shot container, as its own migration role.
+        args.add("--verso.qa.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
+        args.add("--verso.qa.flyway.user=svc_qa_migrate");
+        args.add("--verso.qa.flyway.password=" + VersoPostgres.secret("SECRET_DB_QA_MIGRATE_PASSWORD"));
         // Deploy profile values compose would give; the application password is deliberately absent.
         args.add("--DB_HOST=unused");
         args.add("--DB_PORT=1");
@@ -45,14 +49,20 @@ class MigrateModeTest {
             // Phase 4: no ingestion worker may run in the one-shot migrate container, and no model client is built.
             assertThat(context.getBeanNamesForType(com.verso.document.worker.IngestionWorker.class)).isEmpty();
             assertThat(context.getBeanNamesForType(org.springframework.ai.embedding.EmbeddingModel.class)).isEmpty();
+            // ADR-0023: the qa schema is migrated here, but no qa pool is opened (no svc_qa password in this container).
+            assertThat(context.getBeanNamesForType(com.verso.qa.config.QaSchemaMigration.class)).hasSize(1);
+            assertThat(context.getBeanNamesForType(com.verso.qa.repository.QaDatabase.class)).isEmpty();
         }
         try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
                 VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
              Statement st = admin.createStatement();
-             ResultSet rs = st.executeQuery("select tableowner from pg_tables where schemaname = 'document' "
-                     + "and tablename = 'flyway_schema_history'")) {
+             ResultSet rs = st.executeQuery("select schemaname, tableowner from pg_tables where schemaname in "
+                     + "('document', 'qa') and tablename = 'flyway_schema_history' order by schemaname")) {
             assertThat(rs.next()).isTrue();
-            assertThat(rs.getString(1)).isEqualTo("svc_document_migrate");
+            assertThat(rs.getString(2)).isEqualTo("svc_document_migrate");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("qa");
+            assertThat(rs.getString(2)).isEqualTo("svc_qa_migrate");
         }
     }
 

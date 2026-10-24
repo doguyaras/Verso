@@ -11,7 +11,7 @@ set -euo pipefail
 SECRETS="${VERSO_SECRETS_DIR:-/run/secrets}"
 # One entry per module schema; must match 20-database.sh (ModuleConsistencyTest). A new module adds its schema here,
 # its two secret files and its migration folder.
-MODULES=(document)
+MODULES=(document qa)
 
 # Readable and non-empty, checked before use: psql's backtick turns an unreadable file into an empty string, and
 # PostgreSQL answers an empty password with a NOTICE and a role WITHOUT password while init reports success (phase 2

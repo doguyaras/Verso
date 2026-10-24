@@ -18,9 +18,12 @@ import com.verso.qa.service.PromptBuilder;
 import com.verso.qa.service.PromptBuilder.BuiltPrompt;
 import com.verso.qa.service.QaMetrics;
 import com.verso.qa.service.QaMetrics.Outcome;
+import com.verso.qa.service.ConversationHistory;
+import com.verso.qa.service.ConversationHistory.Timings;
 import com.verso.qa.service.QuestionService;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -48,6 +51,8 @@ import org.springframework.stereotype.Service;
  *   <li>Otherwise one chat call, bounded per instance (bulkhead) and by the HTTP client timeout; while the model is
  *       down a circuit breaker answers 503 at once.</li>
  *   <li>Citations are mapped on the server to the passages that were retrieved (3.3).</li>
+ *   <li>The answer is stored in the caller's history after the model call (ADR-0023): a database write, not a remote
+ *       call; a failed write loses the turn, not the answer. The history never enters the prompt.</li>
  * </ol>
  *
  * Logs carry counts, sizes and durations; never the question, a passage, the prompt or the answer (2.1). A model
@@ -69,10 +74,12 @@ public class QuestionServiceImpl implements QuestionService {
     private final Semaphore chatSlots;
     private final ModelCircuitBreaker circuit;
     private final QaMetrics metrics;
+    private final ConversationHistory history;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
-                               ModelCircuitBreaker circuit, QaMetrics metrics) {
+                               ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history) {
+        this.history = history;
         this.retrieval = retrieval;
         this.chatModel = chatModel;
         this.promptBuilder = promptBuilder;
@@ -85,13 +92,30 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public AnswerResponse ask(AccountId account, String question) {
+    public AnswerResponse ask(AccountId account, String question, UUID conversationId) {
         // Before retrieval: an open circuit costs no embedding call either.
         if (circuit.isOpen()) {
             metrics.record(Outcome.CIRCUIT_OPEN);
             throw new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, "CIRCUIT_OPEN");
         }
         long started = System.nanoTime();
+        // A foreign, deleted or full conversation is refused before any model call (ADR-0023).
+        if (conversationId != null) history.checkWritable(account, conversationId);
+        Answered answered = answer(account, question, started);
+        AnswerResponse answer = answered.response();
+        Timings timings = new Timings(answered.retrievalMs(), answered.chatMs(), elapsedMs(started));
+        // After the answer, outside any model call: one short transaction in the qa schema (llm-rules 5.1).
+        return history.record(account, conversationId, question, answer, timings)
+                .map(stored -> answer.stored(stored.conversationId(), stored.turnId()))
+                .orElse(answer);
+    }
+
+    /** The answer and where its time went (stored with the turn, ADR-0023). */
+    private record Answered(AnswerResponse response, long retrievalMs, long chatMs) {
+    }
+
+    private Answered answer(AccountId account, String question, long started) {
+        long retrievalStarted = System.nanoTime();
         List<RetrievedPassage> passages;
         try {
             passages = retrieval.search(account.value(), question, properties.topK());
@@ -99,7 +123,7 @@ public class QuestionServiceImpl implements QuestionService {
             metrics.record(Outcome.RETRIEVAL_FAILED);
             throw e;
         }
-        long retrievalMs = elapsedMs(started);
+        long retrievalMs = elapsedMs(retrievalStarted);
         metrics.retrievalTook(retrievalMs);
         List<RetrievedPassage> relevant = passages.stream()
                 .filter(p -> p.similarity() >= properties.minSimilarity()).toList();
@@ -107,8 +131,8 @@ public class QuestionServiceImpl implements QuestionService {
             log.info("Question answered: passages={} relevant=0 retrievalMs={} chatMs=0 totalMs={} outcome=not_found",
                     passages.size(), retrievalMs, elapsedMs(started));
             metrics.record(Outcome.NOT_FOUND);
-            return new AnswerResponse(PromptBuilder.NOT_FOUND, false, AnswerOutcome.NOT_FOUND, List.of(), ai.mode().header(),
-                    ai.chatModel());
+            return new Answered(new AnswerResponse(PromptBuilder.NOT_FOUND, false, AnswerOutcome.NOT_FOUND, List.of(),
+                    ai.mode().header(), ai.chatModel(), null, null), retrievalMs, 0);
         }
         BuiltPrompt prompt = promptBuilder.build(question, relevant);
         long chatStarted = System.nanoTime();
@@ -123,8 +147,8 @@ public class QuestionServiceImpl implements QuestionService {
                 prompt.system().length() + prompt.user().length(), extracted.answer().length(), retrievalMs, chatMs,
                 elapsedMs(started), outcome.name().toLowerCase(java.util.Locale.ROOT));
         metrics.record(Outcome.valueOf(outcome.name()));
-        return new AnswerResponse(extracted.answer(), outcome == AnswerOutcome.ANSWERED, outcome, extracted.citations(),
-                ai.mode().header(), ai.chatModel());
+        return new Answered(new AnswerResponse(extracted.answer(), outcome == AnswerOutcome.ANSWERED, outcome,
+                extracted.citations(), ai.mode().header(), ai.chatModel(), null, null), retrievalMs, chatMs);
     }
 
     private String chat(BuiltPrompt prompt) {

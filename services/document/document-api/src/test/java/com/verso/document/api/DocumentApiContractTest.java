@@ -33,9 +33,11 @@ class DocumentApiContractTest {
 
     @Test
     void types_whenExposed_areRecordsOrEnums() {
-        for (Class<?> type : List.of(DocumentResponse.class, PageResponse.class, PageResponse.PageInfo.class)) {
+        for (Class<?> type : List.of(DocumentResponse.class, PageResponse.class, PageResponse.PageInfo.class,
+                com.verso.document.api.dto.DocumentSummary.class, com.verso.document.api.dto.DocumentInventory.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
+        assertThat(DocumentCatalog.class.isInterface()).isTrue();
         assertThat(DocumentStatus.class.isEnum()).isTrue();
         assertThat(DocumentFailureReason.class.isEnum()).isTrue();
     }
@@ -46,5 +48,14 @@ class DocumentApiContractTest {
         assertThat(page.page()).isEqualTo(new PageResponse.PageInfo(1, 2, 5, 3));
         assertThat(page.data()).containsExactly("a", "b");
         assertThat(PageResponse.of(List.of(), 0, 20, 0).page().totalPages()).isZero();
+    }
+
+    @Test
+    void inventory_whenBuilt_copiesItsDocuments() {
+        java.util.List<com.verso.document.api.dto.DocumentSummary> list = new java.util.ArrayList<>();
+        com.verso.document.api.dto.DocumentInventory inventory = new com.verso.document.api.dto.DocumentInventory(3, list);
+        list.add(null);
+        assertThat(inventory.documents()).isEmpty();
+        assertThat(inventory.total()).isEqualTo(3);
     }
 }
