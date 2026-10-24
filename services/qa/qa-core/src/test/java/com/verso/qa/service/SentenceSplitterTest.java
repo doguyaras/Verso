@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** ADR-0019: Turkish sentence boundaries for the excerpt window and for the answer sentence carrying a marker. */
+/** ADR-0020: Turkish sentence boundaries for the excerpt window and for the answer sentence carrying a marker. */
 class SentenceSplitterTest {
 
     private static List<String> sentences(String text) {

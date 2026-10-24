@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Rule-based sentence boundaries for Turkish text (ADR-0019), used to pick the excerpt window of a citation and to find
+ * Rule-based sentence boundaries for Turkish text (ADR-0020), used to pick the excerpt window of a citation and to find
  * the answer sentence that carries a marker. Deterministic and allocation-light: it runs on the hot path, after the
  * chat call, for every cited passage.
  *

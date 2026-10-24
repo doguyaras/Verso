@@ -120,7 +120,7 @@ class QuestionApiTest {
         assertThat(TestChatModel.INSTANCE.calls()).isOne();
     }
 
-    /** ADR-0019: the excerpt is the sentence of the passage that the citing answer sentence overlaps. */
+    /** ADR-0020: the excerpt is the sentence of the passage that the citing answer sentence overlaps. */
     @Test
     void ask_whenTheAnswerRestsOnTheMiddleOfAPassage_excerptsThatSentence() throws Exception {
         ready("topic-leave Office handbook. " + "General office rules apply to every team member. ".repeat(4)

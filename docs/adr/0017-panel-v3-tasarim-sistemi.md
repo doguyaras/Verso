@@ -143,12 +143,12 @@ Tablo `scripts/panel.test.mjs`'teki "palette" testiyle aynı token çiftlerinden
 ## Sonuçlar
 
 **Olumlu:**
-- Kullanıcı cevabın hangi belge ve sayfaya dayandığını ve o pasajı tek hareketle görür. Canlı denemede model "yirmi gün" dedi (belgede "on dört gün"). Önizleme doğru belgeyi ve sayfayı gösterdi, ama alıntı pasajın başı olduğu için ilgili cümleyi içermedi. Bu, aşağıdaki "alıntı penceresi" işinin gerekçesidir ([ADR-0019](0019-alinti-penceresi.md)).
+- Kullanıcı cevabın hangi belge ve sayfaya dayandığını ve o pasajı tek hareketle görür. Canlı denemede model "yirmi gün" dedi (belgede "on dört gün"). Önizleme doğru belgeyi ve sayfayı gösterdi, ama alıntı pasajın başı olduğu için ilgili cümleyi içermedi. Bu, aşağıdaki "alıntı penceresi" işinin gerekçesidir ([ADR-0020](0020-alinti-penceresi.md)).
 - Ürün ilk ekrandan itibaren Türkçe ve kendi kimliğiyle görünür.
 - Yeni bağımlılık yok. CSP değişmedi; görünüm ayarları için yalnız CSSOM `element.style` kullanılır. İmza bir font değil, çizimdir: indirilen font dosyası yoktur.
 
 **Olumsuz / kabul edilen risk:**
-- **Alıntı pasajın başıydı,** cevabın dayandığı cümle olmayabiliyordu. Cevapla örtüşen pencere [ADR-0019](0019-alinti-penceresi.md) ile geldi; örtüşme yoksa alıntı yine pasajın başıdır.
+- **Alıntı pasajın başıydı,** cevabın dayandığı cümle olmayabiliyordu. Cevapla örtüşen pencere [ADR-0020](0020-alinti-penceresi.md) ile geldi; örtüşme yoksa alıntı yine pasajın başıdır.
 - **"Durdur" yalnız beklemeyi bırakır:** sunucudaki model çağrısı kendi süresinde biter. Sunucu tarafı iptal, istek bağlantısı koptuğunda çağrıyı kesecek ayrı bir değişikliktir.
 - **Keycloak güncellemelerinde şablon:** `template.ftl` keycloak.v2'nin kopyası olduğu için her Keycloak sürüm yükseltmesinde üst temanın şablonuyla karşılaştırılmalıdır (`ImageVersionsTest`'in sürüm sabitlemesiyle aynı anda).
 - **Keycloak tema kaynaklarını iki yerde önbelleğe alır:**

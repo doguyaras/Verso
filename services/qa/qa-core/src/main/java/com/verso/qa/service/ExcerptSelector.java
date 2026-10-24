@@ -13,7 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Picks the excerpt of a cited passage (ADR-0019): the window of one or two sentences that shares the most words with
+ * Picks the excerpt of a cited passage (ADR-0020): the window of one or two sentences that shares the most words with
  * the answer sentences citing it, trimmed to {@link #MAX} code points. Lexical and deterministic: no model or network
  * call, and small bounded work per passage (a passage is one chunk, about 1000 characters), so the hot path keeps its two
  * remote calls and their budget (ADR-0008).

@@ -57,7 +57,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `citations[].documentId` | UUID | `GET /v1/documents/{id}` ile açılır |
 | `citations[].fileName`, `page` | string, number | "izin-yonetmeligi.pdf, s. 3" |
 | `citations[].unit` | `PAGE` \| `SECTION` | DOCX, TXT ve MD sayfasızdır: `page` bölüm numarasıdır, "notlar.docx, bölüm 2" diye gösterilir (ADR-0016). Eksik ya da bilinmeyen → sayfa |
-| `citations[].excerpt` | string, ≤ 280 karakter | Alıntılanan pasajın, bu `[n]`'i taşıyan cevap cümleleriyle en çok ortak sözcüğü ve sayısı olan bir ya da iki cümlesi (ADR-0019); örtüşme yoksa pasajın başı. Pasaj 280 karaktere sığıyorsa tamamı. Her zaman pasaj metnidir, model metni değildir. Boşluklar tek boşluğa indirilmiş; kesildiyse kelime sınırında, kesilen yerde `…` (sonda, uzun cümlenin ortasından başlıyorsa başta da). Pasaj metni boşsa `""`. Yalnız gösterim içindir (`[n]` üzerine gelince açılan kart): düz metin olarak gösterilir, HTML olarak yorumlanmaz (belge içeriği güvenilmeyen veridir); istemci log'una ve analitiğe yazılmaz. Sonradan eklendi (geriye uyumlu); eksikse kart yalnız dosya adı ve sayfayı gösterir. Sınır Unicode kod noktasıyla sayılır: emoji gibi karakterlerde JS `length` 280'i aşabilir |
+| `citations[].excerpt` | string, ≤ 280 karakter | Alıntılanan pasajın, bu `[n]`'i taşıyan cevap cümleleriyle en çok ortak sözcüğü ve sayısı olan bir ya da iki cümlesi (ADR-0020); örtüşme yoksa pasajın başı. Pasaj 280 karaktere sığıyorsa tamamı. Her zaman pasaj metnidir, model metni değildir. Boşluklar tek boşluğa indirilmiş; kesildiyse kelime sınırında, kesilen yerde `…` (sonda, uzun cümlenin ortasından başlıyorsa başta da). Pasaj metni boşsa `""`. Yalnız gösterim içindir (`[n]` üzerine gelince açılan kart): düz metin olarak gösterilir, HTML olarak yorumlanmaz (belge içeriği güvenilmeyen veridir); istemci log'una ve analitiğe yazılmaz. Sonradan eklendi (geriye uyumlu); eksikse kart yalnız dosya adı ve sayfayı gösterir. Sınır Unicode kod noktasıyla sayılır: emoji gibi karakterlerde JS `length` 280'i aşabilir |
 | `mode` | `local` \| `cloud` | Bilinmeyen → "AI" |
 | `model` | string | Bilgi amaçlı |
 
@@ -99,7 +99,7 @@ if (res.status === 503) retryLater(error.code);
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
 - v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026). Var olan alanların adı, tipi ve anlamı değişmedi.
-- `citations[].excerpt` seçimi (24 Ekim 2026, ADR-0019): pasajın başı yerine cevabın dayandığı pencere. Alan, tip ve 280 sınırı aynı; baştaki `…` yeni olabilir, düz metin olarak gösterilir.
+- `citations[].excerpt` seçimi (24 Ekim 2026, ADR-0020): pasajın başı yerine cevabın dayandığı pencere. Alan, tip ve 280 sınırı aynı; baştaki `…` yeni olabilir, düz metin olarak gösterilir.
 
 ## Manuel test akışı
 1. Bir belge yükle ve `READY` olmasını bekle (`docs/api-documents-integration-v1.md`).

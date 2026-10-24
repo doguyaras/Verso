@@ -1,4 +1,4 @@
-# ADR-0019: Alıntı penceresi
+# ADR-0020: Alıntı penceresi
 
 - **Durum:** Kabul edildi
 - **Tarih:** 2026-10-24

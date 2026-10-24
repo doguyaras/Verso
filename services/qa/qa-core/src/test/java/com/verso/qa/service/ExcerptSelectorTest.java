@@ -7,7 +7,7 @@ import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 /**
- * ADR-0019: the excerpt is the passage window that best supports the citing answer sentences, always passage text and
+ * ADR-0020: the excerpt is the passage window that best supports the citing answer sentences, always passage text and
  * at most {@link ExcerptSelector#MAX} code points; without overlap it is the passage start.
  */
 class ExcerptSelectorTest {
@@ -155,7 +155,7 @@ class ExcerptSelectorTest {
         assertThat(ExcerptSelector.select("  Kısa\n pasaj.  İkinci cümle. ", "ikinci")).isEqualTo("Kısa pasaj. İkinci cümle.");
     }
 
-    // The trim rules of the fallback (the passage start), unchanged from before ADR-0019.
+    // The trim rules of the fallback (the passage start), unchanged from before ADR-0020.
 
     @Test
     void select_whenContentIsNullOrBlank_isEmpty() {

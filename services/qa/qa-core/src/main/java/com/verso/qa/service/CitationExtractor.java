@@ -45,7 +45,7 @@ public class CitationExtractor {
     public Extracted extract(String raw, List<RetrievedPassage> passages) {
         String normalized = Normalizer.normalize(raw, Normalizer.Form.NFKC);
         List<Span> sentences = SentenceSplitter.split(normalized, true);
-        // Per cited number, in order of first use: the answer sentences that carry its marker (ADR-0019).
+        // Per cited number, in order of first use: the answer sentences that carry its marker (ADR-0020).
         Map<Integer, StringBuilder> citing = new LinkedHashMap<>();
         Matcher matcher = MARKER.matcher(normalized);
         StringBuilder answer = new StringBuilder();

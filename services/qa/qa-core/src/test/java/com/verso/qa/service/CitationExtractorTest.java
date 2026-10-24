@@ -24,7 +24,7 @@ class CitationExtractorTest {
             new RetrievedPassage(DOC_A, "a.pdf", 3, SourceUnit.PAGE, "first", 0.9),
             new RetrievedPassage(DOC_B, "b.docx", 7, SourceUnit.SECTION, "second", 0.8));
 
-    // Two long synthetic passages (ADR-0019): the supporting sentence is in the middle of each.
+    // Two long synthetic passages (ADR-0020): the supporting sentence is in the middle of each.
     private static final String FILLER = "Bu yönetmelik şirketin bütün birimlerinde uygulanır. İnsan kaynakları müdürlüğü "
             + "kayıtları elektronik ortamda saklar. Değişiklikler yönetim kurulunun onayıyla yürürlüğe girer.";
     private static final String TAIL = "Personel kartı kaybolursa güvenlik masasına haber verilir. Toplantı tutanakları "
