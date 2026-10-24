@@ -1,0 +1,14 @@
+[
+  {"name": "bge-m3 (taban)", "model": "bge-m3:567m", "query": "{x}", "passage": "{x}"},
+  {"name": "multilingual-e5-large (query:/passage:)", "model": "emb-e5-large-q8", "query": "query: {x}", "passage": "passage: {x}"},
+  {"name": "multilingual-e5-large (onek yok)", "model": "emb-e5-large-q8", "query": "{x}", "passage": "{x}"},
+  {"name": "multilingual-e5-large-instruct (Instruct/Query)", "model": "emb-e5i-large-f16", "query": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: {x}", "passage": "{x}"},
+  {"name": "multilingual-e5-large-instruct (query:/passage:)", "model": "emb-e5i-large-f16", "query": "query: {x}", "passage": "passage: {x}"},
+  {"name": "turkish-e5-large (Instruct/Query)", "model": "emb-turkish-e5-large-f16", "query": "Instruct: Given a Turkish search query, retrieve relevant passages written in Turkish that best answer the query\nQuery: {x}", "passage": "{x}"},
+  {"name": "turkish-e5-large (query:/passage:)", "model": "emb-turkish-e5-large-f16", "query": "query: {x}", "passage": "passage: {x}"},
+  {"name": "turkish-e5-large (onek yok)", "model": "emb-turkish-e5-large-f16", "query": "{x}", "passage": "{x}"},
+  {"name": "Qwen3-Embedding-0.6B (Instruct/Query)", "model": "qwen3-embedding:0.6b", "query": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:{x}", "passage": "{x}"},
+  {"name": "Qwen3-Embedding-0.6B (onek yok)", "model": "qwen3-embedding:0.6b", "query": "{x}", "passage": "{x}"},
+  {"name": "embeddinggemma-300m", "model": "emb-gemma-300m-q8", "query": "task: search result | query: {x}", "passage": "title: none | text: {x}"},
+  {"name": "embeddinggemma-300m (onek yok)", "model": "emb-gemma-300m-q8", "query": "{x}", "passage": "{x}"}
+]
