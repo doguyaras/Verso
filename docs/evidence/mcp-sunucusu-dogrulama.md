@@ -46,7 +46,7 @@ Testcontainers sınıfları son koddan sonra yerelde yeniden koşulmadı (makine
 
 Dal uygulaması `127.0.0.1:18090`'da MCP açık, dal realm'iyle dev modda geçici Keycloak `127.0.0.1:18181`'de (commit edilmeyen yerel ayar). Docker Desktop yük altında durmadan önce görülenler:
 
-- Realm içe aktarımı başarılı. Keycloak'ın `scopes_supported`'ı `openid, basic, verso-mcp, offline_access`: realm'de scope tanımlamak varsayılan scope'ları kaldırır, `basic` bu yüzden realm dosyasında tanımlı (ADR-0031).
+- İlk realm sürümünde Keycloak'ın `scopes_supported`'ı yalnız `openid, basic, verso-mcp, offline_access` idi: realm'de `clientScopes` tanımlamak yerleşik scope'ların (profile, email, roles, web-origins, service_account …) oluşturulmasını engelliyordu. Düzeltme ve karşılaştırma aşağıda ("Realm regresyonu").
 - `verso-mcp-inspector` ile code + PKCE: onay ekranı göründü (`OAUTH_GRANT`); token `typ at+jwt`, `ES256`, `aud` yalnız `verso-mcp`, realm rolü yok.
 - `verso-panel` ile code + PKCE aynı realm'de çalışmaya devam etti: `aud` `verso-api`, roller `verso-operator`, `verso-user`.
 - `POST /mcp` token'sız: `401`, `WWW-Authenticate: Bearer resource_metadata="http://localhost:18090/.well-known/oauth-protected-resource/mcp", scope="verso-mcp"`.
@@ -54,11 +54,28 @@ Dal uygulaması `127.0.0.1:18090`'da MCP açık, dal realm'iyle dev modda geçic
 - Sonraki adımlar (token'lı çağrılar, yükleme, `tools/list`, `tools/call`) `503` döndü: yığının PostgreSQL'i ve Keycloak konteyneri Docker ile birlikte düştü. Uygulama log'unda sorgu metni 0 kez.
 - Yapılmadı: MCP Inspector CLI (`npx`) ve bulut istemcileri; Docker döndüğünde `docs/api-mcp-integration-v1.md` "curl ile deneme" adımlarıyla tekrarlanır. Geride kalan konteyner: `verso-mcp-kc-scratch` (silinmeli).
 
+## Realm regresyonu ve düzeltmesi
+
+Tek bir geçici Keycloak 26.8.1 konteyneri (1 GB, `127.0.0.1:18181`, dev modu) iki realm'i birlikte içe aktardı: `develop`'taki realm dosyası (`verso-dev` adıyla, `clientScopes` yok) ve bu dalın dosyası. Admin API ile karşılaştırma, konteyner sonra silindi:
+
+| Kontrol | `develop` | Dal (düzeltmeden sonra) |
+|---|---|---|
+| Realm scope'ları | 15 yerleşik scope | aynı 15 + `verso-mcp` |
+| Realm varsayılan / isteğe bağlı scope listeleri | 9 / 5 | aynı |
+| `verso-panel`, `verso-cli` istemci scope'ları | `basic` | aynı |
+| `verso-ci` istemci scope'ları | `basic`, `service_account` | aynı (ilk sürümde `service_account` yoktu) |
+| `verso-panel` token claim'leri (code + PKCE) | `aud,auth_time,azp,exp,iat,iss,jti,realm_access,scope,sid,sub,typ`; roller `verso-operator`, `verso-user` | aynı |
+| Token ucunun CORS cevabı (`Origin: http://localhost:8080`) | `Access-Control-Allow-Origin: http://localhost:8080` | aynı |
+| `verso-ci` token claim'leri | `aud,azp,clientAddress,clientHost,client_id,exp,iat,iss,jti,scope,sub,typ` | aynı |
+| MCP istemcisi başka origin'den token ucu | – | `Invalid origin` (beklenen: `webOrigins` yalnız `localhost:6274`) |
+
+Scope tanımları Keycloak'ın admin API'sinin `develop` realm'i için verdiği haliyle kopyalandı. İçe aktarmada Keycloak beş mapper'a eksik `userinfo.token.claim` anahtarını `true` olarak ekliyor (`acr`, `basic`, `microprofile-jwt`, `organization`, `service_account`). Anahtar yokken de Keycloak, ID token'a giren claim'i userinfo'ya koyar. Etkisi aynıdır, Verso userinfo okumaz. Gerileme testi: `KeycloakRealmTest.clientScopes_whenDeclared_keepKeycloaksBuiltInSetAndDefaults`.
+
 ## Review kararları
 
 | Skill | Karar | Bulgular |
 |---|---|---|
-| `verso-security-review` | APPROVE WITH NON-BLOCKING COMMENTS | B1 MEDIUM (düzeltildi): DB kesintisi gibi beklenmeyen bir hata SDK'da JSON-RPC hata mesajı olarak istemcinin modeline gidiyordu → sabit `isError` metni, log'a yalnız tip (`McpUnitTest`). B2 MEDIUM (kabul): kullanıcı başına hız sınırı yok (Redis yok); kenarda adres başına `limit_req` + instance başına bulkhead. B3 LOW (düzeltildi): Spring Security 7.1 API zincirinde Host'tan türeyen RFC 9728 metadata'sını kimliksiz sunuyordu → `versoWellKnownSecurity`, 404. B4 LOW (needs verification): realm'de scope tanımı Keycloak'ın `web-origins`, `roles`, `profile` vb. scope'larını kaldırdı; panelin code akışı doğrulandı, tarayıcıdaki token yenilemenin CORS'u doğrulanmadı |
+| `verso-security-review` | APPROVE WITH NON-BLOCKING COMMENTS | B1 MEDIUM (düzeltildi): DB kesintisi gibi beklenmeyen bir hata SDK'da JSON-RPC hata mesajı olarak istemcinin modeline gidiyordu → sabit `isError` metni, log'a yalnız tip (`McpUnitTest`). B2 MEDIUM (kabul): kullanıcı başına hız sınırı yok (Redis yok); kenarda adres başına `limit_req` + instance başına bulkhead. B3 LOW (düzeltildi): Spring Security 7.1 API zincirinde Host'tan türeyen RFC 9728 metadata'sını kimliksiz sunuyordu → `versoWellKnownSecurity`, 404. B4 HIGH (düzeltildi): realm dosyasında `clientScopes` tanımı Keycloak.ın yerleşik scope.larını (web-origins, roles, profile, service_account …) kaldırıyordu → yerleşik set ve varsayılan listeler realm.de; panel ve CI token.ları ile CORS develop ile aynı ("Realm regresyonu") |
 | `verso-api-contract-review` | APPROVE WITH NON-BLOCKING COMMENTS | OpenAPI diff yok, elle çıkarıldı. `RetrievedPassage.passageId` sona eklendi + eski kurucu; `DocumentRetrieval.passage` yeni (süreç içi, tek uygulayıcı); `AuditAction`/`AuditTargetType` yeni değerler (istemci bilinmeyen değeri ham gösterir; `api-audit-integration-v1.md` güncellendi). Kırılma yok |
 | `verso-architecture-boundary-review` | APPROVE | `mcp` yalnız `document :: api` ve `audit :: api`'ye bağlı; tablo yok; enforcer ve ArchUnit yeşil |
 | `verso-environment-impact-review` | APPROVE WITH NON-BLOCKING COMMENTS | Yüzeyler: `verso.yml`, `application-local.yml` (`verso.mcp.resource`, `ConfigDriftTest`'te aynalı), `prod.env.example`, `.env.example`, `compose.yaml` (x-db-env + edge), `compose.cloud.yaml`; `docker compose config` iki değerle doğru dosyayı seçiyor. LOW: `migrate` konteyneri de `VERSO_MCP_*` alır (web değil; zararsız, CI'da doğrulanacak) |

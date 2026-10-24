@@ -8,7 +8,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -208,7 +210,6 @@ class KeycloakRealmTest {
             assertThat(map(m.get("config")).get("access.token.claim")).isEqualTo("true");
             assertThat(map(m.get("config")).get("id.token.claim")).isEqualTo("false");
         });
-        // Declaring scopes replaces Keycloak's defaults, so the one every client names is declared too.
         assertThat(list(realm().get("clientScopes"))).extracting(s -> s.get("name")).contains("basic");
         Map<String, Object> client = client("verso-mcp-inspector");
         Map<String, Object> attributes = map(client.get("attributes"));
@@ -227,6 +228,46 @@ class KeycloakRealmTest {
         assertThat(list(client.get("protocolMappers"))).isEmpty();
         assertThat(client.get("redirectUris")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
                 .allSatisfy(uri -> assertThat((String) uri).startsWith("http://localhost:6274/").doesNotContain("*"));
+    }
+
+    /**
+     * ADR-0031: a realm file that declares clientScopes replaces every scope Keycloak would otherwise create on import.
+     * The file therefore carries Keycloak 26.8.1's whole built-in set and its realm defaults, exactly as an import
+     * without clientScopes produced them (compared through the admin API: same scopes, same client assignments, same
+     * panel and CI token claims, same CORS answer; docs/evidence/mcp-sunucusu-dogrulama.md). The panel's CORS needs
+     * web-origins in the realm, the service-account client service_account; verso-mcp is the only addition.
+     */
+    @Test
+    void clientScopes_whenDeclared_keepKeycloaksBuiltInSetAndDefaults() throws IOException {
+        Map<String, Object> realm = realm();
+        assertThat(list(realm.get("clientScopes"))).extracting(s -> s.get("name")).containsExactlyInAnyOrder(
+                "AuthnContextClassRef", "acr", "address", "basic", "email", "microprofile-jwt", "offline_access",
+                "organization", "phone", "profile", "role_list", "roles", "saml_organization", "service_account",
+                "web-origins", "verso-mcp");
+        assertThat(realm.get("defaultDefaultClientScopes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .containsExactlyInAnyOrder("AuthnContextClassRef", "acr", "basic", "email", "profile", "role_list",
+                        "roles", "saml_organization", "web-origins");
+        assertThat(realm.get("defaultOptionalClientScopes")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .containsExactlyInAnyOrder("address", "microprofile-jwt", "offline_access", "organization", "phone");
+        Map<String, Object> webOrigins = list(realm.get("clientScopes")).stream()
+                .filter(s -> "web-origins".equals(s.get("name"))).findFirst().orElseThrow();
+        assertThat(list(webOrigins.get("protocolMappers"))).extracting(m -> m.get("protocolMapper"))
+                .contains("oidc-allowed-origins-mapper");
+        Map<String, Object> roles = list(realm.get("clientScopes")).stream()
+                .filter(s -> "roles".equals(s.get("name"))).findFirst().orElseThrow();
+        assertThat(list(roles.get("protocolMappers"))).extracting(m -> m.get("protocolMapper"))
+                .contains("oidc-usermodel-realm-role-mapper");
+        // No client's default scope may point at a scope the realm lacks (Keycloak drops it silently).
+        Set<Object> declared = list(realm.get("clientScopes")).stream().map(s -> s.get("name")).collect(Collectors.toSet());
+        for (Map<String, Object> client : list(realm.get("clients"))) {
+            Object scopes = client.get("defaultClientScopes");
+            if (scopes != null) assertThat(declared).as(client.get("clientId") + " scopes").containsAll(list2(scopes));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Object> list2(Object value) {
+        return (List<Object>) value;
     }
 
     /** The repository is public: every secret in the realm is a placeholder that start.sh fills from /run/secrets. */
