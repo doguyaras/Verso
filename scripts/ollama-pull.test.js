@@ -32,7 +32,8 @@ case "$1" in
     [ -n "$FAKE_DIGEST" ] || { echo "pull failed" >&2; exit 1; }
     name="\${2%%:*}"; tag="\${2#*:}"
     dir="$OLLAMA_MODELS/manifests-v2/ollama.com/library/$name"
-    mkdir -p "$dir" && printf '%s' "$FAKE_DIGEST" > "$dir/$tag" ;;
+    # Like 0.40, the v2 entry is a symlink to the manifest blob (not a regular file).
+    mkdir -p "$dir" && printf '%s' "$FAKE_DIGEST" > "$OLLAMA_MODELS/blob-$name-$tag" && ln -sf "$OLLAMA_MODELS/blob-$name-$tag" "$dir/$tag" ;;
 esac
 `;
 

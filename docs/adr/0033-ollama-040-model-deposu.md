@@ -1,6 +1,6 @@
 # ADR-0033: Ollama 0.40.10 ve model deposunun v2 düzeni
 
-- **Durum:** Kabul edildi; **canlı doğrulama bekliyor** (aşağıdaki "Canlı doğrulama bekliyor"). Doğrulama geçene kadar `.github/vuln-allowlist.yaml` Ollama kayıtları silinmez ve tarama sonucu bu ADR'de iddia edilmez.
+- **Durum:** Kabul edildi; canlı yığında doğrulandı (aşağıdaki "Canlı doğrulama sonucu"). Ollama allowlist kayıtları silindi.
 - **Tarih:** 2026-10-24
 - **Karar verenler:** doguyaras (güvenlik taraması bulguları: ADR-0030 madde 8)
 - **İlgili eşik (referans Bölüm 24):** yok (sayısal eşik değişmiyor)
@@ -55,24 +55,23 @@ Kanıt: 0.40.10 imajı (`sha256:4c5b2787…5e35`) ve `verso_ollama-models` volum
 - Rollback (0.35.1): v1 manifestleri ve blob'lar yerinde kalır; `manifests-v2/` 0.35.1 tarafından okunmaz. `pull` bge-m3 için v1 manifestine ek bir küçük katman yazdı (0.40 uyumluluğu); 0.35.1'in bunu okuması **ölçülmedi**. Geri dönüşte `ollama-pull` 0.35.1 ile bir kez çalışır ve gerekirse çeker.
 - Disk: v2 manifestleri ve birkaç küçük blob; model blob'ları çoğalmaz.
 - Çevrimdışı yeniden başlatma değişmedi; yalnız 0.35'ten gelen ilk açılış registry'ye manifest için bağlanır.
-- Tarama kazancı (0 / 0 / 83) bu ADR'de **ölçülmüş sayılmaz**; aynı sabitlenmiş Syft/Grype ile yeniden taranacak.
-- Ölçülmedi: `ollama-pull` için 512 MB bellek sınırı 0.40 ile yeterli mi (sunucu açılışı ve GPU keşfi), salt okunur çalışma zamanında `gemma4:e2b` üretimi, GPU (CUDA) bindirmesi.
+- Tarama (sabitlenmiş Syft v1.55.0 / Grype v0.121.0, aynı komutlar): 0.35.1 10 / 53 / 194 → 0.40.10 0 / 0 / 83 (2925 bileşen; düzeltmesi olan bulgu 0). `vuln-gate.js` Ollama'nın id'ye özel kayıtları olmadan geçer; bu kayıtlar silindi. `CVE-2025-63389` ve takma adı (tasarım gereği kabul) kaldı.
+- Hâlâ ölçülmedi: 0.35.1'in 0.40'ın yazdığı v1 manifestini okuyup okumadığı (rollback yolu volume yedeğine dayanır, yukarıdaki madde).
 
-## Canlı doğrulama bekliyor
+## Canlı doğrulama sonucu (2026-10-24, çalışan yığın, GPU bindirmesi)
 
-Docker kapalıyken yazıldı; yapılanlar: depo düzeni araştırması ve embedding kosinüsü (yukarıda, volume kopyasında), `pull.sh` ve compose birim testleri (sahte `ollama` ile). Yapılmayanlar (komutlar `C:/verso` dizininde, bu branch checkout'uyla):
+Yedek (`backup once`) ve model volume kopyası (rollback için) alındı; hepsi geçince volume kopyası silindi.
 
-1. Yedek: `docker compose -f compose.yaml -f deploy/compose.gpu.yaml run --rm backup once`
-2. Model volume'ünün yedeği (rollback için): `docker run --rm -v verso_ollama-models:/from:ro -v verso_ollama-models-0351-yedek:/to --entrypoint cp ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c -a /from/. /to/`
-3. Önce taşıma (tek ağır container): `docker compose -f compose.yaml -f deploy/compose.gpu.yaml up ollama-pull`; log'da iki satır `ollama-pull: … ready` ve çıkış 0 beklenir.
-4. Çalışan Ollama: `docker compose -f compose.yaml -f deploy/compose.gpu.yaml up -d --wait ollama`; `docker compose logs ollama` içinde `read-only file system` olmamalı; `docker compose exec ollama ollama ps` iki modeli göstermeli.
-5. Embedding: aynı metin için 0.35.1 vektörü ile kosinüs ≈ 1 (`/api/embed`, `docker compose exec ollama bash` + `/dev/tcp`, `docs/capacity.md` "Soğuk açılış" betiği gibi).
-6. Chat: `gemma4:e2b` ile `/api/generate` kısa istek 200 ve yanıt.
-7. Uygulama: `docker compose ps verso-app` healthy; `/actuator/health` `UP`.
-8. Uçtan uca: `bash scripts/qa-smoke.sh` (gerçek token, yükleme, gerçek embedding ve chat; belgeye ve alakasız soruya cevap). `scripts/eval.mjs` alt küme seçeneği taşımaz (33 sorunun tamamı, `verso-ci` hesabındaki belgeleri siler); yalnız GPU'lu makinede ve `secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET` varken: `OUT=e2e-ollama-040.json node scripts/eval.mjs`, sonucu `eval/results/e2e-gemma4_e2b-gpu.json` ile karşılaştır.
-9. Egress kanıtı: `bash scripts/prove-local-mode.sh`.
-10. Tarama: `.github/workflows/supply-chain-scan.yml` içindeki sabitlenmiş Syft/Grype konteynerleriyle `ollama/ollama:0.40.10@sha256:4c5b2787…5e35` taranır, `scripts/vuln-gate.js` çalıştırılır; geçerse Ollama allowlist kayıtları silinir ve `docs/versions.md` ile ADR-0030 madde 8 güncellenir.
-11. Geçmezse: eski imaja dön (`ollama/ollama:0.35.1@sha256:292ee794…278c`), volume'ü adım 2'deki yedekten geri yükle, bu ADR'nin durumunu "Reddedildi" yap.
+1. `ollama-pull` ilk koşuda `bge-m3:567m does not match the pinned digest` ile **düştü**. Neden: 0.40, `manifests-v2/…/<etiket>` girdisini düz dosya değil, manifest blob'una **sembolik bağ** olarak yazar; `pull.sh`'in `find -type f` araması bulamadı. Düzeltme: `! -type d`; sahte `ollama` testi de artık sembolik bağ yazıyor. (Volume kopyasındaki erken gözlemde `find -type f`'in v2'yi göstermemesi aynı nedendendi.)
+2. `docker compose up ollama-pull`: `bge-m3:567m already present`, `gemma4:e2b ready`, çıkış 0. 512 MB sınırı yetti.
+3. `up -d --wait ollama` (0.40.10, GPU): healthy; logda `read-only` yok; `ollama ps` iki modeli `100% GPU`, `Forever` gösterir; volume bağlama `RW: false`.
+4. Embedding: aynı metin için 0.35.1 vektörüne kosinüs 1,000000. Chat (`gemma4:e2b`, `/api/generate`): 200, `pong`.
+5. `verso-app` healthy; `bash scripts/qa-smoke.sh` OK (belge yüklendi, ilgili soru `found=true`, atıf 1); `bash scripts/prove-local-mode.sh` OK (egress yok).
+6. Tarama: yukarıdaki 0 / 0 / 83; geçit geçti.
+
+`scripts/eval.mjs` (33 soru) koşulmadı: alt küme seçeneği yok ve `verso-ci` belgelerini siler; uçtan uca kanıt `qa-smoke.sh`.
+
+Geçmezse geri dönüş: eski imaj (`ollama/ollama:0.35.1@sha256:292ee794…278c`) ve volume'ü yedekten geri yükle.
 
 ## Yeniden değerlendirme koşulu
 

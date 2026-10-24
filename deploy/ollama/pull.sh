@@ -16,10 +16,11 @@ set -eu
 models_dir="${OLLAMA_MODELS:-/root/.ollama/models}"
 server=""
 
-# The v2 manifest of a model (any registry host folder): "<store>/manifests-v2/<host>/library/<name>/<tag>".
+# The v2 manifest of a model (any registry host folder): "<store>/manifests-v2/<host>/library/<name>/<tag>". Ollama 0.40
+# makes it a symlink to the manifest blob, so "not a directory" rather than "regular file".
 has_v2_manifest() {
   model="$1"
-  [ -n "$(find "$models_dir/manifests-v2" -type f -path "*/library/${model%%:*}/${model#*:}" 2>/dev/null | head -n 1)" ]
+  [ -n "$(find "$models_dir/manifests-v2" ! -type d -path "*/library/${model%%:*}/${model#*:}" 2>/dev/null | head -n 1)" ]
 }
 
 # The digest of the model layer Ollama will load for this model, read through Ollama itself so that it does not depend
