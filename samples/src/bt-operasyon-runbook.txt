@@ -1,0 +1,84 @@
+Örnek Teknoloji A.Ş. — BT Operasyon El Kitabı (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+Belge no: BT-RB-002 · Sürüm 4.0 · Sahibi: BT Operasyon Müdürlüğü
+
+1. Kapsam ve iletişim
+Bu el kitabı (runbook) BT Service Desk ekibinin ve nöbetçi mühendislerin sık karşılaşılan taleplerde ve olaylarda izleyeceği adımları anlatır. Kurallar Bilgi Güvenliği Politikası ile birlikte uygulanır; çelişki olursa politika geçerlidir.
+BT Service Desk'e üç yoldan ulaşılır: self servis portal (destek.ornek.example), 4300 numaralı iç hat ve servicedesk@ornek.example adresi. Portal ve e-posta kayıtları otomatik olarak P4 açılır; önceliği Service Desk analisti belirler. Telefon hattına hafta içi 08.00–20.00 arasında analist bakar; bu saatler dışında hat nöbetçi mühendise yönlenir ve yalnız P1 ve P2 olaylar kabul edilir.
+
+2. Olay öncelikleri
+Öncelik, etki (kaç kişi, hangi süreç) ve aciliyet (geçici çözüm var mı) birlikte değerlendirilerek verilir.
+Öncelik | Tanım | Örnek | İlk yanıt | Çözüm hedefi
+P1 Kritik | Şirketin tamamını ya da üretim, sevkiyat veya mal kabulü durduran kesinti | ERP'ye kimse erişemiyor, depoda hiçbir terminal çalışmıyor | 15 dakika | 4 saat
+P2 Yüksek | Bir bölümü ya da kritik bir sistemi kısmen etkileyen, geçici çözümü olmayan sorun | Bir depo bölgesinde toplama yapılamıyor, VPN tek bir şehirde çalışmıyor | 30 dakika | 8 saat
+P3 Orta | Tek kullanıcıyı ya da küçük bir grubu etkileyen, geçici çözümü olan sorun | Bir kullanıcının yazıcısı çalışmıyor, rapor hatalı geliyor | 4 iş saati | 3 iş günü
+P4 Düşük | Bilgi talebi, yeni erişim ya da standart istek | Yeni yazılım kurulumu, rol talebi | 1 iş günü | 10 iş günü
+P1 ve P2 için süreler takvim saatiyle, P3 ve P4 için iş saatiyle (hafta içi 08.30–18.00) sayılır. Çözüm hedefi aşılan olaylar haftalık operasyon toplantısında gözden geçirilir.
+---
+3. Eskalasyon
+3.1 P1 olayları
+P1 açıldığında nöbetçi mühendis 15 dakika içinde olayı üstlenir ve olay köprüsünü (telefon konferansı) açar. 30 dakika içinde geçici çözüm bulunamazsa BT Operasyon Müdürü köprüye çağrılır. Olay 2 saati aşarsa BT Direktörü bilgilendirilir ve etkilenen bölümlere her 30 dakikada bir durum e-postası gönderilir. Çözümden sonra en geç 5 iş günü içinde olay sonrası inceleme (kök neden raporu) yazılır.
+
+3.2 P2 olayları
+P2 olayında analist kaydı ilgili uygulama ekibine atar. Atanan ekip 30 dakika içinde yanıt vermezse kayıt ekip liderine, 4 saat içinde ilerleme yoksa BT Operasyon Müdürüne eskale edilir.
+
+3.3 Öncelik değişikliği
+Öncelik yalnız Service Desk analisti ya da nöbetçi mühendis tarafından değiştirilebilir. Kullanıcı önceliğin düşük verildiğini düşünüyorsa kayda yorum yazar; analist 1 saat içinde değerlendirir. Öncelik yükseltildiğinde süreler yükseltme anından yeniden başlar.
+
+4. VPN
+4.1 Bağlantı
+Uzaktan erişim "Örnek Connect" VPN istemcisiyle yapılır. Sunucu adresi vpn.ornek.example'dır. Bağlanırken kurumsal kullanıcı adı, parola ve doğrulayıcı uygulamadaki onay istenir. Oturum sekiz saat sonra kendiliğinden kapanır; bir kullanıcı aynı anda en fazla iki cihazdan bağlanabilir. Bölünmüş tünel (split tunnel) kapalıdır: bağlıyken bütün trafik şirket üzerinden geçer.
+
+4.2 Sık hatalar
+Hata 809 ya da "sunucuya ulaşılamıyor": kullanıcının bulunduğu ağ VPN trafiğini engelliyor. Kullanıcıdan telefonunun mobil veri paylaşımıyla denemesi istenir; sorun sürerse kayıt P3 açılır.
+"Sertifika süresi doldu": cihaz sertifikası 1 yıl geçerlidir ve süresi dolmadan 14 gün önce kullanıcıya uyarı gelir. Süresi dolan sertifika, cihaz ofiste kablolu ağa bağlanınca kendiliğinden yenilenir; uzaktaki kullanıcı için Service Desk geçici erişim kodu üretir, kod 24 saat geçerlidir.
+"Doğrulama zaman aşımı": doğrulayıcı uygulamadaki onay 60 saniye içinde verilmemiştir; bağlantı yeniden denenir. Telefon değiştiren kullanıcının doğrulayıcı kaydı Service Desk'te sıfırlanır.
+---
+5. Parola sıfırlama ve hesap kilidi
+5.1 Self servis
+Kullanıcılar parolalarını self servis portaldan (sifre.ornek.example) kendileri sıfırlar. Kimlik, doğrulayıcı uygulama ya da kayıtlı cep telefonuna gönderilen tek kullanımlık kodla doğrulanır. Yeni parola Bilgi Güvenliği Politikası'ndaki kurallara uymalıdır; portal kuralı sağlamayan parolayı kabul etmez.
+
+5.2 Hesap kilidi
+Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir. Kilit süre dolunca kendiliğinden açılır; kullanıcı beklemek istemezse self servis portaldan kilidi kendisi kaldırabilir. Aynı gün içinde üç kez kilitlenen hesap Bilgi Güvenliği ekibine otomatik olarak bildirilir.
+
+5.3 Service Desk üzerinden sıfırlama
+Self servisi kullanamayan kullanıcı (telefonu kaybolmuş, kayıtlı numarası yok) Service Desk'i arar. Analist kimliği doğrulamak için personel sicil numarasını sorar ve kullanıcının yöneticisini sistemdeki numarasından geri arar; yöneticiye ulaşılamazsa sıfırlama yapılmaz. Parola telefonda söylenmez: geçici parola kullanıcının yöneticisine kısa mesajla gönderilir. Geçici parola 24 saat geçerlidir ve ilk girişte değiştirilmek zorundadır.
+Yönetici ve sistem hesapları (adı "adm-" ile başlayan hesaplar) Service Desk tarafından sıfırlanmaz; bu talepler kimlik ve erişim yönetimi ekibine P2 olarak aktarılır.
+
+6. Hesap açma ve kapatma
+Yeni çalışanın hesabı İnsan Kaynakları'nın işe giriş talebiyle açılır. Talep işe başlama tarihinden en az 3 iş günü önce gelmelidir; daha geç gelen taleplerde ilk gün yalnız e-posta ve portal erişimi hazırlanır.
+Ayrılan çalışanın hesabı son iş gününün bitiminde kapatılır. Posta kutusu 30 gün boyunca yöneticisinin erişimine açık kalır, sonra silinir.
+---
+7. Yedekleme ve geri yükleme
+Sistem | Yedekleme sıklığı | Saklama süresi | Geri yükleme hedefi
+Dosya sunucusu | Her gece 01.00 | 30 gün | 1 iş günü
+ERP veritabanı | 15 dakikada bir işlem günlüğü, her gece tam yedek | 90 gün | 4 saat
+WMS veritabanı | Saatte bir | 30 gün | 4 saat
+E-posta | Her gece | 1 yıl | 2 iş günü
+Kullanıcı dizüstü bilgisayarları | Yedeklenmez; dosyalar kurumsal bulut klasörüyle eşitlenir | – | –
+Silinen ya da bozulan bir dosyanın geri yüklenmesi için kayıt P3 olarak açılır; kayıtta dosya yolu ve dosyanın sağlam olduğu en son tarih yazılır. Başka bir kullanıcının dosyasının geri yüklenmesi o kullanıcının ya da yöneticisinin onayını ister.
+Yedeklerden geri yükleme testi her çeyrekte bir yapılır ve sonucu BT Operasyon Müdürü'ne raporlanır.
+
+8. Bakım pencereleri ve değişiklik yönetimi
+Planlı bakım her ayın ikinci cumartesi günü 22.00 ile 02.00 arasında yapılır. Bakım duyurusu en az 5 iş günü önce bütün çalışanlara e-postayla gönderilir. Depo ve sevkiyat sistemlerinin bakımı yıl sonu tam sayım haftasında ve kampanya dönemlerinde yapılmaz.
+Değişiklikler üç türdür. Standart değişiklik (önceden onaylı, sık yapılan işler) doğrudan uygulanır. Normal değişiklik her salı toplanan Değişiklik Danışma Kurulu (CAB) onayından geçer. Acil değişiklik yalnız bir P1 olayını çözmek için yapılır, BT Operasyon Müdürü'nün sözlü onayıyla uygulanır ve ilk CAB toplantısında kayda geçirilir.
+---
+9. Sık talepler için adımlar
+9.1 Yazıcı sorunları
+Ofis yazıcısında kâğıt sıkışması ve toner değişimi kullanıcı tarafından yapılır; yazıcı ağda görünmüyorsa kayıt P3 açılır. Depodaki etiket yazıcılarında WMS kılavuzundaki yedek yazıcı adımı uygulanır ve arıza P3 olarak kaydedilir; bütün etiket yazıcıları duruyorsa olay P1 olur.
+
+9.2 Yazılım kurulumu
+Onaylı yazılım listesindeki programlar yazılım merkezinden kullanıcı tarafından kurulur. Listede olmayan yazılım için P4 kaydı açılır; lisanslı yazılımda yöneticinin onayı ve BT Mimari ekibinin değerlendirmesi gerekir. Değerlendirme en fazla 10 iş günü sürer.
+
+9.3 Paylaşılan klasör erişimi
+Paylaşılan klasöre erişim, klasörün sahibi olan bölüm yöneticisinin onayıyla verilir. Erişim talebi P4 olarak açılır; onay gelince 1 iş günü içinde tanımlanır. Erişimler yılda bir kez klasör sahibine gözden geçirme için gönderilir.
+
+9.4 Kayıp ya da çalınan cihaz
+Kayıp cihaz bildirimi Bilgi Güvenliği Politikası'ndaki süre içinde yapılır. Service Desk bildirimi alınca cihazdaki şirket hesaplarının oturumlarını kapatır, cihazı uzaktan kilitler ve kaydı Bilgi Güvenliği ekibine aktarır. Cihaz 7 gün içinde bulunamazsa uzaktan silme komutu gönderilir.
+---
+10. Nöbet düzeni
+Nöbetçi mühendis hafta içi 20.00–08.00 arasında ve hafta sonu bütün gün nöbettedir. Nöbet haftalık döner ve pazartesi 09.00'da devredilir. Nöbetçi telefonu 5 dakika içinde açılmazsa çağrı yedek nöbetçiye, 15 dakika içinde açılmazsa BT Operasyon Müdürü'ne yönlenir. Nöbet ödemeleri İnsan Kaynakları prosedürüne göre yapılır.
+
+11. Kayıt kapatma
+Analist kaydı çözdüğünde kullanıcıya bildirim gider. Kullanıcı 3 iş günü içinde itiraz etmezse kayıt kendiliğinden kapanır. Kapanan bir BT kaydı yeniden açılmaz; sorun tekrar ederse yeni kayıt açılır ve eskisine bağlanır.
+Her ay rastgele seçilen kapanmış kayıtların kullanıcılarına kısa bir memnuniyet sorusu gönderilir; sonuçlar BT Operasyon Müdürlüğü'nün aylık raporunda yer alır.

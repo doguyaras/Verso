@@ -1,0 +1,98 @@
+Örnek Teknoloji A.Ş. — WMS Kullanım Kılavuzu (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+Belge no: OPS-KLV-007 · Sürüm 3.2 · Sahibi: Lojistik Operasyon Müdürlüğü
+
+1. Kapsam ve tanımlar
+Bu kılavuz, Gebze merkez deposunda ve Kemalpaşa aktarma deposunda kullanılan depo yönetim sisteminin (WMS) günlük kullanımını anlatır. Kılavuz depo operatörleri, vardiya sorumluları, stok kontrol uzmanları ve WMS anahtar kullanıcıları içindir. Satın alma siparişlerinin ERP tarafındaki yaşam döngüsü ayrı bir belgede, ERP Satın Alma Kılavuzu'nda anlatılır.
+
+1.1 Temel kavramlar
+SKU: Stok tutma birimi; her ürün varyantının WMS'teki tekil kodu.
+LPN: Palet veya koli üzerindeki lisans plaka numarası; 18 haneli bir barkoddur ve "LP" ile başlar.
+Lokasyon kodu: Bölge-koridor-raf-göz biçimindedir. Örneğin A-03-02-B, A bölgesi 3. koridor, 2. raf, B gözü demektir. K ile başlayan lokasyonlar kabul alanını, KAR ile başlayanlar karantina alanını, SEV ile başlayanlar sevkiyat rampalarını gösterir.
+Dalga: Aynı kargo kesim saatine yetişmesi gereken sevkiyat emirlerinin birlikte toplanmak üzere gruplanmasıdır.
+FEFO: Son kullanma tarihi en yakın olan ürünün önce sevk edilmesi kuralı. Son kullanma tarihli ürünlerde FIFO yerine FEFO uygulanır.
+
+1.2 Roller ve yetkiler
+Depo operatörü el terminaliyle kabul, yerleştirme, toplama ve sayım işlemlerini yapar. Vardiya sorumlusu sevkiyat emirlerini onaylar, dalga oluşturur ve küçük sayım farklarını onaylar. Stok kontrol uzmanı sayım planlarını hazırlar ve stok düzeltme kayıtlarını inceler. WMS anahtar kullanıcısı lokasyon, kullanıcı ve yazıcı tanımlarını yönetir.
+Yeni WMS kullanıcısı BT Service Desk üzerinden istenir. WMS kullanıcıları el terminalinde sicil numarası ve dört haneli PIN ile oturum açar; terminal 10 dakika işlem yapılmazsa oturumu kilitler.
+---
+2. Mal kabul
+2.1 Ön bildirim (ASN)
+Tedarikçi, sevkiyattan en geç 24 saat önce ön bildirim (ASN) gönderir. ASN, ERP'de onaylanmış bir satın alma siparişine bağlıdır; bağlı sipariş yoksa WMS ASN'yi "eşleşmedi" durumuna alır ve kabul başlatılamaz. ASN'siz gelen araçlar ancak vardiya sorumlusunun onayıyla ve manuel kabul kaydıyla indirilir.
+
+2.2 Kabul kontrolü
+Araç rampaya yanaştığında operatör her paletin LPN etiketini okutur ve koli adedini sayar. Sayılan miktar ile ASN miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir. Fark yüzde 2'yi aşarsa WMS kabulü "kabul farkı" durumunda bekletir; vardiya sorumlusu farkı inceler ve satın alma birimine bildirim gider. Hasarlı ambalajlar fotoğraflanır ve kabul kaydına eklenir.
+
+2.3 Yerleştirme
+Kabulü tamamlanan ürün K lokasyonlarında "kabul alanında" durumundadır ve siparişlere ayrılamaz. WMS, ürünün hacmine, devir hızına ve raf kapasitesine göre bir yerleştirme lokasyonu önerir. Operatör ürünü önerilen lokasyona götürür ve lokasyon barkodunu okutarak yerleştirmeyi onaylar.
+Kabul alanındaki ürünler kabulden sonra en geç 4 saat içinde yerleştirilmelidir; 4 saati geçen paletler vardiya sorumlusunun ekranında kırmızı görünür. Önerilen lokasyon doluysa operatör "alternatif lokasyon" seçeneğiyle aynı bölgeden başka bir göz seçebilir; farklı bölgeye yerleştirme yalnız vardiya sorumlusu yetkisiyle yapılır.
+
+2.4 Karantina
+Hasarlı, etiketsiz ya da kalite kontrolü gereken ürünler KAR lokasyonlarına alınır ve "karantina" durumuna geçer. Kalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler; sonuç "serbest bırak", "tedarikçiye iade" ya da "imha" olabilir. Karantinadaki stok satışa açık değildir ve stok değeri raporunda ayrı satırda gösterilir.
+---
+3. Sipariş ve sevkiyat akışı
+3.1 Sevkiyat emri
+Müşteri siparişi ERP'de onaylandığında WMS'e bir sevkiyat emri aktarılır. Sevkiyat emri numarası "SE-" ile başlar ve ERP sipariş numarasını taşır. Aktarım her 5 dakikada bir çalışır; acil siparişler "öncelikli" işaretiyle anında aktarılır.
+
+3.2 Emir onayı
+Vardiya sorumlusu sevkiyat emrini kontrol eder ve onaylar. Onay sırasında WMS, emirdeki her kalem için kullanılabilir stok olup olmadığını kontrol eder. Yeterli stok yoksa kalem "eksik" olarak işaretlenir ve emir kısmi onaylanabilir.
+
+3.3 Toplama
+Onaylanan emirler dalgalara gruplanır. Operatör el terminalinde toplama listesini açar, lokasyonu ve ürün barkodunu okutur, toplanan miktarı girer. Son kullanma tarihli ürünlerde terminal FEFO'ya göre lokasyon önerir; operatör başka bir lot seçerse gerekçe girmek zorundadır.
+
+3.4 Stok düşümü ve rezervasyon
+Stok, sevkiyat emri onaylandığında değil, toplama tamamlanıp koli kapatıldığında düşer. Emir onayı ile koli kapatma arasındaki kalemler "rezerve" durumunda görünür: kullanılabilir stoktan çıkarılmıştır ama eldeki stok miktarında durmaya devam eder ve başka bir siparişe ayrılamaz. Bu nedenle onaylanmış ama henüz toplanmamış bir emirde eldeki stok değişmeden kalır; kullanılabilir stok ise onay anında azalır.
+Sevkiyat emri iptal edilirse rezervasyon en geç 15 dakika içinde kendiliğinden kaldırılır ve kalemler yeniden kullanılabilir stoğa döner. 48 saatten uzun süre toplanmayan rezervasyonlar vardiya sorumlusunun "bekleyen rezervasyonlar" raporuna düşer.
+
+3.5 Koli kapatma
+Toplama bitince ürünler paketleme masasında koliye yerleştirilir ve koli tartılır. Tartılan ağırlık, sistemin ürün ağırlıklarından hesapladığı beklenen ağırlıktan yüzde 5'ten fazla saparsa terminal "TARTI-FARK" uyarısı verir ve koli kapatılamaz; koli yeniden kontrol edilir. Koli kapatıldığında kargo etiketi ve sevk irsaliyesi otomatik basılır.
+
+3.6 Sevkiyat
+Kapatılan koliler SEV rampalarında araca yüklenir. Kargo firmalarına teslim için günlük kesim saati 16.30'dur; bu saatten sonra kapatılan koliler ertesi iş günü sevk edilir. Araç çıkışında rampa sorumlusu yükleme listesini terminalden onaylar ve emir "sevk edildi" durumuna geçer.
+---
+4. Stok durumları
+WMS'te her stok satırı aşağıdaki durumlardan birindedir. Tablo, durumun kullanılabilir stoğa ve eldeki stoğa etkisini gösterir.
+Durum | Anlamı | Kullanılabilir stokta | Eldeki stokta
+Kullanılabilir | Rafta, siparişe ayrılabilir | Evet | Evet
+Rezerve | Onaylı bir sevkiyat emrine ayrılmış, koli henüz kapatılmamış | Hayır | Evet
+Kabul alanında | Kabul edilmiş, henüz rafa yerleştirilmemiş | Hayır | Evet
+Karantina | Kalite incelemesi bekliyor | Hayır | Evet
+Bloke | Sayım farkı veya hasar nedeniyle kilitli | Hayır | Evet
+Sevk edildi | Koli kapatılmış, depodan çıkmış | Hayır | Hayır
+Bir stok satırını bloke durumuna yalnız stok kontrol uzmanı alabilir ve yalnız o kaldırabilir. Bloke bir lokasyondaki ürün toplama listelerinde görünmez.
+
+5. Sayım
+5.1 Döngüsel sayım
+Ürünler devir hızına göre sınıflandırılır. A sınıfı ürünler ayda bir, B sınıfı ürünler üç ayda bir, C sınıfı ürünler altı ayda bir sayılır. Sayım sırasında lokasyon geçici olarak "bloke" durumuna alınır; sayım 2 saat içinde tamamlanmazsa blok kendiliğinden kalkar ve sayım yeniden planlanır. Yıl sonunda bütün depoda tam sayım yapılır; tam sayım günlerinde sevkiyat yapılmaz.
+
+5.2 Sayım farkı onayı
+Sayım farkının parasal değeri onay seviyesini belirler:
+Fark tutarı | Onaylayan
+1.000 TL'ye kadar | Vardiya sorumlusu
+1.000 TL ile 10.000 TL arası | Depo Müdürü
+10.000 TL üzeri | Finans Müdürü
+Onaylanmayan fark 5 iş günü sonra yeniden sayıma gönderilir. Aynı lokasyonda üç ay içinde iki kez fark çıkarsa stok kontrol uzmanı kök neden analizi açar.
+---
+6. El terminali hata mesajları
+Kod | Mesaj | Ne yapılmalı
+WMS-101 | Lokasyon bulunamadı | Lokasyon etiketini yeniden okutun; etiket hasarlıysa anahtar kullanıcıdan yeni etiket isteyin.
+WMS-118 | Lokasyon kapasitesi aşıldı | Alternatif lokasyon seçin; sürekli tekrarlanıyorsa lokasyon kapasite tanımını kontrol ettirin.
+WMS-204 | Yetersiz kullanılabilir stok | Ürün rezerve ya da bloke olabilir; stok durumunu sorgulayın ve vardiya sorumlusuna bildirin.
+WMS-221 | Lotun son kullanma tarihi geçmiş | Ürünü toplamayın; lokasyonu karantinaya alması için vardiya sorumlusunu arayın.
+WMS-305 | Koli zaten kapatıldı | Koliye ürün eklenemez; yeni koli açın ya da vardiya sorumlusundan koliyi yeniden açmasını isteyin.
+WMS-330 | TARTI-FARK | Koliyi açıp içeriği toplama listesiyle karşılaştırın; tartının kalibrasyon etiketini kontrol edin.
+WMS-410 | Seri numarası okunamadı | Seri numarasını elle girin; elle girilen seri numaraları gün sonunda stok kontrol uzmanına raporlanır.
+WMS-502 | ERP bağlantısı yok | İşleme devam edin; terminal kayıtları 60 dakikaya kadar yerelde tutar ve bağlantı gelince gönderir.
+Terminal 60 dakikadan uzun süre ERP'ye ulaşamazsa yeni toplama başlatılamaz. Sorun yalnız bir bölgedeki terminalleri etkiliyorsa BT Service Desk'e P2, bütün depoda yeni toplama başlatılamıyorsa P1 öncelikle bildirilir.
+
+7. Etiket ve yazıcılar
+Her paketleme masasında bir kargo etiket yazıcısı bulunur. Yazıcı arızasında koli, aynı bölgedeki yedek yazıcıya yönlendirilir: terminalde "yazıcı değiştir" menüsünden yazıcı kodu seçilir. Etiket rulosu değiştirildikten sonra ilk etiket test etiketi olarak basılır. Yazıcı kodları "YZ-" ile başlar ve bölge harfini taşır; YZ-A2, A bölgesinin ikinci yazıcısıdır.
+---
+8. Vardiya devri ve gün sonu
+Vardiya sorumlusu vardiya bitiminden 30 dakika önce devir raporunu çalıştırır. Raporda açık dalgalar, 4 saati geçmiş kabul paletleri, bekleyen rezervasyonlar ve onay bekleyen sayım farkları listelenir. Devralan sorumlu raporu terminalde onaylamadan yeni dalga oluşturamaz.
+Gün sonu işlemi her gün saat 23.00'te otomatik çalışır: sevk edilen emirler kapanır, gün içi stok hareketleri ERP'ye toplu olarak gönderilir ve ertesi günün dalga planı hazırlanır. Gün sonu işlemi sırasında yaklaşık 20 dakika boyunca yeni sevkiyat emri onaylanamaz.
+
+9. Destek ve değişiklik talepleri
+WMS'teki arızalar BT Service Desk'e bildirilir. Sevkiyatı ya da mal kabulü tamamen durduran arızalar P1, tek bir paketleme masasını veya tek bir terminali etkileyen arızalar P3 olarak açılır.
+Yeni rapor, ekran ya da lokasyon yapısı değişikliği talepleri WMS anahtar kullanıcısı aracılığıyla değişiklik talebi olarak açılır ve aylık WMS değişiklik toplantısında değerlendirilir. Raf yapısını ya da lokasyon kapasitesini değiştiren talepler İSG uzmanının onayı olmadan uygulanmaz.
+Bu kılavuz yılda bir kez Lojistik Operasyon Müdürlüğü tarafından gözden geçirilir.

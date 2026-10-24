@@ -1,0 +1,80 @@
+Örnek Teknoloji A.Ş. — Depo İSG Prosedürü (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+Depo ve sevkiyat alanları iş sağlığı ve güvenliği (İSG) prosedürü · Belge no: İSG-PR-011 · Sürüm 2.0 · Sahibi: İSG ve Kalite Müdürlüğü
+
+1. Amaç ve kapsam
+Bu prosedür Gebze ve Kemalpaşa depolarında mal kabul, yerleştirme, toplama, paketleme ve yükleme işlerinde iş kazalarını önlemek için uyulacak kuralları ve ölçülecek değerleri belirler. Prosedür depo çalışanlarını, alt yüklenici personelini ve depo alanına giren ziyaretçileri kapsar.
+İş güvenliği uzmanı ve işyeri hekimi prosedürün uygulanmasını denetler. Kurallara uymayan çalışan işten durdurulabilir; tekrarında disiplin süreci başlar.
+
+2. Kişisel koruyucu donanım (KKD)
+Alan | Zorunlu KKD
+Mal kabul ve rampa | Çelik burunlu ayakkabı, reflektörlü yelek, iş eldiveni
+Raf koridorları | Çelik burunlu ayakkabı, reflektörlü yelek; 4 metre üstü raflarda baret
+Paketleme | Çelik burunlu ayakkabı, kesilmeye dayanıklı eldiven
+Akü şarj odası | Koruyucu gözlük, aside dayanıklı eldiven ve önlük
+Soğuk oda (+2 / +8 °C) | Termal mont ve eldiven; tek seferde en fazla 45 dakika çalışma
+Ziyaretçiler depo alanına yalnız reflektörlü yelekle ve refakatçiyle girer. KKD'ler depo girişindeki dolaplardan alınır; hasarlı KKD vardiya sorumlusuna bildirilerek değiştirilir.
+---
+3. Forklift ve istif makineleri
+3.1 Kullanım yetkisi
+Forklift ve akülü istif makinesini yalnız operatör belgesi olan ve şirket içi uygulama eğitimini tamamlamış çalışanlar kullanır. Operatör belgesi yenileme eğitimi 5 yılda bir yapılır. Belgesi olmayan bir çalışanın makineyi kısa mesafe de olsa kullanması yasaktır.
+
+3.2 Hız sınırları ve kurallar
+Alan | Azami hız
+Raf koridorları | 6 km/sa
+Ana yol ve rampa önü | 10 km/sa
+Dış saha | 15 km/sa
+Yaya geçitleri ve kör köşeler | Dur, kornaya bas, geç
+Yük taşınırken çatallar yerden en fazla 30 cm yükseklikte tutulur. Görüşü kapatan yükler geri geri taşınır. Forklift üzerinde operatör dışında kimse taşınmaz.
+
+3.3 Günlük kontrol
+Her vardiya başında operatör makine kontrol listesini el terminalinden doldurur: fren, korna, geri vites ikazı, lastikler, çatallar, hidrolik kaçak ve akü seviyesi. Listede "uygun değil" işaretlenen makine kilitlenir ve bakım birimi onay vermeden kullanılamaz.
+
+3.4 Akü şarjı
+Akü şarjı yalnız havalandırmalı şarj odasında yapılır. Şarj odasında sigara, açık alev ve cep telefonu kullanımı yasaktır. Akü elektrolit seviyesi haftada bir kontrol edilir.
+---
+4. Raf güvenliği
+4.1 Raf yük kapasiteleri
+Raf tipi | Göz başına azami yük | Kat sayısı
+Palet rafı (A ve B bölgeleri) | 1.000 kg | 5
+Ağır palet rafı (C bölgesi) | 1.500 kg | 4
+Koli rafı (D bölgesi) | 150 kg | 6
+Konsol raf (uzun malzeme) | Kol başına 500 kg | 4
+Kapasite etiketi her raf sütununun başında asılıdır. Etiketi olmayan ya da okunamayan rafa yükleme yapılmaz. WMS'teki lokasyon kapasite tanımları bu tabloyla uyumlu tutulur; değişiklik İSG uzmanının onayıyla yapılır.
+
+4.2 Raf hasarı
+Raf kontrolleri iki düzeyde yapılır: vardiya sorumluları haftada bir gözle kontrol eder, yetkili raf denetçisi ise yılda bir kez ayrıntılı denetim yapar. Hasar üç renkle sınıflandırılır:
+Renk | Anlamı | Yapılacak işlem
+Yeşil | Kabul edilebilir hasar | Kayıt altına alınır, bir sonraki kontrolde izlenir
+Turuncu | Onarım gerekli | 4 hafta içinde onarılır; bu sürede göz boşaltılmaz ama yeni yük konmaz
+Kırmızı | Ciddi hasar | Raf derhal boşaltılır ve kullanım dışı bırakılır; WMS'te lokasyonlar bloke edilir
+Dikmesi 10 mm'den fazla eğilmiş raf kırmızı sınıftadır. Forkliftin rafa çarptığı her durum, hasar görülmese de vardiya sorumlusuna bildirilir.
+---
+5. Elle taşıma ve ergonomi
+Bir çalışanın tek başına kaldırabileceği yük en fazla 25 kg'dır; 25 kg üstü koliler iki kişiyle ya da kaldırma aracıyla taşınır. 15 kg'ı aşan koliler WMS'te "ağır koli" işaretiyle gösterilir ve toplama listesinde ayrıca uyarı çıkar. Paketleme masalarının yüksekliği ayarlanabilir olmalıdır; sürekli ayakta çalışılan istasyonlarda yorgunluk önleyici paspas kullanılır.
+
+6. Ortam koşulları
+Ölçüm | Sınır değer | Ölçüm sıklığı
+Gürültü | 85 dB(A) üstünde kulak koruyucu zorunlu | Yılda bir
+Aydınlatma | Raf koridorlarında en az 150 lüks, paketleme masalarında en az 500 lüks | Yılda bir
+Depo sıcaklığı | 12 °C ile 30 °C arası | Her vardiya (otomatik)
+Soğuk oda | +2 °C ile +8 °C arası | 15 dakikada bir (otomatik)
+Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider; odadaki ürünler WMS'te karantinaya alınır.
+
+7. Acil durumlar
+Depoda her 20 metrede bir yangın söndürücü bulunur; söndürücüler ayda bir gözle, yılda bir yetkili firma tarafından kontrol edilir. Acil çıkış yolları en az 120 cm genişliğinde boş tutulur; bu yollara palet bırakılamaz. Depoda tahliye tatbikatı yılda iki kez yapılır. Toplanma alanı ana otoparkın kuzey köşesindedir.
+---
+8. Kaza ve ramak kala bildirimi
+İş kazası olduğunda çalışan ya da tanık durumu hemen vardiya sorumlusuna bildirir; vardiya sorumlusu ilk yardımı başlatır ve İSG uzmanını arar. İş kazasının yasal bildirimi İnsan Kaynakları tarafından kazadan sonra en geç 3 iş günü içinde yapılır.
+Kaza olmadan atlatılan tehlikeli durumlar (ramak kala) vardiya bitmeden ramak kala formuyla ya da el terminalindeki "Ramak kala" menüsünden bildirilir. Bildirim isimsiz yapılabilir. İSG uzmanı her ramak kala bildirimini 5 iş günü içinde inceler ve gerekiyorsa düzeltici faaliyet açar.
+
+9. Kalite göstergeleri ve düzeltici faaliyet
+Gösterge | Hedef | Ölçüm
+Yanlış toplama oranı | Binde 1'in altı | Aylık; müşteri şikâyetlerinden ve sevk öncesi kontrollerden
+Hasarlı sevkiyat oranı | Yüzde 0,5'in altı | Aylık; iade kayıtlarından
+Sayım doğruluğu | Yüzde 99,5 ve üstü | Döngüsel sayım sonuçlarından
+Kayıp günlü iş kazası | Yılda sıfır | Sürekli
+Hedefin iki ay üst üste tutturulamadığı göstergede İSG ve Kalite Müdürlüğü düzeltici ve önleyici faaliyet (DÖF) kaydı açar. DÖF kaydının kök neden analizi 10 iş günü içinde, aksiyonları 30 gün içinde tamamlanır; etkinliği 3 ay sonra yeniden ölçülür.
+
+10. Eğitim
+Depoda işe başlayan her çalışan ilk iş gününde 4 saatlik depo İSG oryantasyonunu tamamlar. Depo çalışanlarının yıllık İSG yenileme eğitimi 8 saattir.

@@ -1,25 +1,25 @@
 {
-  "measuredAt" : "2026-10-03T16:20:43.640621300Z",
+  "measuredAt" : "2026-10-24T00:59:00.771301100Z",
   "embeddingModel" : "bge-m3:567m",
   "threshold" : 0.5,
   "summary" : {
     "PDF" : {
       "documentHitAt5" : 1.0,
-      "factInTop5" : 0.96,
-      "answerableAboveThreshold" : 1.0,
-      "unanswerableBelowThreshold" : 0.5
+      "factInTop5" : 0.946,
+      "answerableAboveThreshold" : 0.955,
+      "unanswerableBelowThreshold" : 0.214
     },
     "DOCX" : {
       "documentHitAt5" : 1.0,
       "factInTop5" : 1.0,
-      "answerableAboveThreshold" : 1.0,
-      "unanswerableBelowThreshold" : 0.5
+      "answerableAboveThreshold" : 0.973,
+      "unanswerableBelowThreshold" : 0.179
     },
     "MD" : {
       "documentHitAt5" : 1.0,
       "factInTop5" : 1.0,
-      "answerableAboveThreshold" : 1.0,
-      "unanswerableBelowThreshold" : 0.5
+      "answerableAboveThreshold" : 0.973,
+      "unanswerableBelowThreshold" : 0.179
     }
   },
   "questions" : {
@@ -156,7 +156,7 @@
       "bestSimilarity" : 0.563
     }, {
       "id" : "yok-3",
-      "bestSimilarity" : 0.458
+      "bestSimilarity" : 0.524
     }, {
       "id" : "yok-4",
       "bestSimilarity" : 0.508
@@ -172,6 +172,501 @@
     }, {
       "id" : "yok-8",
       "bestSimilarity" : 0.468
+    }, {
+      "id" : "depo-1",
+      "bestSimilarity" : 0.638,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-2",
+      "bestSimilarity" : 0.547,
+      "documentInTop5" : true,
+      "factInTop5" : false
+    }, {
+      "id" : "depo-3",
+      "bestSimilarity" : 0.678,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-4",
+      "bestSimilarity" : 0.62,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-5",
+      "bestSimilarity" : 0.662,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-6",
+      "bestSimilarity" : 0.648,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-7",
+      "bestSimilarity" : 0.654,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-8",
+      "bestSimilarity" : 0.555,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-9",
+      "bestSimilarity" : 0.57,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-10",
+      "bestSimilarity" : 0.573,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-11",
+      "bestSimilarity" : 0.558,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-12",
+      "bestSimilarity" : 0.665,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-13",
+      "bestSimilarity" : 0.569,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-14",
+      "bestSimilarity" : 0.665,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-15",
+      "bestSimilarity" : 0.612,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-16",
+      "bestSimilarity" : 0.608,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-17",
+      "bestSimilarity" : 0.474,
+      "documentInTop5" : true,
+      "factInTop5" : false
+    }, {
+      "id" : "depo-18",
+      "bestSimilarity" : 0.493,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-19",
+      "bestSimilarity" : 0.603,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-20",
+      "bestSimilarity" : 0.712,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-1",
+      "bestSimilarity" : 0.638,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-2",
+      "bestSimilarity" : 0.637,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-3",
+      "bestSimilarity" : 0.619,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-4",
+      "bestSimilarity" : 0.629,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-5",
+      "bestSimilarity" : 0.593,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-6",
+      "bestSimilarity" : 0.606,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-7",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-8",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-9",
+      "bestSimilarity" : 0.631,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-10",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-11",
+      "bestSimilarity" : 0.559,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-12",
+      "bestSimilarity" : 0.45,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-13",
+      "bestSimilarity" : 0.588,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-14",
+      "bestSimilarity" : 0.67,
+      "documentInTop5" : true,
+      "factInTop5" : false
+    }, {
+      "id" : "erp-15",
+      "bestSimilarity" : 0.577,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-16",
+      "bestSimilarity" : 0.592,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-17",
+      "bestSimilarity" : 0.619,
+      "documentInTop5" : true,
+      "factInTop5" : false
+    }, {
+      "id" : "erp-18",
+      "bestSimilarity" : 0.677,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-1",
+      "bestSimilarity" : 0.661,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-2",
+      "bestSimilarity" : 0.523,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-3",
+      "bestSimilarity" : 0.64,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-4",
+      "bestSimilarity" : 0.6,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-5",
+      "bestSimilarity" : 0.528,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-6",
+      "bestSimilarity" : 0.64,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-7",
+      "bestSimilarity" : 0.646,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-8",
+      "bestSimilarity" : 0.612,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-9",
+      "bestSimilarity" : 0.668,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-10",
+      "bestSimilarity" : 0.611,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-11",
+      "bestSimilarity" : 0.623,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-12",
+      "bestSimilarity" : 0.66,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-13",
+      "bestSimilarity" : 0.642,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-14",
+      "bestSimilarity" : 0.655,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-15",
+      "bestSimilarity" : 0.649,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-16",
+      "bestSimilarity" : 0.468,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-17",
+      "bestSimilarity" : 0.607,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-18",
+      "bestSimilarity" : 0.659,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-19",
+      "bestSimilarity" : 0.678,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-20",
+      "bestSimilarity" : 0.604,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-21",
+      "bestSimilarity" : 0.603,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-1",
+      "bestSimilarity" : 0.693,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-2",
+      "bestSimilarity" : 0.674,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-3",
+      "bestSimilarity" : 0.667,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-4",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-5",
+      "bestSimilarity" : 0.651,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-6",
+      "bestSimilarity" : 0.573,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-7",
+      "bestSimilarity" : 0.668,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-8",
+      "bestSimilarity" : 0.615,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-9",
+      "bestSimilarity" : 0.714,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-10",
+      "bestSimilarity" : 0.576,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-11",
+      "bestSimilarity" : 0.629,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-12",
+      "bestSimilarity" : 0.674,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-13",
+      "bestSimilarity" : 0.586,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-14",
+      "bestSimilarity" : 0.728,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-1",
+      "bestSimilarity" : 0.626,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-2",
+      "bestSimilarity" : 0.698,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-3",
+      "bestSimilarity" : 0.64,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-4",
+      "bestSimilarity" : 0.553,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-5",
+      "bestSimilarity" : 0.618,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-6",
+      "bestSimilarity" : 0.566,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-7",
+      "bestSimilarity" : 0.617,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-8",
+      "bestSimilarity" : 0.615,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-9",
+      "bestSimilarity" : 0.585,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-10",
+      "bestSimilarity" : 0.471,
+      "documentInTop5" : true,
+      "factInTop5" : false
+    }, {
+      "id" : "isg-11",
+      "bestSimilarity" : 0.667,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-12",
+      "bestSimilarity" : 0.603,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-13",
+      "bestSimilarity" : 0.603,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-14",
+      "bestSimilarity" : 0.641,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-yok-1",
+      "bestSimilarity" : 0.501
+    }, {
+      "id" : "depo-yok-2",
+      "bestSimilarity" : 0.513
+    }, {
+      "id" : "depo-yok-3",
+      "bestSimilarity" : 0.546
+    }, {
+      "id" : "depo-yok-4",
+      "bestSimilarity" : 0.702
+    }, {
+      "id" : "erp-yok-1",
+      "bestSimilarity" : 0.607
+    }, {
+      "id" : "erp-yok-2",
+      "bestSimilarity" : 0.599
+    }, {
+      "id" : "erp-yok-3",
+      "bestSimilarity" : 0.55
+    }, {
+      "id" : "erp-yok-4",
+      "bestSimilarity" : 0.567
+    }, {
+      "id" : "bt-yok-1",
+      "bestSimilarity" : 0.603
+    }, {
+      "id" : "bt-yok-2",
+      "bestSimilarity" : 0.49
+    }, {
+      "id" : "bt-yok-3",
+      "bestSimilarity" : 0.47
+    }, {
+      "id" : "bt-yok-4",
+      "bestSimilarity" : 0.617
+    }, {
+      "id" : "bt-yok-5",
+      "bestSimilarity" : 0.639
+    }, {
+      "id" : "crm-yok-1",
+      "bestSimilarity" : 0.56
+    }, {
+      "id" : "crm-yok-2",
+      "bestSimilarity" : 0.558
+    }, {
+      "id" : "crm-yok-3",
+      "bestSimilarity" : 0.468
+    }, {
+      "id" : "crm-yok-4",
+      "bestSimilarity" : 0.607
+    }, {
+      "id" : "isg-yok-1",
+      "bestSimilarity" : 0.559
+    }, {
+      "id" : "isg-yok-2",
+      "bestSimilarity" : 0.52
+    }, {
+      "id" : "isg-yok-3",
+      "bestSimilarity" : 0.532
     } ],
     "DOCX" : [ {
       "id" : "izin-1",
@@ -306,7 +801,7 @@
       "bestSimilarity" : 0.556
     }, {
       "id" : "yok-3",
-      "bestSimilarity" : 0.489
+      "bestSimilarity" : 0.526
     }, {
       "id" : "yok-4",
       "bestSimilarity" : 0.552
@@ -322,6 +817,501 @@
     }, {
       "id" : "yok-8",
       "bestSimilarity" : 0.45
+    }, {
+      "id" : "depo-1",
+      "bestSimilarity" : 0.638,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-2",
+      "bestSimilarity" : 0.538,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-3",
+      "bestSimilarity" : 0.693,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-4",
+      "bestSimilarity" : 0.616,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-5",
+      "bestSimilarity" : 0.662,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-6",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-7",
+      "bestSimilarity" : 0.652,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-8",
+      "bestSimilarity" : 0.566,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-9",
+      "bestSimilarity" : 0.619,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-10",
+      "bestSimilarity" : 0.527,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-11",
+      "bestSimilarity" : 0.56,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-12",
+      "bestSimilarity" : 0.666,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-13",
+      "bestSimilarity" : 0.567,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-14",
+      "bestSimilarity" : 0.676,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-15",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-16",
+      "bestSimilarity" : 0.637,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-17",
+      "bestSimilarity" : 0.437,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-18",
+      "bestSimilarity" : 0.512,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-19",
+      "bestSimilarity" : 0.628,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-20",
+      "bestSimilarity" : 0.582,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-1",
+      "bestSimilarity" : 0.639,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-2",
+      "bestSimilarity" : 0.626,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-3",
+      "bestSimilarity" : 0.6,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-4",
+      "bestSimilarity" : 0.643,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-5",
+      "bestSimilarity" : 0.596,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-6",
+      "bestSimilarity" : 0.606,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-7",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-8",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-9",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-10",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-11",
+      "bestSimilarity" : 0.559,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-12",
+      "bestSimilarity" : 0.45,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-13",
+      "bestSimilarity" : 0.595,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-14",
+      "bestSimilarity" : 0.73,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-15",
+      "bestSimilarity" : 0.577,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-16",
+      "bestSimilarity" : 0.684,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-17",
+      "bestSimilarity" : 0.595,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-18",
+      "bestSimilarity" : 0.653,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-1",
+      "bestSimilarity" : 0.675,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-2",
+      "bestSimilarity" : 0.521,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-3",
+      "bestSimilarity" : 0.64,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-4",
+      "bestSimilarity" : 0.611,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-5",
+      "bestSimilarity" : 0.513,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-6",
+      "bestSimilarity" : 0.653,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-7",
+      "bestSimilarity" : 0.65,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-8",
+      "bestSimilarity" : 0.614,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-9",
+      "bestSimilarity" : 0.665,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-10",
+      "bestSimilarity" : 0.646,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-11",
+      "bestSimilarity" : 0.626,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-12",
+      "bestSimilarity" : 0.723,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-13",
+      "bestSimilarity" : 0.654,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-14",
+      "bestSimilarity" : 0.658,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-15",
+      "bestSimilarity" : 0.703,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-16",
+      "bestSimilarity" : 0.464,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-17",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-18",
+      "bestSimilarity" : 0.651,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-19",
+      "bestSimilarity" : 0.722,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-20",
+      "bestSimilarity" : 0.663,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-21",
+      "bestSimilarity" : 0.608,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-1",
+      "bestSimilarity" : 0.691,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-2",
+      "bestSimilarity" : 0.634,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-3",
+      "bestSimilarity" : 0.667,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-4",
+      "bestSimilarity" : 0.634,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-5",
+      "bestSimilarity" : 0.639,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-6",
+      "bestSimilarity" : 0.549,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-7",
+      "bestSimilarity" : 0.689,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-8",
+      "bestSimilarity" : 0.615,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-9",
+      "bestSimilarity" : 0.719,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-10",
+      "bestSimilarity" : 0.641,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-11",
+      "bestSimilarity" : 0.69,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-12",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-13",
+      "bestSimilarity" : 0.537,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-14",
+      "bestSimilarity" : 0.707,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-1",
+      "bestSimilarity" : 0.625,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-2",
+      "bestSimilarity" : 0.698,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-3",
+      "bestSimilarity" : 0.624,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-4",
+      "bestSimilarity" : 0.551,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-5",
+      "bestSimilarity" : 0.668,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-6",
+      "bestSimilarity" : 0.566,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-7",
+      "bestSimilarity" : 0.634,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-8",
+      "bestSimilarity" : 0.602,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-9",
+      "bestSimilarity" : 0.558,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-10",
+      "bestSimilarity" : 0.57,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-11",
+      "bestSimilarity" : 0.681,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-12",
+      "bestSimilarity" : 0.648,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-13",
+      "bestSimilarity" : 0.605,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-14",
+      "bestSimilarity" : 0.662,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-yok-1",
+      "bestSimilarity" : 0.504
+    }, {
+      "id" : "depo-yok-2",
+      "bestSimilarity" : 0.531
+    }, {
+      "id" : "depo-yok-3",
+      "bestSimilarity" : 0.605
+    }, {
+      "id" : "depo-yok-4",
+      "bestSimilarity" : 0.628
+    }, {
+      "id" : "erp-yok-1",
+      "bestSimilarity" : 0.614
+    }, {
+      "id" : "erp-yok-2",
+      "bestSimilarity" : 0.598
+    }, {
+      "id" : "erp-yok-3",
+      "bestSimilarity" : 0.527
+    }, {
+      "id" : "erp-yok-4",
+      "bestSimilarity" : 0.567
+    }, {
+      "id" : "bt-yok-1",
+      "bestSimilarity" : 0.601
+    }, {
+      "id" : "bt-yok-2",
+      "bestSimilarity" : 0.54
+    }, {
+      "id" : "bt-yok-3",
+      "bestSimilarity" : 0.474
+    }, {
+      "id" : "bt-yok-4",
+      "bestSimilarity" : 0.677
+    }, {
+      "id" : "bt-yok-5",
+      "bestSimilarity" : 0.647
+    }, {
+      "id" : "crm-yok-1",
+      "bestSimilarity" : 0.562
+    }, {
+      "id" : "crm-yok-2",
+      "bestSimilarity" : 0.558
+    }, {
+      "id" : "crm-yok-3",
+      "bestSimilarity" : 0.495
+    }, {
+      "id" : "crm-yok-4",
+      "bestSimilarity" : 0.592
+    }, {
+      "id" : "isg-yok-1",
+      "bestSimilarity" : 0.558
+    }, {
+      "id" : "isg-yok-2",
+      "bestSimilarity" : 0.52
+    }, {
+      "id" : "isg-yok-3",
+      "bestSimilarity" : 0.563
     } ],
     "MD" : [ {
       "id" : "izin-1",
@@ -456,7 +1446,7 @@
       "bestSimilarity" : 0.556
     }, {
       "id" : "yok-3",
-      "bestSimilarity" : 0.489
+      "bestSimilarity" : 0.526
     }, {
       "id" : "yok-4",
       "bestSimilarity" : 0.552
@@ -472,6 +1462,501 @@
     }, {
       "id" : "yok-8",
       "bestSimilarity" : 0.45
+    }, {
+      "id" : "depo-1",
+      "bestSimilarity" : 0.638,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-2",
+      "bestSimilarity" : 0.538,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-3",
+      "bestSimilarity" : 0.693,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-4",
+      "bestSimilarity" : 0.616,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-5",
+      "bestSimilarity" : 0.662,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-6",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-7",
+      "bestSimilarity" : 0.652,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-8",
+      "bestSimilarity" : 0.566,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-9",
+      "bestSimilarity" : 0.619,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-10",
+      "bestSimilarity" : 0.527,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-11",
+      "bestSimilarity" : 0.56,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-12",
+      "bestSimilarity" : 0.666,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-13",
+      "bestSimilarity" : 0.567,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-14",
+      "bestSimilarity" : 0.676,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-15",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-16",
+      "bestSimilarity" : 0.637,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-17",
+      "bestSimilarity" : 0.437,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-18",
+      "bestSimilarity" : 0.512,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-19",
+      "bestSimilarity" : 0.628,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-20",
+      "bestSimilarity" : 0.582,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-1",
+      "bestSimilarity" : 0.639,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-2",
+      "bestSimilarity" : 0.626,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-3",
+      "bestSimilarity" : 0.6,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-4",
+      "bestSimilarity" : 0.643,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-5",
+      "bestSimilarity" : 0.596,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-6",
+      "bestSimilarity" : 0.606,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-7",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-8",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-9",
+      "bestSimilarity" : 0.632,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-10",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-11",
+      "bestSimilarity" : 0.559,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-12",
+      "bestSimilarity" : 0.45,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-13",
+      "bestSimilarity" : 0.595,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-14",
+      "bestSimilarity" : 0.73,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-15",
+      "bestSimilarity" : 0.577,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-16",
+      "bestSimilarity" : 0.684,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-17",
+      "bestSimilarity" : 0.595,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "erp-18",
+      "bestSimilarity" : 0.653,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-1",
+      "bestSimilarity" : 0.675,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-2",
+      "bestSimilarity" : 0.521,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-3",
+      "bestSimilarity" : 0.64,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-4",
+      "bestSimilarity" : 0.611,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-5",
+      "bestSimilarity" : 0.513,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-6",
+      "bestSimilarity" : 0.653,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-7",
+      "bestSimilarity" : 0.65,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-8",
+      "bestSimilarity" : 0.614,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-9",
+      "bestSimilarity" : 0.665,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-10",
+      "bestSimilarity" : 0.646,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-11",
+      "bestSimilarity" : 0.626,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-12",
+      "bestSimilarity" : 0.723,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-13",
+      "bestSimilarity" : 0.654,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-14",
+      "bestSimilarity" : 0.658,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-15",
+      "bestSimilarity" : 0.703,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-16",
+      "bestSimilarity" : 0.464,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-17",
+      "bestSimilarity" : 0.709,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-18",
+      "bestSimilarity" : 0.651,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-19",
+      "bestSimilarity" : 0.722,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-20",
+      "bestSimilarity" : 0.663,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "bt-21",
+      "bestSimilarity" : 0.608,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-1",
+      "bestSimilarity" : 0.691,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-2",
+      "bestSimilarity" : 0.634,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-3",
+      "bestSimilarity" : 0.667,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-4",
+      "bestSimilarity" : 0.634,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-5",
+      "bestSimilarity" : 0.639,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-6",
+      "bestSimilarity" : 0.549,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-7",
+      "bestSimilarity" : 0.689,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-8",
+      "bestSimilarity" : 0.615,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-9",
+      "bestSimilarity" : 0.719,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-10",
+      "bestSimilarity" : 0.641,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-11",
+      "bestSimilarity" : 0.69,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-12",
+      "bestSimilarity" : 0.671,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-13",
+      "bestSimilarity" : 0.537,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "crm-14",
+      "bestSimilarity" : 0.707,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-1",
+      "bestSimilarity" : 0.625,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-2",
+      "bestSimilarity" : 0.698,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-3",
+      "bestSimilarity" : 0.624,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-4",
+      "bestSimilarity" : 0.551,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-5",
+      "bestSimilarity" : 0.668,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-6",
+      "bestSimilarity" : 0.566,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-7",
+      "bestSimilarity" : 0.634,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-8",
+      "bestSimilarity" : 0.602,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-9",
+      "bestSimilarity" : 0.558,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-10",
+      "bestSimilarity" : 0.57,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-11",
+      "bestSimilarity" : 0.681,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-12",
+      "bestSimilarity" : 0.648,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-13",
+      "bestSimilarity" : 0.605,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "isg-14",
+      "bestSimilarity" : 0.662,
+      "documentInTop5" : true,
+      "factInTop5" : true
+    }, {
+      "id" : "depo-yok-1",
+      "bestSimilarity" : 0.504
+    }, {
+      "id" : "depo-yok-2",
+      "bestSimilarity" : 0.531
+    }, {
+      "id" : "depo-yok-3",
+      "bestSimilarity" : 0.605
+    }, {
+      "id" : "depo-yok-4",
+      "bestSimilarity" : 0.628
+    }, {
+      "id" : "erp-yok-1",
+      "bestSimilarity" : 0.614
+    }, {
+      "id" : "erp-yok-2",
+      "bestSimilarity" : 0.598
+    }, {
+      "id" : "erp-yok-3",
+      "bestSimilarity" : 0.527
+    }, {
+      "id" : "erp-yok-4",
+      "bestSimilarity" : 0.567
+    }, {
+      "id" : "bt-yok-1",
+      "bestSimilarity" : 0.601
+    }, {
+      "id" : "bt-yok-2",
+      "bestSimilarity" : 0.54
+    }, {
+      "id" : "bt-yok-3",
+      "bestSimilarity" : 0.474
+    }, {
+      "id" : "bt-yok-4",
+      "bestSimilarity" : 0.677
+    }, {
+      "id" : "bt-yok-5",
+      "bestSimilarity" : 0.647
+    }, {
+      "id" : "crm-yok-1",
+      "bestSimilarity" : 0.562
+    }, {
+      "id" : "crm-yok-2",
+      "bestSimilarity" : 0.558
+    }, {
+      "id" : "crm-yok-3",
+      "bestSimilarity" : 0.495
+    }, {
+      "id" : "crm-yok-4",
+      "bestSimilarity" : 0.592
+    }, {
+      "id" : "isg-yok-1",
+      "bestSimilarity" : 0.558
+    }, {
+      "id" : "isg-yok-2",
+      "bestSimilarity" : 0.52
+    }, {
+      "id" : "isg-yok-3",
+      "bestSimilarity" : 0.563
     } ]
   }
 }

@@ -1,0 +1,61 @@
+Örnek Teknoloji A.Ş. — Müşteri Destek Süreci (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+Belge no: MD-SRC-005 · Sürüm 1.4 · Sahibi: Müşteri Deneyimi Direktörlüğü
+
+1. Kapsam
+Bu kılavuz, müşterilerden gelen şikâyet, arıza, bilgi ve iade taleplerinin CRM sisteminde nasıl kaydedildiğini, önceliklendirildiğini ve kapatıldığını anlatır. Şirket içi BT arızaları bu sürecin konusu değildir; onlar BT Service Desk'e bildirilir.
+Müşteri talepleri dört kanaldan gelir: müşteri portalı, destek@ornek.example adresi, çağrı merkezi ve satış temsilcileri. Hangi kanaldan gelirse gelsin her talep CRM'de bir destek kaydı (ticket) olarak açılır. Kayıt numarası "DK-" ile başlar; aynı müşteriden aynı konuda 24 saat içinde gelen ikinci talep yeni kayıt açmaz, mevcut kayda eklenir.
+Çağrı merkezi hafta içi 08.00–20.00, cumartesi 09.00–17.00 arasında hizmet verir. Bu saatler dışında gelen talepler portal ve e-posta üzerinden kaydedilir; süreler bir sonraki çalışma saatinin başında işlemeye başlar.
+
+1.1 Roller
+Birinci seviye destek uzmanı kaydı açar, sınıflandırır ve bilgi bankasındaki çözümleri uygular. İkinci seviye (teknik destek) uzmanı ürün arızalarını inceler. Takım lideri SLA ihlallerini ve yeniden açılan kayıtları izler. Müşteri Deneyimi Müdürü eskalasyonların son durağıdır.
+---
+2. Kayıt durumları
+Bir destek kaydı yaşamı boyunca aşağıdaki durumlardan geçer. Son sütun, o durumda SLA saatinin işleyip işlemediğini gösterir.
+Durum | Anlamı | SLA saati
+Yeni | Kayıt açıldı, henüz kimseye atanmadı | İşler
+Atandı | Bir uzmana ya da ekibe atandı | İşler
+İşlemde | Uzman kayıt üzerinde çalışıyor | İşler
+Müşteri bekleniyor | Müşteriden bilgi, belge ya da onay istendi | Durur
+Üçüncü taraf bekleniyor | Kargo firmasından ya da tedarikçiden yanıt bekleniyor | İşler
+Çözüldü | Çözüm müşteriye bildirildi | Durur
+Kapatıldı | Kayıt kalıcı olarak kapandı | –
+Yeniden açıldı | Müşteri çözümü kabul etmedi | İşler
+"Müşteri bekleniyor" durumundaki kayıtta müşteriye 3. ve 6. günlerde hatırlatma gönderilir. Müşteri 7 gün içinde yanıt vermezse kayıt "Çözüldü" durumuna alınır ve kapanış nedeni "müşteriden yanıt gelmedi" olarak işaretlenir.
+"Çözüldü" durumundaki kayıt 5 iş günü sonra kendiliğinden "Kapatıldı" olur.
+Bir kaydı "Üçüncü taraf bekleniyor" durumuna almak SLA'yı durdurmaz: kargo ve tedarikçi gecikmeleri şirketin sorumluluğunda sayılır.
+---
+3. Öncelikler ve SLA
+CRM'de müşteri kayıtlarının dört önceliği vardır. Öncelik, müşterinin sözleşme türüne ve etkinin büyüklüğüne göre birinci seviye uzman tarafından verilir.
+Öncelik | Tanım | İlk yanıt | Çözüm hedefi
+P1 Acil | Müşterinin operasyonu duruyor ya da güvenlik riski var | 1 saat | 8 saat
+P2 Yüksek | Ürün çalışıyor ama önemli bir işlev kullanılamıyor | 4 saat | 2 iş günü
+P3 Normal | Tek bir kullanıcı etkileniyor, geçici çözüm var | 1 iş günü | 5 iş günü
+P4 Düşük | Bilgi talebi, öneri, belge isteği | 2 iş günü | 10 iş günü
+Altın sözleşmeli müşterilerin P1 ve P2 kayıtlarında ilk yanıt süresi yarıya iner (P1 için 30 dakika, P2 için 2 saat). Müşteri öncelik değişikliği isteyebilir; değişikliğe takım lideri karar verir.
+
+3.1 SLA uyarıları ve eskalasyon
+Çözüm hedefinin yüzde 75'i dolduğunda CRM, kaydın sahibine ve takım liderine uyarı gönderir. Hedef aşıldığında kayıt "SLA ihlali" etiketi alır ve Müşteri Deneyimi Müdürü'ne bildirilir. P1 kayıtlarda ihlal ayrıca satış temsilcisine bildirilir; temsilci müşteriyi aynı gün arar.
+İkinci seviyeye aktarılan kayıtlarda SLA saati sıfırlanmaz; aktarma süresi de çözüm süresine dahildir. İkinci seviye ekibin kaydı 2 iş saati içinde üstlenmesi beklenir.
+---
+4. Yeniden açma kuralları
+Müşteri, kayıt "Çözüldü" durumundayken çözümü kabul etmediğini bildirirse kayıt "Yeniden açıldı" durumuna geçer ve aynı uzmana atanır. "Kapatıldı" durumundaki kayıt yeniden açılamaz; müşteri aynı konuda yeniden yazarsa yeni bir kayıt açılır ve eski kayda "ilişkili kayıt" olarak bağlanır.
+Yeniden açılan kaydın çözüm hedefi, önceliğin çözüm hedefinin yarısıdır ve yeniden açılma anından itibaren sayılır. Örneğin yeniden açılan bir P2 kaydın çözülmesi için 1 iş günü vardır.
+Bir kayıt en fazla iki kez yeniden açılabilir. Üçüncü itirazda kayıt kendiliğinden takım liderine atanır ve takım lideri müşteriyle 1 iş günü içinde telefonla görüşür.
+Yeniden açma oranı (yeniden açılan kayıtların çözülen kayıtlara oranı) her ay raporlanır; hedef yüzde 8'in altıdır.
+
+5. İade ve değişim talepleri
+İade talepleri teslimattan sonraki 14 gün içinde kabul edilir. Destek uzmanı iade talebini onaylarsa CRM, depo yönetim sistemine iade ön bildirimi gönderir ve müşteriye kargo kodu iletilir. İade edilen ürün depoya ulaştığında karantina lokasyonuna alınır; kalite incelemesi tamamlanınca CRM kaydı güncellenir ve ödeme iadesi finans ekibine aktarılır. Ödeme iadesi kalite onayından sonra en geç 10 iş günü içinde yapılır.
+Hasarlı teslimat bildirimlerinde müşteriden teslimattan sonraki 48 saat içinde fotoğraf istenir.
+---
+6. Memnuniyet anketi
+Kayıt "Kapatıldı" olduğunda müşteriye 1–5 puanlık memnuniyet anketi (CSAT) gönderilir. 3 ve altı puan veren müşteriyi takım lideri 2 iş günü içinde arar. Anket yanıtları uzman bazında aylık raporlanır; hedef ortalama 4,2'dir.
+
+7. Kayıt içeriği ve kişisel veriler
+Kayda yalnız sorunun çözümü için gereken bilgi yazılır. Müşterinin kimlik numarası, kart bilgisi ya da parolası CRM'e yazılmaz; müşteri bu bilgileri kendiliğinden gönderirse uzman ilgili mesajı maskeler. Kapatılan kayıtlar 3 yıl saklanır, sonra anonimleştirilir.
+
+8. Bilgi bankası
+Birinci seviye uzman, çözülen her yeni sorun türü için bilgi bankasına makale önerir. Makaleler takım lideri onayıyla yayımlanır ve 6 ayda bir gözden geçirilir. Bilgi bankası makalesiyle ilk temasta çözülen kayıtlar "ilk temasta çözüm" sayılır; hedef oran yüzde 60'tır.
+
+9. Raporlama
+Takım liderleri her pazartesi açık kayıtlar, SLA ihlalleri ve yeniden açılan kayıtlar raporunu inceler. Müşteri Deneyimi Direktörlüğü çeyrek sonlarında kanal bazında kayıt sayılarını ve çözüm sürelerini yönetime sunar.

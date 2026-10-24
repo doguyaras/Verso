@@ -1,0 +1,98 @@
+Örnek Teknoloji A.Ş. — ERP Satın Alma Kılavuzu (sentetik örnek belge)
+Bu belge Verso'nun demo ve ölçüm verisidir; gerçek bir şirkete ait değildir.
+Belge no: BT-KLV-014 · Sürüm 2.1 · Sahibi: Kurumsal Uygulamalar Ekibi
+
+1. Kapsam
+Bu kılavuz ERP sisteminin satın alma modülünde (SAT) talep, sipariş ve mal kabul belgelerinin nasıl oluşturulduğunu, hangi durumlardan geçtiğini ve sık karşılaşılan hata mesajlarında ne yapılacağını anlatır. Satın alma kararlarının iş kuralları (teklif sayısı, tedarikçi değerlendirmesi) Satın Alma Prosedürü'ndedir; bu kılavuz o kuralların sistemde nasıl uygulandığını açıklar.
+Kılavuz talep sahipleri, satın alma uzmanları, onaycılar ve ERP destek ekibi içindir. Ekran adları ERP'nin Türkçe arayüzündeki adlarla aynıdır.
+
+2. Belge türleri ve numaralandırma
+Satın alma sürecinde ERP'de beş belge türü kullanılır:
+Belge | Kısaltma | Numara örneği | Oluşturan
+Satın alma talebi | ST | ST-2026-000123 | Talep sahibi
+Teklif karşılaştırma | TK | TK-2026-00045 | Satın alma uzmanı
+Satın alma siparişi | SAS | SAS-2026-004512 | Satın alma uzmanı
+Mal kabul | MK | MK-2026-018870 | WMS (otomatik) ya da talep sahibi
+İade | İAD | İAD-2026-000310 | Satın alma uzmanı
+Numaralar her takvim yılının başında sıfırdan başlar. Bir talep birden fazla siparişe bölünebilir; bu durumda her sipariş, talebin numarasını "kaynak belge" alanında taşır. Siparişten yeni bir talep oluşturulamaz.
+Bir belgeyi bulmak için ERP'nin üst çubuğundaki arama alanına belge numarası yazılır; kısaltma yazılmadan yalnız sayıyla arama yapılırsa bütün belge türlerinde arar.
+---
+3. Durum kodları
+3.1 Satın alma talebi (ST)
+Kod | Durum | Açıklama
+10 | Taslak | Talep kaydedildi, onaya gönderilmedi; yalnız talep sahibi görür.
+20 | Onay bekliyor | Talep onay akışında; onaycı değişiklik yapamaz, yalnız onaylar ya da reddeder.
+30 | Onaylandı | Bütün onaylar tamamlandı; talep satın alma uzmanının iş listesine düşer.
+40 | Siparişe dönüştü | Talepten en az bir sipariş oluşturuldu.
+90 | Reddedildi | Onaycılardan biri reddetti; red gerekçesi zorunludur. Talep sahibi düzeltip yeniden gönderebilir.
+95 | İptal | Talep sahibi ya da satın alma uzmanı iptal etti; iptal geri alınamaz.
+Taslak durumunda 30 gün bekleyen talepler kendiliğinden iptal edilir (durum 95).
+
+3.2 Satın alma siparişi (SAS)
+Kod | Durum | Açıklama
+50 | Açık | Sipariş oluşturuldu, tedarikçiye gönderilmedi.
+55 | Onayda | Sipariş tutarı onaylı talep tutarını aştığı için yeniden onayda.
+60 | Gönderildi | Sipariş tedarikçi portalına ya da e-postayla tedarikçiye iletildi.
+70 | Kısmi teslim | Sipariş kalemlerinin bir kısmı için mal kabul yapıldı.
+80 | Teslim tamamlandı | Bütün kalemler teslim alındı.
+85 | Kapatıldı | Sipariş elle kapatıldı; açık kalan miktar artık beklenmez.
+99 | İptal | Sipariş gönderilmeden önce iptal edildi.
+Durum 60'taki bir sipariş iptal edilemez, yalnız kapatılabilir (85). Kapatma için gerekçe yazılır ve Satın Alma Müdürü onayı gerekir.
+---
+4. Onay akışı
+4.1 Tutara göre onay basamakları
+ERP, satın alma talebini KDV hariç toplam tutarına göre onaycılara yönlendirir. Basamaklar, Satın Alma Prosedürü'ndeki onay matrisinin sistemdeki karşılığıdır:
+Tutar (KDV hariç) | Onay basamakları
+100.000 TL'ye kadar | Bölüm yöneticisi, Satın Alma Müdürü
+100.000 TL ile 1.000.000 TL arası | Bölüm yöneticisi, Satın Alma Müdürü, Finans Direktörü
+1.000.000 TL üzeri | Yukarıdakilere ek olarak Yönetim Kurulu kararı; karar numarası talebe girilmeden sipariş açılamaz
+Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir.
+
+4.2 Bekleme süreleri ve vekalet
+Onaycının iş listesine bildirim anında düşer. Onaycı 48 saat içinde işlem yapmazsa hatırlatma e-postası gönderilir; 72 saat sonunda talep, onaycının tanımlı vekiline yönlendirilir. Vekil tanımlı değilse talep bir üst yöneticiye çıkar. Onaycı izne çıkmadan önce ERP'deki "Vekalet" ekranından vekil tanımlar; bir vekalet en fazla 30 gün geçerlidir ve vekil kendi açtığı talebi onaylayamaz.
+
+4.3 Bütçe kontrolü
+Her talep bir maliyet merkezine bağlanır. Talep onaya gönderilirken ERP maliyet merkezinin yıllık bütçesini kontrol eder: kullanım yüzde 90'ı aşacaksa talep sahibine uyarı gösterilir ama gönderim yapılabilir; yüzde 100'ü aşacaksa gönderim engellenir (SAT-E027). Bütçe aşımı için Finans Kontrol biriminden ek bütçe istenir.
+
+4.4 Sipariş tutarı değişirse
+Sipariş tutarı onaylı talep tutarını yüzde 10'dan fazla aşarsa sipariş "Onayda" (55) durumuna düşer ve fark için talebin son onaycısının onayı gerekir. Yüzde 10'a kadar artışlar satın alma uzmanının yetkisindedir.
+---
+5. Mal kabul ve ERP–WMS entegrasyonu
+Gönderilmiş (60) bir sipariş için ERP, depo yönetim sistemine (WMS) her 15 dakikada bir beklenen teslimat kaydı aktarır. Mal kabul WMS'te tamamlandığında ERP'de mal kabul belgesi (MK) otomatik oluşur ve sipariş 70 ya da 80 durumuna geçer. Merkez depo dışındaki teslimatlarda (ofis malzemesi, hizmet alımı) mal kabulü ERP'de talep sahibi elle girer.
+Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E058) ve fazla miktar tedarikçiye iade edilir. Hizmet alımlarında fazla teslim toleransı sıfırdır.
+
+5.1 Entegrasyon kuyruğu
+ERP ile WMS arasındaki mesajlar entegrasyon kuyruğunda izlenir. Üç denemede iletilemeyen mesaj "hatalı" durumuna geçer ve ERP destek ekibinin panosunda görünür. Hatalı mesajlar düzeltilip yeniden gönderilir; aynı mesaj elle iki kez gönderilmez, çünkü WMS tekrar eden mesajı mesaj numarasından tanıyıp reddeder.
+Kuyrukta 30 dakikadan uzun bekleyen mesaj olduğunda ERP destek ekibine otomatik uyarı gider.
+
+5.2 İade
+Kalite kontrolünden geçmeyen ya da fazla teslim edilen ürünler için satın alma uzmanı İAD belgesi açar. İade belgesi bir mal kabul belgesine bağlanmak zorundadır. İade onaylandığında WMS'te ürün karantinadan "tedarikçiye iade" lokasyonuna aktarılır ve tedarikçinin cari hesabına borç kaydı düşülür.
+---
+6. Hata mesajları
+Kod | Mesaj | Nedeni ve ne yapılmalı
+SAT-E012 | Maliyet merkezi kapalı | Maliyet merkezi dönem sonunda kapatılmış. Finans Kontrol biriminden doğru maliyet merkezini öğrenin ve talebi güncelleyin.
+SAT-E019 | Malzeme kodu pasif | Malzeme ana verisi pasife alınmış. Ana veri ekibine malzeme açma talebi gönderin; talep açık metinli kalemle gönderilemez.
+SAT-E027 | Bütçe aşımı | Maliyet merkezinin yıllık bütçesi yüzde 100'ü aşacak. Ek bütçe onayı gelmeden talep gönderilemez.
+SAT-E031 | Tedarikçi bloke | Tedarikçi, değerlendirme puanı ya da eksik evrak nedeniyle bloke. Satın alma uzmanı başka tedarikçi seçer; blokeyi yalnız Satın Alma Müdürü kaldırabilir.
+SAT-E044 | Onaycı tanımlı değil | Maliyet merkezinin onay hiyerarşisi eksik. ERP destek ekibine P3 kaydı açın ve kayıtta maliyet merkezi kodunu belirtin.
+SAT-E058 | Teslim miktarı toleransı aşıldı | Teslim edilen miktar sipariş miktarını yüzde 5'ten fazla aşıyor. Fazla miktarı ayırın, kabulü sipariş miktarıyla yapın.
+SAT-E063 | Kur bilgisi bulunamadı | Döviz cinsinden siparişte günün kuru henüz yüklenmemiş. Kurlar her iş günü 15.45'te yüklenir; bu saatten sonra yeniden deneyin.
+SAT-E071 | Sipariş kilitli | Sipariş başka bir kullanıcının ekranında açık. Kilit, 20 dakika işlem yapılmazsa kendiliğinden kalkar.
+Hata mesajında kod yoksa ekran görüntüsüyle birlikte BT Service Desk'e kayıt açılır. Kodlu hatalarda önce bu tablodaki adım uygulanır.
+---
+7. Yetkiler ve roller
+ERP satın alma rolleri şunlardır:
+SAT-TALEP: talep oluşturur ve kendi taleplerini izler.
+SAT-UZMAN: teklif karşılaştırma, sipariş ve iade belgelerini oluşturur.
+SAT-ONAY: onay iş listesini görür; tutar yetkisi kullanıcı ana verisinde tanımlıdır.
+SAT-ADMIN: onay hiyerarşisini, belge numaralandırmasını ve tolerans parametrelerini yönetir.
+Rol talepleri BT Service Desk üzerinden yöneticinin onayıyla açılır. Bir kullanıcı aynı anda SAT-UZMAN ve SAT-ONAY rolüne sahip olamaz (görevler ayrılığı). Rol atamaları her altı ayda bir bölüm yöneticileri tarafından gözden geçirilir.
+
+8. Raporlar
+Açık siparişler raporu: durum 60 ve 70'teki siparişleri beklenen teslim tarihiyle birlikte listeler.
+Geciken teslimatlar raporu: beklenen teslim tarihini 7 günden fazla geçmiş siparişleri listeler; her pazartesi satın alma uzmanlarına e-postayla gelir.
+Onay süresi raporu: talep başına onay akışında geçen süreyi gösterir; hedef ortalama 3 iş günüdür.
+Raporlar ERP'nin "Satın Alma > Raporlar" menüsündedir ve Excel'e aktarılabilir.
+
+9. Dönem sonu
+Her ayın son iş günü saat 18.00'den sonra girilen mal kabul o aya kaydedilmez, bir sonraki aya geçer. Yıl sonunda açık talepler (durum 10 ve 20) iptal edilir; açık siparişler yeni yıla taşınır ve numaralarını korur.
