@@ -191,6 +191,39 @@ class AuditOutboxTest {
     }
 
     @Test
+    void claim_whenTwoRelaysPollAtOnce_takesDisjointRowsAndAnExpiredWorkerCannotComplete() throws Exception {
+        for (int i = 0; i < 6; i++) {
+            documentTransaction.executeWithoutResult(status -> documentAudit.append(uploaded(UUID.randomUUID())));
+        }
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var a = pool.submit(() -> { start.await(); return documentOutbox.store().claimPending(4, Duration.ofSeconds(120), first); });
+            var b = pool.submit(() -> { start.await(); return documentOutbox.store().claimPending(4, Duration.ofSeconds(120), second); });
+            start.countDown();
+            List<UUID> ids = new java.util.ArrayList<>();
+            a.get().forEach(r -> ids.add(r.id()));
+            b.get().forEach(r -> ids.add(r.id()));
+            assertThat(ids).as("SKIP LOCKED: every row once").hasSize(6).doesNotHaveDuplicates();
+        }
+
+        // The lease of the first worker runs out and a second one takes its row: the first can no longer finish it.
+        List<OutboxRow> stale = AuditTables.rowsOf("SELECT id FROM document.outbox_event WHERE claim_token = ?", first)
+                .stream().map(r -> new OutboxRow((UUID) r.get("id"), "audit.event.recorded", "{}", 0, Instant.now(), first))
+                .toList();
+        AuditTables.update("UPDATE document.outbox_event SET locked_until = now() - interval '1 second' WHERE claim_token = ?",
+                first);
+        UUID third = UUID.randomUUID();
+        assertThat(documentOutbox.store().claimPending(10, Duration.ofSeconds(120), third)).hasSize(stale.size());
+        for (OutboxRow row : stale) {
+            assertThat(documentOutbox.store().deleteProcessed(row.id(), first)).as("old claim token").isFalse();
+            assertThat(documentOutbox.store().markFailed(row.id(), first, "X", Duration.ofSeconds(1))).isFalse();
+        }
+        assertThat(pending("document")).isEqualTo(6);
+    }
+
+    @Test
     void ageGauge_whenARowWaits_reportsItsAgeUntilDelivered() {
         documentTransaction.executeWithoutResult(status -> documentAudit.append(uploaded(UUID.randomUUID())));
         AuditTables.update("UPDATE document.outbox_event SET created_at = now() - interval '120 seconds'");
