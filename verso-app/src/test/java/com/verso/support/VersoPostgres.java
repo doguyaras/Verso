@@ -44,6 +44,7 @@ public final class VersoPostgres {
     static {
         for (String name : new String[]{"SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_DOCUMENT_PASSWORD",
                 "SECRET_DB_QA_MIGRATE_PASSWORD", "SECRET_DB_QA_PASSWORD",
+                "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_AUDIT_PASSWORD",
                 "SECRET_DB_BACKUP_PASSWORD", "SECRET_DB_KEYCLOAK_PASSWORD"}) {
             SECRETS.put(name, randomPassword());
         }
@@ -72,12 +73,21 @@ public final class VersoPostgres {
                     "verso.qa.flyway.url=" + POSTGRES.getJdbcUrl(),
                     "verso.qa.flyway.user=svc_qa_migrate",
                     "verso.qa.flyway.password=" + secret("SECRET_DB_QA_MIGRATE_PASSWORD"),
+                    // The audit schema's own roles (ADR-0026).
+                    "verso.audit.datasource.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.audit.datasource.username=svc_audit",
+                    "verso.audit.datasource.password=" + secret("SECRET_DB_AUDIT_PASSWORD"),
+                    "verso.audit.flyway.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.audit.flyway.user=svc_audit_migrate",
+                    "verso.audit.flyway.password=" + secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"),
                     // Several cached test contexts share one container: small pools keep them far below
                     // max_connections (phase 2 spring review C4).
                     "spring.datasource.hikari.maximum-pool-size=3",
                     "spring.datasource.hikari.minimum-idle=0",
                     "verso.qa.datasource.maximum-pool-size=2",
-                    "verso.qa.datasource.minimum-idle=0")
+                    "verso.qa.datasource.minimum-idle=0",
+                    "verso.audit.datasource.maximum-pool-size=2",
+                    "verso.audit.datasource.minimum-idle=0")
                     .applyTo(context);
         }
     }

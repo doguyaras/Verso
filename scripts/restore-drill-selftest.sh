@@ -92,9 +92,9 @@ else wrong "manifest does not hold the $ROWS probe rows"; fi
 
 # Every table of the manifest except the Flyway histories must be readable by its module's application role; the
 # number grows with each migration (phase 4 added four tables; db review D1), so it is read from the manifest, not
-# hard-coded. One history per module schema (document, qa; ADR-0023).
-readable_expected="$(in_backups "grep -cE '^(document|qa)\.' /backups/verso-selftest-good.manifest | tr -d ' '")"
-readable_expected=$((readable_expected - 2))
+# hard-coded. One history per module schema (document, qa, audit; ADR-0023, ADR-0026).
+readable_expected="$(in_backups "grep -cE '^(document|qa|audit)\.' /backups/verso-selftest-good.manifest | tr -d ' '")"
+readable_expected=$((readable_expected - 3))
 expect pass "drill restores rows, privileges and grants" verso-selftest-good.dump.gpg "app_readable_tables=$readable_expected"
 expect pass "drill runs Flyway validate" verso-selftest-good.dump.gpg "Successfully validated"
 

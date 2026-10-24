@@ -37,6 +37,10 @@ Ingestion (parse, chunk, embedding) ise uzun süren bir iştir ve kullanıcı is
 - **Etkilenen dosyalar:** `document-core` worker paketi (faz 4).
 - **Geri alma yolu:** İlk dış tüketici geldiğinde outbox tablosu migration ile eklenir, worker'lar ise değişmez.
 
+## Güncelleme (ADR-0026)
+
+İlk modüller arası olay denetim kaydıyla geldi (süreç içi Spring uygulama olayı, `audit-api`). Modulith event publication registry **yine eklenmedi**: denetim satırı başka bir rol ve havuzla yazıldığı için registry atomiklik vermezdi. Gerekçe ve yeniden değerlendirme koşulu ADR-0026'dadır.
+
 ## Yeniden değerlendirme koşulu
 
 Aşağıdakilerden biri gerçekleşince karar yeniden açılır:

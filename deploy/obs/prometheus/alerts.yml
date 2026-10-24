@@ -93,3 +93,14 @@ groups:
         annotations:
           summary: Answers are not stored in the conversation history.
           runbook: docs/runbooks/history-not-stored.md
+      # Audit rows are lost (ADR-0026): the audit pool cannot write (wrong svc_audit password, missing "audit" schema,
+      # database). The audited requests still succeed, so users notice nothing and the gap in the trail is permanent:
+      # page, not ticket. Every reason counts (failed, circuit_open, invalid).
+      - alert: AuditEventNotStored
+        expr: sum(increase(verso_audit_events_not_stored_total{job="verso"}[10m])) > 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: Audit events are not being stored.
+          runbook: docs/runbooks/audit-write-failed.md

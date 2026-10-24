@@ -84,9 +84,10 @@ class ComposeConfigTest {
     @Test
     void migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService() {
         // One application role per module schema (ADR-0023); never a migration role.
-        assertThat(secrets("verso-app")).containsExactly("SECRET_DB_DOCUMENT_PASSWORD", "SECRET_DB_QA_PASSWORD");
+        assertThat(secrets("verso-app")).containsExactly("SECRET_DB_DOCUMENT_PASSWORD", "SECRET_DB_QA_PASSWORD", "SECRET_DB_AUDIT_PASSWORD");
         assertThat(environment("verso-app")).containsEntry("SPRING_FLYWAY_ENABLED", "false");
-        assertThat(secrets("migrate")).containsExactly("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_QA_MIGRATE_PASSWORD");
+        assertThat(secrets("migrate")).containsExactly("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_QA_MIGRATE_PASSWORD",
+                "SECRET_DB_AUDIT_MIGRATE_PASSWORD");
         assertThat(service("migrate")).containsEntry("restart", "no");
         assertThat(secrets("keycloak")).as("the IdP gets its own secrets only").containsExactlyInAnyOrder(
                 "SECRET_DB_KEYCLOAK_PASSWORD", "SECRET_KEYCLOAK_ADMIN_PASSWORD", "SECRET_KEYCLOAK_CI_CLIENT_SECRET",
@@ -305,7 +306,7 @@ class ComposeConfigTest {
         Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
         List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
                 .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
-        assertThat(alerts).hasSize(7);
+        assertThat(alerts).hasSize(8);
         assertThat(ROOT.resolve("deploy/obs/prometheus/alerts.test.yml")).as("promtool unit tests").exists();
         for (Map<String, Object> alert : alerts) {
             String name = String.valueOf(alert.get("alert"));

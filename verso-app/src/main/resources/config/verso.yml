@@ -213,6 +213,41 @@ verso:
       unanswered-min-users: 3
       unanswered-limit: 20
       max-range-days: 366
+  # Audit log (ADR-0026): the module's own schema "audit", its own pool as svc_audit (INSERT and SELECT only) and its own
+  # Flyway as svc_audit_migrate (owner, DDL), like qa (ADR-0023). Passwords from /run/secrets (SECRET_DB_AUDIT_PASSWORD,
+  # SECRET_DB_AUDIT_MIGRATE_PASSWORD), no fallback. The migration runs whenever spring.flyway.enabled is on (compose: the
+  # migrate container only).
+  audit:
+    datasource:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      username: svc_audit
+      password: ${SECRET_DB_AUDIT_PASSWORD}
+      # One short insert per audited operation and the admin reads; connection budget in ADR-0026.
+      maximum-pool-size: 4
+      minimum-idle: 1
+      # Short: the row is written inside the request after the operation committed; the audit log never delays it longer.
+      connection-timeout: 1s
+    flyway:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      user: svc_audit_migrate
+      password: ${SECRET_DB_AUDIT_MIGRATE_PASSWORD}
+      locations: classpath:db/migration/audit
+      schema: audit
+    # retention-days is the installation's storage limit for audit rows (default 365 days; VERSO_AUDIT_RETENTION_DAYS,
+    # 30..3650); the job removes older rows every purge-interval through the audit.purge_expired function.
+    retention-days: ${VERSO_AUDIT_RETENTION_DAYS:365}
+    purge-enabled: true
+    purge-interval: PT6H
+    purge-initial-delay: PT10M
+    purge-batch-size: 1000
+    # One CSV export carries at most this many rows (the response header says when it was cut); any query or export
+    # window is at most max-range-days days.
+    export-max-rows: 100000
+    export-batch-size: 1000
+    max-range-days: 366
+    time-zone: Europe/Istanbul
+    # After a failed write the audit database is not tried again for this long (an outage costs one wait, not one each).
+    breaker-open: 10s
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
     max-file-size: 20MB

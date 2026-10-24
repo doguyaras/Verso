@@ -30,6 +30,11 @@
       <groupId>com.verso</groupId>
       <artifactId>document-api</artifactId>
     </dependency>
+    <!-- AuditEvent: what the module publishes for the audit log (ADR-0026); the only way into the audit module. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>audit-api</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.verso</groupId>
       <artifactId>platform-core</artifactId>

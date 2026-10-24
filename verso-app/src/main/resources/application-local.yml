@@ -43,6 +43,14 @@ verso:
     flyway:
       url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
       user: svc_qa_migrate
+  # The audit schema's own roles (ADR-0026), on the same local database; passwords from secrets/ like the others.
+  audit:
+    datasource:
+      url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
+      username: svc_audit
+    flyway:
+      url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
+      user: svc_audit_migrate
   security:
     jwt:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).

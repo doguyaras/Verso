@@ -16,6 +16,8 @@
     <module>platform/platform-security</module>
     <module>services/document/document-api</module>
     <module>services/document/document-core</module>
+    <module>services/audit/audit-api</module>
+    <module>services/audit/audit-core</module>
     <module>services/qa/qa-api</module>
     <module>services/qa/qa-core</module>
     <module>verso-app</module>
@@ -115,6 +117,16 @@
       <dependency>
         <groupId>com.verso</groupId>
         <artifactId>document-core</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>audit-api</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>audit-core</artifactId>
         <version>${revision}</version>
       </dependency>
       <dependency>

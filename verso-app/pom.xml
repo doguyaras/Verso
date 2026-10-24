@@ -37,6 +37,11 @@
       <groupId>com.verso</groupId>
       <artifactId>qa-core</artifactId>
     </dependency>
+    <!-- Audit log (ADR-0026): its own schema "audit", pool and Flyway. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>audit-core</artifactId>
+    </dependency>
     <!-- /actuator/prometheus for the observability stack (ADR-0014; reference 8.7). Version from the Boot BOM. -->
     <dependency>
       <groupId>io.micrometer</groupId>

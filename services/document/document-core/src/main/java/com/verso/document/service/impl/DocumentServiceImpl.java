@@ -1,6 +1,9 @@
 package com.verso.document.service.impl;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import com.verso.audit.api.dto.AuditEvent;
+import com.verso.audit.api.enums.AuditAction;
+import com.verso.audit.api.enums.AuditTargetType;
 import com.verso.document.api.dto.DocumentResponse;
 import com.verso.document.api.dto.PageResponse;
 import com.verso.document.api.enums.DocumentFormat;
@@ -23,6 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,13 +49,15 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentProperties properties;
     private final TransactionTemplate transaction;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     public DocumentServiceImpl(DocumentRepository repository, DocumentProperties properties,
-                               TransactionTemplate transaction, Clock clock) {
+                               TransactionTemplate transaction, Clock clock, ApplicationEventPublisher events) {
         this.repository = repository;
         this.properties = properties;
         this.transaction = transaction;
         this.clock = clock;
+        this.events = events;
     }
 
     @Override
@@ -90,6 +96,8 @@ public class DocumentServiceImpl implements DocumentService {
         }
         log.info("Document upload accepted: documentId={} format={} sizeBytes={} operation=upload outcome=accepted",
                 created.id(), created.format(), created.sizeBytes());
+        // After the commit, never for a replay; the audit module never makes the upload fail (ADR-0026).
+        events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_UPLOADED, AuditTargetType.DOCUMENT, created.id()));
         return DocumentMapper.toResponse(created);
     }
 
@@ -114,6 +122,7 @@ public class DocumentServiceImpl implements DocumentService {
         });
         if (!Boolean.TRUE.equals(deleted)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND);
         log.info("Document deleted: documentId={} operation=delete outcome=deleted", documentId);
+        events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
     }
 
     private DocumentResponse replayed(DocumentRow row) {

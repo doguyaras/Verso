@@ -39,7 +39,7 @@ series="$(prom 'count({__name__=~"verso_.+"})' | count 'console.log((j.data.resu
 [ "${series:-0}" -ge 8 ] || die "too few Verso series in Prometheus ($series)"
 rules="$(docker compose exec -T prometheus wget -q -O - http://127.0.0.1:9090/api/v1/rules \
   | count 'console.log(j.data.groups.flatMap(g=>g.rules).filter(r=>r.type==="alerting").length)')"
-[ "$rules" = 7 ] || die "expected 7 alert rules, Prometheus has $rules"
+[ "$rules" = 8 ] || die "expected 8 alert rules, Prometheus has $rules"
 ams="$(docker compose exec -T prometheus wget -q -O - http://127.0.0.1:9090/api/v1/alertmanagers \
   | count 'console.log(j.data.activeAlertmanagers.length)')"
 [ "$ams" -ge 1 ] || die "Prometheus has no active Alertmanager"

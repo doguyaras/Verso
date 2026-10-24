@@ -192,7 +192,7 @@
 ## Yeniden değerlendirme koşulu
 
 - Geçmişin prompt'a girmesi (takip soruları): ayrı `verso-llm-review` ve bu ADR'ye ek.
-- İlk modüller arası olay (audit, hesap silme): Modulith event registry ADR'si.
+- İlk modüller arası olay (audit, hesap silme): Modulith event registry ADR'si. Audit ile geldi: [ADR-0026](0026-denetim-kaydi.md) olayı süreç içi yayınlar, registry'yi eklemez.
 - `qa.turn` büyüklüğü sunucu RAM'ine yaklaşırsa: zaman bazlı partition ve `DROP PARTITION` ile saklama (referans 10.6).
 - Ortak bilgi alanları ya da kişisel yüklemelerin admin panosunda ad olarak görünmesine itiraz: dosya adı yerine sayı ya da maskeleme.
 - Bir müşteri serbest metinli geri bildirim isterse: ayrı saklama süresi ve inceleme akışı.

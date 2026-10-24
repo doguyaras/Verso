@@ -38,6 +38,9 @@ class MigrateModeTest {
         args.add("--verso.qa.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
         args.add("--verso.qa.flyway.user=svc_qa_migrate");
         args.add("--verso.qa.flyway.password=" + VersoPostgres.secret("SECRET_DB_QA_MIGRATE_PASSWORD"));
+        args.add("--verso.audit.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
+        args.add("--verso.audit.flyway.user=svc_audit_migrate");
+        args.add("--verso.audit.flyway.password=" + VersoPostgres.secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"));
         // Deploy profile values compose would give; the application password is deliberately absent.
         args.add("--DB_HOST=unused");
         args.add("--DB_PORT=1");
@@ -52,12 +55,18 @@ class MigrateModeTest {
             // ADR-0023: the qa schema is migrated here, but no qa pool is opened (no svc_qa password in this container).
             assertThat(context.getBeanNamesForType(com.verso.qa.config.QaSchemaMigration.class)).hasSize(1);
             assertThat(context.getBeanNamesForType(com.verso.qa.repository.QaDatabase.class)).isEmpty();
+            // ADR-0026: the same for the audit schema (no svc_audit password in this container either).
+            assertThat(context.getBeanNamesForType(com.verso.audit.config.AuditSchemaMigration.class)).hasSize(1);
+            assertThat(context.getBeanNamesForType(com.verso.audit.repository.AuditDatabase.class)).isEmpty();
         }
         try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
                 VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
              Statement st = admin.createStatement();
              ResultSet rs = st.executeQuery("select schemaname, tableowner from pg_tables where schemaname in "
-                     + "('document', 'qa') and tablename = 'flyway_schema_history' order by schemaname")) {
+                     + "('document', 'qa', 'audit') and tablename = 'flyway_schema_history' order by schemaname")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("audit");
+            assertThat(rs.getString(2)).isEqualTo("svc_audit_migrate");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString(2)).isEqualTo("svc_document_migrate");
             assertThat(rs.next()).isTrue();

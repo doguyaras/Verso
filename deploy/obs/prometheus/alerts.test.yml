@@ -125,6 +125,28 @@ tests:
           - exp_labels: {severity: ticket}
             exp_annotations: {summary: "Answers are not stored in the conversation history.", runbook: docs/runbooks/history-not-stored.md}
 
+  # Audit rows are lost (ADR-0026): one failed write every 2 minutes pages.
+  - interval: 15s
+    input_series:
+      - series: 'verso_audit_events_not_stored_total{job="verso", reason="failed"}'
+        values: '0+0.125x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: AuditEventNotStored
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations: {summary: "Audit events are not being stored.", runbook: docs/runbooks/audit-write-failed.md}
+
+  # A healthy audit log (counter registered at 0, nothing lost): no alert.
+  - interval: 15s
+    input_series:
+      - series: 'verso_audit_events_not_stored_total{job="verso", reason="failed"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: AuditEventNotStored
+        exp_alerts: []
+
   # Full conversations are the client's case: no alert.
   - interval: 15s
     input_series:

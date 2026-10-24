@@ -12,7 +12,7 @@
 set -euo pipefail
 SECRETS="${VERSO_SECRETS_DIR:-/run/secrets}"
 # Must match 10-roles.sh and 20-database.sh (ModuleConsistencyTest).
-MODULES=(document qa)
+MODULES=(document qa audit)
 # Test hook only (DatabaseRolesTest proves the "missing module" path with a throwaway module name).
 if [ -n "${VERSO_INIT_MODULES:-}" ]; then read -ra MODULES <<< "$VERSO_INIT_MODULES"; fi
 

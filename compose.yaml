@@ -59,6 +59,8 @@ x-db-env: &db-env
   VERSO_HISTORY_RETENTION_DAYS: ${VERSO_HISTORY_RETENTION_DAYS:-90}
   VERSO_SHOW_UNANSWERED_QUESTIONS: ${VERSO_SHOW_UNANSWERED_QUESTIONS:-false}
   VERSO_SHOW_DOCUMENT_NAMES: ${VERSO_SHOW_DOCUMENT_NAMES:-false}
+  # How long audit rows are kept, in days (ADR-0026; KVKK storage limitation, the data controller decides, 30-3650).
+  VERSO_AUDIT_RETENTION_DAYS: ${VERSO_AUDIT_RETENTION_DAYS:-365}
 
 x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
 
@@ -82,6 +84,8 @@ services:
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_QA_MIGRATE_PASSWORD
       - SECRET_DB_QA_PASSWORD
+      - SECRET_DB_AUDIT_MIGRATE_PASSWORD
+      - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
       - SECRET_DB_KEYCLOAK_PASSWORD
     volumes:
@@ -99,7 +103,7 @@ services:
       start_period: 30s
 
   # One-shot migration with the application image (ADR-0009, review S4): only this container holds the migration
-  # roles' passwords. It runs Flyway for every module schema (document, qa; ADR-0023) without a web server and
+  # roles' passwords. It runs Flyway for every module schema (document, qa, audit; ADR-0023, ADR-0026) without a web server and
   # without the application DataSource, then exits.
   migrate:
     <<: *java-service-defaults
@@ -121,6 +125,7 @@ services:
     secrets:
       - SECRET_DB_DOCUMENT_MIGRATE_PASSWORD
       - SECRET_DB_QA_MIGRATE_PASSWORD
+      - SECRET_DB_AUDIT_MIGRATE_PASSWORD
     networks: [backend]
     depends_on:
       postgres:
@@ -138,6 +143,7 @@ services:
     secrets:
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_QA_PASSWORD
+      - SECRET_DB_AUDIT_PASSWORD
     # Not published: the edge proxy is the way in (ADR-0013).
     depends_on:
       postgres:
@@ -498,6 +504,8 @@ services:
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_QA_MIGRATE_PASSWORD
       - SECRET_DB_QA_PASSWORD
+      - SECRET_DB_AUDIT_MIGRATE_PASSWORD
+      - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
     volumes:
       - ./deploy/postgres/initdb/05-settings.sh:/docker-entrypoint-initdb.d/05-settings.sh:ro
@@ -527,6 +535,7 @@ services:
       - SECRET_POSTGRES_SUPERUSER_PASSWORD
       - SECRET_DB_DOCUMENT_PASSWORD
       - SECRET_DB_QA_PASSWORD
+      - SECRET_DB_AUDIT_PASSWORD
       - SECRET_BACKUP_ENCRYPTION_KEY
     volumes:
       - ./deploy/backup:/opt/verso:ro
@@ -579,6 +588,25 @@ services:
       restore-db:
         condition: service_healthy
 
+  # The same validate for the schema "audit" (ADR-0026): one step per module schema, each as its own migration role.
+  restore-flyway-audit:
+    profiles: ["drill"]
+    <<: *hardening
+    image: flyway/flyway:12.4.0@sha256:5be18367a9b3979a9f37234c371b80da457a448fb9577bd94d4bf24d923fafac
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_AUDIT_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_audit_migrate -schemas=audit -defaultSchema=audit -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
+    environment:
+      REDGATE_DISABLE_TELEMETRY: "true"
+    secrets:
+      - SECRET_DB_AUDIT_MIGRATE_PASSWORD
+    volumes:
+      - ./services/audit/audit-core/src/main/resources/db/migration/audit:/flyway/migrations:ro
+    tmpfs:
+      - /tmp:size=64m
+    networks: [drill]
+    depends_on:
+      restore-db:
+        condition: service_healthy
+
 secrets:
   SECRET_POSTGRES_SUPERUSER_PASSWORD:
     file: ./secrets/SECRET_POSTGRES_SUPERUSER_PASSWORD
@@ -590,6 +618,10 @@ secrets:
     file: ./secrets/SECRET_DB_QA_MIGRATE_PASSWORD
   SECRET_DB_QA_PASSWORD:
     file: ./secrets/SECRET_DB_QA_PASSWORD
+  SECRET_DB_AUDIT_MIGRATE_PASSWORD:
+    file: ./secrets/SECRET_DB_AUDIT_MIGRATE_PASSWORD
+  SECRET_DB_AUDIT_PASSWORD:
+    file: ./secrets/SECRET_DB_AUDIT_PASSWORD
   SECRET_DB_BACKUP_PASSWORD:
     file: ./secrets/SECRET_DB_BACKUP_PASSWORD
   SECRET_BACKUP_ENCRYPTION_KEY:

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.verso</groupId>
+    <artifactId>verso</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>audit-core</artifactId>
+  <description>Audit log (ADR-0026): append-only events in the module's own schema "audit", recorded from application
+    events, read and exported by verso-admin, expired by a retention job.</description>
+
+  <properties>
+    <!-- 0 tests = failure (reference Ek B lesson 2). -->
+    <failIfNoTests>true</failIfNoTests>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>audit-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-core</artifactId>
+    </dependency>
+    <!-- The caller's token subject and Verso roles (ADR-0010, ADR-0019). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-security</artifactId>
+    </dependency>
+    <!-- The request's trace id, stored with the row (TraceIds). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-observability</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    <!-- Own pool, JdbcClient and Flyway on the schema "audit" (ADR-0026), like qa (ADR-0023). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <!-- The audit pool's health indicator for the readiness group. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-health</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Per-module architecture rules (ADR-0007 #7). -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

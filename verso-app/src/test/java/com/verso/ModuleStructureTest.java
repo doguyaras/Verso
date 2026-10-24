@@ -22,8 +22,9 @@ import org.springframework.modulith.core.Violations;
  */
 class ModuleStructureTest {
 
-    /** Application modules (ADR-0001): document and qa; qa uses only document's named interface "api". */
-    private static final Set<String> EXPECTED_MODULES = Set.of("document", "qa");
+    /** Application modules (ADR-0001): document, qa and audit (ADR-0026); qa uses document's named interface "api", and
+     * document and qa publish to audit's "api" (audit depends on neither). */
+    private static final Set<String> EXPECTED_MODULES = Set.of("document", "qa", "audit");
 
     static ApplicationModules productionModules() {
         return ApplicationModules.of(VersoApp.class, resideInAPackage("com.verso.platform.."));

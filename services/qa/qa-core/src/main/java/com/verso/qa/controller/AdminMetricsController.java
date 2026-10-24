@@ -2,6 +2,7 @@ package com.verso.qa.controller;
 
 import com.verso.platform.security.authority.VersoRoles;
 import com.verso.qa.api.dto.UsageMetricsResponse;
+import com.verso.qa.service.QaAudit;
 import com.verso.qa.service.UsageMetricsService;
 import java.time.LocalDate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -24,9 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminMetricsController {
 
     private final UsageMetricsService metrics;
+    private final QaAudit audit;
 
-    public AdminMetricsController(UsageMetricsService metrics) {
+    public AdminMetricsController(UsageMetricsService metrics, QaAudit audit) {
         this.metrics = metrics;
+        this.audit = audit;
     }
 
     /** {@code from} and {@code to} are inclusive calendar days (ISO, e.g. 2026-10-01) in the metrics time zone. */
@@ -35,6 +38,8 @@ public class AdminMetricsController {
     public ResponseEntity<UsageMetricsResponse> metrics(
             @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate()).body(metrics.metrics(from, to));
+        UsageMetricsResponse response = metrics.metrics(from, to);
+        audit.metricsViewed();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate()).body(response);
     }
 }

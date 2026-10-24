@@ -34,6 +34,7 @@ Kurumlar yapay zekâ ile belgelerine soru sormak istiyor, ama belgeleri, sorular
 - Belgelerde cevap yoksa "bulunamadı" der; uydurmaz.
 - Her hesap yalnız kendi belgelerini görür; sahiplik sorgunun içinde uygulanır.
 - Sorular ve cevaplar kullanıcının geçmişinde kaynak referanslarıyla durur; kullanıcı cevabı 👍/👎 ile puanlar, geçmişini silebilir. Geçmiş kurumun belirlediği süre kadar (varsayılan 90 gün) tutulur. Yönetici kullanım ve kalite sayılarını tek uçtan alır (ADR-0023).
+- Değiştirilemez denetim kaydı: belge yükleme/silme, soru, geri bildirim, konuşma silme, yönetici metrik görüntüleme, denetim dışa aktarımı ve yönetici uçlarındaki 403'ler `audit` şemasına yalnız kimlik (id) ve sabit sözcüklerle yazılır; soru, cevap, dosya adı, IP ve serbest metin hiç girmez. Uygulama rolü yalnız INSERT ve SELECT yapabilir; varsayılan saklama 365 gün. Yönetici `GET /v1/admin/audit` ile okur, `GET /v1/admin/audit/export` ile CSV alır (ADR-0026).
 
 ## Hızlı başlangıç
 
@@ -176,7 +177,7 @@ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d
 
 Windows'ta (Git Bash) yerel `curl.exe`, argümandaki Türkçe harfleri bozar; gövdeyi UTF-8 bir dosyadan verin: `--data-binary @soru.json` (`scripts/demo.sh` böyle yapar).
 
-Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md), [`docs/api-conversations-integration-v1.md`](docs/api-conversations-integration-v1.md) (geçmiş, geri bildirim, yönetici metrikleri).
+Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md), [`docs/api-conversations-integration-v1.md`](docs/api-conversations-integration-v1.md) (geçmiş, geri bildirim, yönetici metrikleri), [`docs/api-audit-integration-v1.md`](docs/api-audit-integration-v1.md) (denetim kaydı: sorgu ve CSV dışa aktarım).
 
 ## Modlar ve KVKK md. 9
 
@@ -234,7 +235,7 @@ Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023) | document 10000–10999, qa 11000–11999 | `VersoApp` |
+| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026) | document 10000–10999, qa 11000–11999, audit 12000–12999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -244,6 +245,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 |---|---|---|
 | document | 10000–10999 | belge yükleme, işleme, retrieval |
 | qa | 11000–11999 | soru-cevap, model çağrısı |
+| audit | 12000–12999 | denetim kaydı sorgusu ve dışa aktarımı |
 | validation | 90000–90099 | ortak: bean validation, binding, 404/405/415, API sürümü |
 | security | 90100–90199 | ortak: kimlik ve yetki (faz 3) |
 | system | 99997–99999 | ortak: geçici olarak kullanılamıyor (503), upstream, beklenmeyen |
@@ -386,6 +388,10 @@ docker compose up -d --build --wait
 
 Yükseltmeden önce alınmış yedekte `qa` şeması yoktur; restore provası onu Flyway `validate` adımında reddeder. Yükseltmeden sonra yeni bir yedek al: `docker compose run --rm backup once`.
 
+**Denetim kaydı olan bir sürüme yükseltme (ADR-0026).** `audit` şeması ve rolleri (`svc_audit`, `svc_audit_migrate`) var olan bir volume'de yoktur; uygulama açılmaz. Konuşma geçmişi yükseltmesiyle aynı yol: `bash scripts/dev-secrets.sh` (yalnız eksik `SECRET_DB_AUDIT_*` dosyalarını üretir), `docker compose up -d --wait postgres`, `40-modules.sh` (idempotent: var olan `document` ve `qa` rollerinin parolasına dokunmaz), sonra `docker compose up -d --build --wait` (`migrate` container'ı `audit` tablosunu kurar). Yükseltmeden önce alınmış yedekte `audit` şeması yoktur; restore provası onu reddeder, yükseltmeden sonra yeni yedek al. Üretimde `secrets/` dosyalarını kendi gizli yönetiminden ver (`secrets/README.md`) ve `deploy/prod.env.example`'a `VERSO_AUDIT_RETENTION_DAYS` ekle.
+
+**Denetim kaydının saklama süresi.** Satırlar `VERSO_AUDIT_RETENTION_DAYS` gün (varsayılan 365, 30–3650) tutulur, sonra 6 saatte bir çalışan iş yalnız veritabanındaki `audit.purge_expired` fonksiyonuyla siler; fonksiyon 30 günden yeni bir sınırı reddeder, yani ele geçirilen bir uygulama yakın geçmişi silemez. Süreyi veri sorumlusu kurum belirler (KVKK md. 4/2-d, md. 12); gerekçe ADR-0026'dadır. Kayıt yazılamazsa istek yine başarılı olur, `AuditEventNotStored` alarmı çalar (`docs/runbooks/audit-write-failed.md`).
+
 **Geçmişin saklama süresi ve yönetici panosunun politikaları.** Bir konuşma, başladığı andan itibaren `VERSO_HISTORY_RETENTION_DAYS` gün (varsayılan 90) tutulur, sonra saatlik bir iş bütün turları ve başlığıyla siler; kullanıcı kendi geçmişini her zaman silebilir. Süreyi veri sorumlusu kurum belirler (KVKK md. 4: amaç için gerekli süre). Yönetici panosu, en az 3 farklı kullanıcının sorduğu "bulunamadı" sorularını yalnız `VERSO_SHOW_UNANSWERED_QUESTIONS=true` ise gösterir (varsayılan kapalı; çalışan aydınlatma metni bu amacı kapsamalıdır). En çok ve hiç atıf alan belgelerin adları da yalnız `VERSO_SHOW_DOCUMENT_NAMES=true` ise görünür (varsayılan kapalı: bugün her belge tek bir hesabındır ve adıyla günlük atıf sayısı bir çalışanın ne aradığını gösterebilir). Üçü de `.env`'de; bu not hukuki tavsiye değildir.
 
 **Kaynaklar.**
@@ -406,7 +412,7 @@ bash scripts/restore-drill.sh
 
 - **RPO:** yedek aralığı (varsayılan 24 saat, `BACKUP_INTERVAL_SECONDS`).
 - **RTO hedefi:** 1 saat.
-- **Bağlantı bütçesi:** uygulama havuzu 10 + `qa` havuzu 4 + Flyway 2 (yalnız migrate anında) + yedek 2 = 18; `max_connections` 100 (ADR-0023).
+- **Bağlantı bütçesi:** uygulama havuzu 10 + `qa` havuzu 4 + `audit` havuzu 4 + Flyway 2 (yalnız migrate anında) + yedek 2 = 22; `max_connections` 100 (ADR-0023, ADR-0026).
 - **Kapsam:** yalnız Verso veritabanı. Demo Keycloak'un `keycloak` veritabanı yedeklenmez; realm dosyadan yeniden kurulur (ADR-0010).
 - **Bilinen sınır:** yedek aynı host'taki volume'dedir. Host dışına kopyalama üretim kurulumunun işidir (ADR-0009).
 - **`docker compose down -v`** veritabanıyla birlikte `backups` volume'ünü de siler; önce yedekleri kopyala.

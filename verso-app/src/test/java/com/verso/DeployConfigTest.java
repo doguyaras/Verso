@@ -36,7 +36,10 @@ class DeployConfigTest {
                     "SECRET_DB_DOCUMENT_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
                     "SECRET_DB_QA_PASSWORD=" + VersoPostgres.secret("SECRET_DB_QA_PASSWORD"),
                     "SECRET_DB_QA_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_QA_MIGRATE_PASSWORD"),
+                    "SECRET_DB_AUDIT_PASSWORD=" + VersoPostgres.secret("SECRET_DB_AUDIT_PASSWORD"),
+                    "SECRET_DB_AUDIT_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"),
                     "verso.qa.datasource.maximum-pool-size=2",
+                    "verso.audit.datasource.maximum-pool-size=2",
                     // Compose gives every model setting too (x-db-env); the provider is read by auto-configuration conditions.
                     "VERSO_AI_MODE=local", "VERSO_CHAT_PROVIDER=ollama",
                     "spring.datasource.hikari.maximum-pool-size=2")
@@ -69,6 +72,24 @@ class DeployConfigTest {
         assertThat(jdbc.queryForObject(
                 "select tableowner from pg_tables where schemaname = 'qa' and tablename = 'flyway_schema_history'",
                 String.class)).isEqualTo("svc_qa_migrate");
+    }
+
+    /** ADR-0026: the same for the audit module, resolved from verso.yml exactly like compose resolves it. */
+    @Test
+    void deployConfig_whenFedLikeCompose_connectsTheAuditModuleAsItsOwnRole() throws java.sql.SQLException {
+        try (java.sql.Connection audit = java.sql.DriverManager.getConnection(
+                environment.getRequiredProperty("verso.audit.datasource.url"),
+                environment.getRequiredProperty("verso.audit.datasource.username"),
+                environment.getRequiredProperty("verso.audit.datasource.password"));
+             java.sql.Statement st = audit.createStatement();
+             java.sql.ResultSet rs = st.executeQuery("select current_user, current_setting('search_path')")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("svc_audit");
+            assertThat(rs.getString(2)).isEqualTo("audit, extensions");
+        }
+        assertThat(jdbc.queryForObject(
+                "select tableowner from pg_tables where schemaname = 'audit' and tablename = 'flyway_schema_history'",
+                String.class)).isEqualTo("svc_audit_migrate");
     }
 
     @Test

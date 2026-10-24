@@ -62,12 +62,12 @@ class DocumentArchitectureTest {
                 .check(classes);
     }
 
-    /** No other application module and no platform internals: only the platform contracts and the own api. */
+    /** No other application module and no platform internals: only the platform contracts, the own api and the audit api (ADR-0026). */
     @Test
     void module_whenImported_usesNoOtherApplicationModule() {
         noClasses().that().resideInAPackage(ROOT + "..")
                 .should().dependOnClassesThat(resideInAPackage("com.verso..")
-                        .and(resideOutsideOfPackages(ROOT + "..", "com.verso.platform..")))
+                        .and(resideOutsideOfPackages(ROOT + "..", "com.verso.platform..", "com.verso.audit.api..")))
                 .check(classes);
     }
 }

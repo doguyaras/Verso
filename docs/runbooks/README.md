@@ -18,6 +18,7 @@ docker compose --profile obs up -d --wait
 | `IngestionBacklog` | ticket | [ingestion-backlog.md](ingestion-backlog.md) |
 | `QaSlow` | ticket | [qa-slow.md](qa-slow.md) |
 | `HistoryNotStored` | ticket | [history-not-stored.md](history-not-stored.md) |
+| `AuditEventNotStored` | page | [audit-write-failed.md](audit-write-failed.md) |
 
 - **page:** kullanıcıyı etkiler, hemen bakılır.
 - **ticket:** bir sonraki iş günü bakılır.

@@ -4,6 +4,7 @@ import com.verso.platform.security.web.AccountId;
 import com.verso.platform.security.web.CurrentAccount;
 import com.verso.qa.api.dto.AnswerResponse;
 import com.verso.qa.api.dto.QuestionRequest;
+import com.verso.qa.service.QaAudit;
 import com.verso.qa.service.QuestionService;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -21,14 +22,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuestionController {
 
     private final QuestionService service;
+    private final QaAudit audit;
 
-    public QuestionController(QuestionService service) {
+    public QuestionController(QuestionService service, QaAudit audit) {
         this.service = service;
+        this.audit = audit;
     }
 
     @PostMapping
     public ResponseEntity<AnswerResponse> ask(@CurrentAccount AccountId account, @Valid @RequestBody QuestionRequest request) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
-                .body(service.ask(account, request.question(), request.conversationId()));
+        AnswerResponse answer = service.ask(account, request.question(), request.conversationId());
+        // After the answer exists (and its turn is stored); ids and the outcome type only (ADR-0026).
+        audit.questionAsked(answer);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate()).body(answer);
     }
 }

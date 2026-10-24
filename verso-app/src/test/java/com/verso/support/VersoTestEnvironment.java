@@ -48,6 +48,8 @@ public @interface VersoTestEnvironment {
                     "verso.document.ingestion.enabled=false",
                     // Tests run the history retention themselves (HistoryRetentionTest), like the ingestion poll.
                     "verso.qa.history.purge-enabled=false",
+                    // ... and the audit retention (AuditRetentionTest).
+                    "verso.audit.purge-enabled=false",
                     // Short circuit-breaker pauses, so tests can wait them out.
                     "verso.document.ingestion.model-unavailable-pause=1s",
                     "verso.document.ingestion.model-misconfigured-pause=1s",
