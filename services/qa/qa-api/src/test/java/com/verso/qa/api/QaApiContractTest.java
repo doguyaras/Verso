@@ -38,7 +38,11 @@ class QaApiContractTest {
                 com.verso.qa.api.dto.ConversationSummary.class, com.verso.qa.api.dto.ConversationResponse.class,
                 com.verso.qa.api.dto.TurnResponse.class, com.verso.qa.api.dto.HistoryCitation.class,
                 com.verso.qa.api.dto.TurnFeedback.class, com.verso.qa.api.dto.FeedbackRequest.class,
-                com.verso.qa.api.dto.RenameConversationRequest.class, com.verso.qa.api.dto.UsageMetricsResponse.class)) {
+                com.verso.qa.api.dto.RenameConversationRequest.class, com.verso.qa.api.dto.UsageMetricsResponse.class,
+                // ADR-0035: the event payloads of the stream
+                com.verso.qa.api.dto.StreamStageEvent.class, com.verso.qa.api.dto.StreamDeltaEvent.class,
+                com.verso.qa.api.dto.StreamCitationsEvent.class, com.verso.qa.api.dto.StreamDoneEvent.class,
+                com.verso.qa.api.dto.StreamErrorEvent.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
     }

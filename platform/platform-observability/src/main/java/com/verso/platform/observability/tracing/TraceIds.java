@@ -18,7 +18,8 @@ public final class TraceIds {
     /** Request attribute written by {@link TraceIdFilter}; readers use {@link #current(HttpServletRequest)}. */
     public static final String REQUEST_ATTRIBUTE = "x.traceId";
 
-    private static final String MDC_KEY = "traceId";
+    /** Where the id of a request travels to background threads (a streamed answer, ADR-0035). */
+    public static final String MDC_KEY = "traceId";
     private static final Pattern W3C_TRACE_ID = Pattern.compile("[0-9a-f]{32}");
 
     private TraceIds() {}

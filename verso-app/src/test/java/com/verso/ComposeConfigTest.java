@@ -384,6 +384,14 @@ class ComposeConfigTest {
         assertThat(read.find()).isTrue();
         assertThat(Integer.parseInt(read.group(1))).as("above the slowest question (ADR-0008)").isGreaterThanOrEqualTo(105);
         assertThat(read("deploy/edge/mode-local.conf")).contains("default local;");
+        // ADR-0035: only the answer stream is unbuffered; it strips forwarding headers and waits like the API location.
+        String stream = nginx.substring(nginx.indexOf("location = /v1/questions/stream {"),
+                nginx.indexOf("location @rejected {"));
+        assertThat(stream).contains("proxy_buffering off;", "proxy_request_buffering off;", "proxy_read_timeout 150s;",
+                "proxy_set_header Forwarded \"\";", "proxy_set_header X-Forwarded-Host \"\";",
+                "proxy_set_header X-Real-IP \"\";", "proxy_intercept_errors off;", "gzip off;");
+        assertThat(nginx.substring(nginx.indexOf("location / {"), nginx.indexOf("location = /v1/questions/stream {")))
+                .doesNotContain("proxy_buffering off;");
         // ADR-0015: the panel, read-only, with a CSP that allows no inline script and no other origin but the IdP.
         assertThat(String.valueOf(service("edge").get("volumes"))).contains("./panel:/usr/share/verso-panel:ro");
         assertThat(nginx).contains("location /panel/ {", "alias /usr/share/verso-panel/;",

@@ -34,7 +34,8 @@ class DocumentApiContractTest {
     @Test
     void types_whenExposed_areRecordsOrEnums() {
         for (Class<?> type : List.of(DocumentResponse.class, PageResponse.class, PageResponse.PageInfo.class,
-                com.verso.document.api.dto.DocumentSummary.class, com.verso.document.api.dto.DocumentInventory.class)) {
+                com.verso.document.api.dto.DocumentSummary.class, com.verso.document.api.dto.DocumentInventory.class,
+                com.verso.document.api.dto.DocumentPageResponse.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
         assertThat(DocumentCatalog.class.isInterface()).isTrue();

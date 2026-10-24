@@ -18,6 +18,8 @@ import { ratingControls } from '../rating.js';
 // The store's thread (which conversation is open) is "current" here: "thread" is the answer log element below.
 import { conversation, prefs, startNewConversation, thread as current } from '../store.js';
 import { pulse, reducedMotion, wordSpans } from '../motion.js';
+import { closePageDrawer, openPageDrawer } from '../drawer.js';
+import { provisionalText, stageText } from '../stream.js';
 import { fileIcon, toast } from '../ui.js';
 import { openHistory } from './history.js';
 
@@ -132,7 +134,7 @@ function noExcerpt(citation, restored) {
 }
 
 /** Source cards grouped by document; each citation row shows its page and its excerpt. */
-function sourceCards(citations, evidence, link, restored) {
+function sourceCards(citations, evidence, link, restored, openPage) {
   const sources = el('div', { class: 'sources', role: 'list', 'aria-label': 'Kaynaklar' }, groupSources(citations).map((group) => {
     const name = plainName(group.fileName);
     const deleted = group.items.some((c) => c.deleted || c.inaccessible);
@@ -145,7 +147,11 @@ function sourceCards(citations, evidence, link, restored) {
       el('button', { class: 'cite-ref', type: 'button', 'aria-label': `Cevapta göster: kaynak ${c.number}, ${whereOf(c)}`,
         onclick: () => link.reveal(c.number), onfocus: () => link.hover(c.number, true), onblur: () => link.hover(c.number, false) },
       el('span', { class: 'n' }, String(c.number)), whereOf(c)),
-      c.excerpt ? quote(c, evidence.get(c.number)) : el('span', { class: 'quote none' }, noExcerpt(c, restored)))));
+      c.excerpt ? quote(c, evidence.get(c.number)) : el('span', { class: 'quote none' }, noExcerpt(c, restored)),
+      // The stored page with the excerpt marked (ADR-0035); not for a deleted or no longer readable document.
+      c.deleted || c.inaccessible || !openPage ? null : el('button', { class: 'button ghost sm page-open', type: 'button',
+        'aria-haspopup': 'dialog', 'aria-label': `${c.unit === 'SECTION' ? 'Bölümü' : 'Sayfayı'} aç: ${name}, ${whereOf(c)}`,
+        onclick: (event) => openPage(c, event.currentTarget) }, icon('book', 'sm'), c.unit === 'SECTION' ? 'Bölümü aç' : 'Sayfayı aç'))));
     card.append(el('button', { class: 'more', type: 'button', hidden: true, 'aria-expanded': 'false', 'aria-controls': card.id,
       onclick: () => setOpen(card, !card.classList.contains('open')) }, el('span', {}, 'Tamamını göster'), icon('chevronDown', 'sm')));
     return card;
@@ -279,8 +285,9 @@ function answerText(result, evidence, link, counter) {
 function answerView(entry, actions) {
   if (entry.cancelled) {
     return el('div', { class: 'answer' }, el('div', { class: 'notice neutral' }, icon('stop', 'sm'),
-      el('div', { class: 'grow' }, el('strong', {}, 'Bekleme durduruldu.'),
-        el('div', {}, 'Cevap bu ekrana gelmeyecek. Aynı soruyu yeniden sorabilirsiniz.'),
+      el('div', { class: 'grow' }, el('strong', {}, entry.streamed ? 'Cevap durduruldu.' : 'Bekleme durduruldu.'),
+        el('div', {}, entry.streamed ? 'Sunucu cevabı yazmayı bıraktı; bu soru geçmişe kaydedilmedi. Aynı soruyu yeniden sorabilirsiniz.'
+          : 'Cevap bu ekrana gelmeyecek. Aynı soruyu yeniden sorabilirsiniz.'),
         el('div', { class: 'actions' },
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.ask(entry.question) }, icon('refresh', 'sm'), 'Tekrar sor')))));
   }
@@ -298,7 +305,7 @@ function answerView(entry, actions) {
   const link = linker(result.answer, segments);
   const text = notFound ? null : answerText(result, evidence, link, counter);
   if (text) segments.push(...text.segments);
-  const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored) : null;
+  const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored, actions.page) : null;
   const chips = restored ? [] : followUps(result);
   // EU AI Act Art. 50 (ADR-0027): a generated answer is machine-readable as such. The fixed "not found" text is not generated.
   const view = el('div', { class: `answer${sources ? ' has-sources' : ''}`, 'data-ai-generated': notFound ? null : 'true' },
@@ -406,6 +413,8 @@ export function renderAsk(ctx) {
     navigate: ctx.navigate,
     withAuth: ctx.withAuth,
     edit: prefill,
+    // The page viewer of a source (ADR-0035); the focus comes back to the button that opened it.
+    page: (citation, opener) => openPageDrawer(citation, { withAuth: ctx.withAuth, opener }),
     sources: (link, result) => {
       // Answered here: the answer already names its documents; asking the model would only guess again.
       link.all();
@@ -586,7 +595,7 @@ export function renderAsk(ctx) {
   function setBusy(controller) {
     busy = controller;
     send.replaceChildren(icon(controller ? 'stop' : 'send'));
-    send.setAttribute('aria-label', controller ? 'Beklemeyi durdur' : 'Gönder');
+    send.setAttribute('aria-label', controller ? 'Durdur' : 'Gönder');
     send.classList.toggle('secondary', Boolean(controller));
   }
 
@@ -604,9 +613,38 @@ export function renderAsk(ctx) {
     const started = Date.now();
     const elapsed = el('span', { class: 'tabular' });
     const expect = el('div', { class: 'expect' });
+    // ADR-0035: the stage the server reports, and the model text as it arrives. The draft is plain text without its
+    // [n] markers (they are validated only at the end) and sits outside every live region: only stages and the end
+    // are announced. It is replaced by the validated answer; no word-by-word effect, whatever the motion setting.
+    const stageLine = el('span', { class: 'thinking' }, 'Cevap hazırlanıyor');
+    const skeleton = el('div', { class: 'skeletons' }, el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }),
+      el('div', { class: 'skeleton line' }));
+    const draft = el('div', { class: 'answer-text draft', hidden: true });
+    let written = '';
+    let streamed = false;
+    const live = {
+      stage: (event) => {
+        streamed = true;
+        const now = stageText(event);
+        stageLine.textContent = now;
+        announcer.textContent = `${now}.`;
+      },
+      delta: (text) => {
+        written += text;
+        draft.textContent = provisionalText(written);
+        if (draft.hidden) {
+          draft.hidden = false;
+          skeleton.hidden = true;
+          waiting.hidden = false;
+        }
+      },
+      fallback: () => {
+        streamed = false;
+      },
+    };
     const waiting = el('div', { class: 'waiting', hidden: true },
-      el('div', { class: 'status' }, el('span', { class: 'spinner' }), el('span', { class: 'thinking' }, 'Cevap hazırlanıyor'), elapsed),
-      el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }), expect);
+      el('div', { class: 'status' }, el('span', { class: 'spinner' }), stageLine, elapsed),
+      skeleton, draft, expect);
     const pending = turn(question, waiting);
     const bot = pending.querySelector('.turn-bot');
     thread.append(pending);
@@ -614,7 +652,7 @@ export function renderAsk(ctx) {
     announcer.textContent = 'Cevap hazırlanıyor.';
     ticker = setInterval(() => {
       const ms = Date.now() - started;
-      waiting.hidden = ms < SHOW_WAIT_MS;
+      waiting.hidden = ms < SHOW_WAIT_MS && draft.hidden;
       if (ms >= SLOW_MS) {
         elapsed.textContent = `· ${Math.round(ms / 1000)} sn`;
         expect.textContent = lastMode === 'cloud' ? 'Bulut modelinde cevap genellikle birkaç saniye sürer.'
@@ -626,14 +664,14 @@ export function renderAsk(ctx) {
       let result;
       let notice = null;
       try {
-        result = await ctx.withAuth(() => api.ask(question, controller.signal, sentTo));
+        result = await ctx.withAuth(() => api.askLive(question, controller.signal, sentTo, live));
       } catch (error) {
         if (!(sentTo && startsOver(error))) throw error;
         // The conversation is gone or full: refused before any model call, so the question goes to a new one.
         notice = startOverNote(error);
-        result = await ctx.withAuth(() => api.ask(question, controller.signal, null));
+        result = await ctx.withAuth(() => api.askLive(question, controller.signal, null, live));
       }
-      entry = { question, result, ms: Date.now() - started, at: new Date().toISOString(), feedback: null, notice };
+      entry = { question, result, ms: Date.now() - started, at: new Date().toISOString(), feedback: null, notice, streamed };
       if (current.generation === generation) {
         // Always the answer's own id: the server may have started a new conversation (deleted meanwhile, expired).
         const next = continueWith(notice ? null : sentTo, result);
@@ -643,7 +681,7 @@ export function renderAsk(ctx) {
       prefs.markOnboarding({ asked: true });
     } catch (error) {
       entry = error?.name === 'AbortError'
-        ? { question, cancelled: true, ms: Date.now() - started, at: new Date().toISOString() }
+        ? { question, cancelled: true, streamed, ms: Date.now() - started, at: new Date().toISOString() }
         : { question, error: errorState(error), ms: Date.now() - started, at: new Date().toISOString() };
     } finally {
       clearInterval(ticker);
@@ -656,9 +694,9 @@ export function renderAsk(ctx) {
     conversation.push(entry);
     if (!ctx.isCurrent()) return;
     updateBar();
-    announcer.textContent = entry.cancelled ? 'Bekleme durduruldu.' : entry.error ? `Cevap alınamadı: ${entry.error.title}.`
+    announcer.textContent = entry.cancelled ? (entry.streamed ? 'Cevap durduruldu.' : 'Bekleme durduruldu.') : entry.error ? `Cevap alınamadı: ${entry.error.title}.`
       : isNotFound(entry.result) ? 'Belgelerde bulunamadı.' : entry.result.outcome === 'UNCITED' ? 'Cevap hazır, kaynak gösterilemedi.' : 'Cevap hazır.';
-    bot.replaceWith(botTurn(answerView({ ...entry, fresh: true }, actions)));
+    bot.replaceWith(botTurn(answerView({ ...entry, fresh: !entry.streamed }, actions)));
     field.focus();
   }
 
@@ -671,6 +709,7 @@ export function renderAsk(ctx) {
   // Leaving the screen does not cancel a question: its answer is kept in the conversation for the next visit.
   return () => {
     clearInterval(ticker);
+    closePageDrawer();
     document.removeEventListener('selectionchange', onSelection);
     removeEventListener('scroll', onScroll);
     viewport?.removeEventListener('resize', onViewport);

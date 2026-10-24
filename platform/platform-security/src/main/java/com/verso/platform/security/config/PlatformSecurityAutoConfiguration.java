@@ -1,5 +1,6 @@
 package com.verso.platform.security.config;
 
+import jakarta.servlet.DispatcherType;
 import com.verso.platform.security.authority.CallerGroups;
 import com.verso.platform.security.authority.CallerRoles;
 import com.verso.platform.security.authority.ClaimAuthoritiesConverter;
@@ -150,6 +151,10 @@ public class PlatformSecurityAutoConfiguration {
         http.authorizeHttpRequests(requests -> {
                     // The container's error dispatch renders the envelope of a request that already failed.
                     requests.requestMatchers("/error").permitAll();
+                    // An async dispatch only finishes a request that was authorized on its REQUEST dispatch (the SSE
+                    // stream of an answer, ADR-0035): no handler runs again and a client cannot start one. Without
+                    // this, a stateless request has no authentication left to check when its stream ends.
+                    requests.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll();
                     // Health probes (compose healthcheck, orchestrators) carry no token: only the health endpoint, only
                     // through the actuator's own matcher.
                     if (ACTUATOR_PRESENT) {

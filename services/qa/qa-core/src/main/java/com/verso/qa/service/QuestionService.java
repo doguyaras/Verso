@@ -12,4 +12,12 @@ public interface QuestionService {
      *                       there, the history is not part of the prompt
      */
     AnswerResponse ask(AccountId account, String question, UUID conversationId);
+
+    /**
+     * POST /v1/questions/stream (ADR-0035): the same answer, written to {@code stream} as it is produced. The checks
+     * that refuse a question before any model call (open circuit, foreign or full conversation) run on the caller's
+     * thread and throw, so they stay plain HTTP errors; everything after runs on a background thread that reports to
+     * {@code stream} and never throws.
+     */
+    void stream(AccountId account, String question, UUID conversationId, AnswerStream stream);
 }

@@ -12,6 +12,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-4-belge-alimi` branch
 - Yeni hata kodları: 10001, 10010, 10011, 10013, 10014, 10015, 10016. Ortak koda eklenen: 99997 (geçici olarak kullanılamıyor).
 - `API-Version` header'ı artık değerlendirilir: isteğe bağlı, varsayılan `1.0`; bilinmeyen sürüm 400 `90020`.
 - `X-Idempotency-Key` ile tekrar edilen yükleme ikinci belge oluşturmaz.
+- Yeni uç (ADR-0035, 24 Ekim 2026): `GET /v1/documents/{documentId}/pages/{number}`, bir sayfanın ya da bölümün saklanan metni (atıftan açılan sayfa görünümü). Yeni hata kodu 10005.
 
 ## Kurallar
 - **Kritik:** Başka hesabın belgesi her uçta **404** döner (403 değil). İstemci "yetkiniz yok" değil "bulunamadı" göstermelidir; varlık açığa çıkmaz.
@@ -28,6 +29,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-4-belge-alimi` branch
 | GET | `/v1/documents?page=&size=` | user JWT | – | – | başarı ham, hata zarflı |
 | GET | `/v1/documents/{documentId}` | user JWT | – | – | başarı ham, hata zarflı |
 | DELETE | `/v1/documents/{documentId}` | user JWT | doğal olarak idempotent (ikinci çağrı 404) | – | 204 gövdesiz, hata zarflı |
+| GET | `/v1/documents/{documentId}/pages/{number}` | user JWT | – | metin ≤ 60 000 kod noktası | başarı ham, hata zarflı |
 
 Tüm yanıtlar `Cache-Control: private, no-store` ve `X-Trace-Id` taşır. Destek talebinde `traceId` iletilir.
 
@@ -105,10 +107,28 @@ const label = STATUS[doc.status] ?? 'İşleniyor';           // bilinmeyen enum 
 ### Silme
 `DELETE /v1/documents/{id}` → `204`. Başka hesabın ya da olmayan belge → `404 10001`.
 
+### Sayfa görünümü (ADR-0035)
+`GET /v1/documents/{id}/pages/{number}` → `200`:
+```json
+{"documentId":"0199…","number":3,"unit":"PAGE","pageCount":12,"text":"Yıllık izin\nyirmi iş günüdür.\n…","truncated":false}
+```
+| Alan | Tip | Anlam |
+|---|---|---|
+| `number` | int, 1..100 000 | PDF'te sayfa, DOCX/TXT/MD'de bölüm numarası; atıftaki `page` ile aynı sayım (ADR-0016) |
+| `unit` | `PAGE` \| `SECTION` | Atıftaki `unit` ile aynı |
+| `pageCount` | int \| null | Sayfa ya da bölüm sayısı; gezinme `1..pageCount` içinde kalır |
+| `text` | string | Saklanan sayfa metni, satır sonları korunur. Belge içeriğidir: düz metin olarak gösterilir (HTML değil), istemci log'una ve analitiğe yazılmaz |
+| `truncated` | boolean | Metin 60 000 kod noktasından uzundu ve kesildi |
+
+- Erişim, listeleme ve soru-cevapla **aynı** okuyucu filtresiyle (kişisel belge: sahibi; bilgi alanı: grant'ı olan kullanıcı ya da grup, ADR-0028). Okunamayan ve olmayan belge aynı `404 10001` döner; `verso-admin` de grant'ı yoksa okuyamaz. Okunabilir belgede olmayan sayfa (ya da henüz işlenmemiş belge) `404 10005`. `number` 1'den küçük ya da 100 000'den büyükse `400`.
+- Atıftaki alıntı (`excerpt`) sayfa metninde boşluklar tek boşluğa indirilerek aranır ve vurgulanır; geçmişten açılan cevapta alıntı yoktur, sayfa vurgusuz açılır.
+- Okuma olduğu için denetim kaydına yazılmaz (ADR-0026).
+
 ## Hata kodları ve ekran davranışı
 | code | HTTP | Anlam | Ekran aksiyonu | Retry? |
 |---|---|---|---|---|
 | 10001 | 404 | Belge yok (ya da başka hesabın) | "Belge bulunamadı", listeye dön | hayır |
+| 10005 | 404 | Okunabilir belgede bu sayfa ya da bölüm yok (ya da belge henüz işleniyor) | "Bu sayfa belgede yok", gezinmeyi sınırla | hayır |
 | 10010 | 415 | Desteklenmeyen tür | "PDF, DOCX, TXT ya da MD yükleyebilirsiniz" | hayır |
 | 10011 | 400 | Boş dosya | "Dosya boş" | hayır |
 | 10013 | 409 | Hesabın belge sınırı (200) | "Belge sınırına ulaştınız, eski belgeleri silin" | hayır |
@@ -132,6 +152,7 @@ const label = STATUS[doc.status] ?? 'İşleniyor';           // bilinmeyen enum 
 
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
+- 24 Ekim 2026 (ADR-0035): sayfa görünümü ucu ve 10005 eklendi; var olan uçlar değişmedi.
 
 ## Manuel test akışı
 ### API ile (compose yığını)

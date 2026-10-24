@@ -15,6 +15,11 @@ public enum DocumentErrorCode implements ErrorCode {
     /** A reader of a collection document asked to delete it; only verso-admin manages collection documents. */
     DOCUMENT_MANAGED_BY_ADMIN(10004, "The document belongs to a collection; only an administrator can change it.",
             HttpStatus.FORBIDDEN),
+    /**
+     * A page or section number the readable document does not have (or not yet: still processing; ADR-0035). Only a
+     * reader of the document gets this code; anyone else gets DOCUMENT_NOT_FOUND.
+     */
+    DOCUMENT_PAGE_NOT_FOUND(10005, "Page not found.", HttpStatus.NOT_FOUND),
     // --- upload (10010-10029); 10012 was never released (too large is the common 90014)
     // ADR-0016: one code for every unsupported file; it was DOCUMENT_NOT_PDF while PDF was the only format
     DOCUMENT_TYPE_UNSUPPORTED(10010, "The file is not a supported document (PDF, DOCX, TXT or MD).",

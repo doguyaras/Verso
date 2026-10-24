@@ -884,6 +884,25 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .drawer-head .sub { color: var(--fg-muted); font-size: var(--text-sm); margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .drawer-body { padding: 20px; overflow-y: auto; display: grid; gap: 18px; align-content: start; }
 .drawer-foot { margin-top: auto; padding: 14px 20px; border-top: 1px solid var(--border-muted); display: flex; gap: 8px; justify-content: flex-end; }
+/* The page viewer of a source (ADR-0035): wider than the other drawers, the page text as it was stored (line breaks
+   kept), the cited excerpt painted by ::highlight(verso-match) or, without the API, a mark.match. */
+.page-drawer { width: min(640px, 100%); }
+.page-drawer .drawer-nav { display: flex; gap: 8px; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border-muted); }
+.page-drawer .drawer-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.page-drawer .drawer-status { color: var(--fg-muted); font-size: var(--text-sm); }
+.page-drawer .drawer-status:empty { display: none; }
+.page-drawer .drawer-note { color: var(--fg-subtle); font-size: var(--text-xs); }
+.page-text {
+  flex: 1; min-height: 0; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-md);
+  line-height: 1.65; color: var(--fg-default); padding: 2px 4px;
+}
+.page-text mark.match { background: var(--accent-bg-hover); color: var(--fg-default); border-radius: 2px; }
+.cite-row .page-open { justify-self: start; margin-top: 2px; }
+/* The streamed draft (ADR-0035): plain text as it arrives, no word animation in any motion setting. */
+.answer-text.draft { color: var(--fg-muted); }
+.waiting .skeletons { display: grid; gap: 10px; }
+.waiting .skeletons .skeleton.line:nth-child(2) { width: 92%; }
+.waiting .skeletons .skeleton.line:nth-child(3) { width: 64%; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes slide { from { transform: translateX(24px); opacity: 0; } }
 dialog.modal {

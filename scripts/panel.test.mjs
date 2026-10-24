@@ -35,6 +35,8 @@ import { ApiError } from '../panel/js/api.js';
 // ask.js touches no DOM at module load (only inside its functions), so node can import it for its constants.
 import { FLASH_MS } from '../panel/js/screens/ask.js';
 import { CITED as CITED_HIGHLIGHT, MATCH, prune, tintSentences, writeMarked } from '../panel/js/highlight.js';
+import { createSseParser, noStream, provisionalText, readEvents, resultOf, stageText } from '../panel/js/stream.js';
+import { collapse, excerptRange, pageHeading, pageNav } from '../panel/js/pageview.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
@@ -1034,8 +1036,8 @@ test('conversation ids: a follow-up carries the id, the answer\'s own id wins, a
   assert.match(startOverNote(new ApiError(409, 11022)), /dolduğu için/);
   assert.match(startOverNote(new ApiError(404, 11020)), /artık yok/);
   const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
-  assert.match(ask, /api\.ask\(question, controller\.signal, sentTo\)/, 'the question continues the open conversation');
-  assert.match(ask, /if \(!\(sentTo && startsOver\(error\)\)\) throw error;[\s\S]*?api\.ask\(question, controller\.signal, null\)/,
+  assert.match(ask, /api\.askLive\(question, controller\.signal, sentTo, live\)/, 'the question continues the open conversation');
+  assert.match(ask, /if \(!\(sentTo && startsOver\(error\)\)\) throw error;[\s\S]*?api\.askLive\(question, controller\.signal, null, live\)/,
     'one retry without the id, and only for a follow-up');
   assert.match(ask, /if \(current\.generation !== generation\) return;\n\s+conversation\.push\(entry\);/,
     'an answer for a conversation that was left is not appended to the new one');
@@ -1427,4 +1429,222 @@ test('collections: admin-only screen, grant input, history states and the collec
   const source = readFileSync('panel/js/screens/collections.js', 'utf8');
   assert.doesNotMatch(source, /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'|window\.(alert|confirm|prompt)/);
   assert.match(source, /confirmDialog/, 'removals ask in the panel\'s own dialog, never a native one');
+});
+
+// ---------- streamed answers and the page viewer (ADR-0035) ----------
+function sseParse(chunks) {
+  const events = [];
+  const parser = createSseParser((e) => events.push(e));
+  for (const chunk of chunks) parser.push(chunk);
+  parser.end();
+  return events;
+}
+
+test('sse: events survive any chunk boundary, CRLF and CR line ends, multi-line data and keep-alive comments', () => {
+  const body = 'event:stage\ndata:{"stage":"RETRIEVING"}\n\n:keep-alive\n\nevent: delta\ndata: {"text":"a"}\r\n\r\n'
+    + 'event:citations\ndata:{"answer":"x",\ndata:"citations":[]}\r\rdata:no name\n\n';
+  const whole = sseParse([body]);
+  assert.deepEqual(whole, [
+    { event: 'stage', data: '{"stage":"RETRIEVING"}' },
+    { event: 'delta', data: '{"text":"a"}' },
+    { event: 'citations', data: '{"answer":"x",\n"citations":[]}' },
+    { event: 'message', data: 'no name' }]);
+  // Every split point, also inside "\r\n" and inside a field name, gives the same events.
+  for (let i = 1; i < body.length; i++) assert.deepEqual(sseParse([body.slice(0, i), body.slice(i)]), whole, `split at ${i}`);
+  assert.deepEqual(sseParse(body.split('')), whole, 'one character at a time');
+  assert.deepEqual(sseParse([':keep-alive\n\n', ':keep-alive\n\n']), [], 'heartbeats are no events');
+  assert.deepEqual(sseParse(['event:done\ndata:{}']), [], 'an unterminated last event is dropped');
+});
+
+test('sse: a body read in byte chunks keeps multi-byte letters whole and parses the JSON data', async () => {
+  const bytes = new TextEncoder().encode('event:delta\ndata:{"text":"Yıllık iş günü"}\n\nevent:bad\ndata:not json\n\n');
+  const body = new ReadableStream({ start(c) {
+    for (let i = 0; i < bytes.length; i += 3) c.enqueue(bytes.slice(i, i + 3));
+    c.close();
+  } });
+  const seen = [];
+  const count = await readEvents(body, (event, value) => seen.push([event, value]));
+  assert.equal(count, 1);
+  assert.deepEqual(seen, [['delta', { text: 'Yıllık iş günü' }]]);
+});
+
+test('stream: stages say only what the server did; the draft hides markers until they are validated', () => {
+  assert.equal(stageText({ stage: 'RETRIEVING' }), 'Belgelerinizde aranıyor');
+  assert.equal(stageText({ stage: 'PASSAGES_FOUND', retrieved: 5, relevant: 2 }), '2 ilgili pasaj bulundu');
+  assert.equal(stageText({ stage: 'PASSAGES_FOUND', retrieved: 5, relevant: 0 }), 'İlgili pasaj bulunamadı');
+  assert.equal(stageText({ stage: 'WRITING' }), 'Cevap yazılıyor');
+  assert.equal(stageText({ stage: 'SOMETHING_NEW' }), 'Cevap hazırlanıyor');
+  assert.equal(provisionalText('İzin yirmi gündür [1]. Ek izin [2, 3] vardır [9'), 'İzin yirmi gündür. Ek izin vardır ',
+    'the space before a cut marker stays: the next word follows');
+  assert.equal(provisionalText('Liste [a] kalır.'), 'Liste [a] kalır.');
+  assert.deepEqual(resultOf({ answer: 'A [1].', citations: [{ number: 1 }] },
+    { outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' }),
+  { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' });
+});
+
+test('stream: falling back to JSON only when no stream gets through, never for the API\'s own errors', () => {
+  assert.equal(noStream(200, 'text/event-stream;charset=UTF-8'), false);
+  assert.equal(noStream(200, 'application/json'), true, 'a proxy or an old server answered');
+  assert.equal(noStream(404, 'application/json', 90010), true, 'no such endpoint');
+  assert.equal(noStream(404, 'text/html'), true);
+  assert.equal(noStream(405, 'application/json', 90011), true);
+  assert.equal(noStream(404, 'application/json', 11020), false, 'a conversation that is gone is a real answer');
+  assert.equal(noStream(503, 'application/json', 11001), false);
+  assert.equal(noStream(401, 'application/json', 90100), false);
+});
+
+function sseResponse(text, { status = 200, type = 'text/event-stream', headers = {} } = {}) {
+  const body = new ReadableStream({ start(c) {
+    c.enqueue(new TextEncoder().encode(text));
+    c.close();
+  } });
+  return new Response(body, { status, headers: { 'Content-Type': type, 'X-Rag-Mode': 'local', ...headers } });
+}
+
+const STREAMED = 'event:stage\ndata:{"stage":"RETRIEVING"}\n\nevent:stage\ndata:{"stage":"PASSAGES_FOUND","retrieved":5,"relevant":1}\n\n'
+  + 'event:stage\ndata:{"stage":"WRITING"}\n\nevent:delta\ndata:{"text":"Yirmi "}\n\n:keep-alive\n\nevent:delta\ndata:{"text":"gün [1] [7]."}\n\n'
+  + 'event:citations\ndata:{"answer":"Yirmi gün [1].","citations":[{"number":1,"documentId":"d1","fileName":"a.pdf","page":3,"unit":"PAGE","excerpt":"x"}]}\n\n'
+  + 'event:done\ndata:{"outcome":"ANSWERED","found":true,"mode":"local","model":"m","conversationId":"c1","turnId":"t1"}\n\n';
+
+test('api: askLive streams with the token, reports stages and text, and ends with the validated answer', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push({ url, init });
+    return sseResponse(STREAMED);
+  };
+  const stages = [];
+  const deltas = [];
+  const result = await api.askLive('Soru?', undefined, 'c1', { stage: (s) => stages.push(s.stage), delta: (t) => deltas.push(t) });
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].url, '/v1/questions/stream');
+  assert.equal(sent[0].init.method, 'POST');
+  assert.equal(sent[0].init.body, '{"question":"Soru?","conversationId":"c1"}');
+  assert.match(sent[0].init.headers.Authorization, /^Bearer h\./);
+  assert.equal(sent[0].init.headers.Accept, 'text/event-stream, application/json');
+  assert.deepEqual(stages, ['RETRIEVING', 'PASSAGES_FOUND', 'WRITING']);
+  assert.deepEqual(deltas, ['Yirmi ', 'gün [1] [7].']);
+  assert.equal(result.answer, 'Yirmi gün [1].', 'the validated text replaces the draft');
+  assert.equal(result.citations.length, 1);
+  assert.equal(result.outcome, 'ANSWERED');
+  assert.equal(result.turnId, 't1');
+  signOut();
+});
+
+test('api: an error event, an API error and an abort end the question; no stream falls back to JSON once', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const urls = [];
+  let reply;
+  globalThis.fetch = async (url, init = {}) => {
+    urls.push(url);
+    if (init.signal?.aborted) throw new DOMException('aborted', 'AbortError');
+    return reply(url);
+  };
+  // An "error" event: the safe code, the Retry-After it carries.
+  reply = () => sseResponse('event:stage\ndata:{"stage":"RETRIEVING"}\n\nevent:error\ndata:{"code":11002,"message":"busy","retryAfter":5}\n\n');
+  await assert.rejects(api.askLive('Soru?', undefined), (e) => e instanceof ApiError && e.code === 11002 && e.retryAfter === 5);
+  // A refusal before the stream (a conversation that is gone) is an ApiError, not a fallback.
+  urls.length = 0;
+  reply = () => new Response(JSON.stringify({ ok: false, error: { code: 11020 } }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+  await assert.rejects(api.askLive('Soru?', undefined, 'gone'), (e) => e instanceof ApiError && e.code === 11020);
+  assert.deepEqual(urls, ['/v1/questions/stream']);
+  // An abort is the user's: no fallback, no second request.
+  urls.length = 0;
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(api.askLive('Soru?', controller.signal), { name: 'AbortError' });
+  assert.deepEqual(urls, ['/v1/questions/stream']);
+  // A proxy that answers JSON, an empty body, or no such endpoint: the JSON endpoint once.
+  for (const first of [() => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    () => sseResponse(':keep-alive\n\n'),
+    () => new Response(JSON.stringify({ ok: false, error: { code: 90010 } }), { status: 404, headers: { 'Content-Type': 'application/json' } })]) {
+    urls.length = 0;
+    let fellBack = false;
+    reply = (url) => (url === '/v1/questions/stream' ? first()
+      : new Response(JSON.stringify({ answer: 'A', citations: [], outcome: 'UNCITED', found: false }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const result = await api.askLive('Soru?', undefined, null, { fallback: () => { fellBack = true; } });
+    assert.deepEqual(urls, ['/v1/questions/stream', '/v1/questions']);
+    assert.equal(result.outcome, 'UNCITED');
+    assert.ok(fellBack);
+  }
+  // Events and then a cut connection: a failure, not a second question.
+  urls.length = 0;
+  reply = () => sseResponse('event:stage\ndata:{"stage":"WRITING"}\n\nevent:delta\ndata:{"text":"Yar"}\n\n');
+  await assert.rejects(api.askLive('Soru?', undefined), TypeError);
+  assert.deepEqual(urls, ['/v1/questions/stream']);
+  signOut();
+});
+
+test('ask screen: stages and the end are announced, the draft is not; "Durdur" aborts; no reveal after a stream', () => {
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /role: 'log', 'aria-live': 'off'/, 'the thread (and the draft in it) is no live region');
+  assert.match(ask, /stage: \(event\) => \{[\s\S]*?announcer\.textContent = /, 'stage changes are announced');
+  assert.doesNotMatch(ask, /delta: \(text\) => \{[^}]*announcer/, 'the text is not announced');
+  assert.match(ask, /draft\.textContent = provisionalText\(written\)/, 'the draft is text, markers left out');
+  assert.match(ask, /controller \? 'Durdur' : 'Gönder'/);
+  assert.match(ask, /fresh: !entry\.streamed/, 'no word-by-word effect after a stream');
+  assert.match(ask, /closePageDrawer\(\);/, 'leaving the screen closes the page viewer');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.doesNotMatch(css, /\.answer-text\.draft \{[^}]*animation/, 'the draft never animates');
+  for (const file of ['stream.js', 'pageview.js', 'drawer.js']) {
+    const source = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.doesNotMatch(source, /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'|EventSource\(|console\./, file);
+  }
+});
+
+test('page viewer: navigation stays inside the document; sections are named as sections', () => {
+  assert.deepEqual(pageNav(1, 3), { prev: null, next: 2 });
+  assert.deepEqual(pageNav(2, 3), { prev: 1, next: 3 });
+  assert.deepEqual(pageNav(3, 3), { prev: 2, next: null });
+  assert.deepEqual(pageNav(2, null), { prev: 1, next: null }, 'an unknown count has no next');
+  assert.equal(pageHeading('PAGE', 3, 12), 'Sayfa 3 / 12');
+  assert.equal(pageHeading('SECTION', 2, 5), 'Bölüm 2 / 5');
+  assert.equal(pageHeading('PAGE', 1, null), 'Sayfa 1');
+});
+
+test('page viewer: the excerpt is found across line breaks and cut marks, mapped back to the page text', () => {
+  const page = 'Başlık\n\nYıllık izin süresi\nyirmi iş  günüdür. Ek izin\tyoktur.\n';
+  const range = excerptRange(page, '…izin süresi yirmi iş günüdür. Ek…');
+  assert.ok(range);
+  assert.equal(page.slice(range.start, range.end), 'izin süresi\nyirmi iş  günüdür. Ek');
+  // A page re-extracted since: the longest leading run of words that is still there.
+  const partial = excerptRange(page, 'Yıllık izin süresi yirmi iş günüdür ama değişti');
+  assert.equal(page.slice(partial.start, partial.end), 'Yıllık izin süresi\nyirmi iş  günüdür');
+  assert.equal(excerptRange(page, 'hiç geçmeyen bir cümle burada'), null);
+  assert.equal(excerptRange(page, ''), null);
+  assert.equal(collapse(' a \n b ').out, 'a b ');
+});
+
+test('page viewer: a modal drawer that traps the focus, closes on Esc, gives the focus back and only writes text', () => {
+  const drawer = readFileSync('panel/js/drawer.js', 'utf8');
+  assert.match(drawer, /role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId/);
+  assert.match(drawer, /event\.key === 'Escape'/);
+  assert.match(drawer, /event\.key !== 'Tab'/);
+  assert.match(drawer, /last\.focus\(\)/);
+  assert.match(drawer, /first\.focus\(\)/);
+  assert.match(drawer, /opener\.focus\(\)/, 'the focus goes back to the opener');
+  assert.match(drawer, /writeMarked\(text, page\.text, range \? \[range\] : \[\]\)/, 'CSS highlight or <mark>, text nodes only');
+  assert.match(drawer, /prune\(\)/, 'the highlight ranges go with the drawer');
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /c\.deleted \|\| c\.inaccessible \|\| !openPage \? null/, 'no viewer for a deleted or unreadable document');
+  assert.match(ask, /openPageDrawer\(citation, \{ withAuth: ctx\.withAuth, opener \}\)/);
+});
+
+test('api: the page call goes to the documented path with encoded ids', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url) => {
+    sent.push(url);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({ text: 'x' }) };
+  };
+  await api.getPage('a/b', 3);
+  assert.deepEqual(sent, ['/v1/documents/a%2Fb/pages/3']);
+  assert.ok(MESSAGES[10005]);
+  signOut();
 });

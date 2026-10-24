@@ -25,7 +25,8 @@ public class QuestionBodyLimit implements HandlerInterceptor, WebMvcConfigurer {
     /** The conversation bodies (a title, a rating) are smaller still; the same bound keeps them off the heap (ADR-0023). */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(this).addPathPatterns("/v1/questions", "/v1/conversations/**");
+        // The streamed variant takes the same body (ADR-0035).
+        registry.addInterceptor(this).addPathPatterns("/v1/questions", "/v1/questions/stream", "/v1/conversations/**");
     }
 
     @Override

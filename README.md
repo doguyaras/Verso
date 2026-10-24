@@ -110,7 +110,10 @@ Ekranlar:
   - **Takip:** cevabın altında şüpheci takip soruları durur ("Bu hangi belgeye dayanıyor?", "Aksi bir madde var mı?", "Bunu daha kısa anlat"). Her biri yeni bir soru olarak sorulur. Cevapta ya da alıntıda seçilen metin "Bunu sor" ile soru kutusuna alınır.
   - **Dışa aktarma:** "Kopyala" cevabı atıfları dipnot olarak Markdown'da kopyalar. ".md indir" aynısını soruyla birlikte dosya olarak indirir.
   - **Klavye:** PageUp/PageDown ya da Alt+↑/↓ sorular arasında gezer; Esc açık önizlemeyi ya da kartı kapatır.
-  - **Bekleme:** geçen süre ve gerçekçi bir beklenti görünür. "Durdur"dan sonra odak soru kutusuna döner.
+  - **Akış** ([ADR-0035](docs/adr/0035-akisli-cevap-ve-sayfa-gorunumu.md)): cevap yazıldıkça gelir. Üstte yalnız sunucunun gerçekten yaptığı adım görünür: "Belgelerinizde aranıyor", "2 ilgili pasaj bulundu", "Cevap yazılıyor". Yazılan metin geçicidir; atıf numaraları sunucu doğrulayana kadar gösterilmez, cevap bitince kaynaklı hâliyle yeniden çizilir. Ekran okuyucu yalnız adımları ve sonu duyurur. Kelime kelime belirme efekti yoktur.
+  - **Durdur:** isteği keser; sunucu modelin yazmasını da durdurur ve bu soruyu geçmişe kaydetmez. Akış bir proxy yüzünden hiç gelmezse panel soruyu bir kez normal uca sorar (o durumda "Durdur" yalnız beklemeyi bırakır). Odak soru kutusuna döner.
+  - **Sayfa görünümü:** kaynak satırındaki "Sayfayı aç" (DOCX/TXT/MD'de "Bölümü aç") sağdan bir panel açar: belgenin saklanan sayfa metni, alıntı vurgulu, önceki/sonraki sayfa. Yalnız okuyabildiğiniz belgeler açılır. Esc kapatır, odak açan düğmeye döner.
+  - **Bekleme:** geçen süre ve gerçekçi bir beklenti görünür.
   - **Konuşma** ([ADR-0025](docs/adr/0025-gecmis-geri-bildirim-deger-panosu.md)): ardışık sorular sunucuda aynı konuşmaya yazılır; "Yeni konuşma" yenisini başlatır. Konuşma silinmiş ya da dolmuşsa soru kendiliğinden yeni konuşmada sorulur ve bir notla belirtilir.
   - **Geri bildirim:** her cevabın altında 👍/👎. 👎'den sonra küçük bir neden seçici açılır (Yanlış kaynak, Eksik ya da yanlış, Güncel değil, Diğer); "Yanlış kaynak"ta hangi `[n]` olduğu sorulur. Yeni puan eskisinin yerine geçer.
 - **Geçmiş** (menüde "Soru sor"un altında, `g g`, hesap menüsü ya da soru ekranındaki düğme): kendi konuşmalarınız sağdan açılan bir panelde, son etkinliğe göre ve 20'şer. Yüklenen başlıklarda Türkçe harf duyarsız arama; yeniden adlandırma; tek konuşmayı silme (panelin kendi onay penceresi); "Tümünü sil" yalnız `SİL` yazılınca çalışır. Açılan konuşma soru ekranına salt okunur gelir (alıntı saklanmadığı için takip sorusu yok) ve sonraki soru onu sürdürür. Silinmiş belgeye atıf "Belge silinmiş" diye görünür. Konuşmalar kurulumun saklama süresi dolunca silinir (`VERSO_HISTORY_RETENTION_DAYS`, varsayılan 90 gün; panel süreyi API'den alamadığı için sayı yazmaz).
@@ -188,6 +191,14 @@ curl -s -H "Authorization: Bearer $TOKEN" -F "file=@samples/izin-yonetmeligi.pdf
 curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"question":"Doğum izni toplam kaç haftadır?"}' http://localhost:8080/v1/questions
 ```
 
+Akışlı cevap (server-sent events; olaylar `stage`, `delta`, `citations`, `done` ya da `error`):
+
+```bash
+curl -sN -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Accept: text/event-stream, application/json" -d '{"question":"Doğum izni toplam kaç haftadır?"}' http://localhost:8080/v1/questions/stream
+```
+
+Bir atfın sayfası (sayfa ya da bölüm numarası atıftaki `page`): `curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/v1/documents/<id>/pages/3`.
+
 Windows'ta (Git Bash) yerel `curl.exe`, argümandaki Türkçe harfleri bozar; gövdeyi UTF-8 bir dosyadan verin: `--data-binary @soru.json` (`scripts/demo.sh` böyle yapar).
 
 Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md), [`docs/api-conversations-integration-v1.md`](docs/api-conversations-integration-v1.md) (geçmiş, geri bildirim, yönetici metrikleri), [`docs/api-audit-integration-v1.md`](docs/api-audit-integration-v1.md) (denetim kaydı: sorgu ve CSV dışa aktarım), [`docs/api-subjects-integration-v1.md`](docs/api-subjects-integration-v1.md) (KVKK başvurusu: özet, dışa aktarım, silme, cevap karartma).
@@ -249,7 +260,11 @@ Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 b
  isteğe bağlı: prometheus · alertmanager · loki ◄ alloy · grafana (obs profili) · yedek ve restore provası
 ```
 
-Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0030). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
+Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0035). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
+
+### Kenar proxy
+
+`edge` (nginx) API'nin ve panelin tek yayınlanan portudur. Akışlı cevap ucu `location = /v1/questions/stream` ile ayrı tutulur: yalnız orada yanıt tamponlama kapalıdır (`proxy_buffering off`, `proxy_cache off`, `gzip off`), okuma zaman aşımı 150 sn'dir ve uygulama model sessizken 10 sn'de bir `:keep-alive` yazar (ADR-0035). Üretimde önüne bir TLS sonlandırıcısı (ya da kurumun ters proxy'si) konursa aynı yol için de tamponlamayı kapatın ve okuma zaman aşımını en az 30 sn yapın; uygulama `X-Accel-Buffering: no` gönderir, bunu dikkate alan proxy'lerde ayrıca ayar gerekmez. Tamponlayan bir proxy akışı bozmaz, cevap yalnız sonunda tek seferde görünür. Panel CSP'si değişmez (`connect-src 'self'`).
 
 ---
 
@@ -267,7 +282,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 
 | Blok | Aralık | Not |
 |---|---|---|
-| document | 10000–10999 | belge yükleme, işleme, retrieval, bilgi alanları (10002–10004, 10040–10044; ADR-0028) |
+| document | 10000–10999 | belge yükleme, işleme, retrieval, bilgi alanları (10002–10004, 10040–10044; ADR-0028), sayfa görünümü (10005; ADR-0035) |
 | qa | 11000–11999 | soru-cevap, model çağrısı |
 | audit | 12000–12999 | denetim kaydı sorgusu ve dışa aktarımı |
 | privacy | 13000–13999 | KVKK ilgili kişi başvurusu ve cevap karartma (ADR-0034) |

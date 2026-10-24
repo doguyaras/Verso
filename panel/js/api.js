@@ -5,12 +5,14 @@
 import { CONFIG } from './config.js';
 import { accessToken } from './auth.js';
 import { askBody, HISTORY_PAGE_SIZE } from './conversations.js';
+import { noStream, readEvents, resultOf, StreamUnavailable } from './stream.js';
 
 export const MESSAGES = Object.freeze({
   10001: 'Belge bulunamadı.',
   10002: 'Bilgi alanı bulunamadı.',
   10003: 'Bu erişim kaydı artık yok.',
   10004: 'Bu belge bir bilgi alanında; yalnız yönetici değiştirebilir.',
+  10005: 'Bu sayfa belgede yok ya da belge henüz işleniyor.',
   10040: 'Bu adla bir bilgi alanı zaten var.',
   10041: 'Bilgi alanında hâlâ belge var; önce belgeleri taşıyın ya da silin.',
   10042: 'Bu bilgi alanının erişim sınırı dolu.',
@@ -81,6 +83,48 @@ async function request(path, init = {}) {
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, body?.error?.code, Number(res.headers.get('Retry-After')) || undefined);
   return body;
+}
+
+/**
+ * POST /v1/questions/stream (ADR-0035) with fetch and a ReadableStream, so the Authorization header goes along (an
+ * EventSource cannot send it). live.stage(event) and live.delta(text) see the stream as it comes; the result is the
+ * same answer as POST /v1/questions. An HTTP error or an "error" event is an ApiError, an abort an AbortError (the
+ * server then cancels the model call and stores nothing), and a response that is no stream a StreamUnavailable.
+ */
+async function streamQuestion(question, signal, conversationId, live) {
+  const token = await accessToken();
+  if (!token) throw new ApiError(401, 90100);
+  let res;
+  try {
+    res = await fetch(`${CONFIG.api}/v1/questions/stream`, { method: 'POST', signal, body: JSON.stringify(askBody(question, conversationId)),
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' } });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    throw new StreamUnavailable('network');
+  }
+  lastMode = res.headers.get('X-Rag-Mode') ?? lastMode;
+  const type = res.headers.get('Content-Type');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    if (noStream(res.status, type, body?.error?.code)) throw new StreamUnavailable(`status ${res.status}`);
+    throw new ApiError(res.status, body?.error?.code, Number(res.headers.get('Retry-After')) || undefined);
+  }
+  if (noStream(res.status, type) || !res.body) throw new StreamUnavailable('not a stream');
+  let citations = null;
+  let done = null;
+  let failure = null;
+  const count = await readEvents(res.body, (event, value) => {
+    if (event === 'stage') live.stage?.(value);
+    else if (event === 'delta') live.delta?.(String(value.text ?? ''));
+    else if (event === 'citations') citations = value;
+    else if (event === 'done') done = value;
+    else if (event === 'error') failure = value;
+  });
+  if (failure) throw new ApiError(failure.retryAfter ? 503 : 500, failure.code, failure.retryAfter || undefined);
+  if (citations && done) return resultOf(citations, done);
+  // Nothing came through at all: something on the way does not pass the stream. After events it is a cut connection.
+  if (count === 0) throw new StreamUnavailable('empty');
+  throw new TypeError('stream ended early');
 }
 
 /** Documents per page: the API's upper bound (docs/api-documents-integration-v1.md); the quota is 200. */
@@ -157,6 +201,22 @@ export const api = {
    */
   ask: (question, signal, conversationId = null) => request('/v1/questions', { method: 'POST',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(askBody(question, conversationId)), signal }),
+  /**
+   * The answer as a stream (ADR-0035), or from POST /v1/questions when no stream gets through (an older proxy or
+   * server); live.fallback() says so. Aborting a stream stops the server's model call; a JSON answer is still
+   * finished and stored on the server.
+   */
+  async askLive(question, signal, conversationId = null, live = {}) {
+    try {
+      return await streamQuestion(question, signal, conversationId, live);
+    } catch (error) {
+      if (!(error instanceof StreamUnavailable)) throw error;
+      live.fallback?.();
+      return api.ask(question, signal, conversationId);
+    }
+  },
+  /** The stored text of one page or section of a readable document (ADR-0035, docs/api-documents-integration-v1.md). */
+  getPage: (id, number) => request(`/v1/documents/${encodeURIComponent(id)}/pages/${encodeURIComponent(number)}`),
   info: () => request('/v1/info'),
   listConversations: (page = 0, size = HISTORY_PAGE_SIZE) => request(`/v1/conversations?page=${page}&size=${size}`),
   getConversation: (id) => request(`/v1/conversations/${encodeURIComponent(id)}`),

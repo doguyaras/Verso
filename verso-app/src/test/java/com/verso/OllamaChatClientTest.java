@@ -46,7 +46,15 @@ class OllamaChatClientTest {
 
     private static final List<String> REQUESTS = new CopyOnWriteArrayList<>();
     private static volatile int status = 200;
+    /** Lines of a streamed answer the fake server wrote, and whether a write failed (the client closed). */
+    private static final java.util.concurrent.atomic.AtomicInteger STREAMED = new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicBoolean STREAM_BROKEN =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    private static final int STREAM_WORDS = 100;
     private static final HttpServer OLLAMA = fakeOllama();
+
+    @Autowired
+    org.springframework.web.reactive.function.client.WebClient.Builder webClients;
 
     @DynamicPropertySource
     static void ollama(DynamicPropertyRegistry registry) {
@@ -127,6 +135,45 @@ class OllamaChatClientTest {
                 .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(200);
     }
 
+    /**
+     * ADR-0035: the streamed chat call goes through Boot's WebClient, so the same address filter applies to it (llm-rules
+     * 1.1); a public address is refused before any packet leaves.
+     */
+    @Test
+    void streamingClient_whenAddressIsPublic_refusesToConnect() {
+        org.springframework.web.reactive.function.client.WebClient client = webClients.build();
+        assertThatThrownBy(() -> client.get().uri("http://203.0.113.9:11434/api/tags").retrieve().toBodilessEntity()
+                .block(java.time.Duration.ofSeconds(20))).hasStackTraceContaining("Filtered");
+    }
+
+    /**
+     * ADR-0035: disposing the subscription of a streamed answer closes the connection to Ollama (Reactor Netty), so the
+     * server's next writes fail and generation stops; the answer is not read to its end in the background.
+     */
+    @Test
+    void stream_whenDisposed_closesTheConnectionToTheModelServer() throws Exception {
+        STREAMED.set(0);
+        STREAM_BROKEN.set(false);
+        List<String> words = new CopyOnWriteArrayList<>();
+        reactor.core.Disposable call = chatModel.stream(prompt())
+                .subscribe(response -> words.add(response.getResult().getOutput().getText()));
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (words.size() < 2) {
+            assertThat(System.nanoTime()).as("first words arrive").isLessThan(deadline);
+            Thread.sleep(20);
+        }
+
+        call.dispose();
+
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (!STREAM_BROKEN.get()) {
+            assertThat(System.nanoTime()).as("the server sees the connection closed").isLessThan(deadline);
+            Thread.sleep(50);
+        }
+        assertThat(STREAMED.get()).isLessThan(STREAM_WORDS);
+        assertThat(REQUESTS.getLast().replace(" ", "")).contains("\"stream\":true");
+    }
+
     /** Local mode creates no cloud client at all (ADR-0013): the cloud starters are on the classpath, not in use. */
     @Test
     void localMode_whenStarted_hasNoCloudChatClient() {
@@ -151,11 +198,39 @@ class OllamaChatClientTest {
         return new Prompt(List.of(new SystemMessage("kurallar"), new UserMessage("Soru: kaç gün?")));
     }
 
+    /** Ollama's streaming format: one JSON object per line, a word every 100 ms, "done" on the last. */
+    private static void streamWords(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "application/x-ndjson");
+        exchange.sendResponseHeaders(200, 0);
+        try (var out = exchange.getResponseBody()) {
+            for (int i = 0; i < STREAM_WORDS; i++) {
+                boolean last = i == STREAM_WORDS - 1;
+                String line = "{\"model\":\"test-chat\",\"created_at\":\"2026-10-03T00:00:00Z\",\"message\":{\"role\":"
+                        + "\"assistant\",\"content\":\"kelime \"},\"done\":" + last + "}\n";
+                out.write(line.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                STREAMED.incrementAndGet();
+                Thread.sleep(100);
+            }
+        } catch (IOException e) {
+            STREAM_BROKEN.set(true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            exchange.close();
+        }
+    }
+
     private static HttpServer fakeOllama() {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             server.createContext("/api/chat", exchange -> {
-                REQUESTS.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                REQUESTS.add(request);
+                if (status == 200 && request.replace(" ", "").contains("\"stream\":true")) {
+                    streamWords(exchange);
+                    return;
+                }
                 String body = status == 200
                         ? "{\"model\":\"test-chat\",\"created_at\":\"2026-10-03T00:00:00Z\",\"message\":{\"role\":\"assistant\","
                           + "\"content\":\"Yirmi gün [1].\"},\"done\":true,\"done_reason\":\"stop\",\"total_duration\":1,"

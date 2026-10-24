@@ -86,6 +86,48 @@ class AnthropicCloudModeTest extends CloudModeTestSupport {
         assertThat(chatModel).isNotInstanceOf(OllamaChatModel.class);
     }
 
+    /**
+     * ADR-0035: the streamed endpoint in cloud mode asks the provider for a stream, relays its text, and still maps the
+     * citations on the server; the same data leaves as for the JSON endpoint (no file name).
+     */
+    @Test
+    void stream_whenAPassageMatches_relaysTheProviderStreamWithServerCitations() throws Exception {
+        UUID id = ready("maas-bordrosu.pdf", "topic-leave Annual leave is twenty working days.");
+        ANTHROPIC.answer(200, String.join("\n\n",
+                "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_test\",\"type\":"
+                        + "\"message\",\"role\":\"assistant\",\"model\":\"claude-test\",\"content\":[],\"stop_reason\":"
+                        + "null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}",
+                "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":"
+                        + "{\"type\":\"text\",\"text\":\"\"}}",
+                "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":"
+                        + "{\"type\":\"text_delta\",\"text\":\"Yıllık izin \"}}",
+                "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":"
+                        + "{\"type\":\"text_delta\",\"text\":\"yirmi iş günüdür [1] [4].\"}}",
+                "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}",
+                "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\","
+                        + "\"stop_sequence\":null},\"usage\":{\"output_tokens\":5}}",
+                "event: message_stop\ndata: {\"type\":\"message_stop\"}") + "\n\n", "text/event-stream");
+
+        HttpResponse<String> response = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port
+                        + "/v1/questions/stream")).header("Authorization", TestIdp.bearer(account))
+                .header("Content-Type", "application/json").header("Accept", "text/event-stream, application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"question\":\"topic-leave Yillik izin kac gun?\"}"))
+                .timeout(java.time.Duration.ofSeconds(30)).build(), HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("X-Rag-Mode")).hasValue("cloud");
+        assertThat(response.body()).contains("event:delta", "Yıllık izin ", "event:citations", "event:done",
+                "\"documentId\":\"" + id + "\"", "\"outcome\":\"ANSWERED\"", "\"mode\":\"cloud\"",
+                "\"model\":\"claude-test\"");
+        String citations = response.body().substring(response.body().indexOf("event:citations"));
+        assertThat(citations.substring(0, citations.indexOf("event:done"))).contains("günüdür [1].")
+                .doesNotContain("[4]");
+        FakeModelServer.Recorded request = ANTHROPIC.requests().getLast();
+        assertThat(request.body().replace(" ", "")).contains("\"stream\":true", "[[BELGE1]](sayfa1)");
+        assertThat(request.body()).doesNotContain("maas-bordrosu");
+        assertNoLogContains("Yillik izin", "Yıllık izin", "twenty working days", "maas-bordrosu");
+    }
+
     @Test
     void ask_whenTheProviderFails_asksOnceAndAnswers503WithoutProviderText() throws Exception {
         ready("izin.pdf", "topic-leave Annual leave rules.");

@@ -1,7 +1,12 @@
 package com.verso.support;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -12,6 +17,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import reactor.core.publisher.Flux;
 
 /**
  * Stands in for the chat model in application tests (no model download in CI): answers with a configurable function of
@@ -27,6 +33,11 @@ public final class TestChatModel implements ChatModel {
     private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
     private volatile Function<Prompt, String> answer = prompt -> DEFAULT_ANSWER;
     private volatile Prompt lastPrompt;
+    private volatile Duration tokenDelay = Duration.ZERO;
+    private final AtomicInteger emittedTokens = new AtomicInteger();
+    private final AtomicBoolean streamCancelled = new AtomicBoolean();
+
+    private static final Pattern WORD = Pattern.compile("\\s*\\S+\\s*");
 
     private TestChatModel() {}
 
@@ -45,6 +56,47 @@ public final class TestChatModel implements ChatModel {
         failure.set(null);
         answer = prompt -> DEFAULT_ANSWER;
         lastPrompt = null;
+        tokenDelay = Duration.ZERO;
+        emittedTokens.set(0);
+        streamCancelled.set(false);
+    }
+
+    /** A streamed answer emits one word every {@code delay} (ADR-0035 tests: cancellation, time bound). */
+    public void streamEvery(Duration delay) {
+        tokenDelay = delay;
+    }
+
+    /** Words the streams have produced so far; stops growing once the subscriber cancels. */
+    public int emittedTokens() {
+        return emittedTokens.get();
+    }
+
+    /** True once a subscriber cancelled a stream before its end (the client left, the time bound). */
+    public boolean streamCancelled() {
+        return streamCancelled.get();
+    }
+
+    /** The same answer word by word (white space kept), so the joined deltas are what call() would return. */
+    @Override
+    public Flux<ChatResponse> stream(Prompt prompt) {
+        return Flux.defer(() -> {
+            calls.incrementAndGet();
+            lastPrompt = prompt;
+            RuntimeException error = failure.get();
+            if (error != null) return Flux.<ChatResponse>error(error);
+            Flux<String> words = Flux.fromIterable(words(answer.apply(prompt)));
+            if (!tokenDelay.isZero()) words = words.delayElements(tokenDelay);
+            return words.doOnNext(word -> emittedTokens.incrementAndGet())
+                    .doOnCancel(() -> streamCancelled.set(true))
+                    .map(word -> new ChatResponse(List.of(new Generation(new AssistantMessage(word)))));
+        });
+    }
+
+    private static List<String> words(String text) {
+        List<String> words = new ArrayList<>();
+        Matcher matcher = WORD.matcher(text);
+        while (matcher.find()) words.add(matcher.group());
+        return words;
     }
 
     public void answer(String text) {

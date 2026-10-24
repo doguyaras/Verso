@@ -26,6 +26,7 @@ public final class FakeModelServer implements AutoCloseable {
     private final List<Recorded> requests = new CopyOnWriteArrayList<>();
     private volatile int status = 200;
     private volatile String body = "{}";
+    private volatile String contentType = "application/json";
     private volatile long delayMillis;
 
     public FakeModelServer() {
@@ -46,7 +47,7 @@ public final class FakeModelServer implements AutoCloseable {
                 }
             }
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.getResponseHeaders().set("Content-Type", contentType);
             exchange.sendResponseHeaders(status, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.close();
@@ -61,8 +62,14 @@ public final class FakeModelServer implements AutoCloseable {
     }
 
     public void answer(int status, String body) {
+        answer(status, body, "application/json");
+    }
+
+    /** A body of another type: a provider's server-sent events for a streamed answer (ADR-0035). */
+    public void answer(int status, String body, String contentType) {
         this.status = status;
         this.body = body;
+        this.contentType = contentType;
     }
 
     /** Answers only after this long: a slow or hanging provider. */
@@ -78,6 +85,7 @@ public final class FakeModelServer implements AutoCloseable {
         requests.clear();
         status = 200;
         body = "{}";
+        contentType = "application/json";
         delayMillis = 0;
     }
 
