@@ -53,6 +53,19 @@ test('non-push commands stay silent', () => {
   }
 });
 
+test('a local review-gate.off file silences the gate in that clone only', () => {
+  const off = fs.mkdtempSync(path.join(os.tmpdir(), 'review-gate-off-'));
+  fs.mkdirSync(path.join(off, '.claude'));
+  fs.writeFileSync(path.join(off, '.claude', 'review-gate.off'), '');
+  const r = spawnSync('bash', [HOOK], { input: JSON.stringify({ tool_input: { command: 'git push origin develop' } }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: off }, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, '');
+  assert.equal(decision('git push origin develop'), 'ask'); // a clone without the file still asks
+  const ignored = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
+  assert.match(ignored, /^\.claude\/review-gate\.off$/m);
+});
+
 test('malformed hook input is silent, not a crash', () => {
   const r = spawnSync('bash', [HOOK], { input: 'not json', env: { ...process.env, CLAUDE_PROJECT_DIR: PROJECT },
     encoding: 'utf8' });

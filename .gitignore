@@ -15,6 +15,7 @@ secrets/*
 
 # Claude Code review stamp (reference 19.4)
 .claude/.last-review-check
+.claude/review-gate.off
 
 # flatten-maven-plugin output
 .flattened-pom.xml

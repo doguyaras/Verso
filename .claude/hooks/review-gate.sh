@@ -18,6 +18,12 @@ if [[ "$DETECTED" != "push" ]]; then
 fi
 
 ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+# Yerel kapatma: bu makinenin sahibi kapiyi istemiyorsa (or. review'lari alt ajanlar dallarda calistiriyor ve her dal
+# CI'dan gecmeden develop'a alinmiyorsa) git disi `.claude/review-gate.off` dosyasi kapiyi bu klonda susturur.
+# Repo kurali degismez; dosya .gitignore'da, baska klonlara gitmez.
+if [[ -f "$ROOT/.claude/review-gate.off" ]]; then
+  exit 0
+fi
 STAMP="$ROOT/.claude/.last-review-check"
 MAX_AGE=3600
 NOW="$(date +%s)"
