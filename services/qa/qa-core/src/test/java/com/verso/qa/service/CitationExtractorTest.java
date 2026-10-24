@@ -1,13 +1,16 @@
 package com.verso.qa.service;
 
-import static com.verso.qa.service.CitationExtractor.EXCERPT_MAX;
+import static com.verso.qa.service.ExcerptSelector.MAX;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.api.enums.SourceUnit;
 import com.verso.qa.api.dto.Citation;
 import com.verso.qa.api.dto.CitationUnit;
+import com.verso.qa.config.QaProperties;
 import com.verso.qa.service.CitationExtractor.Extracted;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,7 +24,24 @@ class CitationExtractorTest {
             new RetrievedPassage(DOC_A, "a.pdf", 3, SourceUnit.PAGE, "first", 0.9),
             new RetrievedPassage(DOC_B, "b.docx", 7, SourceUnit.SECTION, "second", 0.8));
 
-    private final CitationExtractor extractor = new CitationExtractor();
+    // Two long synthetic passages (ADR-0019): the supporting sentence is in the middle of each.
+    private static final String FILLER = "Bu yönetmelik şirketin bütün birimlerinde uygulanır. İnsan kaynakları müdürlüğü "
+            + "kayıtları elektronik ortamda saklar. Değişiklikler yönetim kurulunun onayıyla yürürlüğe girer.";
+    private static final String TAIL = "Personel kartı kaybolursa güvenlik masasına haber verilir. Toplantı tutanakları "
+            + "arşivde beş yıl tutulur.";
+    private static final String LEAVE = "Çalışanlara yılda on dört iş günü ücretli yıllık izin verilir.";
+    private static final String SPLIT = "İzin en fazla iki parçaya bölünebilir.";
+    private static final String ADVANCE = "Avans tutarı en çok 25.000 TL'dir.";
+    private static final List<RetrievedPassage> LONG = List.of(
+            new RetrievedPassage(DOC_A, "izin.pdf", 2, SourceUnit.PAGE, String.join(" ", FILLER, LEAVE, SPLIT, TAIL), 0.9),
+            new RetrievedPassage(DOC_B, "avans.docx", 4, SourceUnit.SECTION, String.join(" ", FILLER, ADVANCE, TAIL), 0.8));
+
+    private final CitationExtractor extractor = new CitationExtractor(properties(1500));
+
+    private static QaProperties properties(int maxPassageChars) {
+        return new QaProperties(5, 0.5, maxPassageChars, 1, Duration.ofSeconds(5), 2, Duration.ofSeconds(15),
+                Duration.ofSeconds(90), Duration.ofSeconds(30));
+    }
 
     @Test
     void extract_whenMarkersReferToRetrievedPassages_mapsThemInOrderOfFirstUse() {
@@ -53,66 +73,55 @@ class CitationExtractorTest {
     }
 
     @Test
-    void extract_whenThePassageIsLong_citesABoundedExcerptOfItsStart() {
+    void extract_whenTheAnswerHasTwoCitations_excerptsTheSentenceEachOneSupports() {
+        Extracted result = extractor.extract("Yıllık izin on dört iş günüdür [1]. Avans en çok 25.000 TL olabilir [2].",
+                LONG);
+        assertThat(result.citations()).extracting(Citation::number, Citation::excerpt)
+                .containsExactly(tuple(1, LEAVE), tuple(2, ADVANCE));
+        assertThat(result.answer()).isEqualTo("Yıllık izin on dört iş günüdür [1]. Avans en çok 25.000 TL olabilir [2].");
+    }
+
+    @Test
+    void extract_whenAMarkerOpensTheNextSentence_usesTheSentenceBeforeIt() {
+        Extracted result = extractor.extract("Yıllık izin on dört iş günüdür. [1] Avans 25.000 TL'dir. [2]", LONG);
+        assertThat(result.citations()).extracting(Citation::excerpt).containsExactly(LEAVE, ADVANCE);
+    }
+
+    @Test
+    void extract_whenListItemsCiteDifferentPassages_keepsEachLineToItsOwnMarker() {
+        Extracted result = extractor.extract("- Yıllık izin on dört iş günü [1]\n- Avans 25.000 TL [2]", LONG);
+        assertThat(result.citations()).extracting(Citation::excerpt).containsExactly(LEAVE, ADVANCE);
+    }
+
+    @Test
+    void extract_whenOnePassageIsCitedByTwoSentences_excerptsTheWindowSupportingBoth() {
+        Extracted result = extractor.extract("Yıllık izin on dört iş günüdür [1]. İki parçaya bölünebilir [1].", LONG);
+        assertThat(result.citations()).singleElement().extracting(Citation::excerpt).isEqualTo(LEAVE + " " + SPLIT);
+    }
+
+    @Test
+    void extract_whenTheAnswerSharesNoWordWithTheLongPassage_citesItsBoundedStart() {
         List<RetrievedPassage> passages = List.of(new RetrievedPassage(DOC_A, "a.pdf", 1, SourceUnit.PAGE,
                 "Yıllık\n\tizin " + "kural ".repeat(200), 0.9));
         String excerpt = extractor.extract("Evet [1].", passages).citations().getFirst().excerpt();
         assertThat(excerpt).startsWith("Yıllık izin kural").endsWith("kural…");
-        assertThat(excerpt.codePointCount(0, excerpt.length())).isLessThanOrEqualTo(EXCERPT_MAX);
+        assertThat(excerpt.codePointCount(0, excerpt.length())).isLessThanOrEqualTo(MAX);
     }
 
     @Test
-    void excerpt_whenContentIsNullOrBlank_isEmpty() {
-        assertThat(CitationExtractor.excerpt(null)).isEmpty();
-        assertThat(CitationExtractor.excerpt("")).isEmpty();
-        assertThat(CitationExtractor.excerpt(" \n\t   ")).isEmpty();
+    void extract_whenTheSupportingSentenceIsBeyondThePromptLimit_fallsBackToThePassageStart() {
+        // The prompt carried only the first 100 characters (FILLER): the model cannot have relied on LEAVE.
+        CitationExtractor bounded = new CitationExtractor(properties(100));
+        String excerpt = bounded.extract("Yıllık izin on dört iş günüdür [1].", LONG).citations().getFirst().excerpt();
+        assertThat(excerpt).startsWith("Bu yönetmelik").endsWith("…")
+                .isEqualTo(ExcerptSelector.select(LONG.getFirst().content(), ""));
     }
 
     @Test
-    void excerpt_whenWhiteSpaceIsMixed_collapsesItToSingleSpaces() {
-        assertThat(CitationExtractor.excerpt("  a\r\n\tb  c d\u0000e  ")).isEqualTo("a b c d e");
-    }
-
-    @Test
-    void excerpt_whenExactlyAtTheLimit_isKeptWholeWithoutEllipsis() {
-        String words = "abc ".repeat(69) + "abcd";
-        assertThat(words).hasSize(EXCERPT_MAX);
-        assertThat(CitationExtractor.excerpt(words)).isEqualTo(words);
-        assertThat(CitationExtractor.excerpt("x".repeat(EXCERPT_MAX))).isEqualTo("x".repeat(EXCERPT_MAX));
-    }
-
-    @Test
-    void excerpt_whenOneOverTheLimitAtAWordEnd_keepsWholeWordsAndAddsEllipsis() {
-        assertThat(CitationExtractor.excerpt("abc ".repeat(70) + "x"))
-                .isEqualTo("abc ".repeat(69) + "abc…").hasSize(EXCERPT_MAX);
-    }
-
-    @Test
-    void excerpt_whenTheLimitFallsInsideAWord_cutsBackToTheLastSpace() {
-        assertThat(CitationExtractor.excerpt("abcde ".repeat(60))).isEqualTo("abcde ".repeat(45) + "abcde…");
-    }
-
-    @Test
-    void excerpt_whenOneWordIsLongerThanTheLimit_cutsItHard() {
-        assertThat(CitationExtractor.excerpt("x".repeat(1000))).isEqualTo("x".repeat(EXCERPT_MAX - 1) + "…");
-        // The only space is too early: going back to it would drop almost everything.
-        assertThat(CitationExtractor.excerpt("short " + "y".repeat(1000)))
-                .isEqualTo("short " + "y".repeat(EXCERPT_MAX - 7) + "…").hasSize(EXCERPT_MAX);
-    }
-
-    @Test
-    void excerpt_whenTurkish_keepsEveryLetter() {
-        assertThat(CitationExtractor.excerpt("  Çalışanın\n yıllık  izni: İĞÜŞÖÇ ığüşöç  "))
-                .isEqualTo("Çalışanın yıllık izni: İĞÜŞÖÇ ığüşöç");
-        assertThat(CitationExtractor.excerpt("ğüşıöç ".repeat(60))).isEqualTo("ğüşıöç ".repeat(39) + "ğüşıöç…");
-    }
-
-    @Test
-    void excerpt_whenTheLimitFallsInsideASurrogatePair_neverSplitsIt() {
-        String cut = CitationExtractor.excerpt("a".repeat(EXCERPT_MAX - 2) + "😀".repeat(3));
-        assertThat(cut).isEqualTo("a".repeat(EXCERPT_MAX - 2) + "😀…");
-        assertThat(cut.codePointCount(0, cut.length())).isEqualTo(EXCERPT_MAX);
-        assertThat(cut.codePoints().noneMatch(cp -> cp >= Character.MIN_SURROGATE && cp <= Character.MAX_SURROGATE))
-                .as("no lone surrogate").isTrue();
+    void extract_whenTheAnswerWouldMatchTextOutsideThePassage_excerptStaysPassageText() {
+        // llm-rules 3.3: the answer only places the window; its own words never reach the excerpt.
+        String excerpt = extractor.extract("Avans 25.000 TL'dir, uydurma ek cümle burada [2].", LONG).citations()
+                .getFirst().excerpt();
+        assertThat(excerpt).isEqualTo(ADVANCE).doesNotContain("uydurma");
     }
 }

@@ -120,7 +120,20 @@ class QuestionApiTest {
         assertThat(TestChatModel.INSTANCE.calls()).isOne();
     }
 
-    /** The hover card's excerpt is the start of the cited passage, white space collapsed and bounded to 280. */
+    /** ADR-0019: the excerpt is the sentence of the passage that the citing answer sentence overlaps. */
+    @Test
+    void ask_whenTheAnswerRestsOnTheMiddleOfAPassage_excerptsThatSentence() throws Exception {
+        ready("topic-leave Office handbook. " + "General office rules apply to every team member. ".repeat(4)
+                + "Overtime is paid at 150 percent of the hourly wage. " + "Badges must be worn inside the building. ".repeat(4));
+        TestChatModel.INSTANCE.answer("Fazla mesai 150 percent of the hourly wage olarak ödenir [1].");
+
+        HttpResponse<String> response = ask("topic-leave Fazla mesai ücreti?");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"excerpt\":\"Overtime is paid at 150 percent of the hourly wage.\"");
+    }
+
+    /** Without overlap the excerpt is the start of the cited passage, white space collapsed and bounded to 280. */
     @Test
     void ask_whenTheCitedPassageIsLong_returnsABoundedExcerpt() throws Exception {
         // ASCII because the test PDF font has no Turkish glyphs; the PDF wraps it onto several lines (collapsed here).

@@ -4,6 +4,8 @@ import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.api.enums.SourceUnit;
 import com.verso.qa.api.dto.Citation;
 import com.verso.qa.api.dto.CitationUnit;
+import com.verso.qa.config.QaProperties;
+import com.verso.qa.service.SentenceSplitter.Span;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,20 +31,23 @@ public class CitationExtractor {
     private static final Pattern MARKER = Pattern.compile("\\[\\s*(" + ITEM + "(?:\\s*[,;]\\s*" + ITEM + ")*)\\s*]");
     private static final Pattern RANGE = Pattern.compile("\\s*[-–]\\s*");
     private static final Pattern SPACE_BEFORE_PUNCTUATION = Pattern.compile("\\s+([.,;:!?])");
-    // Unicode white space (NBSP included) and control characters left over from text extraction become one space.
-    private static final Pattern WHITESPACE = Pattern.compile("[\\p{IsWhite_Space}\\p{Cc}]+");
-
-    /** Upper bound of {@link Citation#excerpt()} in code points, the ellipsis included (API doc: at most 280). */
-    static final int EXCERPT_MAX = 280;
-    private static final String ELLIPSIS = "…";
 
     /** The cleaned answer and its citations in order of first use. */
     public record Extracted(String answer, List<Citation> citations) {
     }
 
+    private final QaProperties properties;
+
+    public CitationExtractor(QaProperties properties) {
+        this.properties = properties;
+    }
+
     public Extracted extract(String raw, List<RetrievedPassage> passages) {
-        Map<Integer, Citation> used = new LinkedHashMap<>();
-        Matcher matcher = MARKER.matcher(Normalizer.normalize(raw, Normalizer.Form.NFKC));
+        String normalized = Normalizer.normalize(raw, Normalizer.Form.NFKC);
+        List<Span> sentences = SentenceSplitter.split(normalized, true);
+        // Per cited number, in order of first use: the answer sentences that carry its marker (ADR-0019).
+        Map<Integer, StringBuilder> citing = new LinkedHashMap<>();
+        Matcher matcher = MARKER.matcher(normalized);
         StringBuilder answer = new StringBuilder();
         while (matcher.find()) {
             List<Integer> valid = new ArrayList<>();
@@ -52,38 +57,43 @@ public class CitationExtractor {
                 long to = bounds.length == 2 ? Long.parseLong(bounds[1]) : from;
                 if (from < 1 || to > passages.size() || from > to) continue;
                 for (int number = (int) from; number <= to; number++) {
-                    if (valid.contains(number)) continue;
-                    valid.add(number);
-                    RetrievedPassage passage = passages.get(number - 1);
-                    used.putIfAbsent(number, new Citation(number, passage.documentId(), passage.fileName(),
-                            passage.pageNumber(), unit(passage.unit()), excerpt(passage.content())));
+                    if (!valid.contains(number)) valid.add(number);
                 }
             }
-            String replacement = valid.isEmpty() ? "" : valid.stream().map(n -> "[" + n + "]")
-                    .reduce("", String::concat);
+            if (!valid.isEmpty()) {
+                String sentence = citingSentence(normalized, sentences, matcher.start());
+                for (int number : valid) {
+                    citing.computeIfAbsent(number, n -> new StringBuilder()).append(' ').append(sentence);
+                }
+            }
+            String replacement = valid.stream().map(n -> "[" + n + "]").reduce("", String::concat);
             matcher.appendReplacement(answer, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(answer);
         String cleaned = SPACE_BEFORE_PUNCTUATION.matcher(answer.toString()).replaceAll("$1").strip();
-        return new Extracted(cleaned, List.copyOf(used.values()));
+        List<Citation> citations = new ArrayList<>(citing.size());
+        citing.forEach((number, text) -> {
+            RetrievedPassage passage = passages.get(number - 1);
+            // Evidence only from the part of the passage the prompt carried (PromptBuilder cuts at the same limit).
+            String excerpt = ExcerptSelector.select(passage.content(), text.toString(), properties.maxPassageChars());
+            citations.add(new Citation(number, passage.documentId(), passage.fileName(), passage.pageNumber(),
+                    unit(passage.unit()), excerpt));
+        });
+        return new Extracted(cleaned, List.copyOf(citations));
     }
 
     /**
-     * The start of a passage for the client's hover card: white space collapsed, at most {@link #EXCERPT_MAX} code
-     * points with a trailing ellipsis when cut. The cut goes back to the last space unless that would drop more than
-     * half of the kept text (one very long word); it never splits a surrogate pair. Display only, never logged
-     * (llm-rules 2.1).
+     * The answer sentence that a marker at {@code position} belongs to, markers removed. A marker that opens its
+     * sentence ("… on dört gündür. [1] Ayrıca …") belongs to the sentence before it.
      */
-    static String excerpt(String content) {
-        if (content == null) return "";
-        String text = WHITESPACE.matcher(content).replaceAll(" ").strip();
-        if (text.codePointCount(0, text.length()) <= EXCERPT_MAX) return text;
-        int end = text.offsetByCodePoints(0, EXCERPT_MAX - ELLIPSIS.length());
-        if (text.charAt(end) != ' ') {
-            int space = text.lastIndexOf(' ', end - 1);
-            if (space > end / 2) end = space;
-        }
-        return text.substring(0, end).stripTrailing() + ELLIPSIS;
+    private static String citingSentence(String answer, List<Span> sentences, int position) {
+        if (sentences.isEmpty()) return "";
+        int index = 0;
+        while (index + 1 < sentences.size() && sentences.get(index + 1).start() <= position) index++;
+        Span sentence = sentences.get(index);
+        String before = answer.substring(sentence.start(), Math.max(sentence.start(), position));
+        if (index > 0 && MARKER.matcher(before).replaceAll("").isBlank()) sentence = sentences.get(index - 1);
+        return MARKER.matcher(answer.substring(sentence.start(), sentence.end())).replaceAll(" ");
     }
 
     /** Exhaustive on purpose: a new SourceUnit must not reach clients as a 500 (review L3). */

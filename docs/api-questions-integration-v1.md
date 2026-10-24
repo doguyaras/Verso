@@ -12,7 +12,8 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 - Yeni hata kodları: 11001, 11002, 11010, 11011, 10030, 10031.
 - Her 503 yanıtı `Retry-After` (saniye) taşır.
 - Sonradan eklenen, geriye uyumlu alan: `GET /v1/info` yanıtında `roles` (ADR-0019).
-- Sonradan eklenen, geriye uyumlu alan: `citations[].excerpt` (alıntılanan pasajın başı, ≤ 280 karakter). Eski istemciler bilinmeyen alanı yok sayar; sürüm değişmez.
+- Sonradan eklenen, geriye uyumlu alan: `citations[].excerpt` (alıntılanan pasajdan cevabın dayandığı kısım, ≤ 280 karakter). Eski istemciler bilinmeyen alanı yok sayar; sürüm değişmez.
+- 24 Ekim 2026: `excerpt` artık pasajın başı değil, atfı taşıyan cevap cümlesiyle en çok örtüşen pencere (ADR-0020). Alan, tip ve sınır aynı; istemci değişikliği gerekmez.
 
 ## Kurallar
 - **Kritik:** Atıflar sunucuda üretilir. İstemci, cevap metnindeki `[n]` işaretini yalnız `citations` listesindeki `number` ile eşler; listede olmayan numara gösterilmez.
@@ -33,7 +34,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 ```json
 { "answer": "Yıllık izin yirmi iş günüdür [1].", "found": true, "outcome": "ANSWERED",
   "citations": [ { "number": 1, "documentId": "01a0fe8e-…", "fileName": "izin-yonetmeligi.pdf", "page": 3, "unit": "PAGE",
-                   "excerpt": "Madde 12 - Çalışanlara yılda yirmi iş günü ücretli yıllık izin verilir. İzin, işverenle…" } ],
+                   "excerpt": "Madde 12 - Çalışanlara yılda yirmi iş günü ücretli yıllık izin verilir." } ],
   "mode": "local", "model": "gemma4:e2b" }
 ```
 
@@ -56,7 +57,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `citations[].documentId` | UUID | `GET /v1/documents/{id}` ile açılır |
 | `citations[].fileName`, `page` | string, number | "izin-yonetmeligi.pdf, s. 3" |
 | `citations[].unit` | `PAGE` \| `SECTION` | DOCX, TXT ve MD sayfasızdır: `page` bölüm numarasıdır, "notlar.docx, bölüm 2" diye gösterilir (ADR-0016). Eksik ya da bilinmeyen → sayfa |
-| `citations[].excerpt` | string, ≤ 280 karakter | Alıntılanan pasajın başı; boşluklar tek boşluğa indirilmiş, kesildiyse kelime sınırında ve sonunda `…`. Pasaj metni boşsa `""`. Yalnız gösterim içindir (`[n]` üzerine gelince açılan kart): düz metin olarak gösterilir, HTML olarak yorumlanmaz (belge içeriği güvenilmeyen veridir); istemci log'una ve analitiğe yazılmaz. Sonradan eklendi (geriye uyumlu); eksikse kart yalnız dosya adı ve sayfayı gösterir. Sınır Unicode kod noktasıyla sayılır: emoji gibi karakterlerde JS `length` 280'i aşabilir |
+| `citations[].excerpt` | string, ≤ 280 karakter | Alıntılanan pasajın, bu `[n]`'i taşıyan cevap cümleleriyle en çok ortak sözcüğü ve sayısı olan bir ya da iki cümlesi (ADR-0019); örtüşme yoksa pasajın başı. Pasaj 280 karaktere sığıyorsa tamamı. Her zaman pasaj metnidir, model metni değildir. Boşluklar tek boşluğa indirilmiş; kesildiyse kelime sınırında, kesilen yerde `…` (sonda, uzun cümlenin ortasından başlıyorsa başta da). Pasaj metni boşsa `""`. Yalnız gösterim içindir (`[n]` üzerine gelince açılan kart): düz metin olarak gösterilir, HTML olarak yorumlanmaz (belge içeriği güvenilmeyen veridir); istemci log'una ve analitiğe yazılmaz. Sonradan eklendi (geriye uyumlu); eksikse kart yalnız dosya adı ve sayfayı gösterir. Sınır Unicode kod noktasıyla sayılır: emoji gibi karakterlerde JS `length` 280'i aşabilir |
 | `mode` | `local` \| `cloud` | Bilinmeyen → "AI" |
 | `model` | string | Bilgi amaçlı |
 
@@ -98,6 +99,7 @@ if (res.status === 503) retryLater(error.code);
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
 - v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026). Var olan alanların adı, tipi ve anlamı değişmedi.
+- `citations[].excerpt` seçimi (24 Ekim 2026, ADR-0019): pasajın başı yerine cevabın dayandığı pencere. Alan, tip ve 280 sınırı aynı; baştaki `…` yeni olabilir, düz metin olarak gösterilir.
 
 ## Manuel test akışı
 1. Bir belge yükle ve `READY` olmasını bekle (`docs/api-documents-integration-v1.md`).
