@@ -1,7 +1,9 @@
 package com.verso.document.service.impl;
 
 import com.verso.document.api.DocumentCatalog;
+import com.verso.document.api.dto.DocumentAccess;
 import com.verso.document.api.dto.DocumentInventory;
+import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.DocumentSummary;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
@@ -18,8 +20,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 /**
- * {@link DocumentCatalog} (ADR-0023). Names and ids only, never pages or chunks. The owner's lookup carries the account
- * in the statement (IDOR, reference 6.5); the account-wide lookups are guarded here too, not only by the qa admin
+ * {@link DocumentCatalog} (ADR-0023, ADR-0028). Names and ids only, never pages or chunks. The reader's lookup carries
+ * the reader's principals in the statement (IDOR, reference 6.5) and returns no name for a document they do not reach;
+ * the account-wide lookups are guarded here too, not only by the qa admin
  * endpoint: a caller without {@code verso-admin} is refused whichever module asks (ADR-0019, defence in depth).
  */
 @Service
@@ -34,12 +37,14 @@ public class DocumentCatalogServiceImpl implements DocumentCatalog {
     }
 
     @Override
-    public Map<UUID, String> fileNames(String accountId, Collection<UUID> documentIds) {
+    public Map<UUID, DocumentAccess> access(Reader reader, Collection<UUID> documentIds) {
         Set<UUID> ids = bounded(documentIds);
         if (ids.isEmpty()) return Map.of();
-        Map<UUID, String> names = new LinkedHashMap<>();
-        for (DocumentRow row : repository.findAll(accountId, ids)) names.put(row.id(), row.fileName());
-        return names;
+        Map<UUID, DocumentAccess> access = new LinkedHashMap<>();
+        for (DocumentAccess row : repository.access(reader.principals().toArray(String[]::new), ids)) {
+            access.put(row.documentId(), row);
+        }
+        return access;
     }
 
     @Override

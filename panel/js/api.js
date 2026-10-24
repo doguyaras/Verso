@@ -8,6 +8,14 @@ import { askBody, HISTORY_PAGE_SIZE } from './conversations.js';
 
 export const MESSAGES = Object.freeze({
   10001: 'Belge bulunamadı.',
+  10002: 'Bilgi alanı bulunamadı.',
+  10003: 'Bu erişim kaydı artık yok.',
+  10004: 'Bu belge bir bilgi alanında; yalnız yönetici değiştirebilir.',
+  10040: 'Bu adla bir bilgi alanı zaten var.',
+  10041: 'Bilgi alanında hâlâ belge var; önce belgeleri taşıyın ya da silin.',
+  10042: 'Bu bilgi alanının erişim sınırı dolu.',
+  10043: 'Bilgi alanı sınırı dolu.',
+  10044: 'Bu bilgi alanının belge sınırı dolu.',
   10010: 'Bu dosya türü desteklenmiyor: PDF, DOCX, TXT ya da MD yükleyin.',
   10011: 'Dosya boş.',
   10013: 'Belge kotası dolu (200). Önce eski belgeleri silin.',
@@ -76,30 +84,52 @@ async function request(path, init = {}) {
 
 /** Documents per page: the API's upper bound (docs/api-documents-integration-v1.md); the quota is 200. */
 export const PAGE_SIZE = 100;
+/** Pages of documents the screen loads at most: 500 documents. */
+export const MAX_DOCUMENT_PAGES = 5;
 
 export const api = {
   listDocuments: (page = 0, size = PAGE_SIZE) => request(`/v1/documents?page=${page}&size=${size}`),
   getDocument: (id) => request(`/v1/documents/${encodeURIComponent(id)}`),
   deleteDocument: (id) => request(`/v1/documents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  /** Every document of the account (the quota keeps it to two pages at most). */
+  /**
+   * The documents the user reads, personal and shared (ADR-0028), newest first. The personal quota keeps those to two
+   * pages; shared collections can hold more, so at most MAX_DOCUMENT_PAGES pages are loaded (newest first).
+   */
   async listAllDocuments() {
     const first = await api.listDocuments(0);
     const rest = [];
-    for (let page = 1; page < first.page.totalPages; page++) rest.push(...(await api.listDocuments(page)).data);
+    const last = Math.min(first.page.totalPages, MAX_DOCUMENT_PAGES);
+    for (let page = 1; page < last; page++) rest.push(...(await api.listDocuments(page)).data);
     return [...first.data, ...rest];
   },
+  /** Collections the user reads; for verso-admin every collection, each with readable/manageable (ADR-0028). */
+  listCollections: (page = 0, size = 100) => request(`/v1/collections?page=${page}&size=${size}`),
+  createCollection: (name, description) => request('/v1/collections', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description: description || null }) }),
+  deleteCollection: (id) => request(`/v1/collections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listGrants: (id) => request(`/v1/collections/${encodeURIComponent(id)}/grants`),
+  /** principalType GROUP (the group claim value, e.g. a Keycloak full path) or USER (the token sub). */
+  addGrant: (id, principalType, principal) => request(`/v1/collections/${encodeURIComponent(id)}/grants`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ principalType, principal }) }),
+  removeGrant: (id, grantId) => request(`/v1/collections/${encodeURIComponent(id)}/grants/${encodeURIComponent(grantId)}`,
+    { method: 'DELETE' }),
+  /** verso-admin: collectionId null moves the document back to its uploader's personal space. */
+  moveDocument: (id, collectionId) => request(`/v1/documents/${encodeURIComponent(id)}/collection`, { method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ collectionId }) }),
   /**
    * Uploads one file and reports the bytes sent (fetch cannot report upload progress, XMLHttpRequest can). The same
    * idempotency key would make a retry return the first document instead of a second one.
    */
-  async upload(file, onProgress = () => {}) {
+  async upload(file, onProgress = () => {}, collectionId = null) {
     const token = await accessToken();
     if (!token) throw new ApiError(401, 90100);
     const form = new FormData();
     form.append('file', file, file.name);
+    // A shared collection (verso-admin only, ADR-0028); without it the file goes to the personal space.
+    const target = collectionId ? `?collectionId=${encodeURIComponent(collectionId)}` : '';
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${CONFIG.api}/v1/documents`);
+      xhr.open('POST', `${CONFIG.api}/v1/documents${target}`);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.setRequestHeader('X-Idempotency-Key', crypto.randomUUID());
       xhr.upload.onprogress = (event) => {

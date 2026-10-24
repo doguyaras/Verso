@@ -38,7 +38,7 @@ Sınıflar: **ZG** = zorunlu güvence (ihlal `BLOCK`), **VT** = varsayılan terc
 
 | # | Kural | Sınıf | Gerekçe | Uygulanma / istisna | Doğrulama | Yeniden değerlendirme |
 |---|---|---|---|---|---|---|
-| 4.1 | Retrieval, sahiplik filtresini **vektör sorgusunun içinde** uygular; sonuçlar bellekte süzülmez. Başka hesaba ait bir chunk asla prompt'a girmez. | ZG | Bellekte süzme `top-k`'yı başka hesabın sonuçlarıyla doldurur ve bir hata ile sızıntıya döner (IDOR) | – | Gerçek PGVector testi: iki hesap, benzer belgeler; A'nın sorusu B'nin chunk'ını hiç getirmez | Çok kiracılık eklenirse |
+| 4.1 | Retrieval, erişim filtresini (kişisel sahiplik ve bilgi alanı erişimleri, ADR-0028: okuyucunun `user:`/`group:` principal'ları) **vektör ve sözcük sorgusunun içinde**, sıralamadan ve sınırdan önce uygular; sonuçlar bellekte süzülmez. Okuyucunun erişemediği bir chunk asla aday olmaz, sayılmaz, prompt'a girmez. | ZG | Bellekte süzme `top-k`'yı başka hesabın sonuçlarıyla doldurur ve bir hata ile sızıntıya döner (IDOR, aşırı paylaşım) | Bozuk grup claim'i grup vermez (kapalı kalma) | Gerçek PGVector testi: iki hesap, benzer belgeler; A'nın sorusu B'nin chunk'ını hiç getirmez (`RetrievalTest`); soruyla birebir aynı metinli yetkisiz belge iki aday listesinde de yok (`CollectionAccessTest`) | Çok kiracılık eklenirse |
 | 4.2 | Belge silme; metadata, chunk'lar, vektörler ve (saklanıyorsa) orijinal dosyayı tek işlemde siler. Silinen belge sonraki retrieval'da görünmez. | ZG | KVKK silme hakkı | – | Entegrasyon testi: sil → ara → yok | – |
 
 ## 5. Model çağrısı bir uzak çağrıdır

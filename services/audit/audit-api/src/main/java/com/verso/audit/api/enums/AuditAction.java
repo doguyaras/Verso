@@ -21,6 +21,18 @@ public enum AuditAction {
     ADMIN_METRICS_VIEWED,
     /** A verso-admin exported the audit log. */
     AUDIT_EXPORTED,
+    /** A verso-admin created a shared collection (ADR-0028). */
+    COLLECTION_CREATED,
+    /** A verso-admin renamed a collection or changed its description. */
+    COLLECTION_UPDATED,
+    /** A verso-admin deleted an empty collection with its grants. */
+    COLLECTION_DELETED,
+    /** A collection was granted to a group or a user; the detail says which kind, never the group or the sub. */
+    COLLECTION_GRANT_ADDED,
+    /** A grant of a collection was removed; same detail as the grant. */
+    COLLECTION_GRANT_REMOVED,
+    /** A document moved between a personal space and a collection, or between collections. */
+    DOCUMENT_MOVED,
     /** An admin endpoint answered 403 to an authenticated caller who lacks the role. */
     ACCESS_DENIED
 }

@@ -19,6 +19,11 @@
   </properties>
 
   <dependencies>
+    <!-- Request DTOs of /v1/collections carry their own constraints (ADR-0028), like qa-api. -->
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+    </dependency>
     <!-- @NamedInterface on every api package (ADR-0007 #24). -->
     <dependency>
       <groupId>org.springframework.modulith</groupId>

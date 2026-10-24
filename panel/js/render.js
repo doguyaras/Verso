@@ -143,7 +143,10 @@ export function groupSources(citations) {
   const groups = new Map();
   for (const citation of citations) {
     const key = citation.documentId ?? citation.fileName;
-    if (!groups.has(key)) groups.set(key, { documentId: citation.documentId, fileName: citation.fileName, items: [] });
+    if (!groups.has(key)) {
+      groups.set(key, { documentId: citation.documentId, fileName: citation.fileName,
+        collectionName: citation.collectionName ?? null, items: [] });
+    }
     groups.get(key).items.push(citation);
   }
   return [...groups.values()];

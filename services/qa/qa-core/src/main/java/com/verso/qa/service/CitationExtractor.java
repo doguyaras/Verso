@@ -77,7 +77,7 @@ public class CitationExtractor {
             // Evidence only from the part of the passage the prompt carried (PromptBuilder cuts at the same limit).
             String excerpt = ExcerptSelector.select(passage.content(), text.toString(), properties.maxPassageChars());
             citations.add(new Citation(number, passage.documentId(), passage.fileName(), passage.pageNumber(),
-                    unit(passage.unit()), excerpt));
+                    unit(passage.unit()), excerpt, passage.collectionId(), passage.collectionName()));
         });
         return new Extracted(cleaned, List.copyOf(citations));
     }

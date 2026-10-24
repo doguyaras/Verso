@@ -204,6 +204,23 @@ class ClaimAuthoritiesConverterTest {
         assertThat(authorities(none, jwt)).containsExactly("ROLE_verso-user");
     }
 
+    /** ADR-0028: the groups for collection access are the GROUP_ authorities, prefix removed; roles never become one. */
+    @Test
+    void callerGroups_areTheGroupAuthoritiesOnly_andEmptyForAMalformedClaim() {
+        Jwt jwt = jwt(c -> {
+            c.put("realm_access", Map.of("roles", List.of("verso-admin", "/hukuk")));
+            c.put("groups", List.of("/ik", "/hukuk/sozlesmeler", "/ik", "bad\u0007"));
+        });
+        JwtAuthenticationToken token = new JwtAuthenticationToken(jwt, new ClaimAuthoritiesConverter(KEYCLOAK).convert(jwt));
+        assertThat(new CallerGroups(KEYCLOAK).of(token)).containsExactly("/hukuk/sozlesmeler", "/ik");
+
+        Jwt malformed = jwt(c -> c.put("groups", Map.of("path", "/hukuk")));
+        JwtAuthenticationToken odd = new JwtAuthenticationToken(malformed,
+                new ClaimAuthoritiesConverter(KEYCLOAK).convert(malformed));
+        assertThat(new CallerGroups(KEYCLOAK).of(odd)).isEmpty();
+        assertThat(new CallerGroups(KEYCLOAK).of(null)).isEmpty();
+    }
+
     private static Collection<String> authorities(VersoAuthorityProperties properties, Jwt jwt) {
         return new ClaimAuthoritiesConverter(properties).convert(jwt).stream().map(GrantedAuthority::getAuthority).toList();
     }

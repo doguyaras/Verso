@@ -11,9 +11,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * Hybrid search over document_chunk (ADR-0011, ADR-0022; llm-rules 4.1/6.1). The account, the embedding model and the
- * READY status are conditions of both candidate lists, the vector list and the full-text list: another account's chunk,
- * or a chunk of another model, is never a candidate. Call inside a transaction: the HNSW scan settings are SET LOCAL.
+ * Hybrid search over document_chunk (ADR-0011, ADR-0022, ADR-0028; llm-rules 4.1/6.1). The reader's access, the
+ * embedding model and the READY status are conditions of both candidate lists, the vector list and the full-text list,
+ * before ranking and before the limit: a chunk of a document outside the reader's principals, or of another model, is
+ * never a candidate, never ranked and never counted. Call inside a transaction: the HNSW scan settings are SET LOCAL.
  */
 @Repository
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
@@ -25,6 +26,14 @@ public class RetrievalRepository {
      * one, or its terms would not match the stored ones.
      */
     static final String TEXT_SEARCH_CONFIG = "turkish";
+
+    /**
+     * Chunk c belongs to a document one of the reader's principals reaches (ADR-0028): one probe of document_principal's
+     * primary key per chunk, the same predicate as DocumentRepository.READABLE. Measured against a text[] column with a
+     * GIN index on the chunks (docs/evidence/paylasimli-alanlar-dogrulama.md).
+     */
+    static final String READABLE_CHUNK = "EXISTS (SELECT 1 FROM document.document_principal p "
+            + "WHERE p.document_id = c.document_id AND p.principal = ANY(:principals))";
 
     /**
      * The question's distinct terms joined with OR. plainto_tsquery and websearch_to_tsquery AND every term: a
@@ -39,7 +48,7 @@ public class RetrievalRepository {
 
     /** One fused passage, with the chunk id the term-share lookup needs. */
     public record Candidate(UUID chunkId, UUID documentId, String fileName, int pageNumber, SourceUnit unit,
-                            String content, double similarity) {
+                            String content, double similarity, UUID collectionId, String collectionName) {
     }
 
     private final JdbcClient jdbc;
@@ -61,12 +70,12 @@ public class RetrievalRepository {
 
     /**
      * Reciprocal Rank Fusion of two candidate lists in one statement (ADR-0022): the {@code vectorK} nearest chunks by
-     * cosine distance and the {@code lexicalK} best chunks by ts_rank_cd for the question's terms (OR). A chunk scores
-     * Σ 1 / (rrfK + rank) over the lists it is in; ties go to the higher cosine similarity. The cosine similarity of
-     * every returned chunk is computed, also of one only the full-text list found: the answerability rule reads it,
-     * never the fused score.
+     * cosine distance and the {@code lexicalK} best chunks by ts_rank_cd for the question's terms (OR), both among the
+     * reader's chunks only. A chunk scores Σ 1 / (rrfK + rank) over the lists it is in; ties go to the higher cosine
+     * similarity. The cosine similarity of every returned chunk is computed, also of one only the full-text list found:
+     * the answerability rule reads it, never the fused score. The final select checks access again (defence in depth).
      */
-    public List<Candidate> hybrid(String accountId, String model, float[] question, String questionText, int vectorK,
+    public List<Candidate> hybrid(String[] principals, String model, float[] question, String questionText, int vectorK,
                                   int lexicalK, int rrfK, int topK) {
         String vector = IngestionRepository.vectorLiteral(question);
         return jdbc.sql("""
@@ -75,7 +84,7 @@ public class RetrievalRepository {
                             FROM (SELECT c.id, c.embedding <=> CAST(:q AS extensions.vector) AS distance
                                   FROM document.document_chunk c
                                   JOIN document.document d ON d.id = c.document_id
-                                  WHERE c.account_id = :account AND c.embedding_model = :model AND d.status = 'READY'
+                                  WHERE %1$s AND c.embedding_model = :model AND d.status = 'READY'
                                   ORDER BY c.embedding <=> CAST(:q AS extensions.vector)
                                   LIMIT :vectorK) v
                         ), lex AS (
@@ -83,8 +92,8 @@ public class RetrievalRepository {
                             FROM (SELECT c.id, ts_rank_cd(c.search_vector, query.terms) AS score
                                   FROM document.document_chunk c
                                   JOIN document.document d ON d.id = c.document_id
-                                  CROSS JOIN (SELECT %s AS terms) query
-                                  WHERE c.account_id = :account AND c.embedding_model = :model AND d.status = 'READY'
+                                  CROSS JOIN (SELECT %2$s AS terms) query
+                                  WHERE %1$s AND c.embedding_model = :model AND d.status = 'READY'
                                     AND c.search_vector @@ query.terms
                                   ORDER BY score DESC, c.id
                                   LIMIT :lexicalK) l
@@ -94,54 +103,59 @@ public class RetrievalRepository {
                             GROUP BY u.id
                         )
                         SELECT c.id, c.document_id, d.file_name, d.format, c.page_number, c.content,
-                               1 - (c.embedding <=> CAST(:q AS extensions.vector)) AS similarity
+                               1 - (c.embedding <=> CAST(:q AS extensions.vector)) AS similarity,
+                               d.collection_id, col.name AS collection_name
                         FROM fused f
                         JOIN document.document_chunk c ON c.id = f.id
                         JOIN document.document d ON d.id = c.document_id
-                        WHERE c.account_id = :account
+                        LEFT JOIN document.collection col ON col.id = d.collection_id
+                        WHERE %1$s
                         ORDER BY f.score DESC, similarity DESC, c.id
                         LIMIT :k
-                        """.formatted(OR_QUERY))
-                .param("q", vector).param("account", accountId).param("model", model).param("question", queryText(questionText))
+                        """.formatted(READABLE_CHUNK, OR_QUERY))
+                .param("q", vector).param("principals", principals).param("model", model)
+                .param("question", queryText(questionText))
                 .param("vectorK", vectorK).param("lexicalK", lexicalK).param("rrfK", rrfK).param("k", topK)
                 .query((rs, n) -> new Candidate(rs.getObject("id", UUID.class), rs.getObject("document_id", UUID.class),
                         rs.getString("file_name"), rs.getInt("page_number"),
                         DocumentFormat.valueOf(rs.getString("format")).unit(), rs.getString("content"),
-                        rs.getDouble("similarity")))
+                        rs.getDouble("similarity"), rs.getObject("collection_id", UUID.class),
+                        rs.getString("collection_name")))
                 .list();
     }
 
-    /** Chunks the account can search with this model: the denominator of a term share. From the document rows. */
-    public long searchableChunks(String accountId, String model) {
-        return jdbc.sql("SELECT COALESCE(sum(chunk_count), 0) FROM document.document "
-                        + "WHERE account_id = :account AND status = 'READY' AND embedding_model = :model")
-                .param("account", accountId).param("model", model).query(Long.class).single();
+    /** Chunks the reader can search with this model: the denominator of a term share. From the document rows. */
+    public long searchableChunks(String[] principals, String model) {
+        return jdbc.sql("SELECT COALESCE(sum(d.chunk_count), 0) FROM document.document d "
+                        + "WHERE d.status = 'READY' AND d.embedding_model = :model AND " + DocumentRepository.READABLE)
+                .param("principals", principals).param("model", model).query(Long.class).single();
     }
 
     /**
-     * For each given chunk, how many of the account's searchable chunks contain the rarest question term that this
+     * For each given chunk, how many of the reader's searchable chunks contain the rarest question term that this
      * chunk contains (ADR-0022). Each term is counted only up to {@code cap}: a term found that often is common, and
-     * counting it exactly would cost a scan of most of a large account. Chunks that share no term are absent.
+     * counting it exactly would cost a scan of most of a large space. Chunks that share no term are absent. Chunks
+     * outside the reader's principals are neither looked up nor counted (ADR-0028).
      */
-    public Map<UUID, Long> rarestSharedTermCounts(String accountId, String model, String questionText, List<UUID> chunkIds,
-                                                  long cap) {
+    public Map<UUID, Long> rarestSharedTermCounts(String[] principals, String model, String questionText,
+                                                  List<UUID> chunkIds, long cap) {
         if (chunkIds.isEmpty()) return Map.of();
         return jdbc.sql("""
                         WITH terms AS (
                             SELECT DISTINCT t.lexeme, ('''' || replace(t.lexeme, '''', '''''') || '''')::tsquery AS query
-                            FROM unnest(to_tsvector('%s', :question)) t
+                            FROM unnest(to_tsvector('%2$s', :question)) t
                             WHERE strpos(t.lexeme, chr(92)) = 0
                         ), shared AS (
                             SELECT c.id, terms.lexeme
                             FROM document.document_chunk c
                             JOIN terms ON c.search_vector @@ terms.query
-                            WHERE c.id IN (:ids) AND c.account_id = :account
+                            WHERE c.id IN (:ids) AND %1$s
                         ), frequency AS (
                             SELECT terms.lexeme,
                                    (SELECT count(*) FROM (
                                         SELECT 1 FROM document.document_chunk c
                                         JOIN document.document d ON d.id = c.document_id
-                                        WHERE c.account_id = :account AND c.embedding_model = :model
+                                        WHERE %1$s AND c.embedding_model = :model
                                           AND d.status = 'READY' AND c.search_vector @@ terms.query
                                         LIMIT :cap) hits) AS chunks
                             FROM terms WHERE terms.lexeme IN (SELECT lexeme FROM shared)
@@ -149,8 +163,8 @@ public class RetrievalRepository {
                         SELECT shared.id, min(frequency.chunks) AS chunks
                         FROM shared JOIN frequency ON frequency.lexeme = shared.lexeme
                         GROUP BY shared.id
-                        """.formatted(TEXT_SEARCH_CONFIG))
-                .param("question", queryText(questionText)).param("ids", chunkIds).param("account", accountId)
+                        """.formatted(READABLE_CHUNK, TEXT_SEARCH_CONFIG))
+                .param("question", queryText(questionText)).param("ids", chunkIds).param("principals", principals)
                 .param("model", model).param("cap", cap)
                 .query((rs, n) -> Map.entry(rs.getObject("id", UUID.class), rs.getLong("chunks")))
                 .list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -164,10 +178,14 @@ public class RetrievalRepository {
         return question.replace('\u0000', ' ');
     }
 
-    /** True when the account has chunks embedded by another model: comparing them would be meaningless (6.1). */
-    public boolean hasChunksOfAnotherModel(String accountId, String model) {
-        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM document.document_chunk WHERE account_id = :account "
-                        + "AND embedding_model <> :model)")
-                .param("account", accountId).param("model", model).query(Boolean.class).single();
+    /**
+     * True when a document the reader can search has chunks embedded by another model: comparing them would be
+     * meaningless (6.1). Another reader's stale document does not block this reader.
+     */
+    public boolean hasChunksOfAnotherModel(String[] principals, String model) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM document.document_principal p "
+                        + "JOIN document.document_chunk c ON c.document_id = p.document_id "
+                        + "WHERE p.principal = ANY(:principals) AND c.embedding_model <> :model)")
+                .param("principals", principals).param("model", model).query(Boolean.class).single();
     }
 }

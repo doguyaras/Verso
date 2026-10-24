@@ -3,6 +3,7 @@
 import { api, ApiError } from '../api.js';
 import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
+import { ROLES } from '../roles.js';
 import { el, fill, foldTr, formatDate, formatLabel, formatSize, plainName, UPLOAD_TYPES } from '../render.js';
 import { CONNECTORS } from './setup.js';
 import { confirmDialog, emptyState, failureText, fileIcon, formatNumber, openDrawer, relativeTime, statusPill, toast } from '../ui.js';
@@ -31,10 +32,26 @@ function unitLabel(doc) {
   return `${formatNumber(doc.pageCount)} ${(doc.format ?? 'PDF') === 'PDF' ? 'sayfa' : 'bölüm'}`;
 }
 
+/** A shared document is managed by verso-admin only (ADR-0028): readers see it, but cannot delete it. */
+export function canDelete(doc, admin) {
+  return !doc.collectionId || Boolean(admin);
+}
+
+/** The space a document lives in, for the row and the drawer. */
+export function spaceLabel(doc) {
+  return doc.collectionId ? plainName(doc.collectionName ?? 'Bilgi alanı') : 'Kişisel alan';
+}
+
 export function renderDocuments(ctx) {
   const { main, guarded } = ctx;
+  const admin = (ctx.roles ?? []).includes(ROLES.ADMIN);
   let docs = null;
   let poll = null;
+  let collections = [];
+  // Where new uploads go: '' is the personal space; an admin may pick a shared collection (ADR-0028).
+  let target = '';
+  const picker = el('select', { class: 'input', 'aria-label': 'Yükleme yeri', hidden: !admin,
+    onchange: (event) => { target = event.target.value; } });
   if (ctx.params?.query !== undefined) {
     state.query = ctx.params.query;
     state.filter = 'all';
@@ -70,8 +87,8 @@ export function renderDocuments(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Bilgi kaynakları'),
-        el('p', {}, `${CONFIG.deployment.productName} cevap verirken bu belgeleri okur. Belgeler bu sunucuda işlenir ve yalnız size görünür; Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.`)),
-      el('div', { class: 'page-actions' },
+        el('p', {}, `${CONFIG.deployment.productName} cevap verirken bu belgeleri okur. Belgeler bu sunucuda işlenir; kişisel alanınızdakiler yalnız size, bilgi alanlarındakiler o alana yetkili gruplara görünür. Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.`)),
+      el('div', { class: 'page-actions' }, picker,
         el('button', { class: 'button secondary', type: 'button', onclick: () => refresh() }, icon('refresh'), 'Yenile'),
         el('button', { class: 'button', type: 'button', onclick: () => input.click() }, icon('upload'), 'Belge yükle'))),
     dropzone, uploads,
@@ -170,7 +187,8 @@ export function renderDocuments(ctx) {
         if (event.key === 'Enter' && event.target === event.currentTarget) details(doc);
       } },
     el('td', {}, el('div', { class: 'doc-cell' }, fileIcon(doc.format),
-      el('div', {}, el('div', { class: 'name' }, plainName(doc.fileName)),
+      el('div', {}, el('div', { class: 'name' }, plainName(doc.fileName),
+        doc.collectionId ? el('span', { class: 'pill neutral', title: 'Bilgi alanı' }, spaceLabel(doc)) : null),
         el('div', { class: 'sub' }, doc.status === 'FAILED' ? failureText(doc.failureReason)
           : doc.pageCount == null ? formatLabel(doc.format) : `${formatLabel(doc.format)} · ${unitLabel(doc)}`)))),
     el('td', {}, statusPill(doc.status)),
@@ -178,11 +196,11 @@ export function renderDocuments(ctx) {
     el('td', { class: 'num hide-sm' }, formatSize(doc.sizeBytes)),
     el('td', { class: 'when hide-sm', title: formatDate(doc.createdAt) }, relativeTime(doc.createdAt)),
     el('td', {}, el('div', { class: 'row-actions' },
-      el('button', { class: 'icon-button', type: 'button', 'aria-label': `${plainName(doc.fileName)} belgesini sil`, title: 'Sil',
+      canDelete(doc, admin) ? el('button', { class: 'icon-button', type: 'button', 'aria-label': `${plainName(doc.fileName)} belgesini sil`, title: 'Sil',
         onclick: (event) => {
           event.stopPropagation();
           remove(doc);
-        } }, icon('trash', 'sm'))))));
+        } }, icon('trash', 'sm')) : null))));
     fill(body,
       el('div', { class: 'table-wrap' }, el('table', { class: 'table' },
         el('thead', {}, el('tr', {}, COLUMNS.map(header), el('th', {}, el('span', { class: 'sr-only' }, 'İşlemler')))),
@@ -229,7 +247,7 @@ export function renderDocuments(ctx) {
       await ctx.withAuth(() => api.upload(file, (ratio) => {
         bar.style.width = `${Math.round(ratio * 100)}%`;
         percent.textContent = `${Math.round(ratio * 100)}%`;
-      }));
+      }, target || null));
       item.classList.add('done');
       bar.style.width = '100%';
       label.textContent = 'Yüklendi · işleniyor';
@@ -274,6 +292,7 @@ export function renderDocuments(ctx) {
           el('div', {}, el('strong', {}, failureText(fresh.failureReason)), el('div', {}, 'Dosyayı kontrol edip yeniden yükleyin.'))) : null,
         WAITING(fresh) ? el('div', { class: 'notice wait' }, icon('clock', 'sm'), 'Belge işleniyor; birkaç saniye içinde aranabilir olur.') : null,
         el('dl', { class: 'facts' },
+          el('dt', {}, 'Alan'), el('dd', {}, spaceLabel(fresh)),
           el('dt', {}, 'Tür'), el('dd', {}, formatLabel(fresh.format)),
           el('dt', {}, (fresh.format ?? 'PDF') === 'PDF' ? 'Sayfa' : 'Bölüm'), el('dd', { class: 'tabular' }, fresh.pageCount == null ? '–' : formatNumber(fresh.pageCount)),
           el('dt', {}, 'Parça'), el('dd', { class: 'tabular' }, fresh.chunkCount == null ? '–' : formatNumber(fresh.chunkCount)),
@@ -289,10 +308,39 @@ export function renderDocuments(ctx) {
           close();
           ctx.navigate('ask', { focus: true });
         } }, icon('chat'), 'Bu belgelere sor') : null,
-        el('button', { class: 'button danger', type: 'button', onclick: () => remove(fresh, close) }, icon('trash'), 'Belgeyi sil'),
+        admin ? moveControl(fresh, close) : null,
+        canDelete(fresh, admin)
+          ? el('button', { class: 'button danger', type: 'button', onclick: () => remove(fresh, close) }, icon('trash'), 'Belgeyi sil') : null,
       ].filter(Boolean),
     });
   }
+
+  /** verso-admin: move a document between the personal space and the collections (ADR-0028). */
+  function moveControl(doc, close) {
+    const select = el('select', { class: 'input', 'aria-label': 'Taşınacak yer' },
+      el('option', { value: '' }, 'Yükleyenin kişisel alanı'),
+      collections.map((c) => el('option', { value: c.id, selected: c.id === doc.collectionId }, plainName(c.name))));
+    return el('div', { class: 'page-actions' }, select,
+      el('button', { class: 'button secondary', type: 'button', onclick: async () => {
+        const destination = select.value || null;
+        if (destination === (doc.collectionId ?? null)) return;
+        const moved = await guarded(() => api.moveDocument(doc.id, destination));
+        if (!moved) return;
+        close();
+        toast('Belge taşındı.', 'ok');
+        refresh();
+      } }, icon('refresh'), 'Taşı'));
+  }
+
+  async function loadCollections() {
+    if (!admin) return;
+    const page = await guarded(() => api.listCollections());
+    if (!page || !ctx.isCurrent()) return;
+    collections = page.data ?? [];
+    picker.replaceChildren(el('option', { value: '' }, 'Kişisel alanım'),
+      ...collections.map((c) => el('option', { value: c.id }, `Bilgi alanı: ${plainName(c.name)}`)));
+  }
+  loadCollections();
 
   refresh().then(() => {
     if (ctx.params?.open && docs) {

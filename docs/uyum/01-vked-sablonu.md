@@ -32,7 +32,7 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 | Veri işleyen | {{KURULUM_EKIBI_ADI}} (yalnız kurulum ve destek sırasında erişim varsa) | [04](04-veri-isleyen-sozlesmesi.md). Üretimde erişim yoksa ve yalnız yazılım teslim ediliyorsa işleyen sayılıp sayılmayacağı kurum hukuk birimi teyit etmeli. |
 | Kimlik sağlayıcı | Kurumun OIDC sağlayıcısı ({{IDP_ADI}}) | Verso kullanıcı adı, parola ya da e-posta saklamaz; token'dan `sub` ve rol/grup claim'lerini okur (`verso.security.authorities.*`, ADR-0019). |
 | Alt işleyen (yalnız `cloud` modda) | Chat sağlayıcısı: {{BULUT_SAGLAYICI}} (Anthropic ya da OpenAI uyumlu API; ADR-0013) | Sağlayıcının veri işleme/saklama/eğitim koşulları sağlayıcı sözleşmesine bağlıdır; bu şablon onları bilmez: {{SAGLAYICI_KOSULLARI}}. |
-| Yönetici (`verso-admin`) | {{YONETICI_ROLU_SAHIPLERI}} | Metrik ve denetim kaydı görür; başkasının soru ve cevabını okuyan bir API ucu yoktur (ADR-0023: her geçmiş sorgusu `account_id` taşır). |
+| Yönetici (`verso-admin`) | {{YONETICI_ROLU_SAHIPLERI}} | Metrik ve denetim kaydı görür; başkasının soru ve cevabını okuyan bir API ucu yoktur (ADR-0023: her geçmiş sorgusu `account_id` taşır). Bilgi alanlarını yönetir (oluşturma, gruba ya da kullanıcıya erişim verme, belge yükleme ve taşıma; `/v1/collections`, ADR-0028); bir alanın içeriğini sormak için kendisinin de o alana yetkili olması gerekir. Başka kullanıcının kişisel belgesini görmez. |
 
 ## 3. Veri envanteri: ne saklanır, ne kadar, nerede
 
@@ -97,7 +97,7 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 | Hak talebi | Verso'da yol |
 |---|---|
 | Erişim: kendi soru ve cevapları | Panelde "Geçmiş"; `GET /v1/conversations`, `GET /v1/conversations/{id}` |
-| Erişim: kendi belgeleri | Panelde "Belgeler"; `GET /v1/documents` |
+| Erişim: kendi belgeleri | Panelde "Belgeler"; `GET /v1/documents` (kişisel belgeler ve okuyabildiği bilgi alanlarının belgeleri) |
 | Silme: geçmiş | `DELETE /v1/conversations/{id}` ya da `DELETE /v1/conversations` (turlar, atıflar, puanlar, hesap-gün satırı; anonim sayaçlar kalır) |
 | Silme: belge | `DELETE /v1/documents/{id}` (dosya, sayfalar, parçalar, vektörler) |
 | Denetim kaydındaki satırlar | Silinmez; veri güvenliği ve hesap verilebilirlik amacıyla süre sonuna kadar tutulur (ADR-0026). Aydınlatma metni bunu söyler |
@@ -107,7 +107,7 @@ Başvuru yanıt süresi (kanunda 30 gün) **[repo: `security-rules.md` bölüm 5
 
 ## 7. Gereklilik, orantılılık, azaltma
 
-- **Veri azaltma:** cevap yalnız sorgu sahibine ait belgelerden üretilir; sahiplik filtresi vektör sorgusunun içindedir (llm-rules 4.1, test: iki hesapla `RetrievalTest`). Başka hesabın parçası prompt'a hiç girmez.
+- **Veri azaltma:** cevap yalnız soranın okuyabildiği belgelerden üretilir: kendi kişisel belgeleri ve kimlik sağlayıcının token'ında taşıdığı gruplara (ya da doğrudan kendisine) açılmış bilgi alanlarının belgeleri (ADR-0028). Erişim filtresi vektör ve sözcük sorgusunun içindedir, sıralamadan ve sınırdan önce (llm-rules 4.1; testler: iki hesapla `RetrievalTest`, gruplarla `CollectionAccessTest`). Okuyamadığı belgenin parçası prompt'a hiç girmez; grup claim'i bozuksa grup yok sayılır (kapalı kalma). Gruptan çıkarılan kişi, bir sonraki oturum anahtarından (en çok 300 sn) itibaren o alanı göremez; bir alandan kaldırılan erişim ise bir sonraki istekte geçerlidir.
 - **Amaçla sınırlılık:** pasaj benzerlik eşiğinin altında model çağrılmaz ("belgelerde bulunamadı" döner); uydurma yerine ret tercih edilir (llm-rules 3.4).
 - **Saklama sınırı:** geçmiş 90 gün (başlangıç ayarı, kurum belirler), denetim 365 gün (başlangıç ayarı, mevzuat sayısı değildir; ADR-0026).
 - **Yönetici görünürlüğü:** metrikler toplulaştırılmıştır. Cevaplanamayan soru listesi ve belge adları **varsayılan kapalıdır** (`VERSO_SHOW_UNANSWERED_QUESTIONS`, `VERSO_SHOW_DOCUMENT_NAMES`). Açılırsa:
@@ -122,7 +122,7 @@ Olasılık ve etki: {{DUSUK_ORTA_YUKSEK}} ile doldurulur. "Verso'daki önlem" s�
 
 | # | Risk | Verso'daki önlem | Kalan risk | Ek önlem (kurum) | Olasılık / etki |
 |---|---|---|---|---|---|
-| R1 | Kullanıcı başkasının belgesinden cevap alır (IDOR) | Sahiplik filtresi vektör ve sözcük sorgusunun içinde; kimlik yalnız doğrulanmış token'dan (`@CurrentAccount`); başkasının kaynağı 404 | Ortak bilgi tabanı yok: her belge tek hesabındır, ekip paylaşımı ayrı iş | Belgeleri kimin yükleyeceğine karar ver: {{YUKLEME_YETKISI}} | {{R1}} |
+| R1 | Kullanıcı yetkisi olmadığı belgeden cevap alır (IDOR, aşırı paylaşım) | Erişim filtresi (kişisel sahiplik + bilgi alanı erişimleri) vektör ve sözcük sorgusunun içinde; kimlik ve gruplar yalnız doğrulanmış token'dan; okunamayan kaynak 404; erişimi yalnız `verso-admin` verir (ADR-0028) | Bir alan yanlış gruba açılırsa o grubun herkesi okur; grup üyeliği IdP'dedir ve token ömrü (300 sn) kadar gecikir; Keycloak grup yolu yeniden adlandırılınca erişim kaybolur (kapalı kalma) | Bilgi alanlarını ve gruplarını kimin açacağına karar ver; erişim listelerini dönemsel gözden geçir: {{YUKLEME_YETKISI}} | {{R1}} |
 | R2 | Hatalı / uydurma cevap | Sunucuda üretilen atıf, getirilmemiş kaynağa atıf atılır; yetersiz kanıtta model çağrılmaz; kaynaksız cevap "kaynağa bağlanamadı" uyarısı alır | Model yine hata yapabilir; atıf doğruluğu eval ile ölçülür, %100 değildir (`eval/README.md`) | Politika: cevap doğrulanır ([03](03-uretken-yz-kullanim-politikasi.md)) | {{R2}} |
 | R3 | Belgedeki gizli talimat (prompt injection) | Belge içeriği güvenilmeyen veri; ayraçlı prompt; model çıktısı çalıştırılmaz (araç/SQL/URL yok) (llm-rules 3.1, 3.2) | Cevap metni yanıltılabilir | Güvenilmeyen kaynaktan belge yüklemeyi sınırla: {{YUKLEME_KURALI}} | {{R3}} |
 | R4 | Özel nitelikli veri belgelere/sorulara girer | Verso içeriği sınıflandırmaz | Veri modelde (local: kurum içinde, cloud: sağlayıcıda) işlenir | Politika Bölüm 4; özel nitelikli veri tedbirleri; cloud kapalı | {{R4}} |

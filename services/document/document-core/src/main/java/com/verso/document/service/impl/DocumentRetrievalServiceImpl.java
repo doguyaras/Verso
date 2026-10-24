@@ -1,6 +1,7 @@
 package com.verso.document.service.impl;
 
 import com.verso.document.api.DocumentRetrieval;
+import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.config.DocumentProperties;
 import com.verso.document.exception.DocumentErrorCode;
@@ -102,9 +103,11 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
     }
 
     @Override
-    public List<RetrievedPassage> search(String accountId, String question, int topK) {
+    public List<RetrievedPassage> search(Reader reader, String question, int topK) {
+        // Computed once from the token (ADR-0028); every statement below filters on exactly this set.
+        String[] principals = reader.principals().toArray(String[]::new);
         String model = properties.embeddingModel();
-        if (repository.hasChunksOfAnotherModel(accountId, model)) {
+        if (repository.hasChunksOfAnotherModel(principals, model)) {
             throw new DocumentServiceException(DocumentErrorCode.DOCUMENT_REINDEX_REQUIRED);
         }
         float[] vector = embedQuestion(question);
@@ -115,25 +118,26 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         int vectorCandidates = Math.max(settings.vectorCandidates(), topK);
         return readOnly.execute(status -> {
             repository.prepareFilteredScan(vectorCandidates);
-            List<Candidate> found = repository.hybrid(accountId, model, vector, question, vectorCandidates,
+            List<Candidate> found = repository.hybrid(principals, model, vector, question, vectorCandidates,
                     settings.lexicalCandidates(), settings.rrfK(), topK);
-            Map<UUID, Double> shares = settings.lexicalCandidates() == 0 ? Map.of() : termShares(accountId, model, question, found);
+            Map<UUID, Double> shares = settings.lexicalCandidates() == 0 ? Map.of() : termShares(principals, model, question, found);
             return found.stream().map(c -> new RetrievedPassage(c.documentId(), c.fileName(), c.pageNumber(), c.unit(),
-                    c.content(), c.similarity(), shares.getOrDefault(c.chunkId(), 1.0))).toList();
+                    c.content(), c.similarity(), shares.getOrDefault(c.chunkId(), 1.0), c.collectionId(),
+                    c.collectionName())).toList();
         });
     }
 
     /**
-     * Share of the account's searchable chunks that contain each passage's rarest question term (ADR-0022). Terms in
+     * Share of the reader's searchable chunks that contain each passage's rarest question term (ADR-0022). Terms in
      * {@link DocumentRetrieval#TERM_SHARE_LIMIT} or more of the chunks are not counted further and read as 1.
      */
-    private Map<UUID, Double> termShares(String accountId, String model, String question, List<Candidate> found) {
+    private Map<UUID, Double> termShares(String[] principals, String model, String question, List<Candidate> found) {
         if (found.isEmpty()) return Map.of();
-        long total = repository.searchableChunks(accountId, model);
+        long total = repository.searchableChunks(principals, model);
         if (total == 0) return Map.of();
         long cap = (long) Math.ceil(DocumentRetrieval.TERM_SHARE_LIMIT * total);
         Map<UUID, Double> shares = new HashMap<>();
-        repository.rarestSharedTermCounts(accountId, model, question, found.stream().map(Candidate::chunkId).toList(), cap)
+        repository.rarestSharedTermCounts(principals, model, question, found.stream().map(Candidate::chunkId).toList(), cap)
                 .forEach((id, chunks) -> shares.put(id, chunks >= cap ? 1.0 : (double) chunks / total));
         return shares;
     }

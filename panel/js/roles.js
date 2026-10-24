@@ -24,6 +24,7 @@ export const SCREENS = Object.freeze({
   setup: { title: 'Kurulum durumu', short: 'Kurulum', icon: 'flag', key: 'k', roles: [ROLES.USER, ROLES.OPERATOR], tab: false },
   system: { title: 'Sistem ve güvenlik', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR] },
   insights: { title: 'Değer panosu', short: 'Pano', icon: 'chart', key: 'd', roles: [ROLES.ADMIN], tab: false },
+  collections: { title: 'Bilgi alanları', short: 'Alanlar', icon: 'layers', key: 'a', roles: [ROLES.ADMIN], tab: false },
 });
 
 /** The roles of a decoded access token payload; every authenticated user is at least a verso-user. */

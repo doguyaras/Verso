@@ -50,6 +50,22 @@ class DocumentApiContractTest {
         assertThat(PageResponse.of(List.of(), 0, 20, 0).page().totalPages()).isZero();
     }
 
+    /** ADR-0028: the principals a reader is matched with; bad group values are dropped, never an error (fail closed). */
+    @Test
+    void reader_whenBuilt_hasTheUserPrincipalFirstAndDropsUnusableGroups() {
+        java.util.List<String> groups = new java.util.ArrayList<>(List.of("/ik", "/hukuk", "/ik", " ", "x".repeat(257),
+                "/a\u0007", "/b‮"));
+        groups.add(null);
+        com.verso.document.api.dto.Reader reader = new com.verso.document.api.dto.Reader("sub-1", groups);
+        assertThat(reader.principals()).containsExactly("user:sub-1", "group:/hukuk", "group:/ik");
+        assertThat(reader.toString()).doesNotContain("/hukuk").contains("groups=2");
+        assertThat(com.verso.document.api.dto.Reader.personal("sub-1").principals()).containsExactly("user:sub-1");
+        java.util.List<String> many = java.util.stream.IntStream.range(0, 300).mapToObj(i -> "/g" + i).toList();
+        assertThat(new com.verso.document.api.dto.Reader("s", many).groups()).hasSize(256);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new com.verso.document.api.dto.Reader(" ", List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     @Test
     void inventory_whenBuilt_copiesItsDocuments() {
         java.util.List<com.verso.document.api.dto.DocumentSummary> list = new java.util.ArrayList<>();

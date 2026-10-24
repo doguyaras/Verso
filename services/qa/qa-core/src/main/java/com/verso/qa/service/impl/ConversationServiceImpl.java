@@ -1,7 +1,10 @@
 package com.verso.qa.service.impl;
 
 import com.verso.document.api.DocumentCatalog;
+import com.verso.document.api.dto.DocumentAccess;
 import com.verso.document.api.dto.PageResponse;
+import com.verso.document.api.dto.Reader;
+import com.verso.platform.security.authority.CallerGroups;
 import com.verso.platform.security.web.AccountId;
 import com.verso.qa.api.dto.AnswerOutcome;
 import com.verso.qa.api.dto.AnswerResponse;
@@ -76,10 +79,13 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
     private final UsageMetricsProperties metricsProperties;
     private final QaMetrics metrics;
     private final Clock clock;
+    private final CallerGroups groups;
 
     public ConversationServiceImpl(QaDatabase db, ConversationRepository conversations, TurnRepository turns,
                                    UsageRepository usage, DocumentCatalog catalog, QaHistoryProperties properties,
-                                   UsageMetricsProperties metricsProperties, QaMetrics metrics, Clock clock) {
+                                   UsageMetricsProperties metricsProperties, QaMetrics metrics, Clock clock,
+                                   CallerGroups groups) {
+        this.groups = groups;
         this.db = db;
         this.conversations = conversations;
         this.turns = turns;
@@ -173,14 +179,14 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         List<TurnRow> rows = turns.list(account.value(), conversationId);
         Map<UUID, List<CitationRow>> citations = turns.citations(account.value(), conversationId).stream()
                 .collect(Collectors.groupingBy(CitationRow::turnId));
-        // Deleted documents (and only the caller's own documents are ever cited) come back absent: marked, not broken.
-        Map<UUID, String> names = catalog.fileNames(account.value(),
+        // Resolved with the reader's access now, not at answer time (ADR-0028): a deleted document is absent (marked
+        // deleted), one the reader no longer reaches comes back without its name (marked not accessible).
+        Map<UUID, DocumentAccess> access = catalog.access(new Reader(account.value(), groups.current()),
                 citations.values().stream().flatMap(List::stream).map(CitationRow::documentId).distinct().toList());
         List<TurnResponse> responses = new ArrayList<>(rows.size());
         for (TurnRow row : rows) {
             List<HistoryCitation> cited = citations.getOrDefault(row.id(), List.of()).stream()
-                    .map(c -> new HistoryCitation(c.number(), c.documentId(), names.get(c.documentId()), c.page(),
-                            CitationUnit.valueOf(c.unit()), !names.containsKey(c.documentId())))
+                    .map(c -> historyCitation(c, access.get(c.documentId())))
                     .toList();
             TurnFeedback feedback = row.rating() == null ? null : new TurnFeedback(FeedbackRating.valueOf(row.rating()),
                     row.reason() == null ? null : FeedbackReason.valueOf(row.reason()), row.citationNumber(), row.ratedAt());
@@ -189,6 +195,13 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         }
         return new ConversationResponse(conversation.id(), conversation.title(), conversation.createdAt(),
                 conversation.updatedAt(), responses);
+    }
+
+    private static HistoryCitation historyCitation(CitationRow c, DocumentAccess access) {
+        CitationUnit unit = CitationUnit.valueOf(c.unit());
+        if (access == null) return new HistoryCitation(c.number(), c.documentId(), null, c.page(), unit, true, false, null, null);
+        return new HistoryCitation(c.number(), c.documentId(), access.fileName(), c.page(), unit, false,
+                access.accessible(), access.collectionId(), access.collectionName());
     }
 
     @Override

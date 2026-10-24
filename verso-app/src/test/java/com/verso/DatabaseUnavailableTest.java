@@ -2,7 +2,7 @@ package com.verso;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.verso.document.repository.DocumentRepository;
@@ -39,13 +39,13 @@ class DatabaseUnavailableTest {
 
     @Test
     void request_whenTheDatabaseIsUnreachable_answers503WithRetryAfter() throws Exception {
-        when(repository.list(anyString(), anyInt(), anyInt())).thenThrow(new CannotGetJdbcConnectionException("down"));
+        when(repository.listReadable(any(String[].class), anyInt(), anyInt())).thenThrow(new CannotGetJdbcConnectionException("down"));
         assertUnavailable(get("/v1/documents"));
     }
 
     @Test
     void request_whenALockCannotBeTaken_answers503WithRetryAfter() throws Exception {
-        when(repository.list(anyString(), anyInt(), anyInt())).thenThrow(new CannotAcquireLockException("lock timeout"));
+        when(repository.listReadable(any(String[].class), anyInt(), anyInt())).thenThrow(new CannotAcquireLockException("lock timeout"));
         assertUnavailable(get("/v1/documents"));
     }
 

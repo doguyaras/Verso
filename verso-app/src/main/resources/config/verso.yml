@@ -274,6 +274,12 @@ verso:
       vector-candidates: 20
       lexical-candidates: 20
       rrf-k: 60
+    # Shared collections (ADR-0028): bounds of the denormalised access list; a grant change writes one row per
+    # document of the collection, in one transaction.
+    collections:
+      max-collections: 500
+      max-grants-per-collection: 100
+      max-documents-per-collection: 5000
     ingestion:
       enabled: true
       poll-interval-ms: 5000

@@ -19,7 +19,7 @@ Veri sorumlusu: **{{KURUM_ADI}}**, adres {{KURUM_ADRESI}}, iletişim {{VERI_SORU
 | Yüklediğiniz belgeler (dosyanın kendisi, metni, dosya adı, belgeden çıkarılan parçalar) | Size cevap verebilmek | Siz silene kadar {{BELGE_SAKLAMA_ACIKLAMASI}} |
 | Sorularınız ve aldığınız cevaplar, konuşma başlığı | Konuşmanıza geri dönebilmeniz | Konuşmanın başlangıcından **{{GECMIS_SAKLAMA_GUN}} gün** (varsayılan 90), ya da siz silene kadar |
 | Cevaba verdiğiniz 👍/👎 ve nedeni | Cevap kalitesini ölçmek | Konuşmayla birlikte |
-| Kim olduğunuza dair teknik kimlik (kurumun kimlik sisteminden gelen opak kimlik no ve rolünüz) | Belgelerinizi yalnız size göstermek ve yetkiyi kontrol etmek | Bkz. aşağıda "kayıt tutma" |
+| Kim olduğunuza dair teknik kimlik (kurumun kimlik sisteminden gelen opak kimlik no, rolünüz ve grup üyelikleriniz) | Kişisel belgelerinizi yalnız size, bilgi alanlarının belgelerini yalnız o alana yetkili gruplara göstermek ve yetkiyi kontrol etmek; grup üyelikleri saklanmaz, her istekte oturum anahtarından okunur | Bkz. aşağıda "kayıt tutma" |
 | Kim, ne zaman, hangi işlemi yaptı kaydı (belge yükledi/sildi, soru sordu, geri bildirim verdi, konuşma sildi; yöneticiler için metrik görüntüledi, kayıt dışa aktardı) | Veri güvenliği ve hesap verilebilirlik | **{{DENETIM_SAKLAMA_GUN}} gün** (varsayılan 365) |
 | Sayısal istatistikler (günlük soru sayısı, bulunan/bulunamayan oranı, süre) | Asistanın işe yarayıp yaramadığını görmek | Kimliksiz sayılardır; süresiz |
 

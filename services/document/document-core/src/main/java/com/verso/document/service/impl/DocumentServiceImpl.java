@@ -7,23 +7,29 @@ import com.verso.audit.api.enums.AuditTargetType;
 import com.verso.document.api.dto.DocumentResponse;
 import com.verso.document.api.dto.PageResponse;
 import com.verso.document.api.enums.DocumentFormat;
+import com.verso.document.config.CollectionProperties;
 import com.verso.document.config.DocumentProperties;
 import com.verso.document.exception.DocumentErrorCode;
 import com.verso.document.exception.DocumentServiceException;
+import com.verso.document.repository.CollectionRepository;
+import com.verso.document.repository.CollectionRepository.CollectionRow;
+import com.verso.document.repository.CollectionRepository.LockMode;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
+import com.verso.document.service.Caller;
 import com.verso.document.service.DocumentFormats;
 import com.verso.document.service.DocumentMapper;
 import com.verso.document.service.DocumentService;
 import com.verso.document.service.FileNames;
 import com.verso.platform.core.exception.CommonErrorCode;
 import com.verso.platform.core.exception.ServiceException;
-import com.verso.platform.security.web.AccountId;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,9 +38,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * /v1/documents use cases (ADR-0011). Upload is a database write only: no parsing and no model call on the request
- * path (repo-context section 3: zero remote calls, 2 s budget); the worker does the rest. Logs: ids, sizes and fixed
- * outcomes, never the file name (llm-rules 2.1).
+ * /v1/documents use cases (ADR-0011, ADR-0028). Upload is a database write only: no parsing and no model call on the
+ * request path (repo-context section 3: zero remote calls, 2 s budget); the worker does the rest. Logs: ids, sizes and
+ * fixed outcomes, never the file name, a collection name or a group (llm-rules 2.1).
+ *
+ * <p>Access (ADR-0028): what a caller reads is decided by its principals in the query; verso-admin additionally manages
+ * collection documents (list, get, delete, move) without reading them through Q&amp;A. Lock order, everywhere: collection
+ * rows (sorted by id), then the account or collection quota lock, then the document row. A grant change takes the
+ * collection row FOR UPDATE, so it never interleaves with an upload, move or delete in that collection.
  */
 @Service
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
@@ -46,24 +57,34 @@ public class DocumentServiceImpl implements DocumentService {
     private static final Duration DELETE_LOCK_WAIT = Duration.ofSeconds(15);
 
     private final DocumentRepository repository;
+    private final CollectionRepository collections;
     private final DocumentProperties properties;
+    private final CollectionProperties collectionProperties;
     private final TransactionTemplate transaction;
     private final Clock clock;
     private final ApplicationEventPublisher events;
 
-    public DocumentServiceImpl(DocumentRepository repository, DocumentProperties properties,
+    public DocumentServiceImpl(DocumentRepository repository, CollectionRepository collections,
+                               DocumentProperties properties, CollectionProperties collectionProperties,
                                TransactionTemplate transaction, Clock clock, ApplicationEventPublisher events) {
         this.repository = repository;
+        this.collections = collections;
         this.properties = properties;
+        this.collectionProperties = collectionProperties;
         this.transaction = transaction;
         this.clock = clock;
         this.events = events;
     }
 
     @Override
-    public DocumentResponse upload(AccountId account, String fileName, byte[] content, UUID idempotencyKey) {
+    public DocumentResponse upload(Caller caller, UUID collectionId, String fileName, byte[] content, UUID idempotencyKey) {
+        // The controller already requires verso-admin for a collection upload; this keeps the rule in the use case too.
+        if (collectionId != null && !caller.admin()) {
+            throw new ServiceException(CommonErrorCode.ACCESS_DENIED, "COLLECTION_UPLOAD_NOT_ADMIN");
+        }
+        String account = caller.account().value();
         if (idempotencyKey != null) {
-            Optional<DocumentRow> earlier = repository.findByIdempotencyKey(account.value(), idempotencyKey);
+            Optional<DocumentRow> earlier = repository.findByIdempotencyKey(account, idempotencyKey);
             if (earlier.isPresent()) return replayed(earlier.get());
         }
         if (content.length == 0) throw rejected(DocumentErrorCode.DOCUMENT_EMPTY);
@@ -77,52 +98,138 @@ public class DocumentServiceImpl implements DocumentService {
         DocumentRow created;
         try {
             created = transaction.execute(status -> {
+                if (collectionId != null) {
+                    // Shared: no grant change in between, so the new document gets exactly the current grants.
+                    if (!collections.lock(collectionId, LockMode.SHARE)) throw rejected(DocumentErrorCode.COLLECTION_NOT_FOUND);
+                    repository.lockCollectionQuota(collectionId);
+                    if (repository.countInCollection(collectionId) >= collectionProperties.maxDocumentsPerCollection()) {
+                        throw rejected(DocumentErrorCode.COLLECTION_DOCUMENT_LIMIT_REACHED);
+                    }
+                }
                 // Count and insert under a per-account lock: parallel uploads cannot overrun the quota (review C6).
-                repository.lockAccount(account.value());
-                if (repository.count(account.value()) >= properties.maxDocumentsPerAccount()) {
+                repository.lockAccount(account);
+                if (collectionId == null && repository.count(account) >= properties.maxDocumentsPerAccount()) {
                     throw rejected(DocumentErrorCode.DOCUMENT_LIMIT_REACHED);
                 }
-                if (repository.countQueued(account.value()) >= properties.maxQueuedPerAccount()) {
+                if (repository.countQueued(account) >= properties.maxQueuedPerAccount()) {
                     throw rejected(DocumentErrorCode.DOCUMENT_QUEUE_FULL);
                 }
-                DocumentRow row = repository.insert(account.value(), name, format, content.length, idempotencyKey,
+                DocumentRow row = repository.insert(account, collectionId, name, format, content.length, idempotencyKey,
                         clock.instant());
                 repository.insertFile(row.id(), content);
                 return row;
             });
         } catch (DuplicateKeyException e) {
             // Two uploads with the same key at once: the first one won (reference 6.4).
-            return replayed(repository.findByIdempotencyKey(account.value(), idempotencyKey).orElseThrow(() -> e));
+            return replayed(repository.findByIdempotencyKey(account, idempotencyKey).orElseThrow(() -> e));
         }
-        log.info("Document upload accepted: documentId={} format={} sizeBytes={} operation=upload outcome=accepted",
-                created.id(), created.format(), created.sizeBytes());
+        log.info("Document upload accepted: documentId={} format={} sizeBytes={} space={} operation=upload outcome=accepted",
+                created.id(), created.format(), created.sizeBytes(), created.personal() ? "personal" : "collection");
         // After the commit, never for a replay; the audit module never makes the upload fail (ADR-0026).
         events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_UPLOADED, AuditTargetType.DOCUMENT, created.id()));
         return DocumentMapper.toResponse(created);
     }
 
     @Override
-    public PageResponse<DocumentResponse> list(AccountId account, int page, int size) {
-        List<DocumentResponse> rows = repository.list(account.value(), page, size).stream()
+    public PageResponse<DocumentResponse> list(Caller caller, UUID collectionId, int page, int size) {
+        if (collectionId == null) {
+            String[] principals = caller.principals();
+            List<DocumentResponse> rows = repository.listReadable(principals, page, size).stream()
+                    .map(DocumentMapper::toResponse).toList();
+            return PageResponse.of(rows, page, size, repository.countReadable(principals));
+        }
+        visibleCollection(caller, collectionId);
+        List<DocumentResponse> rows = repository.listInCollection(collectionId, page, size).stream()
                 .map(DocumentMapper::toResponse).toList();
-        return PageResponse.of(rows, page, size, repository.count(account.value()));
+        return PageResponse.of(rows, page, size, repository.countInCollection(collectionId));
     }
 
     @Override
-    public DocumentResponse get(AccountId account, UUID documentId) {
-        return repository.find(account.value(), documentId).map(DocumentMapper::toResponse)
+    public DocumentResponse get(Caller caller, UUID documentId) {
+        return visible(caller, documentId).map(DocumentMapper::toResponse)
                 .orElseThrow(() -> rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND));
     }
 
     @Override
-    public void delete(AccountId account, UUID documentId) {
+    public void delete(Caller caller, UUID documentId) {
+        String account = caller.account().value();
         Boolean deleted = transaction.execute(status -> {
             repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
-            return repository.delete(account.value(), documentId);
+            return repository.delete(account, documentId);
         });
-        if (!Boolean.TRUE.equals(deleted)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        if (!Boolean.TRUE.equals(deleted)) {
+            // Not a personal document of the caller: a collection document is verso-admin's to delete (ADR-0028).
+            DocumentRow document = visible(caller, documentId).filter(row -> !row.personal())
+                    .orElseThrow(() -> rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND));
+            if (!caller.admin()) throw rejected(DocumentErrorCode.DOCUMENT_MANAGED_BY_ADMIN);
+            UUID collectionId = document.collectionId();
+            Boolean removed = transaction.execute(status -> {
+                // A grant change in this collection waits: it would otherwise add a principal to a vanishing row.
+                if (!collections.lock(collectionId, LockMode.SHARE)) return false;
+                repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
+                return repository.deleteFromCollection(collectionId, documentId);
+            });
+            if (!Boolean.TRUE.equals(removed)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
         log.info("Document deleted: documentId={} operation=delete outcome=deleted", documentId);
         events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
+    }
+
+    @Override
+    public DocumentResponse move(Caller caller, UUID documentId, UUID collectionId) {
+        if (!caller.admin()) throw new ServiceException(CommonErrorCode.ACCESS_DENIED, "DOCUMENT_MOVE_NOT_ADMIN");
+        // The admin's own personal documents and every collection document; another user's personal document does not
+        // exist for the admin (ADR-0019).
+        DocumentRow current = visible(caller, documentId)
+                .orElseThrow(() -> rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND));
+        if (Objects.equals(current.collectionId(), collectionId)) return DocumentMapper.toResponse(current);
+        DocumentRow moved = transaction.execute(status -> {
+            List<UUID> involved = Stream.of(current.collectionId(), collectionId).filter(Objects::nonNull).sorted().toList();
+            for (UUID id : involved) {
+                if (!collections.lock(id, LockMode.SHARE)) throw rejected(DocumentErrorCode.COLLECTION_NOT_FOUND);
+            }
+            repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
+            if (collectionId == null) {
+                repository.lockAccount(current.accountId());
+                if (repository.count(current.accountId()) >= properties.maxDocumentsPerAccount()) {
+                    throw rejected(DocumentErrorCode.DOCUMENT_LIMIT_REACHED);
+                }
+            } else {
+                repository.lockCollectionQuota(collectionId);
+                if (repository.countInCollection(collectionId) >= collectionProperties.maxDocumentsPerCollection()) {
+                    throw rejected(DocumentErrorCode.COLLECTION_DOCUMENT_LIMIT_REACHED);
+                }
+            }
+            DocumentRow locked = repository.lockForMove(documentId)
+                    .orElseThrow(() -> rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND));
+            if (!Objects.equals(locked.collectionId(), current.collectionId())) {
+                // Moved by someone else since it was read: the locks taken above are not the right ones.
+                throw new ServiceException(CommonErrorCode.REQUEST_CONFLICT, "DOCUMENT_MOVED_CONCURRENTLY");
+            }
+            repository.move(documentId, collectionId, clock.instant());
+            return repository.find(locked.accountId(), documentId).orElseThrow();
+        });
+        log.info("Document moved: documentId={} to={} operation=move outcome=moved", documentId,
+                collectionId == null ? "personal" : "collection");
+        events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_MOVED, AuditTargetType.DOCUMENT, documentId)
+                .withDetail(collectionId == null ? "TO_PERSONAL" : "TO_COLLECTION"));
+        return DocumentMapper.toResponse(moved);
+    }
+
+    /**
+     * A document the caller reads (its principals), or for verso-admin any collection document: management needs the
+     * collection's documents, reading through Q&amp;A still needs a grant.
+     */
+    private Optional<DocumentRow> visible(Caller caller, UUID documentId) {
+        Optional<DocumentRow> readable = repository.findReadable(caller.principals(), documentId);
+        if (readable.isPresent() || !caller.admin()) return readable;
+        return repository.findInAnyCollection(documentId);
+    }
+
+    /** A collection the caller reads, or any collection for verso-admin; otherwise it does not exist (IDOR). */
+    private CollectionRow visibleCollection(Caller caller, UUID collectionId) {
+        return collections.find(caller.principals(), collectionId).filter(c -> c.readable() || caller.admin())
+                .orElseThrow(() -> rejected(DocumentErrorCode.COLLECTION_NOT_FOUND));
     }
 
     private DocumentResponse replayed(DocumentRow row) {

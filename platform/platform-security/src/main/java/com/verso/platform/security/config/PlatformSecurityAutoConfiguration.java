@@ -1,5 +1,6 @@
 package com.verso.platform.security.config;
 
+import com.verso.platform.security.authority.CallerGroups;
 import com.verso.platform.security.authority.CallerRoles;
 import com.verso.platform.security.authority.ClaimAuthoritiesConverter;
 import com.verso.platform.security.authority.VersoAuthorityProperties;
@@ -106,6 +107,11 @@ public class PlatformSecurityAutoConfiguration {
     @Bean
     CallerRoles callerRoles(VersoAuthorityProperties properties) {
         return new CallerRoles(properties);
+    }
+
+    @Bean
+    CallerGroups callerGroups(VersoAuthorityProperties properties) {
+        return new CallerGroups(properties);
     }
 
     /**

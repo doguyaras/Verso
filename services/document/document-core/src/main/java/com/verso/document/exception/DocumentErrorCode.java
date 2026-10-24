@@ -9,6 +9,12 @@ public enum DocumentErrorCode implements ErrorCode {
     // --- lookup (10000-10009)
     /** Also for another account's document: existence is not revealed (reference 9, IDOR). */
     DOCUMENT_NOT_FOUND(10001, "Document not found.", HttpStatus.NOT_FOUND),
+    /** Also for a collection the caller may not read: existence is not revealed (ADR-0028). */
+    COLLECTION_NOT_FOUND(10002, "Collection not found.", HttpStatus.NOT_FOUND),
+    COLLECTION_GRANT_NOT_FOUND(10003, "Grant not found.", HttpStatus.NOT_FOUND),
+    /** A reader of a collection document asked to delete it; only verso-admin manages collection documents. */
+    DOCUMENT_MANAGED_BY_ADMIN(10004, "The document belongs to a collection; only an administrator can change it.",
+            HttpStatus.FORBIDDEN),
     // --- upload (10010-10029); 10012 was never released (too large is the common 90014)
     // ADR-0016: one code for every unsupported file; it was DOCUMENT_NOT_PDF while PDF was the only format
     DOCUMENT_TYPE_UNSUPPORTED(10010, "The file is not a supported document (PDF, DOCX, TXT or MD).",
@@ -24,7 +30,14 @@ public enum DocumentErrorCode implements ErrorCode {
     /** The question could not be embedded: the local embedding model is down (llm-rules 2.3). */
     EMBEDDING_MODEL_UNAVAILABLE(10030, "The embedding model is unavailable, try again later.", HttpStatus.SERVICE_UNAVAILABLE),
     /** The account's documents were embedded by another model; they must be indexed again (llm-rules 6.1). */
-    DOCUMENT_REINDEX_REQUIRED(10031, "Documents must be indexed again before they can be searched.", HttpStatus.CONFLICT);
+    DOCUMENT_REINDEX_REQUIRED(10031, "Documents must be indexed again before they can be searched.", HttpStatus.CONFLICT),
+    // --- collections (10040-10049, ADR-0028)
+    COLLECTION_NAME_TAKEN(10040, "A collection with this name already exists.", HttpStatus.CONFLICT),
+    /** Documents must be moved or deleted first: deleting a collection never deletes documents implicitly. */
+    COLLECTION_NOT_EMPTY(10041, "The collection still holds documents.", HttpStatus.CONFLICT),
+    COLLECTION_GRANT_LIMIT_REACHED(10042, "The grant limit of the collection is reached.", HttpStatus.CONFLICT),
+    COLLECTION_LIMIT_REACHED(10043, "The collection limit of the installation is reached.", HttpStatus.CONFLICT),
+    COLLECTION_DOCUMENT_LIMIT_REACHED(10044, "The document limit of the collection is reached.", HttpStatus.CONFLICT);
 
     private final int code;
     private final String message;

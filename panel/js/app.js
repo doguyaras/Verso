@@ -17,6 +17,7 @@ import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
 import { renderDocuments } from './screens/documents.js';
 import { openHistory } from './screens/history.js';
+import { renderCollections } from './screens/collections.js';
 import { renderInsights } from './screens/insights.js';
 import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
@@ -26,7 +27,7 @@ import { renderSystem } from './screens/system.js';
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
 const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
-  insights: renderInsights };
+  insights: renderInsights, collections: renderCollections };
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
@@ -186,6 +187,7 @@ function accountMenu(anchor, placement) {
     // Phones have no menu column: the history and the screens kept out of the tab bar are reached from here.
     { label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory },
     ...(canOpen('insights', roles) ? [{ label: 'Değer panosu', glyph: 'chart', onSelect: () => navigate('insights') }] : []),
+    ...(canOpen('collections', roles) ? [{ label: 'Bilgi alanları', glyph: 'layers', onSelect: () => navigate('collections') }] : []),
     ...(canOpen('system', roles) ? [{ label: 'Sistem ve güvenlik', glyph: 'server', onSelect: () => navigate('system') }] : []),
     { label: 'Çıkış yap', glyph: 'logout', onSelect: signOut },
   ], { placement });

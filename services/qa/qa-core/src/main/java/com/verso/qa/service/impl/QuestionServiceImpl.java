@@ -1,8 +1,10 @@
 package com.verso.qa.service.impl;
 
 import com.verso.document.api.DocumentRetrieval;
+import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.platform.core.exception.ServiceException;
+import com.verso.platform.security.authority.CallerGroups;
 import com.verso.platform.security.web.AccountId;
 import com.verso.qa.api.dto.AnswerOutcome;
 import com.verso.qa.api.dto.AnswerResponse;
@@ -79,11 +81,13 @@ public class QuestionServiceImpl implements QuestionService {
     private final QaMetrics metrics;
     private final ConversationHistory history;
     private final AnswerabilityGate gate;
+    private final CallerGroups groups;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
-                               AnswerabilityGate gate) {
+                               AnswerabilityGate gate, CallerGroups groups) {
+        this.groups = groups;
         this.history = history;
         this.retrieval = retrieval;
         this.chatModel = chatModel;
@@ -124,7 +128,8 @@ public class QuestionServiceImpl implements QuestionService {
         long retrievalStarted = System.nanoTime();
         List<RetrievedPassage> passages;
         try {
-            passages = retrieval.search(account.value(), question, properties.topK());
+            // The caller's sub and token groups (ADR-0028): only documents they reach can be retrieved, ranked or cited.
+            passages = retrieval.search(new Reader(account.value(), groups.current()), question, properties.topK());
         } catch (ServiceException e) {
             metrics.record(Outcome.RETRIEVAL_FAILED);
             throw e;

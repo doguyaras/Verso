@@ -1004,7 +1004,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1060,8 +1060,8 @@ test('conversation ids: "Yeni konuşma" and a conversation from the history repl
   const entries = restoreEntries(stored);
   assert.equal(entries.length, 2);
   assert.deepEqual(entries[0].result.citations, [
-    { number: 1, documentId: 'd1', fileName: 'izin.pdf', page: 3, unit: 'PAGE', deleted: false },
-    { number: 2, documentId: 'd2', fileName: DELETED_DOCUMENT, page: 1, unit: 'SECTION', deleted: true }]);
+    { number: 1, documentId: 'd1', fileName: 'izin.pdf', page: 3, unit: 'PAGE', deleted: false, inaccessible: false, collectionName: null },
+    { number: 2, documentId: 'd2', fileName: DELETED_DOCUMENT, page: 1, unit: 'SECTION', deleted: true, inaccessible: false, collectionName: null }]);
   assert.equal(DELETED_DOCUMENT, 'Belge silinmiş');
   assert.deepEqual([entries[0].result.conversationId, entries[0].result.turnId, entries[0].restored, entries[0].ms], ['c1', 't1', true, 1420]);
   assert.equal(entries[0].feedback.reason, 'OUTDATED', 'the stored rating comes back');
@@ -1385,4 +1385,46 @@ test('disclosure: the Markdown export ends with the AI footer, with the product 
   const nginx = readFileSync('deploy/edge/nginx.conf', 'utf8');
   assert.ok(nginx.includes('require-trusted-types-for \'script\'; trusted-types \'none\''), 'Trusted Types stay on');
   assert.doesNotMatch(readFileSync('panel/css/panel.css', 'utf8'), /\.ai-notice/, 'the notice reuses the .notice styles; no new rule, no inline style');
+});
+
+// ---------- shared collections (ADR-0028) ----------
+test('collections: admin-only screen, grant input, history states and the collection badge', async () => {
+  const { grantInput, grantLabel } = await import('../panel/js/screens/collections.js');
+  const { canDelete, spaceLabel } = await import('../panel/js/screens/documents.js');
+  const { INACCESSIBLE_DOCUMENT } = await import('../panel/js/conversations.js');
+  const user = rolesOf({ realm_access: { roles: ['verso-operator'] } });
+  assert.equal(canOpen('collections', user), false, 'only verso-admin manages collections');
+  assert.equal(canOpen('collections', withServerRoles(user, { roles: ['verso-admin'] })), true);
+  assert.equal(SCREENS.collections.tab, false);
+  assert.match(readFileSync('panel/js/app.js', 'utf8'), /canOpen\('collections', roles\) \? \[\{ label: 'Bilgi alanları'/);
+
+  assert.deepEqual(grantInput('GROUP', '/hukuk/sozlesmeler'), { principalType: 'GROUP', principal: '/hukuk/sozlesmeler' });
+  assert.deepEqual(grantInput('USER', ' sub-1'), { principalType: 'USER', principal: ' sub-1' }, 'sent as typed: the server compares exactly');
+  for (const [type, value] of [['ROLE', 'x'], ['GROUP', '  '], ['GROUP', 'g'.repeat(257)], ['USER', null]]) {
+    assert.equal(grantInput(type, value), null, `${type} ${value}`);
+  }
+  assert.equal(grantLabel({ principalType: 'GROUP', principal: '/ik‮fdp' }), 'Grup: /ikfdp', 'no bidi override');
+
+  // History: readable, lost access, deleted; an older server without documentAccessible still works.
+  const base = { number: 1, documentId: 'd', page: 2, unit: 'PAGE' };
+  assert.deepEqual(historyCitation({ ...base, fileName: 'a.pdf', documentDeleted: false, documentAccessible: true, collectionName: 'Hukuk' }),
+    { ...base, fileName: 'a.pdf', deleted: false, inaccessible: false, collectionName: 'Hukuk' });
+  const lost = historyCitation({ ...base, fileName: null, documentDeleted: false, documentAccessible: false, collectionName: null });
+  assert.deepEqual([lost.fileName, lost.deleted, lost.inaccessible], [INACCESSIBLE_DOCUMENT, false, true]);
+  assert.equal(INACCESSIBLE_DOCUMENT, 'Erişiminiz yok');
+  const gone = historyCitation({ ...base, fileName: null, documentDeleted: true, documentAccessible: false });
+  assert.deepEqual([gone.fileName, gone.deleted, gone.inaccessible], [DELETED_DOCUMENT, true, false]);
+  assert.equal(historyCitation({ ...base, fileName: 'b.pdf', documentDeleted: false }).inaccessible, false);
+  assert.equal(groupSources([{ documentId: 'd', fileName: 'a.pdf', collectionName: 'Hukuk' }])[0].collectionName, 'Hukuk');
+
+  // Documents: shared documents carry a badge; only an admin deletes them (the server answers 403 10004 otherwise).
+  assert.equal(canDelete({ collectionId: null }, false), true);
+  assert.equal(canDelete({ collectionId: 'c' }, false), false);
+  assert.equal(canDelete({ collectionId: 'c' }, true), true);
+  assert.equal(spaceLabel({ collectionId: 'c', collectionName: 'Hukuk' }), 'Hukuk');
+  assert.equal(spaceLabel({ collectionId: null }), 'Kişisel alan');
+  for (const code of [10002, 10003, 10004, 10040, 10041, 10042, 10043, 10044]) assert.ok(MESSAGES[code], String(code));
+  const source = readFileSync('panel/js/screens/collections.js', 'utf8');
+  assert.doesNotMatch(source, /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'|window\.(alert|confirm|prompt)/);
+  assert.match(source, /confirmDialog/, 'removals ask in the panel\'s own dialog, never a native one');
 });

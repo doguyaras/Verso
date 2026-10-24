@@ -10,6 +10,7 @@ export const HISTORY_PAGE_SIZE = 20;
 export const TITLE_MAX = 120;
 /** What a citation of a document deleted since shows instead of its name. */
 export const DELETED_DOCUMENT = 'Belge silinmiş';
+export const INACCESSIBLE_DOCUMENT = 'Erişiminiz yok';
 /** The word typed to confirm deleting every conversation; compared Turkish-aware (sil, SİL, Sil). */
 export const DELETE_ALL_WORD = 'SİL';
 
@@ -41,11 +42,17 @@ export function startOverNote(error) {
     : 'Önceki konuşma artık yok; soru yeni bir konuşmada soruldu.';
 }
 
-/** A stored citation for the answer screen: a deleted document keeps its place and reads "Belge silinmiş". */
+/**
+ * A stored citation for the answer screen: a deleted document keeps its place and reads "Belge silinmiş"; one the user
+ * can no longer read (a shared collection's grant was removed, ADR-0028) reads "Erişiminiz yok" without its name. An
+ * older server sends no documentAccessible: a citation with a name is then readable.
+ */
 export function historyCitation(citation) {
-  const deleted = Boolean(citation.documentDeleted) || citation.fileName == null;
-  return { number: citation.number, documentId: citation.documentId, fileName: deleted ? DELETED_DOCUMENT : citation.fileName,
-    page: citation.page, unit: citation.unit, deleted };
+  const deleted = Boolean(citation.documentDeleted) || (citation.fileName == null && citation.documentAccessible !== false);
+  const inaccessible = !deleted && (citation.documentAccessible === false || citation.fileName == null);
+  const fileName = deleted ? DELETED_DOCUMENT : inaccessible ? INACCESSIBLE_DOCUMENT : citation.fileName;
+  return { number: citation.number, documentId: citation.documentId, fileName, page: citation.page, unit: citation.unit,
+    deleted, inaccessible, collectionName: inaccessible || deleted ? null : (citation.collectionName ?? null) };
 }
 
 /**

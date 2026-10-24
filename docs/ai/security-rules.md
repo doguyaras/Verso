@@ -26,6 +26,7 @@
 - Admin 2FA: passkey/WebAuthn veya TOTP. SMS yalnız kurtarma. Admin OTP'si de tuzlu hash + sabit zamanlı karşılaştırma.
 - Roller token'da taşınıyorsa değişimde `sv` artar; panel ve sunucu aynı rol kaynağını okur.
 - Verso (ADR-0019): roller ve gruplar token claim'lerinden, yolları `verso.security.authorities.*` ile; rolü olmayan çağıran `verso-user`, `verso-admin` yalnız token taşırsa. Yalnız-admin uç `@PreAuthorize(VersoRoles.HAS_ADMIN)` taşır. Grup hiçbir zaman rol olamaz (ayrı önek); claim değerleri loglanmaz ve yanıtta geri verilmez. `sv` yok: rol değişimi token ömrü kadar gecikir (ADR-0007 #50).
+- Verso (ADR-0028): belge okuma yetkisi `document_principal` üzerinden, okuyucunun principal'larıyla (`user:<sub>`, token gruplarından `group:<değer>`) **sorgunun içinde** verilir; liste, tekil okuma, silme, retrieval, geçmiş atıfı ve metrik aynı kuralı uygular. Okunamayan alan ve belge 404'tür. Yönetim (`verso-admin`) okuma yetkisi vermez. Grant değerleri yalnız yöneticinin grant listesinde döner; log'a ve denetim kaydına yazılmaz (yalnız `GROUP`/`USER`). Grant değişikliği ile okuyucu listesi aynı transaction'da, alan satırı kilidi altında yazılır.
 
 ## 3. OTP, Şifre, Abuse
 

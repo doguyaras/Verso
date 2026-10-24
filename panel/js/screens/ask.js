@@ -127,6 +127,7 @@ function measure(sources) {
 /** Why a citation row has no excerpt: the history keeps none, a deleted document has none to show. */
 function noExcerpt(citation, restored) {
   if (citation.deleted) return 'Belge silinmiş; alıntı gösterilemez.';
+  if (citation.inaccessible) return 'Bu belgeye artık erişiminiz yok; alıntı gösterilemez.';
   return restored ? 'Geçmişte alıntı saklanmaz.' : 'Bu kaynak için alıntı gelmedi.';
 }
 
@@ -134,9 +135,11 @@ function noExcerpt(citation, restored) {
 function sourceCards(citations, evidence, link, restored) {
   const sources = el('div', { class: 'sources', role: 'list', 'aria-label': 'Kaynaklar' }, groupSources(citations).map((group) => {
     const name = plainName(group.fileName);
-    const deleted = group.items.some((c) => c.deleted);
+    const deleted = group.items.some((c) => c.deleted || c.inaccessible);
     const card = el('div', { class: `source${deleted ? ' deleted' : ''}`, role: 'listitem', id: nextId('source'), 'data-numbers': group.items.map((c) => c.number).join(' ') },
-      el('div', { class: 'source-head' }, fileIcon(extension(group.fileName), 'sm'), el('span', { class: 'fname', title: name }, name)),
+      el('div', { class: 'source-head' }, fileIcon(extension(group.fileName), 'sm'), el('span', { class: 'fname', title: name }, name),
+        // The shared collection the document lives in (ADR-0028); plain text, never markup.
+        group.collectionName ? el('span', { class: 'pill neutral', title: 'Bilgi alanı' }, plainName(group.collectionName)) : null),
       group.items.map((c) => el('div', { class: 'cite-row', 'data-number': c.number,
         onmouseenter: () => link.hover(c.number, true), onmouseleave: () => link.hover(c.number, false) },
       el('button', { class: 'cite-ref', type: 'button', 'aria-label': `Cevapta göster: kaynak ${c.number}, ${whereOf(c)}`,

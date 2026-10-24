@@ -41,6 +41,38 @@ class AccessDeniedAuditListenerTest {
         assertThat(AccessDeniedAuditListener.isAdminController(NotAController.class)).isFalse();
     }
 
+    @RestController
+    @RequestMapping("/v1/collections")
+    @org.springframework.security.access.prepost.PreAuthorize(com.verso.platform.security.authority.VersoRoles.HAS_ADMIN)
+    static class CollectionAdminController {
+        void create() {
+        }
+    }
+
+    static class DocumentEndpoints {
+        @org.springframework.security.access.prepost.PreAuthorize(com.verso.platform.security.authority.VersoRoles.HAS_ADMIN)
+        void move() {
+        }
+
+        @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+        void list() {
+        }
+    }
+
+    /** ADR-0028: admin endpoints outside /v1/admin that declare the rule themselves, on the class or the method. */
+    @Test
+    void declaresAdmin_whenTheControllerOrMethodRequiresVersoAdmin_isTrueAndOnlyThen() throws Exception {
+        assertThat(AccessDeniedAuditListener.declaresAdmin(CollectionAdminController.class.getDeclaredMethod("create"),
+                CollectionAdminController.class)).isTrue();
+        assertThat(AccessDeniedAuditListener.declaresAdmin(DocumentEndpoints.class.getDeclaredMethod("move"),
+                DocumentController.class)).isTrue();
+        assertThat(AccessDeniedAuditListener.declaresAdmin(DocumentEndpoints.class.getDeclaredMethod("list"),
+                DocumentController.class)).as("another rule").isFalse();
+        assertThat(AccessDeniedAuditListener.declaresAdmin(DocumentEndpoints.class.getDeclaredMethod("move"),
+                NotAController.class)).as("a service method stays a programming error").isFalse();
+        assertThat(AccessDeniedAuditListener.endpointWord(CollectionAdminController.class)).isEqualTo("COLLECTION_ADMIN");
+    }
+
     @Test
     void endpointWord_whenDerivedFromTheController_isAFixedUpperSnakeWord() {
         assertThat(AccessDeniedAuditListener.endpointWord(AdminMetricsController.class)).isEqualTo("ADMIN_METRICS");

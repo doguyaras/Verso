@@ -59,7 +59,7 @@ Veri ihlali bildirimi (Kurul'a ve ilgili kişilere) süreleri ve yöntemi kurum 
 
 ## 7. Kayıtlar ve izleme
 
-- Sistem, kimin hangi işlemi ne zaman yaptığını kaydeder (belge yükleme/silme, soru, geri bildirim, konuşma silme, yönetici işlemleri). Kayıt soru ve cevap *metnini* içermez, süresi {{DENETIM_SAKLAMA_GUN}} gündür. Soru ve cevap metni konuşma geçmişinizde {{GECMIS_SAKLAMA_GUN}} gün kalır ve yalnız size görünür.
+- Sistem, kimin hangi işlemi ne zaman yaptığını kaydeder (belge yükleme/silme/taşıma, soru, geri bildirim, konuşma silme, bilgi alanı ve erişim değişiklikleri, yönetici işlemleri). Kayıt soru ve cevap *metnini* içermez, süresi {{DENETIM_SAKLAMA_GUN}} gündür. Soru ve cevap metni konuşma geçmişinizde {{GECMIS_SAKLAMA_GUN}} gün kalır ve yalnız size görünür.
 - Kayıtlar çalışan performansını ya da tek tek kullanıcıların kullanım alışkanlıklarını değerlendirmek için kullanılmaz; kullanım yalnız güvenlik soruşturması, hukuki yükümlülük ve toplulaştırılmış istatistik amacıyla ve {{KAYIT_ERISIM_YETKISI}} onayıyla incelenir. Almanya'da [07](07-almanya-eki-betrvg.md) uygulanır.
 
 ## 8. Eğitim ve farkındalık

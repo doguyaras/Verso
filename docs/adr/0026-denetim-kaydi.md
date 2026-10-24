@@ -78,8 +78,11 @@
 | `CONVERSATION_DELETED`, `CONVERSATIONS_DELETED_ALL` | `ConversationController` | `CONVERSATION` (+ id) | – |
 | `FEEDBACK_GIVEN` | `ConversationController.rate` | `TURN` + tur id | konuşma id, puan (`UP` / `DOWN`) |
 | `ADMIN_METRICS_VIEWED` | `AdminMetricsController` | `METRICS` | – |
+| `COLLECTION_CREATED`, `COLLECTION_UPDATED`, `COLLECTION_DELETED` (ADR-0028) | `CollectionServiceImpl` | `COLLECTION` + alan id | – |
+| `COLLECTION_GRANT_ADDED`, `COLLECTION_GRANT_REMOVED` (ADR-0028) | `CollectionServiceImpl`; aynı grant'ın tekrarı sayılmaz | `COLLECTION` + alan id | `GROUP` / `USER` (grup yolu ve `sub` asla) |
+| `DOCUMENT_MOVED` (ADR-0028) | `DocumentServiceImpl.move` | `DOCUMENT` + belge id | `TO_COLLECTION` / `TO_PERSONAL` |
 | `AUDIT_EXPORTED` | `AdminAuditController.export`, akış başlamadan | `AUDIT_LOG` | – |
-| `ACCESS_DENIED` | `@PreAuthorize` reddi, yalnız `/v1/admin` altındaki denetleyicilerde | `ADMIN_API` | uç adı sabit sözcük (`ADMIN_METRICS`, `ADMIN_AUDIT`): sınıf adından türer, yol ve parametre asla |
+| `ACCESS_DENIED` | `@PreAuthorize` reddi, `/v1/admin` altındaki denetleyicilerde ve (ADR-0028) `@PreAuthorize(HAS_ADMIN)`'i yöntemde ya da sınıfta kendisi taşıyan denetleyici uçlarında | `ADMIN_API` | uç adı sabit sözcük (`ADMIN_METRICS`, `ADMIN_AUDIT`, `COLLECTION_ADMIN`, `DOCUMENT`): sınıf adından türer, yol ve parametre asla |
 
 - **Kaydedilmeyenler:** değişiklik yapmayan başarısız işlemler (404, 400), okumalar (liste, detay), 401 (doğrulanmış aktör yok; oturum açma günlüğü IdP'dedir). Kimlik doğrulaması geçmiş ama rolü olmayanın admin ucuna gelmesi 403'tür ve kaydedilir.
 - **Yeniden indeksleme:** bugün böyle bir uç yoktur (`DOCUMENT_REINDEX_REQUIRED` yalnız 409 hata kodudur, yeniden indeksleme eylemi kodda yok). `DOCUMENT_REINDEXED` eylemi, uç eklendiği değişiklikle `AuditAction`'a girer; hayali bir eylem eklenmedi.
