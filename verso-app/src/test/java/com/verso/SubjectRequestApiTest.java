@@ -116,9 +116,12 @@ class SubjectRequestApiTest {
         HttpResponse<String> answer = ask(subject, "topic-leave Yıllık izin kaç gün?");
         assertThat(answer.statusCode()).isEqualTo(200);
         rate(subject, answer, "{\"rating\":\"UP\"}");
-        assertThat(rowsNaming(document)).as("before the delete").containsKeys("document.document.id",
-                "document.document_file.document_id", "document.document_page.document_id",
-                "document.document_chunk.document_id", "document.document_principal.document_id");
+        Map<String, Long> before = rowsNaming(document);
+        assertThat(before).as("before the delete").containsKeys("document.document.id",
+                "document.document_page.document_id", "document.document_chunk.document_id",
+                "document.document_principal.document_id");
+        // The original file is removed once ingestion succeeded (IngestionRepository); nothing to find there.
+        assertThat(before).doesNotContainKey("document.document_file.document_id");
 
         assertThat(send(TestIdp.bearer(subject), "DELETE", "/v1/documents/" + document, null).statusCode()).isEqualTo(204);
 
@@ -179,7 +182,7 @@ class SubjectRequestApiTest {
         rate(subject, mine, "{\"rating\":\"DOWN\",\"reason\":\"OUTDATED\"}");
         ask(other, "topic-leave B sorusu?");
 
-        HttpResponse<String> summary = send(admin, "GET", "/v1/admin/subjects/" + subject, null);
+        HttpResponse<String> summary = send(admin, "POST", "/v1/admin/subjects/summary", subjectBody(subject));
         assertThat(summary.statusCode()).isEqualTo(200);
         assertThat(summary.headers().firstValue("Cache-Control")).hasValue("no-store, private");
         assertThat((Integer) JsonPath.read(summary.body(), "$.history.conversations")).isOne();
@@ -188,7 +191,7 @@ class SubjectRequestApiTest {
         assertThat((Integer) JsonPath.read(summary.body(), "$.documents.personalCount")).isOne();
         assertThat((Integer) JsonPath.read(summary.body(), "$.auditEventsAsActor")).isGreaterThanOrEqualTo(2);
 
-        HttpResponse<String> export = send(admin, "GET", "/v1/admin/subjects/" + subject + "/export", null);
+        HttpResponse<String> export = send(admin, "POST", "/v1/admin/subjects/export", subjectBody(subject));
 
         assertThat(export.statusCode()).isEqualTo(200);
         assertThat(export.headers().firstValue("Cache-Control")).hasValue("no-store, private");
@@ -236,8 +239,7 @@ class SubjectRequestApiTest {
         long subjectAuditRows = AuditTables.count("select count(*) from audit.event where actor_sub = ?", subject);
         assertThat(subjectAuditRows).isGreaterThanOrEqualTo(3);
 
-        HttpResponse<String> response = send(admin, "DELETE", "/v1/admin/subjects/" + subject,
-                "{\"confirm\":\"" + subject + "\"}");
+        HttpResponse<String> response = send(admin, "POST", "/v1/admin/subjects/delete", deletionBody(subject, subject));
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("Cache-Control")).hasValue("no-store, private");
@@ -254,7 +256,9 @@ class SubjectRequestApiTest {
                 .containsExactly(collection.toString());
         assertThat(((Number) JsonPath.read(body, "$.kept.auditEventsAsActor")).longValue()).isEqualTo(subjectAuditRows);
 
-        assertThat(rowsNaming(personal)).as("personal document and everything derived").isEmpty();
+        Map<String, Long> left = rowsNaming(personal);
+        assertThat(left.keySet()).as("personal document and everything derived; only the documented references stay")
+                .isSubsetOf(KEPT_REFERENCES).noneMatch(key -> key.startsWith("document."));
         assertThat(QaTables.count("select count(*) from qa.conversation where account_id = ?", subject)).isZero();
         assertThat(QaTables.count("select count(*) from qa.turn where account_id = ?", subject)).isZero();
         assertThat(QaTables.count("select count(*) from qa.active_account_day where account_id = ?", subject)).isZero();
@@ -269,8 +273,7 @@ class SubjectRequestApiTest {
         assertThat(QaTables.count("select count(*) from qa.turn where account_id = ?", other)).isOne();
         assertThat(rowsNaming(othersDocument)).containsKey("document.document_chunk.document_id");
 
-        HttpResponse<String> repeat = send(admin, "DELETE", "/v1/admin/subjects/" + subject,
-                "{\"confirm\":\"" + subject + "\"}");
+        HttpResponse<String> repeat = send(admin, "POST", "/v1/admin/subjects/delete", deletionBody(subject, subject));
         assertThat(repeat.statusCode()).isEqualTo(200);
         assertThat((Integer) JsonPath.read(repeat.body(), "$.historyDeleted.conversations")).isZero();
         assertThat((Integer) JsonPath.read(repeat.body(), "$.personalDocumentsDeleted")).isZero();
@@ -284,11 +287,11 @@ class SubjectRequestApiTest {
         for (int i = 0; i < 3; i++) ready(subject, "topic-leave Annual leave is twenty working days.", "izin-" + i + ".pdf");
         TestChatModel.INSTANCE.answer("Yirmi iş günü [1].");
         for (int i = 0; i < 4; i++) ask(subject, "topic-leave soru " + i + "?");
-        String path = "/v1/admin/subjects/" + subject;
-        String body = "{\"confirm\":\"" + subject + "\"}";
+        String path = "/v1/admin/subjects/delete";
+        String body = deletionBody(subject, subject);
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Callable<HttpResponse<String>> call = () -> send(admin, "DELETE", path, body);
+            Callable<HttpResponse<String>> call = () -> send(admin, "POST", path, body);
             List<Future<HttpResponse<String>>> futures = pool.invokeAll(List.of(call, call));
             int conversations = 0;
             int personalDocuments = 0;
@@ -314,22 +317,31 @@ class SubjectRequestApiTest {
         TestChatModel.INSTANCE.answer("Yirmi iş günü [1].");
         ready(subject, "topic-leave Annual leave is twenty working days.", "izin.pdf");
         ask(subject, "topic-leave A sorusu?");
-        String path = "/v1/admin/subjects/" + subject;
-        for (String body : new String[]{null, "{}", "{\"confirm\":\"\"}", "{\"confirm\":\"" + other + "\"}",
-                "{\"confirm\":\"" + subject.toUpperCase() + "\"}", "{\"confirm\":\"" + "x".repeat(256) + "\"}", "not json"}) {
-            HttpResponse<String> response = send(admin, "DELETE", path, body);
+        String path = "/v1/admin/subjects/delete";
+        String[] bodies = {"", "{}", "{\"sub\":\"" + subject + "\"}", deletionBody(subject, ""), deletionBody(subject, other),
+                deletionBody(subject, subject.toUpperCase()), deletionBody(subject, "x".repeat(256)), "not json"};
+        for (String body : bodies) {
+            HttpResponse<String> response = send(admin, "POST", path, body);
             assertThat(response.statusCode()).as(String.valueOf(body)).isEqualTo(400);
             assertThat(response.body()).as(String.valueOf(body)).contains("\"ok\":false").doesNotContain(subject);
         }
-        assertThat(send(admin, "DELETE", path, "{\"confirm\":\"" + other + "\"}").body()).contains("\"code\":13002");
+        // A well-formed body with the wrong confirmation is the privacy module's own refusal, not a parse error.
+        HttpResponse<String> mismatch = send(admin, "POST", path, deletionBody(subject, other));
+        assertThat(mismatch.body()).contains("\"code\":13002").doesNotContain(subject).doesNotContain(other);
+        assertThat(send(admin, "POST", path, deletionBody(subject, subject.toUpperCase())).body()).contains("\"code\":13002");
         assertThat(QaTables.count("select count(*) from qa.turn where account_id = ?", subject)).isOne();
         assertThat(jdbc.queryForObject("select count(*) from document.document where account_id = ?", Long.class, subject))
                 .isOne();
-        for (String bad : new String[]{"a!b", "a%20b", "x".repeat(256), "a*b"}) {
-            HttpResponse<String> response = send(admin, "GET", "/v1/admin/subjects/" + bad, null);
-            assertThat(response.statusCode()).as(bad).isEqualTo(400);
-            assertThat(response.body()).as(bad).contains("\"code\":13001");
+        for (String bad : new String[]{"a!b", "a b", "a*b", "a/b", "a%"}) {
+            for (String endpoint : new String[]{"summary", "export"}) {
+                HttpResponse<String> response = send(admin, "POST", "/v1/admin/subjects/" + endpoint, subjectBody(bad));
+                assertThat(response.statusCode()).as(bad).isEqualTo(400);
+                assertThat(response.body()).as(bad).contains("\"code\":13001").doesNotContain(bad);
+            }
         }
+        assertThat(send(admin, "POST", "/v1/admin/subjects/summary", subjectBody("x".repeat(256))).statusCode()).isEqualTo(400);
+        assertThat(send(admin, "POST", "/v1/admin/subjects/delete", deletionBody("a!b", "a!b")).body())
+                .contains("\"code\":13001");
     }
 
     /** ADR-0019: every endpoint is verso-admin only; the denial itself is audited (ADR-0026). */
@@ -338,9 +350,9 @@ class SubjectRequestApiTest {
         String user = TestIdp.bearer(subject);
         String operator = "Bearer " + TestIdp.IDP.token().subject("acct-operator").realmRoles("verso-operator", "verso-user")
                 .build();
-        String[][] calls = {{"GET", "/v1/admin/subjects/" + other, null},
-                {"GET", "/v1/admin/subjects/" + other + "/export", null},
-                {"DELETE", "/v1/admin/subjects/" + other, "{\"confirm\":\"" + other + "\"}"},
+        String[][] calls = {{"POST", "/v1/admin/subjects/summary", subjectBody(other)},
+                {"POST", "/v1/admin/subjects/export", subjectBody(other)},
+                {"POST", "/v1/admin/subjects/delete", deletionBody(other, other)},
                 {"POST", "/v1/admin/documents/" + UUID.randomUUID() + "/answer-redaction", "{\"confirm\":\"" + UUID.randomUUID() + "\"}"}};
         for (String[] call : calls) {
             for (String caller : new String[]{user, operator}) {
@@ -384,6 +396,14 @@ class SubjectRequestApiTest {
             }
         }
         return found;
+    }
+
+    private static String subjectBody(String sub) {
+        return "{\"sub\":\"" + sub + "\"}";
+    }
+
+    private static String deletionBody(String sub, String confirm) {
+        return "{\"sub\":\"" + sub + "\",\"confirm\":\"" + confirm + "\"}";
     }
 
     private void assertNoContentLogged(String... secrets) {

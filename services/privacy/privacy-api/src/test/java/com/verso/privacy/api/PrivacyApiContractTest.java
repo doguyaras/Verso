@@ -46,7 +46,7 @@ class PrivacyApiContractTest {
     @Test
     void types_whenExposed_areRecords() {
         for (Class<?> type : List.of(SubjectSummaryResponse.class, SubjectHistory.class, SubjectDocuments.class,
-                SubjectDocumentItem.class, SubjectDeletionRequest.class, SubjectDeletionResponse.class,
+                SubjectDocumentItem.class, SubjectDeletionRequest.class, com.verso.privacy.api.dto.SubjectRequest.class, SubjectDeletionResponse.class,
                 SubjectDeletionResponse.Kept.class, AnswerRedactionRequest.class, AnswerRedactionResponse.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
@@ -58,7 +58,8 @@ class PrivacyApiContractTest {
         SubjectDocumentItem item = new SubjectDocumentItem(UUID.randomUUID(), "maas-bordrosu-ayse.pdf", "PDF", "READY", 10,
                 null, Instant.now());
         assertThat(item.toString()).doesNotContain("ayse");
-        assertThat(new SubjectDeletionRequest("acct-ayse").toString()).doesNotContain("ayse");
+        assertThat(new SubjectDeletionRequest("acct-ayse", "acct-ayse").toString()).doesNotContain("ayse");
+        assertThat(new com.verso.privacy.api.dto.SubjectRequest("acct-ayse").toString()).doesNotContain("ayse");
         SubjectDocuments documents = new SubjectDocuments(1, List.of(item), 0, List.of(), List.of(), List.of(), false);
         SubjectDeletionResponse response = new SubjectDeletionResponse(new SubjectHistory(1, 2, 0, 1), 1, 0,
                 new SubjectDeletionResponse.Kept(documents, 3));

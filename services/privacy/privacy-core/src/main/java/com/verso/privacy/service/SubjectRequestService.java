@@ -26,7 +26,7 @@ public interface SubjectRequestService {
     /** Streams the export as one JSON document, in bounded batches from each module. */
     void writeExport(ExportPlan plan, OutputStream out) throws IOException;
 
-    SubjectDeletionResponse delete(String sub, SubjectDeletionRequest request);
+    SubjectDeletionResponse delete(SubjectDeletionRequest request);
 
     AnswerRedactionResponse redactAnswers(UUID documentId, AnswerRedactionRequest request);
 

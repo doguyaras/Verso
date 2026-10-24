@@ -3,6 +3,7 @@ package com.verso.privacy.controller;
 import com.verso.platform.security.authority.VersoRoles;
 import com.verso.privacy.api.dto.SubjectDeletionRequest;
 import com.verso.privacy.api.dto.SubjectDeletionResponse;
+import com.verso.privacy.api.dto.SubjectRequest;
 import com.verso.privacy.api.dto.SubjectSummaryResponse;
 import com.verso.privacy.service.SubjectRequestService;
 import com.verso.privacy.service.SubjectRequestService.ExportPlan;
@@ -16,18 +17,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * /v1/admin/subjects/{sub} (ADR-0034): KVKK md. 11 requests about one token subject, for {@code verso-admin} only
- * (ADR-0019; every other caller gets 403 and the denial is audited, ADR-0026). The subject is a request target, never
- * the caller's identity: the caller is the admin of the validated token. Every response carries personal data:
- * {@code Cache-Control: no-store}. The sub is checked against the token subject's shape before any query.
+ * /v1/admin/subjects (ADR-0034): KVKK md. 11 requests about one token subject, for {@code verso-admin} only (ADR-0019;
+ * every other caller gets 403 and the denial is audited, ADR-0026). The subject is a request target, never the
+ * caller's identity, and it travels in the JSON body only: a URL is echoed in error bodies ({@code path}) and kept by
+ * proxies and traces, so a sub in the path would leak exactly what an erasure request wants gone. POST for reads too,
+ * for the same reason. Every response carries personal data: {@code Cache-Control: no-store}.
  */
 @RestController
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -43,20 +43,20 @@ public class AdminSubjectController {
     }
 
     /** What Verso holds about the subject: counts, document metadata, collections naming the subject, audit row count. */
-    @GetMapping("/{sub}")
+    @PostMapping(path = "/summary", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(VersoRoles.HAS_ADMIN)
-    public ResponseEntity<SubjectSummaryResponse> summary(@PathVariable("sub") String sub) {
-        return ResponseEntity.ok().cacheControl(NO_STORE).body(subjects.summary(sub));
+    public ResponseEntity<SubjectSummaryResponse> summary(@Valid @RequestBody SubjectRequest request) {
+        return ResponseEntity.ok().cacheControl(NO_STORE).body(subjects.summary(request.sub()));
     }
 
     /**
      * Everything as one JSON document (access request), written from the request thread in bounded batches (the
      * caller's security context stays). {@code X-Subject-Export-Truncated} says up front whether a cap cuts it.
      */
-    @GetMapping("/{sub}/export")
+    @PostMapping(path = "/export", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(VersoRoles.HAS_ADMIN)
-    public void export(@PathVariable("sub") String sub, HttpServletResponse response) throws IOException {
-        ExportPlan plan = subjects.planExport(sub);
+    public void export(@Valid @RequestBody SubjectRequest request, HttpServletResponse response) throws IOException {
+        ExportPlan plan = subjects.planExport(request.sub());
         response.setStatus(200);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
@@ -71,13 +71,12 @@ public class AdminSubjectController {
 
     /**
      * Erasure request: history and personal documents go, collection documents and audit rows are reported and kept.
-     * The body must repeat the sub ({@code {"confirm": "<sub>"}}); a repeat of the request is safe and finishes an
-     * interrupted erasure.
+     * The body must repeat the sub ({@code {"sub": "<sub>", "confirm": "<sub>"}}); a repeat of the request is safe and
+     * finishes an interrupted erasure.
      */
-    @DeleteMapping("/{sub}")
+    @PostMapping(path = "/delete", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(VersoRoles.HAS_ADMIN)
-    public ResponseEntity<SubjectDeletionResponse> delete(@PathVariable("sub") String sub,
-                                                          @Valid @RequestBody SubjectDeletionRequest request) {
-        return ResponseEntity.ok().cacheControl(NO_STORE).body(subjects.delete(sub, request));
+    public ResponseEntity<SubjectDeletionResponse> delete(@Valid @RequestBody SubjectDeletionRequest request) {
+        return ResponseEntity.ok().cacheControl(NO_STORE).body(subjects.delete(request));
     }
 }

@@ -41,14 +41,15 @@ Silme tutarlılığı için: (1) **saga tablosu** (referans 12, `operation-consi
 
 | Uç | İş |
 |---|---|
-| `GET /v1/admin/subjects/{sub}` | Özet: geçmiş sayıları, belgeler (ad, biçim, durum, boyut; içerik yok), kişiye adıyla açılmış ve kişinin oluşturduğu bilgi alanları, kişinin aktör olduğu denetim satırı sayısı |
-| `GET /v1/admin/subjects/{sub}/export` | Erişim başvurusu: tek JSON belge, akış halinde, sınırlı (2 000 konuşma, 100 000 denetim satırı, liste başına 1 000 belge; `X-Subject-Export-Truncated`), sabit dosya adı |
-| `DELETE /v1/admin/subjects/{sub}` | Silme başvurusu; gövde `{"confirm": "<sub>"}` path'tekiyle **birebir** aynı olmalı |
+| `POST /v1/admin/subjects/summary` (gövde `{"sub": "..."}`) | Özet: geçmiş sayıları, belgeler (ad, biçim, durum, boyut; içerik yok), kişiye adıyla açılmış ve kişinin oluşturduğu bilgi alanları, kişinin aktör olduğu denetim satırı sayısı |
+| `POST /v1/admin/subjects/export` (gövde `{"sub": "..."}`) | Erişim başvurusu: tek JSON belge, akış halinde, sınırlı (2 000 konuşma, 100 000 denetim satırı, liste başına 1 000 belge; `X-Subject-Export-Truncated`), sabit dosya adı |
+| `POST /v1/admin/subjects/delete` | Silme başvurusu; gövde `{"sub": "...", "confirm": "..."}`, `confirm` `sub` ile **birebir** aynı olmalı |
 | `POST /v1/admin/documents/{documentId}/answer-redaction` | Silinmiş belgeden alıntı yapan cevapları sabit bir notla değiştirir; gövde `{"confirm": "<documentId>"}`; belge hâlâ varsa 409 |
 
+- **`sub` hiçbir zaman URL'de değildir**, okumalarda da (bu yüzden özet ve dışa aktarım da `POST`). İlk tasarım `sub`'ı path'e koymuştu; CI, 403 ve 400 hata gövdelerinin `path` alanında `sub`'ın geri yansıdığını gösterdi. URL ayrıca kenar proxy, tarayıcı geçmişi ve izleme (trace) kayıtlarında kalabilir. Gövde ise hata zarfına girmez; doğrulama ayrıntısı yalnız alan adını taşır (`sub=...` kural iletisi, değer değil). Testler hiçbir yanıt gövdesinin `sub`'ı yansıtmadığını doğrular.
 - `sub` doğrulaması: `[A-Za-z0-9._@:-]{1,255}`, yani `JwtValidation`'ın oturum açarken token `sub`'ına uyguladığı biçim. Başka her değer 400 `13001`, değer loglanmaz. Bu biçimle SQL joker karakteri ya da kontrol karakteri sorguya ulaşamaz (sorgular zaten parametrelidir).
-- Her yanıt `Cache-Control: no-store, private`. Dışa aktarımın `Content-Disposition`'ı sabittir (`verso-kvkk-export.json`); `sub` başlığa yazılmaz. Kenar proxy erişim logu kapalıdır (`deploy/edge/nginx.conf` `access_log off`), path'teki `sub` bir log'a düşmez.
-- Silme bir **onay alanı** ister: gövdesiz, boş, farklı ya da büyük-küçük harfi farklı `confirm` 400'dür ve hiçbir şey silinmez. Yanlış yola gönderilmiş bir istek, tekrar edilen bir GET ya da yanlış kopyalanmış bir path silme yapamaz.
+- Her yanıt `Cache-Control: no-store, private`. Dışa aktarımın `Content-Disposition`'ı sabittir (`verso-kvkk-export.json`); `sub` başlığa yazılmaz. Kenar proxy erişim logu ayrıca kapalıdır (`deploy/edge/nginx.conf` `access_log off`).
+- Silme bir **onay alanı** ister: gövdesiz, boş, farklı ya da büyük-küçük harfi farklı `confirm` 400'dür ve hiçbir şey silinmez. Yanlış uca gönderilmiş bir istek, tekrar edilen bir okuma ya da yanlış kopyalanmış bir kimlik silme yapamaz.
 
 ### 3. Ne silinir, ne kalır, ne raporlanır
 

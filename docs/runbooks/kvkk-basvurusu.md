@@ -23,7 +23,8 @@ Yalnız erişim başvurusunda (silme yok) bu adım gerekmez.
 ## 2. Ne tutulduğunu gör
 
 ```bash
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" https://<verso>/v1/admin/subjects/$SUB
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d "{\"sub\":\"$SUB\"}" https://<verso>/v1/admin/subjects/summary
 ```
 
 - `history`: konuşma, tur, puan, hesap × gün sayıları.
@@ -37,8 +38,8 @@ curl -s -H "Authorization: Bearer $ADMIN_TOKEN" https://<verso>/v1/admin/subject
 ## 3. Erişim başvurusu: dışa aktar
 
 ```bash
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -D basliklar.txt -o verso-kvkk-export.json \
-     https://<verso>/v1/admin/subjects/$SUB/export
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -D basliklar.txt \
+     -o verso-kvkk-export.json -d "{\"sub\":\"$SUB\"}" https://<verso>/v1/admin/subjects/export
 ```
 
 - `X-Subject-Export-Truncated: true` ise bir sınır aşılmıştır (2 000 konuşma, 100 000 denetim satırı, liste başına 1 000 belge); kalanını kurumun geliştirme ekibiyle çıkarın, başvuru dosyasına not edin.
@@ -49,11 +50,11 @@ curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -D basliklar.txt -o verso-kvkk-e
 ## 4. Silme başvurusu
 
 ```bash
-curl -s -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-     -d "{\"confirm\":\"$SUB\"}" https://<verso>/v1/admin/subjects/$SUB
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d "{\"sub\":\"$SUB\",\"confirm\":\"$SUB\"}" https://<verso>/v1/admin/subjects/delete
 ```
 
-- `confirm` path'teki `sub` ile birebir aynı olmalı; değilse `400 13002` ve hiçbir şey silinmez.
+- `sub` her zaman gövdededir, URL'ye yazılmaz (hata yanıtları ve proxy/izleme kayıtları URL'yi taşır). `confirm` `sub` ile birebir aynı olmalı; değilse `400 13002` ve hiçbir şey silinmez.
 - Yanıttaki `historyDeleted`, `personalDocumentsDeleted`, `answersRedacted` başvuru dosyasına yazılır.
 - `kept.documents.collection` boş değilse: bu belgeler kurumundur. Belgeyi tanıyan birimle karar verin; silinecekse `DELETE /v1/documents/{id}` (yönetici) ve ardından adım 5'teki karartma.
 - `kept.documents.grantedCollections`: kişiye adıyla verilmiş erişimleri `/v1/collections/{id}/grants` ile kaldırın (panelde "Bilgi alanları").
@@ -95,7 +96,8 @@ Verso belge metninde ad aramaz (ADR-0034 bölüm 7: yazım, ek ve OCR farkları 
 ## 7. Kontrol
 
 ```bash
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" https://<verso>/v1/admin/subjects/$SUB
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d "{\"sub\":\"$SUB\"}" https://<verso>/v1/admin/subjects/summary
 ```
 
 Beklenen: `history` sıfır, `documents.personalCount` 0; kalanlar yalnız bilinçli tutulanlar (alan belgeleri, erişimler, denetim satırları).

@@ -77,9 +77,9 @@ class SubjectRequestServiceImplTest {
 
     @Test
     void delete_whenConfirmationDiffers_deletesNothing() {
-        for (SubjectDeletionRequest request : new SubjectDeletionRequest[]{new SubjectDeletionRequest("acct-subject-2"),
-                new SubjectDeletionRequest(SUB.toUpperCase()), null}) {
-            assertThatThrownBy(() -> service.delete(SUB, request)).isInstanceOf(PrivacyServiceException.class)
+        for (SubjectDeletionRequest request : new SubjectDeletionRequest[]{new SubjectDeletionRequest(SUB, "acct-subject-2"),
+                new SubjectDeletionRequest(SUB, SUB.toUpperCase()), new SubjectDeletionRequest(SUB, null)}) {
+            assertThatThrownBy(() -> service.delete(request)).isInstanceOf(PrivacyServiceException.class)
                     .satisfies(e -> assertThat(((PrivacyServiceException) e).getErrorCode())
                             .isEqualTo(PrivacyErrorCode.SUBJECT_CONFIRMATION_MISMATCH));
         }
@@ -90,7 +90,7 @@ class SubjectRequestServiceImplTest {
 
     @Test
     void delete_whenSubIsMalformed_isRefusedBeforeAnyCall() {
-        assertThatThrownBy(() -> service.delete("a%", new SubjectDeletionRequest("a%")))
+        assertThatThrownBy(() -> service.delete(new SubjectDeletionRequest("a%", "a%")))
                 .isInstanceOf(PrivacyServiceException.class);
         verify(qa, never()).deleteHistory(any());
     }
@@ -109,7 +109,7 @@ class SubjectRequestServiceImplTest {
                 DocumentStatus.READY, 10, UUID.randomUUID(), Instant.now());
         when(documents.find(SUB)).thenReturn(new SubjectDocuments(0, List.of(), 1, List.of(kept), List.of(), List.of()));
 
-        SubjectDeletionResponse response = service.delete(SUB, new SubjectDeletionRequest(SUB));
+        SubjectDeletionResponse response = service.delete(new SubjectDeletionRequest(SUB, SUB));
 
         InOrder order = inOrder(qa, documents, events);
         order.verify(qa).deleteHistory(SUB);
@@ -137,7 +137,7 @@ class SubjectRequestServiceImplTest {
         when(documents.personalDocumentIds(SUB, DocumentSubjects.MAX_DELETE_BATCH)).thenReturn(List.of(a));
         when(qa.redactAnswersCiting(List.of(a))).thenThrow(new IllegalStateException("database gone"));
 
-        assertThatThrownBy(() -> service.delete(SUB, new SubjectDeletionRequest(SUB)))
+        assertThatThrownBy(() -> service.delete(new SubjectDeletionRequest(SUB, SUB)))
                 .isInstanceOf(IllegalStateException.class);
         verify(documents, never()).deletePersonalDocuments(any(), any());
         verify(events, never()).publishEvent(any(Object.class));
@@ -146,7 +146,7 @@ class SubjectRequestServiceImplTest {
         when(documents.personalDocumentIds(SUB, DocumentSubjects.MAX_DELETE_BATCH))
                 .thenReturn(List.of(a)).thenReturn(List.of());
         when(documents.deletePersonalDocuments(SUB, List.of(a))).thenReturn(List.of(a));
-        assertThat(service.delete(SUB, new SubjectDeletionRequest(SUB)).personalDocumentsDeleted()).isOne();
+        assertThat(service.delete(new SubjectDeletionRequest(SUB, SUB)).personalDocumentsDeleted()).isOne();
     }
 
     @Test

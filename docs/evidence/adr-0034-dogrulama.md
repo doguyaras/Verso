@@ -32,6 +32,16 @@ Kısmi hata ve tekrar (seviye 1, yerel PASS): `SubjectRequestServiceImplTest#del
 
 CI sonucu ve SHA bu dosyaya push sonrası eklenmez; PR'sız akışta kanıt, dalın GitHub Actions `backend` işidir.
 
+## CI turu 1 (`9ad455b`) ve düzeltme
+
+`SubjectRequestApiTest` CI'da 7'den 4'ü kırmızı:
+
+| Test | Neden | Düzeltme |
+|---|---|---|
+| `endpoints_whenCallerIsNotAnAdmin_areDenied`, `delete_whenTheConfirmationIsMissingOrWrong…` | **Gerçek gizlilik kusuru:** `sub` path'teydi; 403 (90101) ve 400 hata gövdelerinin `path` alanı onu geri yansıttı (ayrıca proxy/izleme kayıtlarına düşebilirdi). Yanlış onay, gövdeli `DELETE` isteğinde 13002 yerine 90001 ("body could not be read") döndü | Uçlar `POST /v1/admin/subjects/{summary,export,delete}`; `sub` yalnız JSON gövdede (`SubjectRequest`, `SubjectDeletionRequest{sub, confirm}`). Testler hiçbir gövdenin `sub`'ı yansıtmadığını ve iyi biçimli yanlış onayın 13002 döndüğünü doğrular |
+| `delete_whenConfirmed…` | Test, silinen kişisel belge için hiç referans kalmamasını bekliyordu; tasarım dört kolonu bilerek tutar (`audit.event.citation_document_ids`, `qa.usage_daily_document`) | Beklenti `KEPT_REFERENCES` alt kümesi ve `document.*` yok olarak hizalandı; denetim satırı silinmez |
+| `documentDelete_whenDone…` | Ön koşul `document.document_file` bekliyordu; orijinal dosya işleme başarılı olunca silinir (`IngestionRepository`) | Ön koşul bu anahtarın **olmadığını** doğrular; silme sonrası kontrol aynı sıkılıkta |
+
 ## Review skill'leri
 
 | Skill | Karar | Not |

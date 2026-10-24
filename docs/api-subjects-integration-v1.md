@@ -7,7 +7,7 @@
 Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-silme-basvuru` branch'indeki koda (taban `develop` `287cbbb`) dayanır. Karar: [ADR-0034](adr/0034-silme-ve-basvuru-akisi.md). İşletim: [runbook](runbooks/kvkk-basvurusu.md).
 
 ## Değişikliklerin özeti
-- Yeni yönetici uçları: `GET /v1/admin/subjects/{sub}`, `GET /v1/admin/subjects/{sub}/export`, `DELETE /v1/admin/subjects/{sub}`, `POST /v1/admin/documents/{documentId}/answer-redaction`.
+- Yeni yönetici uçları: `POST /v1/admin/subjects/summary`, `POST /v1/admin/subjects/export`, `POST /v1/admin/subjects/delete`, `POST /v1/admin/documents/{documentId}/answer-redaction`.
 - Yeni hata kodu bloğu **privacy 13000–13999**: 13001, 13002, 13020, 13021.
 - Yeni denetim eylemleri (`GET /v1/admin/audit` `action` değerleri): `SUBJECT_VIEWED`, `SUBJECT_EXPORTED`, `SUBJECT_DELETED`, `ANSWERS_REDACTED`; yeni hedef türü `SUBJECT`. Liste genişleyebilir; istemci bilinmeyen değeri ham gösterir.
 - Mevcut uçların sözleşmesi **değişmedi**. Karartılmış bir turun `answer` alanı `GET /v1/conversations/{id}` yanıtında sabit not metnidir; alan, tür ve diğer alanlar aynıdır.
@@ -17,13 +17,14 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-silme-basvuru` branch'in
 - **Kritik:** Dört uç da yalnız `verso-admin` rolündedir (ADR-0019). Başka her kimlikli çağıran `403` (`90101 ACCESS_DENIED`; reddin kendisi denetim kaydına `ADMIN_SUBJECT` ya da `ADMIN_ANSWER_REDACTION` olarak yazılır), kimliksiz `401` alır.
 - **Kritik:** Yanıtlar kişisel veri taşır: `Cache-Control: no-store, private`. İstemci yanıtı kalıcı depoya, URL'e, log'a ya da analitiğe koymaz; dışa aktarım dosyası başvuru dosyasında, kurumun kişisel veri kurallarıyla saklanır.
 - **Kritik:** Silme ve karartma geri alınamaz. İkisi de gövdede hedefi **yeniden** ister (`confirm`); eşleşmezse hiçbir şey değişmez.
-- `{sub}` token'ın opak `sub` değeridir ve `[A-Za-z0-9._@:-]{1,255}` biçiminde olmalıdır (oturum açmada token'a uygulanan biçim). Başka değer `400` `13001`. Path'te URL kodlaması gereken karakter yoktur.
+- **Kritik:** `sub` yalnız JSON gövdede taşınır, URL'de asla (okumalar da `POST`): URL hata gövdesinin `path` alanında, proxy ve izleme kayıtlarında kalır. İstemci `sub`'ı query ya da path'e koymaz.
+- `sub` token'ın opak `sub` değeridir ve `[A-Za-z0-9._@:-]{1,255}` biçiminde olmalıdır (oturum açmada token'a uygulanan biçim). Başka değer `400` `13001`. Gövde: `{"sub": "<sub>"}` (özet, dışa aktarım), `Content-Type: application/json`.
 - Başarı yanıtları ham, hatalar zarflıdır (ADR-0004). Bilinmeyen alanlar yok sayılır.
 - Kişi Verso'da **yalnız hesap kimliğiyle** bulunur. Belge metninde ad araması yoktur (ADR-0034 bölüm 7).
 
 ## Değişiklikler ve istemciye etkisi
 
-### 1. Özet: `GET /v1/admin/subjects/{sub}`
+### 1. Özet: `POST /v1/admin/subjects/summary`
 ```json
 {
   "history": {"conversations": 2, "turns": 7, "feedback": 1, "activeDays": 3},
@@ -46,7 +47,7 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-silme-basvuru` branch'in
 - Belge içeriği, sayfa ya da parça metni **dönmez**.
 - Her çağrı `SUBJECT_VIEWED` olarak denetim kaydına yazılır.
 
-### 2. Dışa aktarım: `GET /v1/admin/subjects/{sub}/export`
+### 2. Dışa aktarım: `POST /v1/admin/subjects/export`
 - `200`, `Content-Type: application/json;charset=UTF-8`, `Content-Disposition: attachment; filename="verso-kvkk-export.json"` (sabit ad; `sub` başlığa yazılmaz), `X-Subject-Export-Truncated: true|false`.
 - Gövde tek JSON belgedir, akış halinde yazılır:
 ```json
@@ -72,10 +73,10 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-silme-basvuru` branch'in
 - Atıflar yalnız referanstır (belge kimliği, sayfa); pasaj metni geçmişte tutulmaz (ADR-0023). Denetim satırlarında aktörün rolleri ve trace id yoktur.
 - Dışa aktarım başlamadan **önce** `SUBJECT_EXPORTED` (`detailCode` `COMPLETE` ya da `TRUNCATED`) yazılır; yarıda kopan bir indirme de erişim sayılır. Yarıda kopan gövde geçersiz JSON'dur; yeniden indirin.
 
-### 3. Silme: `DELETE /v1/admin/subjects/{sub}`
+### 3. Silme: `POST /v1/admin/subjects/delete`
 İstek:
 ```json
-{"confirm": "<path'teki sub, birebir>"}
+{"sub": "<sub>", "confirm": "<sub, birebir>"}
 ```
 Yanıt `200`:
 ```json
@@ -104,18 +105,21 @@ Yanıt `200`:
 
 | HTTP | Kod | Ad | Ne zaman |
 |---|---|---|---|
-| 400 | 13001 | `SUBJECT_INVALID` | `{sub}` token `sub` biçiminde değil |
-| 400 | 13002 | `SUBJECT_CONFIRMATION_MISMATCH` | `confirm`, path'teki `sub` ile birebir aynı değil |
-| 400 | 13020 | `REDACTION_CONFIRMATION_MISMATCH` | `confirm`, path'teki belge kimliği değil |
+| 400 | 13001 | `SUBJECT_INVALID` | `sub` token `sub` biçiminde değil |
+| 400 | 13002 | `SUBJECT_CONFIRMATION_MISMATCH` | `confirm`, gövdedeki `sub` ile birebir aynı değil |
+| 400 | 13020 | `REDACTION_CONFIRMATION_MISMATCH` | `confirm`, path'teki belge kimliği değil (belge kimliği kişisel veri değildir, path'te kalır) |
 | 409 | 13021 | `DOCUMENT_NOT_DELETED` | Belge hâlâ var |
-| 400 | 9000x | doğrulama | Gövde yok, JSON değil, `confirm` boş ya da 255 karakterden uzun |
+| 400 | 9000x | doğrulama | Gövde yok, JSON değil, `sub` ya da `confirm` boş veya 255 karakterden uzun |
+| 415 | 9000x | doğrulama | `Content-Type: application/json` değil |
 | 401 / 403 | 90100 / 90101 | kimlik / yetki | Token yok / `verso-admin` değil |
 | 503 | 99997 | `SERVICE_UNAVAILABLE` | Veritabanı ya da kilit zaman aşımı; aynı isteği tekrarlayın |
 
 ## Örnek (curl)
 ```bash
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8080/v1/admin/subjects/$SUB
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -o basvuru.json http://localhost:8080/v1/admin/subjects/$SUB/export
-curl -s -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-     -d "{\"confirm\":\"$SUB\"}" http://localhost:8080/v1/admin/subjects/$SUB
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d "{\"sub\":\"$SUB\"}" http://localhost:8080/v1/admin/subjects/summary
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -o basvuru.json \
+     -d "{\"sub\":\"$SUB\"}" http://localhost:8080/v1/admin/subjects/export
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d "{\"sub\":\"$SUB\",\"confirm\":\"$SUB\"}" http://localhost:8080/v1/admin/subjects/delete
 ```

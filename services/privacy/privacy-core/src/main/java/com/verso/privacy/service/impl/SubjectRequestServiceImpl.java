@@ -152,9 +152,9 @@ public class SubjectRequestServiceImpl implements SubjectRequestService {
 
     @Override
     @PreAuthorize(VersoRoles.HAS_ADMIN)
-    public SubjectDeletionResponse delete(String sub, SubjectDeletionRequest request) {
-        String subject = SubjectIds.require(sub);
-        if (request == null || !subject.equals(request.confirm())) {
+    public SubjectDeletionResponse delete(SubjectDeletionRequest request) {
+        String subject = SubjectIds.require(request == null ? null : request.sub());
+        if (!subject.equals(request.confirm())) {
             throw new PrivacyServiceException(PrivacyErrorCode.SUBJECT_CONFIRMATION_MISMATCH, "CONFIRMATION_MISMATCH");
         }
         String step = "history";
