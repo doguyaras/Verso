@@ -102,7 +102,7 @@ Faz 5 sonunda uygulama compose'un `default` ağındaydı. Bu ağın internete ç
 | Bileşen | Neden | Not |
 |---|---|---|
 | `com.anthropic:anthropic-java-core` 2.52.0, `com.openai:openai-java-core` 4.49.0 | Spring AI 2.0'ın Anthropic ve OpenAI istemcileri bu resmi SDK'lar üzerine kurulu | Transitif. Yanlarında OkHttp 4.12, Kotlin stdlib/reflect 2.3 ve Jackson 2.21 gelir. Jar'ların toplamı **yaklaşık 78 MB**; en büyükleri openai-java-core 51,6 MB ve anthropic-java-core 18,8 MB. Jackson 2, Boot'un Jackson 3'üyle yan yana yaşar |
-| `nginxinc/nginx-unprivileged:1.29.8-alpine` (digest pinli) | İç ağdaki uygulamanın portunu yayınlamak | Root olmayan resmi nginx image'ı, ~23 MB, salt okunur, yetkisiz |
+| `nginxinc/nginx-unprivileged:1.30.6-alpine` (digest pinli) | İç ağdaki uygulamanın portunu yayınlamak | Root olmayan resmi nginx image'ı, ~23 MB, salt okunur, yetkisiz |
 
 Onay verilmezse geri alma yolu:
 

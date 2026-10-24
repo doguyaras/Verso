@@ -32,7 +32,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <spring-boot.version>4.1.1</spring-boot.version>
+    <spring-boot.version>4.1.2</spring-boot.version>
     <spring-modulith.version>2.1.1</spring-modulith.version>
     <archunit.version>1.5.1</archunit.version>
     <!-- Stack (README): Spring AI 2.0.x is the Boot 4 line; 2.1.0-M1 is a milestone and not used (docs/versions.md). -->

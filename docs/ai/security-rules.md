@@ -83,6 +83,8 @@
 - Image CI'da build, cosign imzalı, digest ile deploy; non-root; base image Renovate ile güncel.
 - GitHub Actions: üçüncü taraf action'lar **commit SHA'ya pinli** (`uses: owner/action@<40-hex> # vX.Y.Z`); tag pin'i `REQUEST CHANGES`. Workflow `permissions` en dar; secret'lar yalnız gereken job'da.
 - gitleaks pre-commit + CI; Dependabot/GitHub Advisory alarmları; yaması yalnız ticari sürümde olan CVE = upgrade tetikleyicisi.
+- Ollama'nın sunucu tarafında kimlik doğrulaması yoktur (CVE-2025-63389, kritik, yama yok); korunma yalnız ağdadır. Varsayılan `compose.yaml`'da Ollama'nın host portu yoktur ve yalnız `internal: true` olan `models` ağındadır; uygulamadan başka kimse erişemez. `deploy/compose.local.yaml` yalnız IDE geliştirmesi içindir ve portu `127.0.0.1`'e yayınlar; üretimde kullanılmaz. Ollama'ya host portu, `0.0.0.0` yayını ya da internete açık ağ eklemek `REQUEST CHANGES`.
+- Güvenlik yükseltmesinde (BOM, image) her image `@sha256` ile pinli kalır; `docs/versions.md` tarih ve CVE kimliğiyle güncellenir. Bağımlılık taraması: çözümlenen runtime bağımlılıkları OSV'ye karşı kontrol edilir (`osv-scanner` ya da `api.osv.dev/v1/querybatch`).
 - GPL lisanslı kütüphane kapalı kaynak uygulamaya bağlanmadan hukuki inceleme.
 
 ## 10. Bu Belgede Özellikle Taşınmayanlar

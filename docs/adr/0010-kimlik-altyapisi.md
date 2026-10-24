@@ -29,7 +29,7 @@ ADR-0005, Verso'nun yalnız token doğrulayan bir resource server olmasını ve 
 
 **Demo IdP (compose):**
 
-- `quay.io/keycloak/keycloak:26.7.5`, digest ile pinli; `start --import-realm` (prod modu).
+- `quay.io/keycloak/keycloak:26.8.1`, digest ile pinli; `start --import-realm` (prod modu).
 - Veritabanı: `deploy/postgres/initdb/30-keycloak.sh` `keycloak` rolünü ve `keycloak` veritabanını oluşturur. `PUBLIC`'in `CONNECT` yetkisi kaldırılır; Verso rolleri bu veritabanına, `keycloak` rolü de Verso veritabanına bağlanamaz. Parolasız rol varsa script başarısız olur.
 - Secret'lar dosyadır (`SECRET_DB_KEYCLOAK_PASSWORD`, `SECRET_KEYCLOAK_ADMIN_PASSWORD`, `SECRET_KEYCLOAK_CI_CLIENT_SECRET`, `SECRET_KEYCLOAK_DEMO_USER_PASSWORD`). `deploy/keycloak/start.sh` onları yalnız kendi sürecinin ortamına okur ve `kc.sh`'ı `exec` eder. Compose ortamına ve argüman listesine secret girmez. Realm dosyası (`deploy/keycloak/realm/verso-realm.json`) yalnız `${VERSO_*}` yer tutucuları taşır.
 - Port yalnız `127.0.0.1:${VERSO_KEYCLOAK_PORT:-8180}`. `KC_HOSTNAME=http://localhost:8180` sabittir; böylece her token aynı `iss`'i taşır. Uygulama anahtarları compose ağı içinden (`http://keycloak:8080/.../certs`) alır (`KC_HOSTNAME_BACKCHANNEL_DYNAMIC`).
