@@ -15,7 +15,7 @@ export const ROLES = Object.freeze({
 const TOKEN_ROLES = Object.freeze([ROLES.USER, ROLES.OPERATOR]);
 
 // Menu order: the most used task right after the overview (ADR-0017); at most five screens for a user or an operator
-// (ADR-0015); an admin also sees the value dashboard (ADR-0025). "key" is the second key of the "g" shortcut ("g g"
+// (ADR-0015); an admin also sees the "Yönetim" group (ADR-0025, ADR-0028, ADR-0036). "key" is the second key of the "g" shortcut ("g g"
 // opens the history drawer); "tab: false" keeps a screen out of the mobile tab bar (four tabs at most).
 export const SCREENS = Object.freeze({
   overview: { title: 'Genel bakış', short: 'Özet', icon: 'home', key: 'o', roles: [ROLES.USER, ROLES.OPERATOR] },
@@ -23,9 +23,21 @@ export const SCREENS = Object.freeze({
   documents: { title: 'Bilgi kaynakları', short: 'Kaynaklar', icon: 'files', key: 'b', roles: [ROLES.USER, ROLES.OPERATOR] },
   setup: { title: 'Kurulum durumu', short: 'Kurulum', icon: 'flag', key: 'k', roles: [ROLES.USER, ROLES.OPERATOR], tab: false },
   system: { title: 'Sistem ve güvenlik', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR] },
-  insights: { title: 'Değer panosu', short: 'Pano', icon: 'chart', key: 'd', roles: [ROLES.ADMIN], tab: false },
-  collections: { title: 'Bilgi alanları', short: 'Alanlar', icon: 'layers', key: 'a', roles: [ROLES.ADMIN], tab: false },
+  // The "Yönetim" group (ADR-0036): verso-admin only, listed under its own heading in the menu column and the account
+  // menu, never in the tab bar; a user or an operator sees none of it.
+  insights: { title: 'Değer panosu', short: 'Pano', icon: 'chart', key: 'd', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  collections: { title: 'Bilgi alanları', short: 'Alanlar', icon: 'layers', key: 'a', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  chunks: { title: 'Parçaları incele', short: 'Parçalar', icon: 'search', key: 'p', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  subjects: { title: 'KVKK başvuruları', short: 'KVKK', icon: 'shield', key: 'v', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
 });
+
+/** The heading of the admin group (ADR-0036). */
+export const ADMIN_GROUP = 'Yönetim';
+
+/** The admin screens this user may open, in menu order; empty for everyone without verso-admin. */
+export function adminScreens(roles) {
+  return screensFor(roles).filter((id) => SCREENS[id].group === 'admin');
+}
 
 /** The roles of a decoded access token payload; every authenticated user is at least a verso-user. */
 export function rolesOf(claims) {

@@ -1006,7 +1006,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1647,4 +1647,215 @@ test('api: the page call goes to the documented path with encoded ids', async ()
   assert.deepEqual(sent, ['/v1/documents/a%2Fb/pages/3']);
   assert.ok(MESSAGES[10005]);
   signOut();
+});
+
+// ---------- the "Yönetim" screens: KVKK requests, collection edits, the chunk inspector (ADR-0036) ----------
+test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens; users and operators see no change', async () => {
+  const { ADMIN_GROUP, adminScreens } = await import('../panel/js/roles.js');
+  const user = rolesOf({ realm_access: { roles: [] } });
+  const operator = rolesOf({ realm_access: { roles: ['verso-operator'] } });
+  assert.deepEqual(screensFor(user), ['overview', 'ask', 'documents', 'setup']);
+  assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
+  for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
+    assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
+    for (const id of ['subjects', 'chunks']) assert.equal(canOpen(id, roles), false, id);
+  }
+  const admin = withServerRoles(user, { roles: ['verso-admin'] });
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects']);
+  assert.equal(ADMIN_GROUP, 'Yönetim');
+  for (const id of adminScreens(admin)) {
+    assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
+    assert.deepEqual(SCREENS[id].roles, [ROLES.ADMIN], id);
+  }
+  const keys = Object.values(SCREENS).map((s) => s.key);
+  assert.equal(new Set(keys).size, keys.length, 'every "g" shortcut key is unique');
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
+  assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
+  for (const id of ['chunks', 'subjects']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+});
+
+test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
+  const { SUB_PATTERN, subProblem, validSub, deleteConfirmed, redactionConfirmed } = await import('../panel/js/subjects.js');
+  const java = readFileSync('services/privacy/privacy-core/src/main/java/com/verso/privacy/service/SubjectIds.java', 'utf8');
+  const server = /Pattern\.compile\("([^"]+)"\)/.exec(java)[1];
+  assert.equal(SUB_PATTERN.source, `^${server}$`, 'the same character class and length as SubjectIds');
+  for (const ok of ['f81d4fae-7dec-11d0-a765-00a0c91e6bf6', 'user@kurum.com.tr', 'a', 'x'.repeat(255), 'urn:a.b_c-d']) {
+    assert.equal(validSub(ok), true, ok);
+    assert.equal(subProblem(ok), null, ok);
+  }
+  for (const bad of ['', ' a', 'a ', 'a b', 'ç', 'a/b', 'a%2F', 'x'.repeat(256), 'a\nb', 'a‮b', null, undefined, 42]) {
+    assert.equal(validSub(bad), false, String(bad));
+    assert.ok(subProblem(bad), String(bad));
+  }
+  assert.doesNotMatch(subProblem('gizli kişi'), /gizli/, 'the problem text never repeats the value');
+  assert.equal(deleteConfirmed('Abc-1', 'Abc-1'), true);
+  for (const typed of ['abc-1', 'Abc-1 ', ' Abc-1', '', undefined, 'Abc-']) assert.equal(deleteConfirmed('Abc-1', typed), false, String(typed));
+  assert.equal(deleteConfirmed('a b', 'a b'), false, 'an invalid sub is never confirmed');
+  const id = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+  assert.equal(redactionConfirmed(id, id), true);
+  for (const typed of [id.toUpperCase(), ` ${id}`, '', id.slice(1)]) assert.equal(redactionConfirmed(id, typed), false, typed);
+  assert.equal(redactionConfirmed('not-a-uuid', 'not-a-uuid'), false);
+});
+
+test('kvkk: the summary says what a deletion deletes, keeps and reports; missing fields count as zero', async () => {
+  const { summaryModel, deletionModel } = await import('../panel/js/subjects.js');
+  const summary = {
+    history: { conversations: 2, turns: 7, feedback: 1, activeDays: 3 },
+    documents: { personalCount: 1, personal: [{ id: 'p1', fileName: 'izin.pdf' }], collectionCount: 1,
+      collection: [{ id: 'c1', fileName: 'ortak.pdf', collectionId: 'k' }], grantedCollections: ['k'], createdCollections: [], listsTruncated: false },
+    auditEventsAsActor: 42,
+  };
+  const model = summaryModel(summary);
+  assert.deepEqual(model.deleted.map((r) => r.value), [2, 7, 1, 3, 1]);
+  assert.deepEqual(model.kept.map((r) => r.value), [1, 1, 0, 42]);
+  assert.match(model.deleted[4].label, /Kişisel belge/);
+  assert.match(model.kept[3].label, /Denetim kaydı/);
+  assert.deepEqual(model.collectionDocuments.map((d) => d.id), ['c1'], 'the kept collection documents are listed');
+  assert.deepEqual([model.truncated, model.nothingToDelete, model.nothingFound], [false, false, false]);
+  const empty = summaryModel({});
+  assert.deepEqual([empty.nothingToDelete, empty.nothingFound, empty.collectionDocuments.length], [true, true, 0]);
+  assert.equal(summaryModel({ documents: { listsTruncated: true } }).truncated, true);
+  assert.equal(summaryModel({ history: { turns: 'x' } }).deleted[1].value, 0, 'a non-number is not shown as a count');
+
+  const result = deletionModel({ historyDeleted: { conversations: 2, turns: 7 }, personalDocumentsDeleted: 1, answersRedacted: 3,
+    kept: { documents: { collectionCount: 1, collection: [{ id: 'c1' }] }, auditEventsAsActor: 42 } });
+  assert.deepEqual(result.rows.map((r) => r.value), [2, 7, 1, 3]);
+  assert.equal(result.repeated, false);
+  assert.deepEqual(result.kept.kept.map((r) => r.value), [1, 0, 0, 42]);
+  assert.equal(deletionModel({ historyDeleted: {}, personalDocumentsDeleted: 0, answersRedacted: 0 }).repeated, true,
+    'a repeated request deletes nothing more and says so');
+});
+
+test('kvkk: the export file name carries the time of the download, never the sub', async () => {
+  const { exportFileName } = await import('../panel/js/subjects.js');
+  assert.equal(exportFileName(new Date(2026, 9, 4, 9, 5)), 'verso-kvkk-disa-aktarim-20261004-0905.json');
+  assert.match(exportFileName(), /^verso-kvkk-disa-aktarim-\d{8}-\d{4}\.json$/);
+  const screen = readFileSync('panel/js/screens/subjects.js', 'utf8');
+  assert.match(screen, /download: exportFileName\(\)/, 'the download uses the sub-free name');
+  assert.match(screen, /URL\.revokeObjectURL\(url\)/, 'the Blob URL is released');
+});
+
+test('kvkk: the sub stays in memory: never in a URL, the hash, browser storage or the console, and is wiped on leaving', () => {
+  for (const file of ['subjects.js', 'screens/subjects.js', 'chunks.js', 'screens/chunks.js']) {
+    const source = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.doesNotMatch(source, /sessionStorage|localStorage|indexedDB|document\.cookie/, `${file}: no browser storage`);
+    assert.doesNotMatch(source, /location\.(hash|search|href)\s*=(?!=)|history\.(push|replace)State|URLSearchParams|navigate\(/,
+      `${file}: nothing in the URL`);
+    assert.doesNotMatch(source, /console\./, `${file}: no console`);
+    assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'|style:\s*'|window\.(alert|confirm|prompt)/, file);
+  }
+  const screen = readFileSync('panel/js/screens/subjects.js', 'utf8');
+  assert.match(screen, /return \(\) => \{\n\s+subject = null;/, 'leaving the screen drops the sub');
+  assert.match(screen, /input\.value = ''/, 'and empties the fields that held it');
+  assert.match(screen, /autocomplete: 'off'/, 'no autofill history for the sub');
+  const api = readFileSync('panel/js/api.js', 'utf8');
+  for (const m of api.matchAll(/request(?:File)?\('(\/v1\/admin\/subjects\/[^']*)'/g)) assert.doesNotMatch(m[1], /\$\{/, 'the sub never goes into the path');
+  assert.equal([...api.matchAll(/'\/v1\/admin\/subjects\/(summary|export|delete)'/g)].length, 3);
+});
+
+test('api: KVKK, collection edit and chunk calls go to the documented paths; the sub only in the JSON body', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  const sub = 'user@kurum.com.tr';
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push({ url, method: init.method ?? 'GET', body: init.body ?? null, type: init.headers?.['Content-Type'] });
+    const truncated = url.endsWith('/export') ? 'true' : null;
+    return { ok: true, status: 200, headers: { get: (h) => (h === 'X-Subject-Export-Truncated' ? truncated : null) },
+      json: async () => ({ ok: true }), blob: async () => new Blob(['{}'], { type: 'application/json' }) };
+  };
+  await api.subjectSummary(sub);
+  const exported = await api.exportSubject(sub);
+  await api.deleteSubject(sub, sub);
+  await api.redactAnswers('d/1', 'd/1');
+  await api.updateCollection('k 1', 'Hukuk', '');
+  await api.listChunks('a/b', 2, 50);
+  assert.equal(exported.truncated, true);
+  assert.equal(await exported.blob.text(), '{}');
+  assert.deepEqual(sent.map((r) => [r.method, r.url, r.body]), [
+    ['POST', '/v1/admin/subjects/summary', '{"sub":"user@kurum.com.tr"}'],
+    ['POST', '/v1/admin/subjects/export', '{"sub":"user@kurum.com.tr"}'],
+    ['POST', '/v1/admin/subjects/delete', '{"sub":"user@kurum.com.tr","confirm":"user@kurum.com.tr"}'],
+    ['POST', '/v1/admin/documents/d%2F1/answer-redaction', '{"confirm":"d/1"}'],
+    ['PUT', '/v1/collections/k%201', '{"name":"Hukuk","description":null}'],
+    ['GET', '/v1/admin/documents/a%2Fb/chunks?page=2&size=50', null]]);
+  for (const r of sent) assert.ok(!r.url.includes('kurum'), `${r.url}: no sub in a URL`);
+  for (const r of sent.filter((x) => x.body)) assert.equal(r.type, 'application/json');
+
+  globalThis.fetch = async () => ({ ok: false, status: 403, headers: { get: () => null }, json: async () => ({ error: { code: 90101 } }) });
+  await assert.rejects(api.exportSubject(sub), (error) => error instanceof ApiError && error.status === 403 && error.code === 90101);
+  await assert.rejects(api.listChunks('x'), (error) => error.status === 403);
+  for (const code of [13001, 13002, 13020, 13021]) assert.ok(MESSAGES[code], String(code));
+  signOut();
+});
+
+test('collections: rename and description follow the server rules; an unchanged form is not sent', async () => {
+  const { collectionEdit } = await import('../panel/js/screens/collections.js');
+  const original = { name: 'Hukuk', description: 'Sözleşmeler' };
+  assert.deepEqual(collectionEdit(original, '  Hukuk birimi ', 'Sözleşmeler'), { problem: null, body: { name: 'Hukuk birimi', description: 'Sözleşmeler' } });
+  assert.deepEqual(collectionEdit(original, 'Hukuk', '  ').body, { name: 'Hukuk', description: null }, 'an empty description clears it');
+  assert.equal(collectionEdit(original, 'Hukuk', 'Sözleşmeler').body, null, 'unchanged');
+  assert.equal(collectionEdit({ name: 'A', description: null }, 'A', '').body, null, 'unchanged, no description');
+  for (const [name, description] of [['', 'x'], ['   ', ''], ['x'.repeat(101), ''], ['ok', 'd'.repeat(501)], ['a‮b', ''], ['ok', 'satır\u0007']]) {
+    const edit = collectionEdit(original, name, description);
+    assert.equal(edit.body, null, `${name}/${description}`);
+    assert.ok(edit.problem);
+  }
+  const source = readFileSync('panel/js/screens/collections.js', 'utf8');
+  assert.match(source, /api\.updateCollection\(collection\.id, edit\.body\.name, edit\.body\.description\)/);
+  assert.doesNotMatch(source, /innerHTML|\.style\b|setAttribute\('style'/);
+});
+
+test('chunk inspector: headings, previews, labels, paging without duplicates and a Turkish-folded search', async () => {
+  const { CHUNK_PAGE_SIZE, chunkHeading, chunkLabel, chunkPreview, filterChunks, mergeChunks, PREVIEW_CHARS } = await import('../panel/js/chunks.js');
+  assert.equal(chunkHeading('## İzin hakları ##\nYıllık izin…'), 'İzin hakları');
+  assert.equal(chunkHeading('Madde 4 Yıllık izin\nÇalışan her yıl…'), 'Madde 4 Yıllık izin');
+  assert.equal(chunkHeading('Bu bir cümledir.\nDevamı'), null, 'a sentence is no heading');
+  assert.equal(chunkHeading('Tek satır'), null, 'nothing follows: no heading');
+  assert.equal(chunkHeading(`${'u'.repeat(91)}\nx`), null, 'too long for a heading');
+  assert.equal(chunkHeading(''), null);
+  assert.equal(chunkPreview('a  b\n\nc'), 'a b c');
+  const long = chunkPreview('kelime '.repeat(100));
+  assert.ok(long.length <= PREVIEW_CHARS + 1 && long.endsWith('…') && !long.endsWith(' …'), long);
+  assert.equal(chunkLabel({ unit: 'PAGE', number: 3, charCount: 1234 }), 'Sayfa 3 · 1.234 karakter');
+  assert.equal(chunkLabel({ unit: 'SECTION', number: 2, charCount: 5 }), 'Bölüm 2 · 5 karakter');
+
+  const c = (index, text = `parça ${index}`) => ({ index, number: 1, unit: 'PAGE', charCount: text.length, text });
+  const first = mergeChunks([], { data: [c(0), c(1)], page: { number: 0, size: 2, totalElements: 5, totalPages: 3 } });
+  assert.deepEqual([first.chunks.map((x) => x.index), first.more, first.nextPage, first.total], [[0, 1], true, 1, 5]);
+  const again = mergeChunks(first.chunks, { data: [c(1), c(2), c(3)], page: { number: 1, size: 2, totalElements: 5, totalPages: 3 } });
+  assert.deepEqual(again.chunks.map((x) => x.index), [0, 1, 2, 3], 'each index once, in order');
+  const last = mergeChunks(again.chunks, { data: [c(4)], page: { number: 2, size: 2, totalElements: 5, totalPages: 3 } });
+  assert.deepEqual([last.more, last.nextPage], [false, null]);
+  assert.equal(mergeChunks([], { data: [], page: { number: 0, size: 50, totalElements: 0, totalPages: 0 } }).more, false);
+  assert.ok(CHUNK_PAGE_SIZE <= 100, 'within the API cap');
+
+  const chunks = [c(0, 'Yıllık İZİN hakkı'), c(1, 'Şirket aracı kullanımı'), c(2, 'izin ve şirket')];
+  assert.deepEqual(filterChunks(chunks, 'izin').map((x) => x.index), [0, 2]);
+  assert.deepEqual(filterChunks(chunks, 'SIRKET').map((x) => x.index), [1, 2]);
+  assert.deepEqual(filterChunks(chunks, 'izin sirket').map((x) => x.index), [2], 'every word must appear');
+  assert.equal(filterChunks(chunks, '  ').length, 3);
+  const screen = readFileSync('panel/js/screens/chunks.js', 'utf8');
+  assert.match(screen, /openPageDrawer\(\{\s*documentId: state\.document\.id/, 'the full page opens in the reused page viewer');
+  assert.match(screen, /closePageDrawer\(\);\n\s+state = \{ document: null/, 'leaving the screen drops the loaded text');
+  assert.match(readFileSync('panel/js/screens/documents.js', 'utf8'), /admin && fresh\.status === 'READY' \? el\('button'/, 'the document drawer leads admins here');
+});
+
+test('admin screens: 403 is a calm admin-only state, touch targets and reduced motion, no product-name suffix', () => {
+  for (const file of ['screens/subjects.js', 'screens/chunks.js']) {
+    const source = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.match(source, /error\.status === 403/, `${file}: a 403 is handled on the screen`);
+    assert.match(source, /'Bu ekran yöneticiler içindir'/, file);
+    assert.doesNotMatch(source, /Verso['’]|productName/, `${file}: the product name is not hard-coded with a suffix`);
+    assert.doesNotMatch(source, /animate\(|requestAnimationFrame|transition:/, `${file}: no motion of its own`);
+  }
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /@media \(pointer: coarse\) \{[\s\S]*?\.main\[data-group="admin"\] :is\(\.input, \.button, \.icon-button\), \.menu button \{ min-height: 44px; \}/);
+  assert.match(readFileSync('panel/js/app.js', 'utf8'), /\$\('#main'\)\.dataset\.group = SCREENS\[screen\]\.group \?\? '';/);
+  const block = css.slice(css.indexOf('/* ---------- the "Yönetim" group'), css.indexOf('/* screens cross-fade'));
+  assert.ok(block.length > 200, 'the admin block');
+  assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, 'only design tokens: the contrast pairs stay the tested ones');
+  assert.doesNotMatch(block, /animation|transition/, 'no new motion');
 });

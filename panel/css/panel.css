@@ -1124,7 +1124,24 @@ dialog.palette::backdrop { background: var(--scrim); }
   .rating .rate, .reasons .icon-button, .history-actions .icon-button { width: 44px; height: 44px; }
   .reasons .chip, .chat-bar .button, .history-open { min-height: 44px; }
   .cite::after { content: ""; position: absolute; inset: -12px -6px; }
+  /* the "Yönetim" screens (ADR-0036): fields, buttons and the account menu's rows */
+  .main[data-group="admin"] :is(.input, .button, .icon-button), .menu button { min-height: 44px; }
+  .main[data-group="admin"] .icon-button { min-width: 44px; }
 }
+
+/* ---------- the "Yönetim" group and its screens (ADR-0036) ---------- */
+.shell.rail .nav .nav-group { display: block; height: 0; padding: 0; margin: 8px 10px; overflow: hidden; border-top: 1px solid var(--border-muted); }
+.field-label { font-weight: 600; font-size: var(--text-sm); }
+.card-body h3 { font-size: var(--text-md); font-weight: 600; margin: 4px 0 0; }
+.steps-list { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
+.notice ul { margin: 4px 0 8px; padding-left: 18px; }
+.subject-result:empty { display: none; }
+.chunk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.chunk { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--border-muted); border-radius: var(--r-md); background: var(--bg-surface); }
+.chunk-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.chunk-heading { margin: 0; font-weight: 600; color: var(--fg-default); }
+.chunk-text { margin: 0; color: var(--fg-muted); overflow-wrap: anywhere; }
+.chunk-status { margin: 0; }
 /* screens cross-fade (motion.js transition: the View Transitions API where the browser has it) */
 .main { view-transition-name: main; }
 ::view-transition-old(main) { animation: vt-out .16s var(--ease-in) both; }

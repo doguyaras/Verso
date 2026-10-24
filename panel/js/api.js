@@ -35,6 +35,10 @@ export const MESSAGES = Object.freeze({
   11022: 'Konuşma dolu (200 soru); yeni bir konuşma başlatın.',
   11023: 'Seçilen kaynak bu cevapta yok.',
   11030: 'Tarih aralığı geçersiz (en çok 366 gün).',
+  13001: 'Hesap kimliği (sub) geçersiz: yalnız harf, rakam ve . _ @ : - içerebilir.',
+  13002: 'Onay, hesap kimliğiyle birebir aynı değil; hiçbir şey silinmedi.',
+  13020: 'Onay, belge kimliğiyle birebir aynı değil; hiçbir cevap değişmedi.',
+  13021: 'Bu belge hâlâ duruyor; cevaplar yalnız belge silindikten sonra karartılır.',
   90000: 'Soru boş ya da 1000 karakterden uzun.',
   90001: 'İstek okunamadı.',
   90002: 'İstekteki bir değer geçersiz.',
@@ -127,6 +131,24 @@ async function streamQuestion(question, signal, conversationId, live) {
   throw new TypeError('stream ended early');
 }
 
+/**
+ * POST with a JSON body whose answer is a file (the KVKK export, ADR-0034): the body as a Blob and the response headers.
+ * Errors are the usual envelope. The body may hold personal data; nothing of it is kept beyond the caller's use.
+ */
+async function requestFile(path, payload) {
+  const token = await accessToken();
+  if (!token) throw new ApiError(401, 90100);
+  const res = await fetch(CONFIG.api + path, { method: 'POST', body: JSON.stringify(payload),
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.error?.code, Number(res.headers.get('Retry-After')) || undefined);
+  }
+  return { blob: await res.blob(), headers: res.headers };
+}
+
+const json = (method, payload) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
 /** Documents per page: the API's upper bound (docs/api-documents-integration-v1.md); the quota is 200. */
 export const PAGE_SIZE = 100;
 /** Pages of documents the screen loads at most: 500 documents. */
@@ -151,6 +173,9 @@ export const api = {
   listCollections: (page = 0, size = 100) => request(`/v1/collections?page=${page}&size=${size}`),
   createCollection: (name, description) => request('/v1/collections', { method: 'POST',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description: description || null }) }),
+  /** verso-admin: renames a collection and changes its description (empty clears it); the rules of create apply. */
+  updateCollection: (id, name, description) => request(`/v1/collections/${encodeURIComponent(id)}`,
+    json('PUT', { name, description: description || null })),
   deleteCollection: (id) => request(`/v1/collections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   listGrants: (id) => request(`/v1/collections/${encodeURIComponent(id)}/grants`),
   /** principalType GROUP (the group claim value, e.g. a Keycloak full path) or USER (the token sub). */
@@ -229,4 +254,19 @@ export const api = {
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   /** verso-admin only; from and to are inclusive calendar days (YYYY-MM-DD). */
   metrics: (from, to) => request(`/v1/admin/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  // KVKK data subject requests (ADR-0034), verso-admin only. The sub travels in the JSON body only, never in a URL: a
+  // URL stays in proxy and trace records and in an error body's path.
+  subjectSummary: (sub) => request('/v1/admin/subjects/summary', json('POST', { sub })),
+  /** The export as a Blob; truncated when the server hit its limits (X-Subject-Export-Truncated). */
+  async exportSubject(sub) {
+    const { blob, headers } = await requestFile('/v1/admin/subjects/export', { sub });
+    return { blob, truncated: headers.get('X-Subject-Export-Truncated') === 'true' };
+  },
+  deleteSubject: (sub, confirm) => request('/v1/admin/subjects/delete', json('POST', { sub, confirm })),
+  /** Replaces, in every account's history, the answers that cite a deleted document; the body repeats its id. */
+  redactAnswers: (documentId, confirm) => request(`/v1/admin/documents/${encodeURIComponent(documentId)}/answer-redaction`,
+    json('POST', { confirm })),
+  /** verso-admin: one page of the chunks of a document the admin reads (ADR-0036). */
+  listChunks: (documentId, page = 0, size = 50) =>
+    request(`/v1/admin/documents/${encodeURIComponent(documentId)}/chunks?page=${page}&size=${size}`),
 };

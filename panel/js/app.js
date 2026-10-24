@@ -9,7 +9,7 @@ import { icon, logo } from './icons.js';
 import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
 import { langSwitch, themeSwitch } from './toggles.js';
-import { canOpen, ROLES, rolesOf, screensFor, SCREENS, withServerRoles } from './roles.js';
+import { ADMIN_GROUP, adminScreens, canOpen, ROLES, rolesOf, screensFor, SCREENS, withServerRoles } from './roles.js';
 import { el, plainName } from './render.js';
 import { isDark, prefs, startNewConversation } from './store.js';
 import { cardSpotlight, navIndicator, transition } from './motion.js';
@@ -17,8 +17,10 @@ import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
 import { renderDocuments } from './screens/documents.js';
 import { openHistory } from './screens/history.js';
+import { renderChunks } from './screens/chunks.js';
 import { renderCollections } from './screens/collections.js';
 import { renderInsights } from './screens/insights.js';
+import { renderSubjects } from './screens/subjects.js';
 import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
@@ -27,7 +29,7 @@ import { renderSystem } from './screens/system.js';
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
 const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
-  insights: renderInsights, collections: renderCollections };
+  insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects };
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
@@ -152,6 +154,8 @@ function show(screen) {
   cleanup = null;
   document.title = `${SCREENS[screen].title} · ${CONFIG.deployment.productName}`;
   if (screen === 'system') prefs.markOnboarding({ sawMode: true });
+  // The "Yönetim" screens get the 44 px touch targets on phones (panel.css, ADR-0036).
+  $('#main').dataset.group = SCREENS[screen].group ?? '';
   const ctx = {
     main: $('#main'), roles, identity: currentIdentity(), expiresAt, guarded, withAuth, navigate, setCount, showMode,
     openHistory: showHistory, params, isCurrent: () => shown === view,
@@ -186,11 +190,22 @@ function accountMenu(anchor, placement) {
     'separator',
     // Phones have no menu column: the history and the screens kept out of the tab bar are reached from here.
     { label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory },
-    ...(canOpen('insights', roles) ? [{ label: 'Değer panosu', glyph: 'chart', onSelect: () => navigate('insights') }] : []),
-    ...(canOpen('collections', roles) ? [{ label: 'Bilgi alanları', glyph: 'layers', onSelect: () => navigate('collections') }] : []),
     ...(canOpen('system', roles) ? [{ label: 'Sistem ve güvenlik', glyph: 'server', onSelect: () => navigate('system') }] : []),
+    ...adminItems(),
+    'separator',
     { label: 'Çıkış yap', glyph: 'logout', onSelect: signOut },
   ], { placement });
+}
+
+/** The "Yönetim" group of the account menu (ADR-0036); nothing at all without verso-admin. */
+function adminItems() {
+  const items = [
+    ...(canOpen('insights', roles) ? [{ label: 'Değer panosu', glyph: 'chart', onSelect: () => navigate('insights') }] : []),
+    ...(canOpen('collections', roles) ? [{ label: 'Bilgi alanları', glyph: 'layers', onSelect: () => navigate('collections') }] : []),
+    ...(canOpen('chunks', roles) ? [{ label: 'Parçaları incele', glyph: 'search', onSelect: () => navigate('chunks') }] : []),
+    ...(canOpen('subjects', roles) ? [{ label: 'KVKK başvuruları', glyph: 'shield', onSelect: () => navigate('subjects') }] : []),
+  ];
+  return items.length ? [{ group: ADMIN_GROUP }, ...items] : [];
 }
 
 function railToggle() {
@@ -284,8 +299,11 @@ function buildShell() {
   // "Geçmiş" sits right under "Soru sor": it opens a drawer over the current screen, so it is a button, not a route.
   const history = el('button', { class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog', title: 'Geçmiş (G G)', onclick: showHistory },
     icon('history'), el('span', { class: 'label' }, 'Geçmiş'), el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, 'G G'));
+  // The admin screens sit under their own "Yönetim" heading (ADR-0036); without verso-admin there is none.
+  const firstAdmin = adminScreens(roles)[0];
+  const adminHeading = el('div', { class: 'nav-label nav-group', id: 'nav-admin' }, ADMIN_GROUP);
   $('#nav').replaceChildren(
-    ...links.flatMap((s) => [el('a', { href: `#/${s.id}`, 'data-screen': s.id, title: `${s.title} (G ${s.key.toUpperCase()})` },
+    ...links.flatMap((s) => [...(s.id === firstAdmin ? [adminHeading] : []), el('a',{ href: `#/${s.id}`, 'data-screen': s.id, title: `${s.title} (G ${s.key.toUpperCase()})` },
       icon(s.icon), el('span', { class: 'label' }, s.title),
       s.id === 'documents' ? el('span', { class: 'count' }, String(counts.documents ?? '')) : null,
       el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${s.key.toUpperCase()}`)), ...(s.id === 'ask' ? [history] : [])]));

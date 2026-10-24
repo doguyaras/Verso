@@ -94,7 +94,7 @@ Kimlik sağlayıcıdaki hesap Verso'nun verisi değildir; IdP'de devre dışı b
 ### 7. Kapsam dışı
 
 - **Belge içinde kişinin adını serbest metin olarak arama yok.** Bir adın yazımı, çekimi ve kısaltmaları güvenilir biçimde bulunamaz (Türkçe ekler, OCR hataları, "A. Yılmaz"); yanlış negatif kişiyi "bulunmadı" diye yanıltır, yanlış pozitif başkasının belgesini açar. Verso kişiyi yalnız **hesap kimliğiyle** (`sub`) bulur: yüklediği belgeler, geçmişi, sayaçları, denetim satırları. Operasyonel prosedür (runbook adım 5): kurum, belgeyi tanıyan birimle (İK, hukuk) hangi belgelerin kişiye ait veri içerdiğini belirler; yönetici bu belgeleri `DELETE /v1/documents/{id}` ile siler ve `answer-redaction` ile alıntılayan cevapları karartır; yapılanlar başvuru dosyasına yazılır.
-- Panel ekranı yok (ayrı iş). Uçlar yönetici API'sidir.
+- Panel ekranı yok (ayrı iş). Uçlar yönetici API'sidir. (Ek, 2026-10-24: panel ekranı [ADR-0036](0036-yonetim-ekranlari.md) ile eklendi; uçlar ve kurallar değişmedi.)
 - IdP'deki hesabın silinmesi ve yedeklerin seçmeli silinmesi (crypto-shredding yok; yedek süre sonunda düşer).
 
 ## Sonuçlar

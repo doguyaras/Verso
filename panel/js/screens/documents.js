@@ -308,6 +308,11 @@ export function renderDocuments(ctx) {
           close();
           ctx.navigate('ask', { focus: true });
         } }, icon('chat'), 'Bu belgelere sor') : null,
+        // verso-admin: the chunk inspector (ADR-0036); every document listed here is one the admin reads.
+        admin && fresh.status === 'READY' ? el('button', { class: 'button secondary', type: 'button', onclick: () => {
+          close();
+          ctx.navigate('chunks', { document: { id: fresh.id, fileName: fresh.fileName } });
+        } }, icon('search'), 'Parçaları incele') : null,
         admin ? moveControl(fresh, close) : null,
         canDelete(fresh, admin)
           ? el('button', { class: 'button danger', type: 'button', onclick: () => remove(fresh, close) }, icon('trash'), 'Belgeyi sil') : null,

@@ -13,6 +13,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-4-belge-alimi` branch
 - `API-Version` header'ı artık değerlendirilir: isteğe bağlı, varsayılan `1.0`; bilinmeyen sürüm 400 `90020`.
 - `X-Idempotency-Key` ile tekrar edilen yükleme ikinci belge oluşturmaz.
 - Yeni uç (ADR-0035, 24 Ekim 2026): `GET /v1/documents/{documentId}/pages/{number}`, bir sayfanın ya da bölümün saklanan metni (atıftan açılan sayfa görünümü). Yeni hata kodu 10005.
+- Yeni yönetici ucu (ADR-0036, 24 Ekim 2026): `GET /v1/admin/documents/{documentId}/chunks?page=&size=`, okunabilir bir belgenin retrieval parçaları (panelde "Parçaları incele"). Yalnız `verso-admin`; yeni hata kodu yok. Mevcut uçlar değişmedi.
 
 ## Kurallar
 - **Kritik:** Başka hesabın belgesi her uçta **404** döner (403 değil). İstemci "yetkiniz yok" değil "bulunamadı" göstermelidir; varlık açığa çıkmaz.
@@ -30,6 +31,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-4-belge-alimi` branch
 | GET | `/v1/documents/{documentId}` | user JWT | – | – | başarı ham, hata zarflı |
 | DELETE | `/v1/documents/{documentId}` | user JWT | doğal olarak idempotent (ikinci çağrı 404) | – | 204 gövdesiz, hata zarflı |
 | GET | `/v1/documents/{documentId}/pages/{number}` | user JWT | – | metin ≤ 60 000 kod noktası | başarı ham, hata zarflı |
+| GET | `/v1/admin/documents/{documentId}/chunks?page=&size=` | `verso-admin` | – | `size` 1–100 (varsayılan 50), `page` 0–100 000; parça metni ≤ 2 000 kod noktası | başarı ham, hata zarflı |
 
 Tüm yanıtlar `Cache-Control: private, no-store` ve `X-Trace-Id` taşır. Destek talebinde `traceId` iletilir.
 
@@ -123,6 +125,25 @@ const label = STATUS[doc.status] ?? 'İşleniyor';           // bilinmeyen enum 
 - Erişim, listeleme ve soru-cevapla **aynı** okuyucu filtresiyle (kişisel belge: sahibi; bilgi alanı: grant'ı olan kullanıcı ya da grup, ADR-0028). Okunamayan ve olmayan belge aynı `404 10001` döner; `verso-admin` de grant'ı yoksa okuyamaz. Okunabilir belgede olmayan sayfa (ya da henüz işlenmemiş belge) `404 10005`. `number` 1'den küçük ya da 100 000'den büyükse `400`.
 - Atıftaki alıntı (`excerpt`) sayfa metninde boşluklar tek boşluğa indirilerek aranır ve vurgulanır; geçmişten açılan cevapta alıntı yoktur, sayfa vurgusuz açılır.
 - Okuma olduğu için denetim kaydına yazılmaz (ADR-0026).
+
+### Parça incelemesi (ADR-0036, yalnız `verso-admin`)
+`GET /v1/admin/documents/{id}/chunks?page=0&size=50` → `200`, parça sırasıyla:
+```json
+{"data":[{"index":0,"number":1,"unit":"PAGE","charCount":1834,"text":"Yıllık izin\n…","truncated":false}],
+ "page":{"number":0,"size":50,"totalElements":37,"totalPages":1}}
+```
+| Alan | Tip | Anlam |
+|---|---|---|
+| `index` | int | Parçanın belgedeki sırası (0'dan) |
+| `number`, `unit` | int, `PAGE` \| `SECTION` | Parçanın geldiği sayfa ya da bölüm; sayfa görünümüyle aynı sayım (yukarıda) |
+| `charCount` | int | Parçanın tamamının uzunluğu (kod noktası) |
+| `text` | string | Parçanın ilk 2 000 kod noktası; belge içeriğidir, düz metin gösterilir, log'a ve analitiğe yazılmaz |
+| `truncated` | boolean | Parça 2 000 kod noktasından uzundu; tamamı sayfa görünümündedir |
+
+- Rol `verso-admin` değilse `403 90101` (ret denetim kaydına `ADMIN_DOCUMENT_CHUNK` olarak yazılır), token yoksa `401`.
+- Erişim sayfa görünümüyle **aynı** okuyucu filtresiyle ve aynı SQL cümlesinde: yönetici rolü okuma hakkı değildir. Yöneticinin kendi `sub`'ı ya da grupları okuyamıyorsa belge olmayan belgeyle aynı `404 10001` döner (bir bilgi alanını yönetmek onu okumak değildir, ADR-0028).
+- Embedding ya da vektör dönmez. Sayfanın ötesindeki `page` boş `data` döner; işlenmemiş belgede liste boştur. `page`/`size` aralık dışıysa `400`.
+- `Cache-Control: no-store, private`. Okuma olduğu için denetim kaydına yazılmaz (ADR-0026).
 
 ## Hata kodları ve ekran davranışı
 | code | HTTP | Anlam | Ekran aksiyonu | Retry? |

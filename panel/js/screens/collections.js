@@ -20,6 +20,29 @@ export function grantLabel(grant) {
   return `${grant.principalType === 'GROUP' ? 'Grup' : 'Kullanıcı'}: ${plainName(grant.principal)}`;
 }
 
+/** Control and format characters (bidi overrides among them): the server refuses them in names and descriptions. */
+const HIDDEN_CHARACTERS = /[\p{Cc}\p{Cf}]/u;
+
+/**
+ * A rename or description change as PUT /v1/collections/{id} takes it, or the reason it cannot be sent: the server's
+ * rules (name 1-100 after trimming, description at most 500, no control or bidi characters), and an unchanged form is
+ * not sent at all. An empty description clears it.
+ */
+export function collectionEdit(original, name, description) {
+  const newName = String(name ?? '').trim();
+  const newDescription = String(description ?? '').trim();
+  if (!newName) return { problem: 'Ad boş olamaz.', body: null };
+  if (newName.length > 100) return { problem: 'Ad en çok 100 karakterdir.', body: null };
+  if (newDescription.length > 500) return { problem: 'Açıklama en çok 500 karakterdir.', body: null };
+  if (HIDDEN_CHARACTERS.test(newName) || HIDDEN_CHARACTERS.test(newDescription)) {
+    return { problem: 'Ad ve açıklama görünmeyen denetim karakteri içeremez.', body: null };
+  }
+  if (newName === (original?.name ?? '') && newDescription === (original?.description ?? '')) {
+    return { problem: 'Değişiklik yok.', body: null };
+  }
+  return { problem: null, body: { name: newName, description: newDescription || null } };
+}
+
 export function renderCollections(ctx) {
   const { main, guarded } = ctx;
   const list = el('div', { class: 'card-body grid' }, el('div', { class: 'skeleton line' }));
@@ -96,6 +119,7 @@ export function renderCollections(ctx) {
 
   function card(collection) {
     const slot = el('div', {});
+    const editSlot = el('div', {});
     const title = plainName(collection.name);
     return el('article', { class: 'card' },
       el('div', { class: 'card-head' }, el('h2', {}, title), el('span', { class: 'spacer' }),
@@ -116,10 +140,38 @@ export function renderCollections(ctx) {
           } }, icon('trash', 'sm'))),
       el('div', { class: 'card-body' },
         collection.description ? el('p', { class: 'muted' }, plainName(collection.description)) : null,
-        el('button', { class: 'button ghost sm', type: 'button', onclick: (event) => {
-          event.currentTarget.remove();
-          details(collection, slot);
-        } }, icon('key', 'sm'), 'Erişimleri göster'), slot));
+        editSlot,
+        el('div', { class: 'page-actions' },
+          el('button', { class: 'button ghost sm', type: 'button', 'aria-expanded': 'false', onclick: (event) => {
+            const open = event.currentTarget.getAttribute('aria-expanded') !== 'true';
+            event.currentTarget.setAttribute('aria-expanded', String(open));
+            fill(editSlot, open ? editForm(collection) : null);
+          } }, icon('edit', 'sm'), 'Adı ve açıklamayı düzenle'),
+          el('button', { class: 'button ghost sm', type: 'button', onclick: (event) => {
+            event.currentTarget.remove();
+            details(collection, slot);
+          } }, icon('key', 'sm'), 'Erişimleri göster')), slot));
+  }
+
+  /** Rename and description (PUT /v1/collections/{id}); a taken name is 409 10040, shown as a toast. */
+  function editForm(collection) {
+    const title = plainName(collection.name);
+    const newName = el('input', { class: 'input', type: 'text', maxlength: 100, required: true, value: collection.name,
+      'aria-label': `${title} için yeni ad` });
+    const newDescription = el('input', { class: 'input', type: 'text', maxlength: 500, value: collection.description ?? '',
+      'aria-label': `${title} için açıklama (boş bırakılırsa silinir)`, placeholder: 'Açıklama (isteğe bağlı)' });
+    const problem = el('p', { class: 'field-error', role: 'alert' });
+    return el('form', { class: 'grid', onsubmit: async (event) => {
+      event.preventDefault();
+      const edit = collectionEdit(collection, newName.value, newDescription.value);
+      problem.textContent = edit.problem ?? '';
+      if (!edit.body) return;
+      const saved = await guarded(() => api.updateCollection(collection.id, edit.body.name, edit.body.description));
+      if (!saved) return;
+      toast('Bilgi alanı güncellendi.', 'ok');
+      refresh();
+    } }, newName, newDescription, problem,
+    el('div', { class: 'page-actions' }, el('button', { class: 'button', type: 'submit' }, icon('check'), 'Kaydet')));
   }
 
   async function refresh() {

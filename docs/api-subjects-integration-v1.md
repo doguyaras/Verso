@@ -11,7 +11,7 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-silme-basvuru` branch'in
 - Yeni hata kodu bloğu **privacy 13000–13999**: 13001, 13002, 13020, 13021.
 - Yeni denetim eylemleri (`GET /v1/admin/audit` `action` değerleri): `SUBJECT_VIEWED`, `SUBJECT_EXPORTED`, `SUBJECT_DELETED`, `ANSWERS_REDACTED`; yeni hedef türü `SUBJECT`. Liste genişleyebilir; istemci bilinmeyen değeri ham gösterir.
 - Mevcut uçların sözleşmesi **değişmedi**. Karartılmış bir turun `answer` alanı `GET /v1/conversations/{id}` yanıtında sabit not metnidir; alan, tür ve diğer alanlar aynıdır.
-- Panel ve mobil için etki yok: panelde başvuru ekranı yok (kapsam dışı). İç (internal) çağıran yoktur.
+- Mobil için etki yok. Panelde "Yönetim → KVKK başvuruları" ekranı bu uçları kullanır ([ADR-0036](adr/0036-yonetim-ekranlari.md)): `sub` yalnız ekranın belleğinde ve gövdede, dışa aktarım `verso-kvkk-disa-aktarim-YYYYMMDD-HHmm.json` adıyla iner. İç (internal) çağıran yoktur.
 
 ## Kurallar
 - **Kritik:** Dört uç da yalnız `verso-admin` rolündedir (ADR-0019). Başka her kimlikli çağıran `403` (`90101 ACCESS_DENIED`; reddin kendisi denetim kaydına `ADMIN_SUBJECT` ya da `ADMIN_ANSWER_REDACTION` olarak yazılır), kimliksiz `401` alır.
