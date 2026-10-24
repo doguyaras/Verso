@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.verso.document.api.DocumentRetrieval;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.api.enums.DocumentFormat;
+import com.verso.document.config.DoclingProperties;
+import com.verso.document.worker.DocumentTextExtractor;
 import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.worker.IngestionWorker;
@@ -56,9 +58,22 @@ import tools.jackson.databind.json.JsonMapper;
         "spring.http.clients.read-timeout=120s"})
 // Not @VersoTestEnvironment: that one replaces the embedding model; here the real one embeds.
 @ContextConfiguration(initializers = {VersoPostgres.Initializer.class, TestIdp.Initializer.class,
-        VersoTestEnvironment.Models.class})
+        VersoTestEnvironment.Models.class, RetrievalEvalTest.ProductionEmbeddingTimeout.class})
 @Import(TestChatModel.Config.class)
 class RetrievalEvalTest {
+
+    /**
+     * The production question-embedding timeout (10 s, ADR-0008) instead of the 2 s of the other tests: on a shared,
+     * busy host a CPU embedding sometimes took longer than 2 s and failed the whole measurement (ADR-0032 runs).
+     */
+    static final class ProductionEmbeddingTimeout
+            implements org.springframework.context.ApplicationContextInitializer<org.springframework.context.ConfigurableApplicationContext> {
+        @Override
+        public void initialize(org.springframework.context.ConfigurableApplicationContext context) {
+            org.springframework.boot.test.util.TestPropertyValues.of("verso.document.retrieval.embedding-timeout=10s")
+                    .applyTo(context);
+        }
+    }
 
     private static final Path ROOT = VersoPostgres.repoRoot();
     private static final JsonMapper JSON = JsonMapper.builder().build();
@@ -99,10 +114,25 @@ class RetrievalEvalTest {
         }
     }
 
+    @Autowired
+    DocumentTextExtractor extractor;
+
+    @Autowired
+    DoclingProperties docling;
+
+    /**
+     * ADR-0032 measurement switches, all optional: -Dverso.eval.samples-dir (another set of the same eleven PDFs, e.g.
+     * the ruled-table or scanned variants SamplePdfsTest writes), -Dverso.eval.out (result file name in eval/results)
+     * and the sidecar itself (-Dverso.document.docling.enabled=true -Dverso.document.docling.base-url=...).
+     */
+    private static final String SAMPLES_DIR = System.getProperty("verso.eval.samples-dir");
+    private static final String OUT = System.getProperty("verso.eval.out", "retrieval.json");
+
     @Test
     void evalSet_whenSearched_findsTheExpectedPages() throws Exception {
         jdbc.update("DELETE FROM document.document");
-        ingestSamples();
+        Map<String, Object> parsing = parseSamples();
+        Map<String, Object> ingestion = ingestSamples();
         JsonNode set = JSON.readTree(Files.readString(ROOT.resolve("eval/eval-set.json"), StandardCharsets.UTF_8));
 
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -146,6 +176,10 @@ class RetrievalEvalTest {
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("embeddingModel", "bge-m3:567m");
         summary.put("topK", 5);
+        summary.put("samples", SAMPLES_DIR == null ? "samples" : Path.of(SAMPLES_DIR).getFileName().toString());
+        summary.put("docling", docling.enabled());
+        summary.put("parsing", parsing);
+        summary.put("ingestion", ingestion);
         summary.put("gate", Map.of("minSimilarity", qa.minSimilarity(), "lexicalMinSimilarity", qa.lexicalMinSimilarity(),
                 "specificTermMaxShare", qa.specificTermMaxShare()));
         summary.putAll(measure(outcomes, o -> true));
@@ -163,11 +197,13 @@ class RetrievalEvalTest {
         result.put("measuredAt", Instant.now().toString());
         result.put("summary", summary);
         result.put("questions", rows);
-        Path out = ROOT.resolve("eval/results/retrieval.json");
+        Path out = ROOT.resolve("eval/results").resolve(Path.of(OUT).getFileName());
         Files.createDirectories(out.getParent());
         Files.writeString(out, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(result) + "\n",
                 StandardCharsets.UTF_8);
         System.out.println("RETRIEVAL EVAL " + summary);
+        // The guards hold the committed samples; a variant set (ruled tables, scanned pages) is a measurement only.
+        if (SAMPLES_DIR != null) return;
 
         // Regression guards at the measured level of ADR-0022 (eval/README.md "Eşikler ve karar"); a change that drops
         // below them needs a decision, not a quieter guard.
@@ -206,20 +242,71 @@ class RetrievalEvalTest {
         return m;
     }
 
-    private void ingestSamples() throws IOException, InterruptedException {
-        List<UUID> ids = new ArrayList<>();
-        try (Stream<Path> pdfs = Files.list(ROOT.resolve("samples"))) {
-            for (Path pdf : pdfs.filter(p -> p.toString().endsWith(".pdf")).sorted().toList()) {
-                byte[] bytes = Files.readAllBytes(pdf);
-                DocumentRow row = documents.insert(account, pdf.getFileName().toString(), DocumentFormat.PDF, bytes.length, null, Instant.now());
-                documents.insertFile(row.id(), bytes);
-                ids.add(row.id());
-            }
+    private static List<Path> samplePdfs() throws IOException {
+        Path dir = SAMPLES_DIR == null ? ROOT.resolve("samples") : Path.of(SAMPLES_DIR);
+        try (Stream<Path> pdfs = Files.list(dir)) {
+            return pdfs.filter(p -> p.toString().endsWith(".pdf")).sorted().toList();
         }
+    }
+
+    /**
+     * Parse time per page of the configured parser (ADR-0032), measured apart from the embeddings: every sample once
+     * through the same extractor the worker uses. A file no parser can read counts as rejected.
+     */
+    private Map<String, Object> parseSamples() throws IOException {
+        long totalMs = 0;
+        int pages = 0;
+        Map<String, Integer> parsers = new LinkedHashMap<>();
+        Map<String, Object> perDocument = new LinkedHashMap<>();
+        for (Path pdf : samplePdfs()) {
+            byte[] bytes = Files.readAllBytes(pdf);
+            long started = System.nanoTime();
+            String outcome;
+            int count = 0;
+            try {
+                DocumentTextExtractor.Extraction extraction = extractor.extract(DocumentFormat.PDF, bytes, () -> false);
+                count = extraction.texts().size();
+                outcome = extraction.parser() + (extraction.fallback() == null ? "" : " fallback " + extraction.fallback());
+            } catch (RuntimeException e) {
+                outcome = "rejected " + e.getMessage();
+            }
+            long ms = (System.nanoTime() - started) / 1_000_000;
+            totalMs += ms;
+            pages += count;
+            parsers.merge(outcome, 1, Integer::sum);
+            perDocument.put(pdf.getFileName().toString(), Map.of("pages", count, "ms", ms, "parser", outcome));
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("pages", pages);
+        m.put("totalMs", totalMs);
+        m.put("msPerPage", pages == 0 ? 0 : Math.round((double) totalMs / pages));
+        m.put("parsers", parsers);
+        m.put("documents", perDocument);
+        return m;
+    }
+
+    /** Wall time of the worker until every sample is READY or FAILED (parse + chunk + embed + store). */
+    private Map<String, Object> ingestSamples() throws IOException, InterruptedException {
+        List<UUID> ids = new ArrayList<>();
+        for (Path pdf : samplePdfs()) {
+            byte[] bytes = Files.readAllBytes(pdf);
+            DocumentRow row = documents.insert(account, pdf.getFileName().toString(), DocumentFormat.PDF, bytes.length, null, Instant.now());
+            documents.insertFile(row.id(), bytes);
+            ids.add(row.id());
+        }
+        long started = System.nanoTime();
         for (int round = 0; round < 60; round++) {
             while (worker.isPaused()) Thread.sleep(200);
             worker.runOnce();
-            if (ids.stream().allMatch(id -> documents.find(account, id).orElseThrow().status().name().equals("READY"))) return;
+            List<String> states = ids.stream().map(id -> documents.find(account, id).orElseThrow().status().name()).toList();
+            if (states.stream().allMatch(s -> s.equals("READY") || s.equals("FAILED"))) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("wallMs", (System.nanoTime() - started) / 1_000_000);
+                m.put("ready", states.stream().filter("READY"::equals).count());
+                m.put("failed", states.stream().filter("FAILED"::equals).count());
+                m.put("chunks", jdbc.queryForObject("SELECT count(*) FROM document.document_chunk", Long.class));
+                return m;
+            }
         }
         throw new IllegalStateException("samples did not become READY; is bge-m3:567m served on the eval Ollama?");
     }

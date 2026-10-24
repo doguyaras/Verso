@@ -1,5 +1,6 @@
 package com.verso.document.testing;
 
+import com.verso.document.config.DoclingProperties;
 import com.verso.document.config.DocumentProperties;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -81,6 +82,18 @@ public final class TestPdfs {
     /** A content stream in LZW encoding: its decoded size cannot be measured without decoding it (UNSUPPORTED_PDF). */
     public static byte[] lzwContent() {
         return rawPage("BT /F1 12 Tf 40 700 Td (lzw text) Tj ET", COSName.LZW_DECODE, true);
+    }
+
+    /** The docling sidecar settings of config/verso.yml, on or off, at the given address (ADR-0032). */
+    public static DoclingProperties docling(boolean enabled, String baseUrl) {
+        return docling(enabled, baseUrl, Duration.ofSeconds(5), Duration.ofMillis(20), 3);
+    }
+
+    public static DoclingProperties docling(boolean enabled, String baseUrl, Duration documentTimeout,
+                                            Duration pollInterval, int circuitFailures) {
+        return new DoclingProperties(enabled, baseUrl == null ? null : java.net.URI.create(baseUrl), false,
+                Duration.ofSeconds(2), Duration.ofSeconds(5), documentTimeout, pollInterval, 100,
+                DataSize.ofMegabytes(32), List.of("tur", "eng"), 1, circuitFailures, Duration.ofMinutes(5));
     }
 
     /** Defaults of DocumentProperties, as config/verso.yml sets them, with a test embedding model name. */

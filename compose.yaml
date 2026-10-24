@@ -61,6 +61,9 @@ x-db-env: &db-env
   VERSO_SHOW_DOCUMENT_NAMES: ${VERSO_SHOW_DOCUMENT_NAMES:-false}
   # How long audit rows are kept, in days (ADR-0026; KVKK storage limitation, the data controller decides, 30-3650).
   VERSO_AUDIT_RETENTION_DAYS: ${VERSO_AUDIT_RETENTION_DAYS:-365}
+  # The docling sidecar (ADR-0032) is off here; deploy/compose.docling.yaml adds it and switches it on.
+  VERSO_DOCLING_ENABLED: "false"
+  VERSO_DOCLING_URL: http://docling:5001
 
 x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
 

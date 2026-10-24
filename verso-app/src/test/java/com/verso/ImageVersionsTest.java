@@ -32,12 +32,34 @@ class ImageVersionsTest {
         while (compose.find()) images.add(compose.group(1));
         Matcher from = DOCKERFILE_FROM.matcher(read("Dockerfile"));
         while (from.find()) images.add(from.group(1));
+        // The docling sidecar (ADR-0032): its overlay builds our image on a digest-pinned upstream image.
+        Matcher overlay = COMPOSE_IMAGE.matcher(read("deploy/compose.docling.yaml"));
+        while (overlay.find()) images.add(overlay.group(1));
+        Matcher docling = DOCKERFILE_FROM.matcher(read("deploy/docling/Dockerfile"));
+        assertThat(docling.find()).as("deploy/docling/Dockerfile FROM").isTrue();
+        images.add(docling.group(1));
 
         assertThat(images).as("image references found").hasSizeGreaterThanOrEqualTo(5);
         for (String image : images) {
-            if (image.startsWith("*") || image.startsWith("verso:")) continue; // YAML alias, our own build
+            // YAML alias, our own builds
+            if (image.startsWith("*") || image.startsWith("verso:") || image.startsWith("verso-docling:")) continue;
             assertThat(image).as(image).containsPattern(DIGEST);
         }
+    }
+
+    /**
+     * ADR-0032: the sidecar runs docling 2.142.1 or later (the DoS fixes of 23 Oct 2026; docling-serve 1.38.1 ships
+     * it), and the Turkish OCR model it adds is pinned by checksum, not fetched at runtime.
+     */
+    @Test
+    void doclingSidecar_isAVersionWithTheDosFixes_andItsOcrModelIsPinned() throws IOException {
+        String dockerfile = read("deploy/docling/Dockerfile");
+        Matcher version = Pattern.compile("docling-serve-cpu:v(\\d+)\\.(\\d+)\\.(\\d+)@").matcher(dockerfile);
+        assertThat(version.find()).isTrue();
+        int[] v = {Integer.parseInt(version.group(1)), Integer.parseInt(version.group(2)), Integer.parseInt(version.group(3))};
+        assertThat(v[0] > 1 || (v[0] == 1 && (v[1] > 38 || (v[1] == 38 && v[2] >= 1))))
+                .as("docling-serve >= 1.38.1 (docling 2.142.1)").isTrue();
+        assertThat(dockerfile).containsPattern("ADD --checksum=sha256:[0-9a-f]{64} .*\\\\\\R\\s+https://raw\\.githubusercontent\\.com/tesseract-ocr/tessdata_best/[0-9a-f]{40}/tur\\.traineddata");
     }
 
     @Test

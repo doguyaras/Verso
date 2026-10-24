@@ -37,7 +37,18 @@ public final class SamplePdfs {
     private SamplePdfs() {
     }
 
+    /**
+     * How "a | b" rows are drawn. TEXT: as lines of text with the pipes (the committed samples). GRID: as a ruled table
+     * without pipes, the header row bold, like a table exported from a word processor (ADR-0032 measurement; generated
+     * on demand, not committed).
+     */
+    public enum Tables { TEXT, GRID }
+
     public static byte[] build(String name, String source) {
+        return build(name, source, Tables.TEXT);
+    }
+
+    public static byte[] build(String name, String source, Tables tables) {
         try (PDDocument document = new PDDocument()) {
             PDType1Font regular = turkish("Helvetica");
             PDType1Font bold = turkish("Helvetica-Bold");
@@ -51,9 +62,19 @@ public final class SamplePdfs {
                 float y = page.getMediaBox().getHeight() - MARGIN;
                 try (PDPageContentStream content = new PDPageContentStream(document, page)) {
                     if (i == 0) y = line(content, bold, TITLE_SIZE, title, y) - LEADING / 2;
-                    for (String paragraph : pages.get(i)) {
+                    List<String> paragraphs = pages.get(i);
+                    for (int p = 0; p < paragraphs.size(); p++) {
+                        String paragraph = paragraphs.get(p);
                         if (paragraph.isBlank()) {
                             y -= LEADING / 2;
+                            continue;
+                        }
+                        if (tables == Tables.GRID && paragraph.contains(" | ")) {
+                            int end = p;
+                            while (end < paragraphs.size() && paragraphs.get(end).contains(" | ")) end++;
+                            y = grid(content, regular, bold, paragraphs.subList(p, end), y, width);
+                            if (y < MARGIN / 2 + 20) throw new IllegalStateException(name + ": page " + (i + 1) + " overflows");
+                            p = end - 1;
                             continue;
                         }
                         boolean heading = paragraph.matches("\\d+\\. .{0,60}");
@@ -102,6 +123,114 @@ public final class SamplePdfs {
                     return unicode == 0x130 ? new byte[]{(byte) 144} : super.encode(unicode);
                 }
             };
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Rows "a | b | c" as a ruled table: column widths follow the longest cell, shrunk to the page width; cells wrap;
+     * the first row is the bold header. Returns the baseline of the next line below the table.
+     */
+    private static float grid(PDPageContentStream content, PDType1Font regular, PDType1Font bold, List<String> rows,
+                              float y, float width) throws IOException {
+        float pad = 3;
+        List<String[]> cells = rows.stream().map(r -> r.split(" \\| ")).toList();
+        int columns = cells.stream().mapToInt(c -> c.length).max().orElse(1);
+        // A column is at least as wide as its longest word, so no word runs into the next cell; the rest of the page
+        // width goes to the columns in proportion to how much longer their text is.
+        float[] natural = new float[columns];
+        float[] minimum = new float[columns];
+        for (int r = 0; r < cells.size(); r++) {
+            PDType1Font font = r == 0 ? bold : regular;
+            for (int c = 0; c < cells.get(r).length; c++) {
+                natural[c] = Math.max(natural[c], font.getStringWidth(cells.get(r)[c]) / 1000 * SIZE + 2 * pad);
+                for (String word : cells.get(r)[c].split(" ")) {
+                    minimum[c] = Math.max(minimum[c], font.getStringWidth(word) / 1000 * SIZE + 2 * pad + 1);
+                }
+            }
+        }
+        float[] widths = natural.clone();
+        if (total(natural) > width) {
+            float extra = width - total(minimum);
+            if (extra < 0) throw new IllegalStateException("table too wide for the page");
+            float stretch = total(natural) - total(minimum);
+            for (int c = 0; c < columns; c++) widths[c] = minimum[c] + extra * (natural[c] - minimum[c]) / stretch;
+        }
+        float top = y + SIZE;
+        float cursor = top;
+        content.setLineWidth(0.6f);
+        hline(content, MARGIN, total(widths), cursor);
+        for (int r = 0; r < cells.size(); r++) {
+            PDType1Font font = r == 0 ? bold : regular;
+            List<List<String>> wrapped = new ArrayList<>();
+            int height = 1;
+            for (int c = 0; c < columns; c++) {
+                String text = c < cells.get(r).length ? cells.get(r)[c] : "";
+                List<String> lines = wrap(text, font, SIZE, widths[c] - 2 * pad);
+                wrapped.add(lines);
+                height = Math.max(height, lines.size());
+            }
+            float x = MARGIN;
+            for (int c = 0; c < columns; c++) {
+                float baseline = cursor - SIZE - pad + 2;
+                for (String text : wrapped.get(c)) {
+                    content.beginText();
+                    content.setFont(font, SIZE);
+                    content.newLineAtOffset(x + pad, baseline);
+                    content.showText(text);
+                    content.endText();
+                    baseline -= LEADING;
+                }
+                x += widths[c];
+            }
+            cursor -= height * LEADING + 2 * pad - (LEADING - SIZE);
+            hline(content, MARGIN, total(widths), cursor);
+        }
+        float x = MARGIN;
+        for (int c = 0; c <= columns; c++) {
+            content.moveTo(x, top);
+            content.lineTo(x, cursor);
+            content.stroke();
+            if (c < columns) x += widths[c];
+        }
+        return cursor - SIZE - 6;
+    }
+
+    private static void hline(PDPageContentStream content, float x, float length, float y) throws IOException {
+        content.moveTo(x, y);
+        content.lineTo(x + length, y);
+        content.stroke();
+    }
+
+    private static float total(float[] widths) {
+        float sum = 0;
+        for (float w : widths) sum += w;
+        return sum;
+    }
+
+    /**
+     * An image-only copy of a PDF, as a scanner would produce it: every page rendered to a grey bitmap and stored as a
+     * JPEG, no text layer at all (ADR-0032 OCR measurement). Rendering uses the host's fonts for the standard 14 fonts,
+     * so the bytes differ between machines: generated on demand, never committed.
+     */
+    public static byte[] scanned(byte[] pdf, float dpi) {
+        try (PDDocument source = org.apache.pdfbox.Loader.loadPDF(pdf); PDDocument out = new PDDocument()) {
+            org.apache.pdfbox.rendering.PDFRenderer renderer = new org.apache.pdfbox.rendering.PDFRenderer(source);
+            for (int i = 0; i < source.getNumberOfPages(); i++) {
+                java.awt.image.BufferedImage image = renderer.renderImageWithDPI(i, dpi,
+                        org.apache.pdfbox.rendering.ImageType.GRAY);
+                PDRectangle box = source.getPage(i).getMediaBox();
+                PDPage page = new PDPage(box);
+                out.addPage(page);
+                var picture = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromImage(out, image, 0.8f);
+                try (PDPageContentStream content = new PDPageContentStream(out, page)) {
+                    content.drawImage(picture, 0, 0, box.getWidth(), box.getHeight());
+                }
+            }
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            out.save(bytes);
+            return bytes.toByteArray();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

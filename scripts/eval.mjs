@@ -19,14 +19,18 @@
 //
 // No dependencies (Node 24 fetch). Tokens come from the bundled Keycloak's CI client (client credentials).
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const API = `http://localhost:${process.env.VERSO_HTTP_PORT ?? 8080}`;
 const IDP = `http://localhost:${process.env.VERSO_KEYCLOAK_PORT ?? 8180}/realms/verso/protocol/openid-connect/token`;
-const SECRET = readFileSync(join(ROOT, 'secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET'), 'utf8').trim();
+// Another checkout's secrets (a worktree has none of its own) and another set of the same eleven PDFs (ADR-0032: the
+// ruled-table and scanned variants SamplePdfsTest writes) can be named; the defaults are this checkout's.
+const SECRET = readFileSync(process.env.CI_CLIENT_SECRET_FILE ?? join(ROOT, 'secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET'), 'utf8').trim();
+const SAMPLES_DIR = process.env.SAMPLES_DIR || join(ROOT, 'samples');
+const SAMPLES = process.env.SAMPLES_DIR ? basename(SAMPLES_DIR) : 'samples';
 const tr = (s) => s.normalize('NFC').toLocaleLowerCase('tr');
 const NOT_FOUND = 'Belgelerde bu sorunun cevabı bulunamadı';
 const saysNotFound = (answer) => answer.trim().replace(/\.$/, '').trim() === NOT_FOUND;
@@ -57,7 +61,7 @@ async function api(path, init = {}) {
 
 async function upload(file) {
   const form = new FormData();
-  form.append('file', new Blob([readFileSync(join(ROOT, 'samples', file))], { type: 'application/pdf' }), file);
+  form.append('file', new Blob([readFileSync(join(SAMPLES_DIR, file))], { type: 'application/pdf' }), file);
   const res = await api('/v1/documents', { method: 'POST', body: form });
   if (res.status !== 201) throw new Error(`upload ${file}: ${res.status}`);
   return (await res.json()).id;
@@ -81,7 +85,7 @@ const percentile = (values, p) => {
 const ratio = (part, whole) => (whole ? Math.round((part / whole) * 1000) / 1000 : 0);
 
 const set = JSON.parse(readFileSync(join(ROOT, 'eval/eval-set.json'), 'utf8'));
-const files = readdirSync(join(ROOT, 'samples')).filter((f) => f.endsWith('.pdf')).sort();
+const files = readdirSync(SAMPLES_DIR).filter((f) => f.endsWith('.pdf')).sort();
 // Leftovers of an earlier run would be cited too: this account starts empty.
 for (const doc of (await (await api("/v1/documents?size=100")).json()).data ?? []) {
   await api(`/v1/documents/${doc.id}`, { method: 'DELETE' });
@@ -89,7 +93,10 @@ for (const doc of (await (await api("/v1/documents?size=100")).json()).data ?? [
 const ids = [];
 for (const f of files) ids.push(await upload(f));
 console.log(`eval: uploaded ${ids.length} samples, waiting for READY`);
+const ingestionStarted = performance.now();
 await waitReady(ids);
+// Upload to READY for all samples (parse + chunk + embed), to the 3 s polling step (ADR-0032 ingestion cost).
+const ingestionWallMs = Math.round(performance.now() - ingestionStarted);
 
 const rows = [];
 let model = 'unknown';
@@ -129,7 +136,7 @@ const answerable = rows.filter((r) => r.answerable);
 const unanswerable = rows.filter((r) => !r.answerable);
 const citations = answerable.reduce((n, r) => n + (r.citations?.length ?? 0), 0);
 const summary = {
-  mode, chatModel: model, questions: rows.length,
+  mode, chatModel: model, questions: rows.length, samples: SAMPLES, ingestionWallMs,
   errors: rows.filter((r) => r.status !== 200).length,
   answerable: answerable.length,
   foundRate: ratio(answerable.filter((r) => r.found).length, answerable.length),

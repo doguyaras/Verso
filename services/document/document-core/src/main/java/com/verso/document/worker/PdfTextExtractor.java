@@ -70,6 +70,16 @@ public class PdfTextExtractor {
 
     /** Text of every page, index = page number - 1; a page without text is an empty string. */
     public List<String> extract(byte[] pdf) {
+        List<String> texts = read(pdf);
+        if (texts.stream().allMatch(String::isEmpty)) throw rejected(DocumentFailureReason.NO_TEXT);
+        return texts;
+    }
+
+    /**
+     * Like {@link #extract}, but a PDF without any text layer is not refused: with the docling sidecar it may still be
+     * read by OCR (ADR-0032). Every other limit applies unchanged, before the file can reach the sidecar.
+     */
+    public List<String> read(byte[] pdf) {
         MemoryUsageSetting memory = MemoryUsageSetting.setupMainMemoryOnly(properties.parserMemory().toBytes());
         try (PDDocument document = Loader.loadPDF(pdf, "", null, null, memory.streamCache)) {
             int pages = document.getNumberOfPages();
@@ -88,7 +98,6 @@ public class PdfTextExtractor {
                 if (total > properties.maxTextChars()) throw rejected(DocumentFailureReason.TOO_MUCH_TEXT);
                 texts.add(text);
             }
-            if (total == 0) throw rejected(DocumentFailureReason.NO_TEXT);
             return texts;
         } catch (InvalidPasswordException e) {
             throw rejected(DocumentFailureReason.ENCRYPTED);

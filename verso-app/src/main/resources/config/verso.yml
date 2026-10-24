@@ -292,6 +292,28 @@ verso:
       # Circuit breaker of the embedding model (review R1/R2): no claims while it is down or misconfigured.
       model-unavailable-pause: 30s
       model-misconfigured-pause: 5m
+    # Optional docling-serve sidecar (ADR-0032): layout- and table-aware PDF parsing, OCR (Tesseract tur + eng) for
+    # pages without a text layer. Off unless deploy/compose.docling.yaml runs it (VERSO_DOCLING_ENABLED). The JDK
+    # parser still reads every file first (its limits stop hostile files) and is the fallback for any sidecar failure.
+    docling:
+      enabled: ${VERSO_DOCLING_ENABLED:false}
+      base-url: ${VERSO_DOCLING_URL:http://docling:5001}
+      # DOCX goes through the JDK parser unless this is on; the eval measured PDFs only.
+      docx: false
+      connect-timeout: 2s
+      read-timeout: 30s
+      # One document, queue and polling included; below the 10 min ingestion lease (checked at startup).
+      document-timeout: 5m
+      poll-interval: 1s
+      # Longer PDFs use the JDK parser: 0.7-1.5 s per page on 3 CPU threads, 2.6 s with OCR (eval/README.md).
+      max-pages: 100
+      # Measured results are ~15 KB per page; a JSON tree costs several times its size in heap (security review B1).
+      max-response-size: 16MB
+      ocr-languages: [tur, eng]
+      # One document at a time per instance; after 3 failures in a row the sidecar is skipped for 5 minutes.
+      concurrency: 1
+      circuit-failures: 3
+      circuit-open: 5m
 logging:
   level:
     # The PDF parser warns about fonts and broken objects; its messages can quote document content (llm-rules 2.1).

@@ -50,6 +50,19 @@ groups:
           summary: Uploaded documents wait for processing longer than 10 minutes.
           runbook: docs/runbooks/ingestion-backlog.md
 
+      # The docling sidecar (ADR-0032) was asked and every document of the last 30 minutes fell back to the JDK parser:
+      # tables lose their structure and scanned PDFs wait. Never fires without the overlay (no fallback series).
+      - alert: DoclingFallback
+        expr: |
+          sum(increase(verso_ingestion_parsed_total{job="verso", fallback!="none"}[30m])) > 0
+          unless sum(increase(verso_ingestion_parsed_total{job="verso", parser="docling"}[30m])) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: The docling sidecar parsed nothing for 30 minutes; documents fall back to the JDK parser.
+          runbook: docs/runbooks/docling-fallback.md
+
       # A model fails and nothing succeeds: questions end as model_unavailable/circuit_open with no answer, or the
       # worker hands documents back (released) with none finished. Whatever the traffic and however slow the failure.
       - alert: ModelUnavailable

@@ -108,7 +108,9 @@ public final class VersoPostgres {
                 DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
                 .withDatabaseName(DATABASE)
                 .withUsername("postgres")
-                .withPassword(randomPassword());
+                .withPassword(randomPassword())
+                // A busy Docker Desktop can take minutes to start a container; the default 60 s failed whole runs.
+                .withStartupTimeout(java.time.Duration.ofMinutes(5));
         Path initdb = repoRoot().resolve("deploy/postgres/initdb");
         try (Stream<Path> scripts = Files.list(initdb)) {
             scripts.filter(p -> p.toString().endsWith(".sh")).sorted().forEach(script -> container.withCopyFileToContainer(

@@ -1,0 +1,1441 @@
+{
+  "measuredAt" : "2026-10-24T15:10:43.182612400Z",
+  "summary" : {
+    "embeddingModel" : "bge-m3:567m",
+    "topK" : 5,
+    "samples" : "scanned",
+    "docling" : false,
+    "parsing" : {
+      "pages" : 0,
+      "totalMs" : 77,
+      "msPerPage" : 0,
+      "parsers" : {
+        "rejected NO_TEXT" : 11
+      },
+      "documents" : {
+        "bilgi-guvenligi.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 68
+        },
+        "bt-operasyon-runbook.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 2
+        },
+        "depo-yonetim-kilavuzu.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 2
+        },
+        "erp-satin-alma-kilavuzu.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 1
+        },
+        "isg-depo-proseduru.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 1
+        },
+        "izin-yonetmeligi.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 1
+        },
+        "kvkk-aydinlatma.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 1
+        },
+        "masraf-politikasi.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 0
+        },
+        "musteri-destek-sureci.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 1
+        },
+        "satin-alma-proseduru.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 0
+        },
+        "uzaktan-calisma.pdf" : {
+          "pages" : 0,
+          "parser" : "rejected NO_TEXT",
+          "ms" : 0
+        }
+      }
+    },
+    "ingestion" : {
+      "wallMs" : 269,
+      "ready" : 0,
+      "failed" : 11,
+      "chunks" : 0
+    },
+    "gate" : {
+      "lexicalMinSimilarity" : 0.44,
+      "specificTermMaxShare" : 0.045,
+      "minSimilarity" : 0.47
+    },
+    "answerable" : 112,
+    "unanswerable" : 28,
+    "recallAt1" : 0.0,
+    "recallAt5" : 0.0,
+    "hitsAt5" : 0,
+    "documentRecallAt5" : 0.0,
+    "mrr" : 0.0,
+    "answerablePassGate" : 0.0,
+    "unanswerableStoppedByGate" : 1.0,
+    "notFoundPrecision" : 0.2,
+    "notFoundRecall" : 1.0,
+    "byTag" : {
+      "version1" : {
+        "answerable" : 25,
+        "unanswerable" : 8,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "unanswerableStoppedByGate" : 1.0,
+        "notFoundPrecision" : 0.242,
+        "notFoundRecall" : 1.0
+      },
+      "version2" : {
+        "answerable" : 87,
+        "unanswerable" : 20,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "unanswerableStoppedByGate" : 1.0,
+        "notFoundPrecision" : 0.187,
+        "notFoundRecall" : 1.0
+      },
+      "paraphrase" : {
+        "answerable" : 17,
+        "unanswerable" : 0,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "notFoundPrecision" : 0.0,
+        "notFoundRecall" : 0.0
+      },
+      "abbreviation" : {
+        "answerable" : 20,
+        "unanswerable" : 5,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "unanswerableStoppedByGate" : 1.0,
+        "notFoundPrecision" : 0.2,
+        "notFoundRecall" : 1.0
+      },
+      "number" : {
+        "answerable" : 50,
+        "unanswerable" : 10,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "unanswerableStoppedByGate" : 1.0,
+        "notFoundPrecision" : 0.167,
+        "notFoundRecall" : 1.0
+      },
+      "table" : {
+        "answerable" : 26,
+        "unanswerable" : 0,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "notFoundPrecision" : 0.0,
+        "notFoundRecall" : 0.0
+      },
+      "disambiguation" : {
+        "answerable" : 21,
+        "unanswerable" : 0,
+        "recallAt1" : 0.0,
+        "recallAt5" : 0.0,
+        "hitsAt5" : 0,
+        "documentRecallAt5" : 0.0,
+        "mrr" : 0.0,
+        "answerablePassGate" : 0.0,
+        "notFoundPrecision" : 0.0,
+        "notFoundRecall" : 0.0
+      },
+      "on-topic" : {
+        "answerable" : 0,
+        "unanswerable" : 20,
+        "unanswerableStoppedByGate" : 1.0,
+        "notFoundPrecision" : 1.0,
+        "notFoundRecall" : 1.0
+      }
+    },
+    "answerableBestSimilarity" : {
+      "min" : 0.0,
+      "median" : 0.0,
+      "max" : 0.0
+    },
+    "unanswerableBestSimilarity" : {
+      "min" : 0.0,
+      "median" : 0.0,
+      "max" : 0.0
+    },
+    "searchMs" : {
+      "p95" : 282,
+      "max" : 1211,
+      "p50" : 94
+    }
+  },
+  "questions" : [ {
+    "id" : "izin-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 1211,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "izin-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 234,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "izin-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 117,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "izin-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "izin-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "izin-6",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 99,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "masraf-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "masraf-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "masraf-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 101,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "masraf-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 30,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "masraf-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 81,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "guvenlik-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "guvenlik-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 195,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "guvenlik-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 689,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "guvenlik-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 33,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "guvenlik-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 264,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "uzaktan-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 27,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "uzaktan-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 90,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "uzaktan-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 91,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "kvkk-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "kvkk-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 26,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "kvkk-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 91,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "satin-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 99,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "satin-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 182,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "satin-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 29,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "yok-1",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 187,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-2",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 89,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-3",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-4",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 35,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-5",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 268,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-6",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 101,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-7",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 29,
+    "top5" : [ ]
+  }, {
+    "id" : "yok-8",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 84,
+    "top5" : [ ]
+  }, {
+    "id" : "depo-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 89,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 96,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 27,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 181,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 107,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-6",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-7",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-8",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 116,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-9",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 182,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-10",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 111,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-11",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 100,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-12",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-13",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 192,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-14",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 188,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-15",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 30,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-16",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 89,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-17",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-18",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 91,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-19",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 103,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-20",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 27,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 83,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 105,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 406,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 401,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 284,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-6",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 104,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-7",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 186,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-8",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 198,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-9",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-10",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 28,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-11",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 90,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-12",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 94,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-13",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 192,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-14",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 194,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-15",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-16",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 32,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-17",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "erp-18",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 181,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 28,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 91,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-6",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 29,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-7",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 91,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-8",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 282,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-9",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 96,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-10",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-11",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 29,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-12",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 100,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-13",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 96,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-14",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-15",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 218,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-16",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 174,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-17",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 90,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-18",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 26,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-19",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 90,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-20",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 99,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "bt-21",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 114,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 374,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 105,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 104,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-6",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 25,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-7",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 89,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-8",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-9",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-10",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 100,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-11",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-12",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 120,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-13",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 97,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "crm-14",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 281,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-1",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 198,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-2",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 29,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-3",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 186,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-4",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 89,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-5",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-6",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 27,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-7",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 277,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-8",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 95,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-9",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 27,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-10",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 85,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-11",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 99,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-12",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 99,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-13",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 88,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "isg-14",
+    "answerable" : true,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 106,
+    "top5" : [ ],
+    "rank" : 0
+  }, {
+    "id" : "depo-yok-1",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 90,
+    "top5" : [ ]
+  }, {
+    "id" : "depo-yok-2",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 32,
+    "top5" : [ ]
+  }, {
+    "id" : "depo-yok-3",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 370,
+    "top5" : [ ]
+  }, {
+    "id" : "depo-yok-4",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 28,
+    "top5" : [ ]
+  }, {
+    "id" : "erp-yok-1",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 102,
+    "top5" : [ ]
+  }, {
+    "id" : "erp-yok-2",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ]
+  }, {
+    "id" : "erp-yok-3",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ]
+  }, {
+    "id" : "erp-yok-4",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 96,
+    "top5" : [ ]
+  }, {
+    "id" : "bt-yok-1",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 105,
+    "top5" : [ ]
+  }, {
+    "id" : "bt-yok-2",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 181,
+    "top5" : [ ]
+  }, {
+    "id" : "bt-yok-3",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 25,
+    "top5" : [ ]
+  }, {
+    "id" : "bt-yok-4",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 95,
+    "top5" : [ ]
+  }, {
+    "id" : "bt-yok-5",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 92,
+    "top5" : [ ]
+  }, {
+    "id" : "crm-yok-1",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 88,
+    "top5" : [ ]
+  }, {
+    "id" : "crm-yok-2",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 26,
+    "top5" : [ ]
+  }, {
+    "id" : "crm-yok-3",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 98,
+    "top5" : [ ]
+  }, {
+    "id" : "crm-yok-4",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 88,
+    "top5" : [ ]
+  }, {
+    "id" : "isg-yok-1",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 93,
+    "top5" : [ ]
+  }, {
+    "id" : "isg-yok-2",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 94,
+    "top5" : [ ]
+  }, {
+    "id" : "isg-yok-3",
+    "answerable" : false,
+    "bestSimilarity" : 0.0,
+    "bestSpecificTermShare" : 1.0,
+    "decision" : "NONE",
+    "searchMs" : 100,
+    "top5" : [ ]
+  } ]
+}

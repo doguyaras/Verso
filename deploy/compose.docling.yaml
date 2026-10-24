@@ -1,0 +1,73 @@
+# Docling overlay (ADR-0032): layout- and table-aware PDF parsing with OCR (Tesseract tur + eng) in a sidecar. Opt-in:
+# the default stack parses with the JDK alone (ADR-0011, ADR-0016) and keeps doing so when this file is not used.
+#
+#   docker compose -f compose.yaml -f deploy/compose.docling.yaml up -d --build --wait
+#
+# Hardware (measured on the eval set, ADR-0032): about 1.1 GB of RAM idle with the models loaded, 2.2 GB peak while
+# converting (limit 4 GB below), a 7.6 GB image. With 3 CPU threads a page took 0.7 s (text), 1.5 s (ruled tables) and
+# 2.6 s (OCR of a scanned page); the default of 2 CPUs is slower. Details: eval/README.md "Docling".
+#
+# The sidecar sits on its own internal network "parsers" with the application and nobody else: no published port, no
+# gateway, so it can neither be reached from the host nor reach the internet (llm-rules 1.1). The models are in the
+# image (deploy/docling/Dockerfile); the offline flags make a missing one an error instead of a download attempt.
+# Combine with compose.local.yaml, compose.gpu.yaml or compose.cloud.yaml by adding this file after them.
+services:
+  docling:
+    build: deploy/docling
+    image: verso-docling:${VERSO_DOCLING_IMAGE_TAG:-local}
+    restart: always
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: ${DOCLING_MEM_LIMIT:-4g}
+    cpus: ${DOCLING_CPUS:-2}
+    pids_limit: 512
+    networks: [parsers]
+    environment:
+      # One conversion at a time: the worker sends one document per instance anyway, and two parallel table models
+      # double the peak memory (ADR-0032).
+      DOCLING_SERVE_ENG_LOC_NUM_WORKERS: "1"
+      DOCLING_NUM_THREADS: ${DOCLING_CPUS:-2}
+      OMP_NUM_THREADS: ${DOCLING_CPUS:-2}
+      UVICORN_WORKERS: "1"
+      # Upper bounds of the server itself, above the application's own (verso.document.docling.*): a second fence.
+      DOCLING_SERVE_MAX_NUM_PAGES: "200"
+      DOCLING_SERVE_MAX_FILE_SIZE: "20971520"
+      DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT: "600"
+      # Results are fetched once and then dropped; documents never stay in the sidecar longer than needed.
+      DOCLING_SERVE_SINGLE_USE_RESULTS: "true"
+      DOCLING_SERVE_RESULT_REMOVAL_DELAY: "60"
+      DOCLING_SERVE_LOAD_MODELS_AT_BOOT: "true"
+      # No remote model services, no third-party plugins, no web UI, no URL sources the server would fetch itself.
+      DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "false"
+      DOCLING_SERVE_ALLOW_EXTERNAL_PLUGINS: "false"
+      DOCLING_SERVE_ENABLE_UI: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      DO_NOT_TRACK: "1"
+      # Read-only root: caches and scratch files go to the tmpfs below.
+      HOME: /tmp
+      XDG_CACHE_HOME: /tmp/cache
+      TMPDIR: /tmp
+    tmpfs:
+      - /tmp:size=1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 120s
+
+  verso-app:
+    # Parsing is asynchronous (ingestion worker): the application starts without the sidecar and falls back to the JDK
+    # parser while it is down (ADR-0032), so no depends_on.
+    networks: [parsers]
+    environment:
+      VERSO_DOCLING_ENABLED: "true"
+      VERSO_DOCLING_URL: http://docling:5001
+
+networks:
+  # Application ↔ docling only; internal: no gateway to the outside.
+  parsers:
+    internal: true

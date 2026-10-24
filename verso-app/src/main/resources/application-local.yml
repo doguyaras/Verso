@@ -51,6 +51,12 @@ verso:
     flyway:
       url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
       user: svc_audit_migrate
+  # The docling sidecar (ADR-0032) is off for an IDE run; a sidecar started by hand on 127.0.0.1:5001 can be used by
+  # setting VERSO_DOCLING_ENABLED=true.
+  document:
+    docling:
+      enabled: ${VERSO_DOCLING_ENABLED:false}
+      base-url: http://localhost:5001
   security:
     jwt:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).

@@ -48,9 +48,40 @@ class DocumentPropertiesTest {
     /** Test review T17: the module limit may not promise more than the multipart limit lets through. */
     @Test
     void configuration_whenTheModuleLimitExceedsTheMultipartLimit_failsToStart() {
-        assertThatThrownBy(() -> new DocumentConfiguration(TestPdfs.properties(), DataSize.ofMegabytes(10)))
+        DoclingProperties off = TestPdfs.docling(false, null);
+        assertThatThrownBy(() -> new DocumentConfiguration(TestPdfs.properties(), off, DataSize.ofMegabytes(10)))
                 .hasMessageContaining("must not exceed spring.servlet.multipart.max-file-size");
-        new DocumentConfiguration(TestPdfs.properties(), DataSize.ofMegabytes(20));
+        new DocumentConfiguration(TestPdfs.properties(), off, DataSize.ofMegabytes(20));
+    }
+
+    /** ADR-0032: a sidecar conversion may not outlive the claim lease (10 min), or a second worker claims the file. */
+    @Test
+    void configuration_whenTheSidecarTimeoutReachesTheLease_failsToStart() {
+        DoclingProperties tooLong = TestPdfs.docling(true, "http://docling:5001", Duration.ofMinutes(10),
+                Duration.ofSeconds(1), 3);
+        assertThatThrownBy(() -> new DocumentConfiguration(TestPdfs.properties(), tooLong, DataSize.ofMegabytes(20)))
+                .hasMessageContaining("document-timeout must be shorter than verso.document.ingestion.lease");
+        // Off, the same value is never used and does not stop the start.
+        new DocumentConfiguration(TestPdfs.properties(), TestPdfs.docling(false, null, Duration.ofMinutes(10),
+                Duration.ofSeconds(1), 3), DataSize.ofMegabytes(20));
+    }
+
+    /** ADR-0032: an enabled sidecar needs a plain http(s) address; zero limits and BCP-47 language tags are refused. */
+    @Test
+    void docling_whenEnabledWithoutAUsableAddressOrWithZeroLimits_failsAtStartup() {
+        assertThatThrownBy(() -> TestPdfs.docling(true, null)).hasMessageContaining("base-url");
+        assertThatThrownBy(() -> TestPdfs.docling(true, "file:///etc/passwd")).hasMessageContaining("base-url");
+        assertThatThrownBy(() -> TestPdfs.docling(true, "http://user:pw@docling:5001")).hasMessageContaining("credentials");
+        assertThatThrownBy(() -> TestPdfs.docling(true, "http://docling:5001", Duration.ZERO, Duration.ofSeconds(1), 3))
+                .hasMessageContaining("document-timeout");
+        assertThatThrownBy(() -> TestPdfs.docling(true, "http://docling:5001", Duration.ofMinutes(5), Duration.ofSeconds(1), 0))
+                .hasMessageContaining("circuit-failures");
+        assertThatThrownBy(() -> new DoclingProperties(true, java.net.URI.create("http://docling:5001"), false,
+                Duration.ofSeconds(2), Duration.ofSeconds(30), Duration.ofMinutes(5), Duration.ofSeconds(1), 100,
+                DataSize.ofMegabytes(32), java.util.List.of("tr", "en"), 1, 3, Duration.ofMinutes(5)))
+                .hasMessageContaining("ocr-languages");
+        // Disabled: no address needed (the default stack).
+        TestPdfs.docling(false, null);
     }
 
     @Test

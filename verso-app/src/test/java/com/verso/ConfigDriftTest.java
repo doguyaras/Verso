@@ -61,6 +61,9 @@ class ConfigDriftTest {
             "verso.audit.flyway.url",
             "verso.audit.flyway.user",
             "spring.ai.ollama.base-url",
+            // The docling sidecar's switch and address (ADR-0032).
+            "verso.document.docling.enabled",
+            "verso.document.docling.base-url",
             "spring.security.oauth2.resourceserver.jwt.",
             "verso.security.jwt.issuer",
             "verso.security.jwt.jwk-set-uri",

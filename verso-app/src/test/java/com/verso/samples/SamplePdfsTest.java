@@ -58,6 +58,43 @@ class SamplePdfsTest {
         assertThat(izin).contains("yirmi altı iş günü", "Doğum izninin", "İnsan Kaynakları Direktörü", "Taşınma");
     }
 
+    /**
+     * The measurement variants of ADR-0032, built from the same sources: ruled tables (GRID) keep every page and every
+     * cell text; the scanned copy has the same pages and no text layer at all. With -Dverso.samples.variants=DIR all of
+     * them are written to DIR/grid and DIR/scanned (not committed: rendering depends on the host's fonts).
+     */
+    @Test
+    void variants_whenBuilt_keepThePages_andTheScannedCopyHasNoText() throws IOException {
+        PdfTextExtractor extractor = new PdfTextExtractor(TestPdfs.properties());
+        String target = System.getProperty("verso.samples.variants");
+        for (Path source : sources()) {
+            String name = source.getFileName().toString().replace(".txt", ".pdf");
+            String text = Files.readString(source, StandardCharsets.UTF_8).replace("\r", "");
+            byte[] grid = SamplePdfs.build(name, text, SamplePdfs.Tables.GRID);
+            List<String> pages = extractor.extract(grid);
+            assertThat(pages).as(name).hasSize(text.split("\n---\n").length);
+            String all = String.join(" ", pages).replaceAll("\\s+", " ");
+            for (String row : text.split("\n")) {
+                if (!row.contains(" | ")) continue;
+                for (String cell : row.split(" \\| ")) {
+                    // Wrapped cells come out word by word; the words are all there.
+                    for (String word : cell.strip().split("\\s+")) assertThat(all).as(name + ": " + word).contains(word);
+                }
+            }
+            assertThat(all).as(name + ": no pipes in a ruled table").doesNotContain(" | ");
+            boolean writeAll = target != null;
+            if (!writeAll && !name.equals("isg-depo-proseduru.pdf")) continue;
+            byte[] scanned = SamplePdfs.scanned(grid, 200);
+            assertThat(extractor.read(scanned)).as(name + " scanned").hasSize(pages.size()).allMatch(String::isEmpty);
+            if (writeAll) {
+                Files.createDirectories(Path.of(target, "grid"));
+                Files.createDirectories(Path.of(target, "scanned"));
+                Files.write(Path.of(target, "grid", name), grid);
+                Files.write(Path.of(target, "scanned", name), scanned);
+            }
+        }
+    }
+
     private static List<Path> sources() throws IOException {
         try (Stream<Path> files = Files.list(SAMPLES.resolve("src"))) {
             return files.filter(p -> p.toString().endsWith(".txt")).sorted().toList();

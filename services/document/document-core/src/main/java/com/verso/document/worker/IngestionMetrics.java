@@ -66,6 +66,19 @@ public class IngestionMetrics {
         outcomes.get(outcome).increment();
     }
 
+    /**
+     * Which parser produced a document's text (ADR-0032): parser jdk or docling, and the fixed sidecar failure when the
+     * JDK text was kept although the sidecar was asked ("none" otherwise). Both tags are small enums.
+     */
+    void recordParser(DocumentTextExtractor.Extraction extraction) {
+        Counter.builder("verso.ingestion.parsed")
+                .tag("parser", extraction.parser().name().toLowerCase(java.util.Locale.ROOT))
+                .tag("fallback", extraction.fallback() == null ? "none"
+                        : extraction.fallback().name().toLowerCase(java.util.Locale.ROOT))
+                .description("Parsed documents by parser and sidecar fallback reason")
+                .register(registry).increment();
+    }
+
     private void gauge(MeterRegistry registry, String name, String status, ToDoubleFunction<QueueStats> value,
                        String description) {
         Gauge.builder(name, this, m -> value.applyAsDouble(m.current())).tag("status", status)

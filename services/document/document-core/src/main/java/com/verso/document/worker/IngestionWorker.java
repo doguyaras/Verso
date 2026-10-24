@@ -4,6 +4,7 @@ import com.verso.document.api.enums.DocumentFailureReason;
 import com.verso.document.config.DocumentProperties;
 import com.verso.document.repository.IngestionRepository.Claim;
 import com.verso.document.repository.IngestionRepository.StoredChunk;
+import com.verso.document.worker.DocumentTextExtractor.Extraction;
 import com.verso.document.worker.IngestionTransactionService.LostClaimException;
 import com.verso.document.worker.PageChunker.Chunk;
 import java.time.Clock;
@@ -97,10 +98,23 @@ public class IngestionWorker implements SmartLifecycle {
                 return;
             }
             List<String> pages = tx.loadPages(claim);
+            // Parsed in an earlier attempt: the stored pages are used as they are, whichever parser produced them.
+            String parser = "STORED";
+            long parseMs = 0;
             if (pages.isEmpty()) {
                 byte[] file = tx.loadFile(claim).orElseThrow(
                         () -> new IngestionRejectedException(DocumentTextExtractor.unreadable(claim.format())));
-                pages = extractor.extract(claim.format(), file);
+                long parseStarted = System.nanoTime();
+                Extraction extraction = extractor.extract(claim.format(), file, () -> !running);
+                parseMs = elapsedMs(parseStarted);
+                pages = extraction.texts();
+                parser = extraction.parser().name();
+                metrics.recordParser(extraction);
+                if (extraction.fallback() != null) {
+                    // The sidecar was asked and failed: the JDK text is used (ADR-0032). A fixed reason, no text.
+                    log.warn("Document parsed without the sidecar: documentId={} reason={} parseMs={}",
+                            claim.documentId(), extraction.fallback(), parseMs);
+                }
                 tx.storePages(claim, pages, clock.instant());
             }
             List<Chunk> chunks = chunker.chunk(pages);
@@ -108,14 +122,15 @@ public class IngestionWorker implements SmartLifecycle {
             List<StoredChunk> stored = embed(claim, chunks);
             tx.complete(claim, pages.size(), stored, properties.embeddingModel(), clock.instant());
             metrics.record(IngestionMetrics.Outcome.READY);
-            log.info("Document ingestion finished: documentId={} pages={} chunks={} attempts={} durationMs={} outcome=READY",
-                    claim.documentId(), pages.size(), chunks.size(), claim.attempts(), elapsedMs(started));
+            log.info("Document ingestion finished: documentId={} pages={} chunks={} parser={} parseMs={} attempts={} "
+                    + "durationMs={} outcome=READY", claim.documentId(), pages.size(), chunks.size(), parser, parseMs,
+                    claim.attempts(), elapsedMs(started));
         } catch (IngestionRejectedException e) {
             fail(claim, e.reason(), started);
         } catch (ModelFailure e) {
             pause(e);
             release(claim, e.misconfigured ? "MODEL_MISCONFIGURED" : "MODEL_UNAVAILABLE", started);
-        } catch (Stopping e) {
+        } catch (Stopping | DocumentTextExtractor.ExtractionStoppedException e) {
             release(claim, "SHUTDOWN", started);
         } catch (LostClaimException e) {
             metrics.record(IngestionMetrics.Outcome.LOST);

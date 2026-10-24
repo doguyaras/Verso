@@ -75,6 +75,17 @@ CPU'da bir cevap 20–60 sn sürer. NVIDIA GPU'lu bir makinede Ollama'yı GPU il
 docker compose -f compose.yaml -f deploy/compose.gpu.yaml up -d --build --wait
 ```
 
+**Taranmış PDF ve tablolar için Docling (isteğe bağlı, varsayılan kapalı; [ADR-0032](docs/adr/0032-docling-tablo-ve-ocr.md)).** Metin katmanı olmayan (taranmış) PDF varsayılan yığında `NO_TEXT` ile reddedilir. Docling yan konteyneri bu sayfaları Tesseract `tur` + `eng` ile OCR'lar ve çizgili tabloları başlık satırıyla Markdown tablo olarak saklar:
+
+```bash
+docker compose -f compose.yaml -f deploy/compose.docling.yaml up -d --build --wait
+```
+
+- Yan konteyner yalnız uygulamayla paylaştığı iç ağdadır: portu yayınlanmaz, internete çıkamaz, modeller image'ın içindedir.
+- PDF önce yine JDK ayrıştırıcısından geçer. Yan konteyner düşerse, 5 dakikada bitiremezse ya da tuhaf bir çıktı verirse belge JDK metniyle READY olur; taranmış PDF daha sonra yeniden denenir.
+- **Donanım maliyeti** (eval setinde ölçüldü): image 7,6 GB; RAM boşta ~1,1 GB, ölçülen tepe 2,2 GB (sınır 4 GB, `DOCLING_MEM_LIMIT`); 3 CPU ile sayfa başına 0,7 sn (metin), 1,5 sn (çizgili tablo), 2,6 sn (taranmış sayfa, OCR). JDK ayrıştırıcısı sayfa başına 7–9 ms'dir. Varsayılan 2 CPU'dur (`DOCLING_CPUS`), daha yavaştır.
+- **Kazanç:** taranmış sette retrieval recall@5 0 → 0,964. Depodaki örneklerde (tablolar düz metin) kazanç yok; çizgili tablolarda tablo sorularının sıralaması biraz iyileşiyor. Bu yüzden varsayılan kapalıdır. Ayrıntı: [`eval/README.md`](eval/README.md) "Docling".
+
 Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde (sürüm 2, GPU) doğru sayfaya atıf yapılan 97 cevabın 3'ünde bilgi yanlış ya da eksikti. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
 ## Panel

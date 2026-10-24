@@ -16,6 +16,7 @@ docker compose --profile obs up -d --wait
 | `VersoDatabaseUnavailable` | page | [database-unavailable.md](database-unavailable.md) |
 | `ModelUnavailable` | page | [model-unavailable.md](model-unavailable.md) |
 | `IngestionBacklog` | ticket | [ingestion-backlog.md](ingestion-backlog.md) |
+| `DoclingFallback` (yalnız `deploy/compose.docling.yaml` ile, ADR-0032) | ticket | [docling-fallback.md](docling-fallback.md) |
 | `QaSlow` | ticket | [qa-slow.md](qa-slow.md) |
 | `HistoryNotStored` | ticket | [history-not-stored.md](history-not-stored.md) |
 | `AuditEventNotStored` | page | [audit-write-failed.md](audit-write-failed.md) |

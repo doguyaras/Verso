@@ -75,6 +75,32 @@ tests:
         alertname: IngestionBacklog
         exp_alerts: []
 
+  # Docling sidecar down (ADR-0032): every document falls back to the JDK parser.
+  - interval: 1m
+    input_series:
+      - series: 'verso_ingestion_parsed_total{job="verso", parser="jdk", fallback="unavailable"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: DoclingFallback
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations: {summary: "The docling sidecar parsed nothing for 30 minutes; documents fall back to the JDK parser.", runbook: docs/runbooks/docling-fallback.md}
+
+  # Docling sometimes fails but still parses documents, and the default stack never asks it: quiet.
+  - interval: 1m
+    input_series:
+      - series: 'verso_ingestion_parsed_total{job="verso", parser="jdk", fallback="timeout"}'
+        values: '0+1x60'
+      - series: 'verso_ingestion_parsed_total{job="verso", parser="docling", fallback="none"}'
+        values: '0+1x60'
+      - series: 'verso_ingestion_parsed_total{job="verso", parser="jdk", fallback="none"}'
+        values: '0+5x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: DoclingFallback
+        exp_alerts: []
+
   # Backlog: the oldest due document waits longer than the lease.
   - interval: 15s
     input_series:

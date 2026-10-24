@@ -195,6 +195,63 @@ Bu sette, başlıklara göre kesilen bölümler (yaklaşık 3000 karakter) bilgi
   - depo-8: metriğin yanlış negatifi. "Eldeki stoğa dahildir" doğru, ama beklenen kelime "evet".
 - **Gecikme:** p50 1,4 sn, p95 3,1 sn, en çok 23 sn (ilk soru, model ısınması). Faz 8 GPU koşusu 33 soruda p50 1,3 sn idi.
 
+## Docling (2026-10-24, ADR-0032)
+
+İsteğe bağlı docling-serve yan konteyneri, üç belge setinde, sidecar'sız ve sidecar'lı. Setler aynı kaynaklardan `SamplePdfs` ile üretilir:
+
+- `samples`: depodaki PDF'ler; tablolar `|` ile yazılmış metin.
+- `grid`: aynı satırlar çizgili tablo, başlık satırı kalın.
+- `scanned`: `grid`'in sayfaları 200 dpi gri JPEG, metin katmanı yok.
+
+Çizgili ve taranmış setler commit edilmez (çizim makinenin fontlarına bağlı); her koşuda üretilir.
+
+```bash
+./mvnw -pl verso-app -am test -Dtest=SamplePdfsTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false -Dverso.samples.variants=<DIR>
+./mvnw -pl verso-app -am test -Dverso.excludedGroups=none -Dgroups=eval -Dtest=RetrievalEvalTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false \
+  -Dverso.eval.samples-dir=<DIR>/grid -Dverso.eval.out=retrieval-grid-docling.json \
+  -Dverso.document.docling.enabled=true -Dverso.document.docling.base-url=http://127.0.0.1:<port>
+SAMPLES_DIR=<DIR>/grid OUT=e2e-grid-docling.json node scripts/eval.mjs
+```
+
+`RetrievalEvalTest` her belgeyi bir kez ayrıştırıp süreyi ayrıca ölçer (`summary.parsing`). Docling ölçümünde yan konteyner 3 CPU ve 4 GB ile çalıştı. Sorunun embedding süresi bu koşularda üretim değeri olan 10 sn'dir: paylaşılan makinede 2 sn yetmedi.
+
+### Retrieval
+
+`results/retrieval-{samples,grid,scanned}-{jdk,docling}.json`; bge-m3 CPU.
+
+| Set | Ayrıştırıcı | recall@1 | recall@5 | MRR | `table` recall@1 | `table` recall@5 | `table` MRR | Kapıda duran cevaplanamaz | Ayrıştırma (sayfa başına) |
+|---|---|---|---|---|---|---|---|---|---|
+| samples | JDK | 0,795 | 0,982 | 0,877 | 0,731 | 0,962 | 0,827 | 7/28 | 7 ms |
+| samples | docling | 0,804 | 0,982 | 0,883 | 0,731 | 0,962 | 0,830 | 5/28 | 0,67 sn |
+| grid | JDK | 0,804 | 0,982 | 0,885 | 0,769 | 0,962 | 0,849 | 6/28 | 9 ms |
+| grid | docling | 0,830 | 0,964 | 0,890 | 0,808 | 0,962 | 0,878 | 5/28 | 1,45 sn |
+| scanned | JDK | 0 | 0 | 0 | 0 | 0 | 0 | – (11 belge `NO_TEXT`) | – |
+| scanned | docling | 0,813 | 0,964 | 0,875 | 0,731 | 0,962 | 0,824 | 4/28 | 2,6 sn (OCR) |
+
+- `samples` + JDK, ADR-0022 tabanıyla birebir aynı: ölçüm tekrarlanabilir.
+- Docling `|` ile yazılmış satırları tablo saymıyor, bir paragrafa birleştiriyor. Bu yüzden `samples`'ta kazanç yok, `RetrievalEvalTest`'in "cevaplanamaz ≥ 0,2" koruması sidecar'lı koşuda tutmuyor (0,179).
+- Çizgili tabloda docling tabloyu ve başlığını tanıyor: `table` recall@1 ve MRR yükseliyor; bütün sette recall@5 iki soru düşüyor.
+- Taranmış sette Tesseract `tur` + `eng` ile okunan metin, metin katmanlı sürümün recall@5'ine yakın (0,964 / 0,982). Taranmış tabloların hücreleri OCR'da çoğu zaman tek sütuna düşüyor; `table` sıralaması `samples` düzeyinde kalıyor.
+- Yan konteynerin bellek tepesi 2,2 GB, boşta ~1,1 GB.
+
+### Uçtan uca
+
+`results/e2e-{samples,grid,scanned}-docling.json` ve `e2e-samples-jdk.json`; gemma4:e2b GPU, geçici bir yığında (kendi veritabanı, `deploy/compose.docling.yaml`).
+
+| Set | Ayrıştırıcı | Kaynak bulundu | Atıf isabeti | Doğru bilgi | "Bulunamadı" | `table` atıf isabeti | `table` doğru bilgi |
+|---|---|---|---|---|---|---|---|
+| samples | JDK (aynı Ollama) | 0,955 | 0,902 | 0,902 | 0,536 | – | – |
+| samples | JDK (ikinci Ollama; `e2e-samples-jdk.json`) | 0,964 | 0,911 | 0,884 | 0,607 | 0,808 | 0,769 |
+| samples | docling | 0,920 | 0,884 | 0,893 | 0,643 | 0,808 | 0,769 |
+| grid | JDK | ölçülemedi | | | | | |
+| grid | docling | 0,920 | 0,848 | 0,848 | 0,679 | 0,769 | 0,769 |
+| scanned | JDK | 0 (belge yok) | 0 | 0 | – | 0 | 0 |
+| scanned | docling | 0,929 | 0,884 | 0,848 | 0,643 | 0,846 | 0,769 |
+
+- Docling koşuları ve ilk JDK koşusu ana yığının GPU Ollama'sıyla koşuldu. İlk JDK koşusunun sonuç dosyası ikinci koşunun üzerine yazıldı; sayıları koşu günlüğünden alındı (`docs/evidence/adr-0032-dogrulama.md`).
+- İkinci JDK koşusu ayrı bir Ollama ile yapıldı ve `e2e-gemma4_e2b-gpu.json` ile birebir aynı çıktı. İki Ollama örneği arasındaki fark 0,01–0,07, docling etkisiyle aynı büyüklükte: uçtan uca farklar yön gösterir, kesin değildir.
+- `grid` + JDK koşusu iki kez başladı. İkisinde de ana yığının Ollama'sı koşu sırasında kapandı (`EMBEDDING_MODEL_UNAVAILABLE`, 140 sorunun 74'ünde ve 97'sinde); sonuç atıldı, ölçüm eksik.
+
 ## Eşikler ve karar
 
 ### ADR-0022 (geçerli)

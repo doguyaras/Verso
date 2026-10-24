@@ -78,6 +78,53 @@ class PageChunkerTest {
         assertThat(chunks.stream().mapToInt(c -> c.content().length()).sum()).isGreaterThanOrEqualTo(350);
     }
 
+    /** ADR-0032: a Markdown table that fits is one chunk, with the line before it (its heading) in front. */
+    @Test
+    void chunk_whenATableFits_keepsItWholeWithItsHeading() {
+        PageChunker chunker = new PageChunker(TestPdfs.properties(500, 2_000_000, 300, 40));
+        String page = words("giriş", 30) + "\n3.2 Hız sınırları\n| Alan | Azami hız |\n| --- | --- |\n"
+                + "| Raf koridorları | 6 km/sa |\n| Dış saha | 15 km/sa |\nTablodan sonra gelen paragraf.";
+        List<Chunk> chunks = chunker.chunk(List.of(page));
+        assertThat(chunks).filteredOn(c -> c.content().contains("| Alan |")).singleElement().satisfies(c ->
+                assertThat(c.content()).isEqualTo("3.2 Hız sınırları\n| Alan | Azami hız |\n| --- | --- |\n"
+                        + "| Raf koridorları | 6 km/sa |\n| Dış saha | 15 km/sa |"));
+        assertThat(chunks.getLast().content()).isEqualTo("Tablodan sonra gelen paragraf.");
+        assertThat(chunks).allSatisfy(c -> assertThat(c.pageNumber()).isOne());
+        assertThat(chunks).extracting(Chunk::chunkIndex).containsExactlyElementsOf(IntStream.range(0, chunks.size()).boxed().toList());
+    }
+
+    /** ADR-0032: a longer table is split between rows; every part repeats the header row and no row is lost or cut. */
+    @Test
+    void chunk_whenATableIsLongerThanAChunk_repeatsTheHeaderInEveryPart() {
+        PageChunker chunker = new PageChunker(TestPdfs.properties(500, 2_000_000, 200, 30));
+        StringBuilder table = new StringBuilder("Durum kodları\n| Kod | Anlamı |\n| --- | --- |");
+        List<String> rows = IntStream.range(0, 30).mapToObj(i -> "| SAT-E" + (100 + i) + " | Açıklama " + i + " |").toList();
+        rows.forEach(r -> table.append('\n').append(r));
+        List<Chunk> chunks = chunker.chunk(List.of(table.toString(), "ikinci sayfa"));
+        List<Chunk> parts = chunks.stream().filter(c -> c.pageNumber() == 1).toList();
+        assertThat(parts).hasSizeGreaterThan(1).allSatisfy(c -> {
+            assertThat(c.content()).startsWith("Durum kodları\n| Kod | Anlamı |\n| --- | --- |\n");
+            assertThat(c.content().length()).isLessThanOrEqualTo(200);
+        });
+        List<String> found = parts.stream().flatMap(c -> c.content().lines().skip(3)).toList();
+        assertThat(found).containsExactlyElementsOf(rows);
+        assertThat(chunks.getLast()).isEqualTo(new Chunk(2, chunks.size() - 1, "ikinci sayfa"));
+    }
+
+    /**
+     * The JDK path is unchanged (ADR-0032): pipes without a Markdown delimiter row ("Alan | Azami hız", as the JDK
+     * parser reads the samples) are chunked exactly like any other text of the same length.
+     */
+    @Test
+    void chunk_whenPipesAreNotAMarkdownTable_chunksLikePlainText() {
+        PageChunker chunker = new PageChunker(TestPdfs.properties(500, 2_000_000, 100, 20));
+        String page = "Alan | Azami hız\nRaf koridorları | 6 km/sa\n" + words("metin", 40) + "\nDış saha | 15 km/sa";
+        List<String> withPipes = chunker.chunk(List.of(page)).stream().map(Chunk::content).toList();
+        List<String> withoutPipes = chunker.chunk(List.of(page.replace('|', '¦'))).stream()
+                .map(c -> c.content().replace('¦', '|')).toList();
+        assertThat(withPipes).hasSizeGreaterThan(1).isEqualTo(withoutPipes);
+    }
+
     private static String words(String stem, int count) {
         return IntStream.range(0, count).mapToObj(i -> stem + i).collect(Collectors.joining(" "));
     }

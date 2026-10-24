@@ -266,6 +266,46 @@ class ComposeConfigTest {
     }
 
     /**
+     * ADR-0032: the docling overlay adds the sidecar on its own internal network, unpublished, hardened, with memory,
+     * CPU and process limits and offline flags; the application joins that network and gets the switch. The default
+     * stack has no sidecar and keeps the switch off.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void doclingOverlay_whenComposed_isInternalUnpublishedLimitedAndOptIn() throws IOException {
+        Map<String, Object> base = new Yaml().load(read("compose.yaml"));
+        assertThat(((Map<String, Object>) base.get("services"))).doesNotContainKey("docling");
+        Map<String, Object> dbEnv = (Map<String, Object>) base.get("x-db-env");
+        assertThat(dbEnv).containsEntry("VERSO_DOCLING_ENABLED", "false");
+
+        Map<String, Object> overlay = new Yaml().load(read("deploy/compose.docling.yaml"));
+        assertThat(overlay.keySet()).containsExactlyInAnyOrder("services", "networks");
+        Map<String, Object> networks = (Map<String, Object>) overlay.get("networks");
+        assertThat(networks.keySet()).containsExactly("parsers");
+        assertThat((Map<String, Object>) networks.get("parsers")).containsEntry("internal", true);
+        Map<String, Object> services = (Map<String, Object>) overlay.get("services");
+        assertThat(services.keySet()).containsExactlyInAnyOrder("docling", "verso-app");
+        Map<String, Object> docling = (Map<String, Object>) services.get("docling");
+        assertThat(docling).doesNotContainKey("ports").doesNotContainKey("volumes")
+                .containsEntry("read_only", true).containsEntry("networks", List.of("parsers"))
+                .containsKeys("mem_limit", "cpus", "pids_limit", "healthcheck");
+        assertThat((List<String>) docling.get("cap_drop")).containsExactly("ALL");
+        assertThat((List<String>) docling.get("security_opt")).contains("no-new-privileges:true");
+        Map<String, Object> env = (Map<String, Object>) docling.get("environment");
+        assertThat(env).containsEntry("HF_HUB_OFFLINE", "1").containsEntry("TRANSFORMERS_OFFLINE", "1")
+                .containsEntry("DOCLING_SERVE_ENABLE_REMOTE_SERVICES", "false")
+                .containsEntry("DOCLING_SERVE_ALLOW_EXTERNAL_PLUGINS", "false")
+                .containsEntry("DOCLING_SERVE_ENABLE_UI", "false")
+                .containsEntry("DOCLING_SERVE_SINGLE_USE_RESULTS", "true")
+                .containsKeys("DOCLING_SERVE_MAX_NUM_PAGES", "DOCLING_SERVE_MAX_FILE_SIZE", "DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT");
+        Map<String, Object> app = (Map<String, Object>) services.get("verso-app");
+        assertThat(app.keySet()).containsExactlyInAnyOrder("networks", "environment");
+        assertThat((List<String>) app.get("networks")).containsExactly("parsers");
+        assertThat((Map<String, Object>) app.get("environment")).containsEntry("VERSO_DOCLING_ENABLED", "true")
+                .containsEntry("VERSO_DOCLING_URL", "http://docling:5001");
+    }
+
+    /**
      * ADR-0014: the observability stack is opt-in (profile "obs"), on the internal "obs" network; Prometheus also on
      * "backend" (it scrapes the application), Grafana also on "default" (its published port). Alloy reads the Docker
      * socket read-only and has no published port. Grafana does not call home.
@@ -306,7 +346,7 @@ class ComposeConfigTest {
         Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
         List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
                 .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
-        assertThat(alerts).hasSize(8);
+        assertThat(alerts).hasSize(9);
         assertThat(ROOT.resolve("deploy/obs/prometheus/alerts.test.yml")).as("promtool unit tests").exists();
         for (Map<String, Object> alert : alerts) {
             String name = String.valueOf(alert.get("alert"));
