@@ -27,6 +27,7 @@
 | 2 | Aynı, `plainto_tsquery` / `websearch_to_tsquery` (terimler VE ile) | 140 sorudan 4'ü eşleşti; füzyon vektörle aynı | Reddedildi |
 | 2 | İ/ı katlaması (`translate(…, 'İIı', 'iii')`) ya da `unaccent` | Füzyonda recall@1 ±1 soru, recall@5 aynı | Reddedildi: fark gürültü düzeyinde, generated column için ek fonksiyon gerekir |
 | 2 | SQL içinde BM25 (`ts_rank_cd` yerine) | Füzyonda 0,821 / 0,964 / 0,886 | Reddedildi: recall@5 daha düşük, sorgu daha pahalı; ağırlık ayarı aynı veriyle yapılırdı |
+| 2 | Üçüncü liste: `pg_trgm` `word_similarity` (karakter trigram) | Füzyonda 0,866 / 0,973 / 0,914; tek başına 0,848 / 0,964 / 0,898 | Reddedildi: recall@5 −1 soru (sayı ve tablo), index'siz sıralama 50 bin chunk'ta 5,7 sn |
 | 3 | Kapı: cosine ≥ T1 **ya da** (cosine ≥ T2 **ve** en benzer pasaj soruya özgü bir terim içeriyor) | Cevaplanabilir 112/112 geçer, cevaplanamaz 7/28 durur; "bulunamadı" kesinliği 1,00, duyarlılığı 0,25 | **Tutuldu** |
 | 3 | Kapıda füzyon skoru | – | Reddedildi: sıra bilgisidir, "yeterince iyi mi" sorusuna cevap vermez (görev tanımı) |
 
@@ -35,6 +36,7 @@
 **Hibrit arama (`RetrievalRepository.hybrid`, tek SQL cümlesi):**
 - `document_chunk.search_vector`: `to_tsvector('turkish', content)` generated column (STORED) ve GIN index (`V3__chunk_search_vector.sql`). Migration mevcut satırları da doldurur; embedding'ler değişmez, yeniden indeksleme gerekmez.
 - Vektör listesi: cosine'e göre en yakın 20 chunk. Sözcüksel liste: sorunun terimleri **VEYA** ile birleştirilir, `ts_rank_cd` ile en iyi 20 chunk. Hesap, embedding modeli ve `READY` koşulu iki listenin de içindedir (llm-rules 4.1).
+- U+0000 içeren soru sözcüksel sorguya boşlukla girer: PostgreSQL metni bu karakteri kabul etmez (`RetrievalTest`).
 - Füzyon: `Σ 1 / (60 + sıra)`; eşitlikte yüksek cosine önce. Sonuç füzyon sırasıyla döner; her pasajın cosine benzerliği ayrıca hesaplanır, yalnız sözcüksel listenin bulduğu pasajınki de.
 - Ayarlar: `verso.document.retrieval.vector-candidates: 20`, `lexical-candidates: 20` (0 = yalnız vektör, acil kapatma), `rrf-k: 60`.
 
@@ -71,9 +73,14 @@
 | Kapıdan geçen cevaplanabilir | 107/112 | **112/112** |
 | Kapının durdurduğu cevaplanamaz | 6/28 | **7/28** |
 | "Bulunamadı" kesinliği / duyarlılığı (kapı) | 0,545 / 0,214 | **1,00** / **0,25** |
-| Uçtan uca atıf isabeti / doğru bilgi | 0,866 / 0,848 | **0,902** / **0,902** |
+| Uçtan uca kaynak bulundu / atıf isabeti / doğru bilgi | 0,902 / 0,866 / 0,839 | **0,964** / **0,911** / **0,884** |
+| Uçtan uca atıf kesinliği | 0,929 | 0,922 |
 | Uçtan uca "bulunamadı" (sıkı / modelin kendi reddiyle) | 0,536 / 0,643 | **0,607** / 0,643 |
-| Uçtan uca gecikme p50 / p95 (GPU) | 1,37 / 3,08 sn | 1,70 / 2,81 sn |
+| Uçtan uca gecikme p50 / p95 (GPU) | 1,40 / 2,88 sn | 1,50 / 3,32 sn |
+
+Uçtan uca iki koşu da aynı tabanda (`origin/develop`, ADR-0020/0023/0024 dahil), aynı yığında ve GPU'da koşuldu; "önce" sütunu bu branch'siz develop imajıdır.
+
+Sonradan ölçülen ek seçenek, `pg_trgm` ile sözcüksel yol (`word_similarity`; vektör + tsvector + trigram füzyonu): recall@1 0,866, recall@5 0,973, MRR 0,914. recall@1 ve MRR'de belirgin kazanç var, ama recall@5'te bir soru kaybı var. Üstelik index kullanmayan sıralama 50 bin chunk'lık hesapta 5,7 sn sürdü. **Tutulmadı**; yeniden değerlendirme koşulunda.
 
 ## Sonuçlar
 
@@ -83,7 +90,8 @@
   - Kapı kararı ölçülebilir ve loglanıyor: `answerability=similarity|specific_term|none`.
 - **Olumsuz / kabul edilen risk:**
   - recall@1'de net 1 soru kaybı var (0,804 → 0,795; +4/−5). Kayıplar sayı ve tablo sorularında.
-  - Uçtan uca p50 0,3 sn arttı. Daha çok soru cevap üretiyor; veritabanı payı eval hesabında 1 ms.
+  - Uçtan uca p50 0,1 sn, p95 0,44 sn arttı. Daha çok soru cevap üretiyor; veritabanı payı eval hesabında 1 ms.
+  - Atıf kesinliği 0,929'dan 0,922'ye indi: daha çok cevap, beklenen sayfa dışında da atıf yapıyor.
   - Sözcüksel sorgunun maliyeti hesabın büyüklüğüyle artar (sentetik ölçüm):
     - 10 bin chunk: +20–35 ms;
     - 50 bin chunk: +185–280 ms.
@@ -109,4 +117,5 @@
 
 - Gerçek bir müşteri belge seti ile eval yapıldığında eşikler yeniden ölçülür.
 - Bir hesap 20 bin chunk'ı geçtiğinde ya da soru sorma p95'inde veritabanı payı 200 ms'yi aştığında sözcüksel sorgu yeniden ele alınır: BM25 (`pg_textsearch`), terim sayısını sınırlama ya da önbellek.
+- Trigram yolu (`pg_trgm`), index'li bir sıralama (GiST KNN ya da eşikli GIN) hesap boyunda bütçeye sığdığı ölçüldüğünde yeniden denenir; ölçülen recall@1 kazancı +8 soru.
 - Konusu belgede olan cevaplanamaz soruları ayırmak için rerank (yol haritası iş 6) ölçüldüğünde kapı yeniden kurulur.

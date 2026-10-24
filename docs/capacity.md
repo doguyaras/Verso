@@ -82,6 +82,20 @@ Yükleme süresi, model dosyasının o an işletim sisteminin sayfa önbelleğin
 
 **Bellek:** İki model yüklüyken Ollama container'ı 6 GiB sınırına dayanıyor (anonim bellek 5,9 GiB; `memory.peak` 6 GiB). Önceki ayarda da iki model birlikte yüklüyken aynısı oluyordu; değişen, bunun kalıcı olması. Isınma ve sohbet yükü boyunca `oom_kill` 0 kaldı. Sınır, bellek bütçesindeki gibi 6 GiB'da bırakıldı. Taşma görülürse `OLLAMA_MEM_LIMIT` artırılır ([model-unavailable runbook](runbooks/model-unavailable.md)).
 
+## Hibrit arama (2026-10-24, ADR-0022)
+
+Soru başına sözcüksel bir liste ve terim sayımı eklendi. İkisi de veritabanında, soru embedding'iyle aynı salt-okunur transaction'da çalışır; yeni uzak çağrı yoktur. Kanıt: `docs/evidence/hibrit-arama-dogrulama.md` bölüm 6.
+
+| Hesap başına chunk | Yalnız vektör | Hibrit + terim sayımı | Not |
+|---|---|---|---|
+| 75 (eval seti) | 12,7 ms p50 | 13,7 ms p50 | Testcontainers; soru embedding'i CPU'da 194 ms p50 |
+| 10 bin (sentetik) | 23–26 ms | 47–70 ms | |
+| 50 bin (sentetik) | 2–19 ms | 195–390 ms | VEYA sorgusu yaygın sözcüklerle chunk'ların çoğunu eşler ve sıralar |
+
+- **Uçtan uca, GPU, aynı develop tabanına karşı:** p50 1,40 sn'den 1,50 sn'ye, p95 2,88 sn'den 3,32 sn'ye çıktı. Artışın kaynağı veritabanı değil. Önce "bulunamadı" alan 7 cevaplanabilir soru artık modelden cevap alıyor.
+- **Büyük hesapta:** `verso.document.retrieval.lexical-candidates: 0` sözcüksel listeyi ve terim sayımını kapatır (yalnız vektör).
+- **Migration V3:** `document_chunk`'ı ve HNSW index'ini yeniden kurar. 20 bin chunk'ta 14 sn, 100 bin chunk'ta 3,5 dk sürdü; uygulama başlamadan önceki migrate adımında koşar.
+
 ## Ölçümün sınırları
 
 - Yük kapalı döngüdür: her istemci cevabını bekleyip sonraki isteği gönderir. Aşırı yükte gecikmeler, açık bir geliş hızının göstereceğinden iyi görünür.

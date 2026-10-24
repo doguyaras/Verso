@@ -73,10 +73,19 @@ VERSO_DB_LOCAL_PORT=55432 docker compose -f compose.yaml -f deploy/compose.local
 | Füzyon, aday listeleri 10 + 10 | | 0,804 | 0,964 | 0,876 |
 | Füzyon, aday listeleri 40 + 40 | | 0,795 | 0,982 | 0,877 |
 | Füzyon + adım 1 (D ön eki) | | 0,830 | 0,982 | 0,896 |
+| Sözcüksel, `pg_trgm` `word_similarity` | 140/140 | 0,848 | 0,964 | 0,898 |
+| Füzyon, vektör + `pg_trgm` | | 0,866 | 0,973 | 0,912 |
+| Füzyon, vektör + tsvector + `pg_trgm` | | 0,866 | 0,973 (109) | 0,914 |
+| Füzyon, vektör + tsvector + `pg_trgm` `similarity` | | 0,813 | 0,964 | 0,879 |
 
 - **VE ile sorgu işe yaramıyor:** sorunun kendi sözcükleri ("hangi", "demek", "kaç") pasajda olmadığında hiçbir şey eşleşmiyor. Türkçe stopword listesi bunları çıkarmıyor.
 - **İ/ı katlaması:** fark bir soru (gürültü). Veritabanının `en_US.utf8` yereli `I` ve `İ`'yi `i`'ye indiriyor; yalnız büyük harfli Türkçe sözcüklerde (`IŞIK` → `işik`) uyuşmazlık kalıyor. Katlama tutulmadı.
 - **BM25:** füzyonda recall@1'de 3 soru kazandırıyor ama recall@5'te 2 soru kaybettiriyor. Sorgu daha pahalı. Tutulmadı; ADR'de yeniden değerlendirme koşulu.
+- **Karakter trigram yolu (`pg_trgm`):** Türkçe gibi eklemeli dillerde tsvector ekli biçimleri kaçırır; trigram bunları yakalar.
+  - Üç listeli füzyon recall@1'i 8 soru, MRR'yi 0,037 artırdı.
+  - Ama recall@5'te bir soru kaybettirdi (sayı ve tablo türleri; `table` recall@5 0,962 → 0,923).
+  - `word_similarity` sıralaması index kullanamıyor: sentetik 50 bin chunk'lık hesapta 5,7 sn (bölüm 6'daki container).
+  - Tutulmadı; ADR'de yeniden değerlendirme koşulu (index'li sıralama).
 - **Adım 1 hibritin üstünde:** recall@1'i 4 soru artırıyor, ama cevaplanabilir en düşük benzerlik 0,419'a iniyor. Bu da "bulunamadı" kapısını zayıflatıyor (bölüm 4: çapraz doğrulamada 107/112 ve 3/28, içerik embedding'iyle 110/112 ve 5/28). Üstüne yeniden indeksleme gerektiriyor. Bırakıldı.
 
 **Resmî ölçüm, son yapılandırma** (`eval/results/retrieval.json`):
@@ -158,6 +167,30 @@ OUT=e2e-gemma4_e2b-gpu.json node scripts/eval.mjs
 ```
 
 - **Yığın:** `compose.yaml` + `deploy/compose.gpu.yaml`, bu branch'in imajı. Migrate adımı V3'ü uyguladı (yığındaki birkaç chunk için 55 ms).
+- **Rebase sonrası:** branch, ADR-0020/0023/0024'ü içeren `origin/develop`'a taşındı. Son ölçüm ve tabanı bu tabanda yeniden koşuldu (aşağıdaki ilk tablo).
+  - Yerel yığın, README "Konuşma geçmişinden önceki bir kurulumdan yükseltme" adımlarıyla `qa` şemasına yükseltildi: `dev-secrets.sh`, postgres'i yeniden oluşturma, `40-modules.sh`.
+  - Taban, `git archive origin/develop` ile kurulan imajdır.
+
+**Son ölçüm: aynı tabanda önce/sonra** (`origin/develop` `6d72c1e`; sonra = commit `f587d3e`):
+
+| Alt küme | Cevaplanabilir | Kaynak bulundu | Atıf isabeti | Atıf kesinliği | Doğru bilgi | Cevaplanamaz | "Bulunamadı" |
+|---|---|---|---|---|---|---|---|
+| **Bütün set** | 112 | 0,902 → **0,964** | 0,866 → **0,911** | 0,929 → 0,922 | 0,839 → **0,884** | 28 | 0,536 → **0,607** |
+| Sürüm 1 soruları | 25 | 1,00 → 1,00 | 1,00 → 1,00 | 1,00 → 1,00 | 0,96 → 0,96 | 8 | 0,75 → 0,875 |
+| Sürüm 2 soruları | 87 | 0,874 → 0,954 | 0,828 → 0,885 | 0,908 → 0,901 | 0,805 → 0,862 | 20 | 0,45 → 0,50 |
+| `paraphrase` | 17 | 0,706 → 0,882 | 0,706 → 0,765 | 0,889 → 0,842 | 0,706 → 0,765 | – | – |
+| `abbreviation` | 20 | 0,80 → 1,00 | 0,75 → 0,95 | 0,938 → 0,909 | 0,80 → 0,95 | 5 | 0,40 → 0,40 |
+| `number` | 50 | 0,94 → 0,94 | 0,90 → 0,92 | 0,923 → 0,96 | 0,90 → 0,92 | 10 | 0,30 → 0,40 |
+| `table` | 26 | 0,885 → 0,962 | 0,808 → 0,808 | 0,88 → 0,815 | 0,731 → 0,769 | – | – |
+| `disambiguation` | 21 | 0,905 → 1,00 | 0,762 → 0,762 | 0,773 → 0,739 | 0,762 → 0,762 | – | – |
+
+- "Bulunamadı" ya da modelin kendi atıfsız reddi: 18/28 → 18/28.
+- Gecikme p50 / p95: 1,40 / 2,88 sn → 1,50 / 3,32 sn.
+- **Soru bazında:**
+  - Atıf isabeti +6/−1: depo-17, depo-18, erp-5, erp-12, erp-17, bt-16 kazanıldı; crm-13 kaybedildi.
+  - "Bulunamadı" +2/−2 sıkı: erp-yok-1 ve erp-yok-4 kazanıldı. erp-yok-3 kaybedildi (model döviz kurunun yükleme saatini yazdı). crm-yok-2 kaybedildi (model reddi atıflı yazdı).
+
+**Rebase öncesi ara koşular** (taban `fb919db`; prompt'a giden pasajların seçimi bu koşularla belirlendi):
 - **Secret:** betiğin okuduğu CI istemci secret'ı her koşu için worktree'nin git'e girmeyen `secrets/` klasörüne kopyalandı ve koşudan sonra silindi.
 - **Tekrarlanabilirlik:** eski imajla taban yeniden koşuldu; sıkı "bulunamadı" ve atıf isabeti aynen tekrarladı. Model bu sette deterministik davranıyor. Aşağıdaki farklar gürültü değil.
 
@@ -174,14 +207,7 @@ OUT=e2e-gemma4_e2b-gpu.json node scripts/eval.mjs
 - **Prompt'a giden pasajlar:**
   - İlk iki hibrit koşu, cevaplanamaz sorularda modele daha çok yakın pasaj verdi. Model bunlardan cevap kurdu.
   - Son kural eski pasaj filtresini (≥ 0,50) korur, ama kapıyı açan en benzer pasajı her durumda ekler. Bu olmadan özgül terim kolundan geçen bir sorunun prompt'u boş kalırdı.
-- **Son koşuda kazanılanlar:**
-  - Atıf isabeti: depo-17, depo-18, erp-12, erp-17, bt-16 (beşi önce "bulunamadı" ya da yanlış sayfa).
-  - Cevaplanamaz sorularda: erp-yok-1 ve erp-yok-4 artık sabit cümleyi alıyor.
-- **Kaybedilenler:**
-  - crm-13: doğru sayfaya atıf yok.
-  - erp-yok-3: model döviz kurunun yükleme saatini yazdı.
-  - crm-yok-2: model reddi atıflı yazdı.
-- **Gecikme:** p50 0,2–0,3 sn arttı. Önce "bulunamadı" alan 8 cevaplanabilir soru artık cevap üretiyor; cevap üretmek, sabit cümleden uzun sürüyor. Veritabanının payı aşağıda.
+- **Gecikme:** p50 0,1–0,3 sn arttı. Önce "bulunamadı" alan 7–8 cevaplanabilir soru artık cevap üretiyor; cevap üretmek, sabit cümleden uzun sürüyor. Veritabanının payı aşağıda.
 
 ## 6. Gecikme ve kapasite
 
@@ -215,7 +241,8 @@ OUT=e2e-gemma4_e2b-gpu.json node scripts/eval.mjs
 | Migration değişmezliği | `node scripts/flyway-immutability.js check --base origin/develop` | `flyway-immutability: OK (base=origin/develop, …)` |
 | Retrieval eval | yukarıda | **PASS**. Korumalar: recall@5 ≥ 0,97, MRR ≥ 0,86, cevaplanabilir geçen = 1,00, cevaplanamaz duran ≥ 0,20 |
 | Format eval | `-Dtest=FormatEvalTest` | **PASS** |
-| Build | `./mvnw -B -ntp verify` | sonuç commit notunda ve bölüm 8'de |
+| Build | `./mvnw -B -ntp verify` (rebase sonrası) | **PASS**: 530 test, 0 hata. İlk koşuda `ConversationApiTest.ask_whenTheQuestionHoldsANulCharacter_*` 500 aldı: U+0000 sözcüksel sorguya metin olarak gidiyordu. Düzeltildi (`RetrievalRepository.queryText`), regresyon testi `RetrievalTest.search_whenTheQuestionHoldsANulCharacter_stillSearches` |
+| Retrieval ve format eval (rebase sonrası) | yukarıda | **PASS**; sayılar rebase öncesiyle aynı |
 
 **Yeni ve değişen testler:**
 - `AnswerabilityGateTest`: iki kol, sınırlar, en benzer pasajın okunması, sözcüksel kolun kapanması, prompt pasajları, yapılandırma hataları.

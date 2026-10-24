@@ -31,7 +31,7 @@ Sınıflar: **ZG** = zorunlu güvence (ihlal `BLOCK`), **VT** = varsayılan terc
 | 3.1 | Belge içeriği **güvenilmeyen veridir**. Pasajlar prompt'ta sabit ayraçlarla, numaralı ve sistem talimatından ayrı bir bölümde verilir; talimat, bağlamdaki yönergelerin uygulanmayacağını söyler. | ZG | Yüklenen bir belge "önceki talimatları yok say" içerebilir | – | Prompt kurucu testi: ayraçlar ve talimat sırası; ayraç taklidi içeren pasaj kaçışlanır | Yeni prompt şablonunda |
 | 3.2 | Model çıktısı hiçbir yerde **çalıştırılmaz**: araç çağrısı, SQL, URL getirme, dosya erişimi yok. Cevap düz metin olarak döner. | ZG | Injection'ın etkisini cevap metniyle sınırlamak | Araç çağrısı eklenecekse ayrı ADR ve tehdit modeli | ArchUnit: `qa` modülünde tool/function callback kullanımı yok | Araç kullanımı istenirse |
 | 3.3 | Atıflar **sunucuda** üretilir. Model yalnız `[n]` işaretleri kullanır; işaretler, o istekte gerçekten getirilmiş pasajlara (belge id + sayfa) eşlenir. Getirilmemiş kaynağa işaret eden ya da var olmayan numara atılır. | ZG | Uydurma atıf, ürünün güvenilirlik iddiasını bozar | – | Birim testi: geçersiz `[9]` atılır; her atıf getirilen bir chunk'a eşleşir | – |
-| 3.4 | En iyi pasajın benzerliği eşiğin altındaysa chat modeli çağrılmaz; sabit "belgelerde bulunamadı" cevabı döner. | VT | Uydurma ve gereksiz maliyeti önlemek | Eşik değeri BA | Retrieval testi: alakasız soru, model çağrılmadan bulunamadı cevabı | Eval sonuçlarına göre (bölüm 7) |
+| 3.4 | Getirilen pasajlar soruyu cevaplayamıyorsa chat modeli çağrılmaz; sabit "belgelerde bulunamadı" cevabı döner. Karar en benzer pasajın **cosine** benzerliğine bakar (ADR-0022: eşik ya da daha alçak eşik + soruya özgü bir terim), hibrit aramanın füzyon skoruna bakmaz. | VT | Uydurma ve gereksiz maliyeti önlemek | Eşik değerleri BA (`verso.qa.min-similarity`, `lexical-min-similarity`, `specific-term-max-share`, `passage-min-similarity`) | `AnswerabilityGateTest`; retrieval testi: alakasız soru, model çağrılmadan bulunamadı cevabı; `RetrievalEvalTest` korumaları | Eval sonuçlarına göre (bölüm 7) |
 | 3.5 | Soru uzunluğu, `top-k`, pasaj başına karakter ve cevap token sınırı yapılandırmayla sınırlıdır. | BA | Kaynak tüketimi ve prompt şişmesi | – | Validation testi (400) ve config testi | Ölçümle |
 
 ## 4. Sahiplik ve erişim
@@ -103,5 +103,11 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
   - Uçtan uca, GPU'da: atıf isabeti 0,866, doğru bilgi 0,848, "bulunamadı" 0,536.
   - 5 kısa kısaltma sorusu 0,50 eşiğinin altında kalıyor; bu açık hata olarak `eval/README.md` "Eşikler ve karar" altında yazılı.
   - Kanıt: `docs/evidence/eval-v2-dogrulama.md`.
+- 7.1, hibrit arama ve cevaplanabilirlik kapısı (ADR-0022, 2026-10-24):
+  - Retrieval: recall@1 0,795, recall@5 0,982, MRR 0,877. Kapı cevaplanabilir 112/112 soruyu modele gönderir, cevaplanamaz 7/28'i durdurur.
+  - Uçtan uca, GPU'da, aynı develop tabanına karşı: atıf isabeti 0,866 → 0,911, doğru bilgi 0,839 → 0,884, "bulunamadı" 0,536 → 0,607.
+  - Başlık yolu ve belge adı ön eki ölçüldü ve bırakıldı.
+  - 4.1 sözcüksel liste ve terim sayımı için de doğrulandı (`RetrievalTest`: başka hesabın aynı terimi ne döner ne sayılır).
+  - Kanıt: `docs/evidence/hibrit-arama-dogrulama.md`.
 - ADR-0023 (konuşma geçmişi): soru ve cevap artık `qa` şemasında saklama süresi kadar tutulur; pasaj metni saklanmaz, yalnız atıf referansı (belge, sayfa). 2.1 geçmiş ve puanlama yollarında (yazma hatası dahil) `ConversationApiTest`, yönetici metriklerinde `UnansweredQuestionsTest` ile doğrulandı (işaretli soru, cevap ve başlık hiçbir log olayında yok). Geçmiş prompt'a girmez (`ConversationApiTest`: devam sorusunun prompt'unda önceki soru yok); girdiğinde bu dosyaya kural ve `verso-llm-review` gerekir.
 - Doğrulaması henüz yazılmamış kurallar: 9.1 (faz 9).

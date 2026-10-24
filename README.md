@@ -196,16 +196,17 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 
 | Ölçüm | Sonuç | Kaynak |
 |---|---|---|
-| Retrieval: doğru sayfa ilk 5 pasajda (sürüm 2, 112 soru) | 0,955 (ilk sırada 0,804, MRR 0,869) | `eval/results/retrieval.json` |
-| Cevapta doğru belge ve sayfaya atıf (sürüm 2, GPU) | 0,866 | `eval/results/e2e-gemma4_e2b-gpu.json` |
-| Cevapta beklenen bilgi (sürüm 2, GPU) | 0,848 | aynı |
-| Belgelerde olmayan soruya "bulunamadı" (sürüm 2, 28 soru) | 0,536: eşik 6/6, model 9/22. Modelin "yanlış" 13 cevabından 5'i, kendi cümlesiyle yazılmış doğru bir ret | aynı |
-| Cevap süresi (sürüm 2, GPU) | p50 1,4 sn, p95 3,1 sn | aynı |
+| Retrieval: doğru sayfa ilk 5 pasajda (sürüm 2, 112 soru; hibrit arama, ADR-0022) | 0,982 (ilk sırada 0,795, MRR 0,877) | `eval/results/retrieval.json` |
+| Cevaplanabilirlik kapısı (sürüm 2) | cevaplanabilir 112/112 modele gider, cevaplanamaz 7/28 modelsiz "bulunamadı" alır | aynı |
+| Cevapta doğru belge ve sayfaya atıf (sürüm 2, GPU) | 0,911 | `eval/results/e2e-gemma4_e2b-gpu.json` |
+| Cevapta beklenen bilgi (sürüm 2, GPU) | 0,884 | aynı |
+| Belgelerde olmayan soruya "bulunamadı" (sürüm 2, 28 soru) | 0,607: kapı 7/7, model 10/21. Konusu belgede olan sorular en zayıf yer | aynı |
+| Cevap süresi (sürüm 2, GPU) | p50 1,5 sn, p95 3,3 sn | aynı |
 | Cevap süresi (CPU, 2 çekirdek; sürüm 1, 33 soru) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | `eval/results/e2e-gemma4_e2b.json` |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
 | Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır) | `docs/capacity.md` |
 
-Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 belge yönetmelik, yeni 5 belge şirket sistemlerinin kılavuzu. Hâlâ küçüktür; eşik ilk 33 soruyla ayarlanmıştı. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
+Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 belge yönetmelik, yeni 5 belge şirket sistemlerinin kılavuzu. Hâlâ küçüktür; kapının eşikleri bu setle seçildi, belge grubuna göre çapraz doğrulaması ADR-0022'dedir. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
 
 ## Mimari
 
