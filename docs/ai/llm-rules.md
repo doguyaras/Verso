@@ -98,4 +98,9 @@ Model sağlayıcı anahtarları, gerçek belge örnekleri, kişisel veri içeren
   - `scripts/eval.mjs`, gemma4:e2b ile (review sonrası sıkı tanımlarla): atıf isabeti 1,00, sayfa düzeyinde atıf kesinliği 1,00, cevapta doğru bilgi 0,96, "bulunamadı" doğruluğu 0,875 (eşiğin durdurduğu 4/4, modelin karar verdiği 3/4; kaçan soruda model doğru bir reddi kendi cümlesiyle yazdı).
   - Sınırlar: set küçük, eşik aynı veriyle ayarlandı (`eval/README.md` "Sınırlar").
   - Sonuçlar `eval/results/` altında; komutlar `eval/README.md`'de.
+- 7.1, set sürüm 2 (2026-10-24): set 140 soruya (112 cevaplanabilir, 28 cevaplanamaz) ve 11 sentetik belgeye çıktı. Yeni belgeler şirket sistemlerini anlatır: WMS, ERP satın alma, BT runbook, müşteri desteği, depo İSG. Yeni taban:
+  - Retrieval: recall@1 0,804, recall@5 0,955, MRR 0,869.
+  - Uçtan uca, GPU'da: atıf isabeti 0,866, doğru bilgi 0,848, "bulunamadı" 0,536.
+  - 5 kısa kısaltma sorusu 0,50 eşiğinin altında kalıyor; bu açık hata olarak `eval/README.md` "Eşikler ve karar" altında yazılı.
+  - Kanıt: `docs/evidence/eval-v2-dogrulama.md`.
 - Doğrulaması henüz yazılmamış kurallar: 9.1 (faz 9).

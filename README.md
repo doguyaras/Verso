@@ -11,12 +11,12 @@ Verso answers questions about your own documents (PDF, Word, TXT, Markdown) in T
   - Retrieval with the ownership filter inside the vector query.
   - No model call below a measured similarity threshold.
   - A fenced prompt, and citations mapped on the server.
-- **Turkish eval set** (33 questions, synthetic documents), gemma4:e2b on CPU:
-  - retrieval recall@5 1.00;
-  - citation hit rate 1.00;
-  - correct fact in the answer 0.96;
-  - "not found" accuracy 0.875 (the threshold stopped 4 of 4, the model 3 of 4; the miss was a correct refusal in its own words);
-  - median answer time 21–28 s on CPU (two runs), 1.3 s on an NVIDIA GPU (`deploy/compose.gpu.yaml`) with the same scores.
+- **Turkish eval set** (version 2: 140 questions on 11 synthetic documents, including manuals for a WMS, ERP purchasing, an IT runbook and a support process), gemma4:e2b on an NVIDIA GPU:
+  - retrieval recall@5 0.955, recall@1 0.804, MRR 0.869 (bge-m3);
+  - citation hit rate 0.866;
+  - correct fact in the answer 0.848;
+  - "not found" accuracy 0.536 (the threshold stopped 6 of 28, the model got 9 of the other 22 right). Questions whose topic is in the documents but whose answer is not are the weakest case;
+  - median answer time 1.4 s on the GPU (`deploy/compose.gpu.yaml`). On CPU the median was 21–28 s (version 1 set, two runs).
 - **Engineering:**
   - A modular monolith with machine-checked architecture rules.
   - About 400 Java tests (the database ones on a real PostgreSQL) plus Node suites for the scripts, hooks and panel, and about 230 mutation checks that prove the tests catch what they claim to.
@@ -54,7 +54,7 @@ docker compose up -d --build --wait
 bash scripts/demo.sh
 ```
 
-Demo, `samples/` altındaki sentetik belgeleri (kurgusal bir şirketin altı yönetmeliği) yükler. Ardından dört soru sorar: üçünün cevabı belgelerdedir, biri belgelerde yoktur. Her cevabın kaynakları ve modu gösterilir. Gerçek bir koşudan (2026-10-03, CPU):
+Demo, `samples/` altındaki sentetik belgeleri yükler: kurgusal bir şirketin altı yönetmeliği ve sistemlerinin beş teknik kılavuzu. Ardından dört soru sorar: üçünün cevabı belgelerdedir, biri belgelerde yoktur. Her cevabın kaynakları ve modu gösterilir. Gerçek bir koşudan (2026-10-03, CPU):
 
 ```text
 Soru: Şirket laptopu kaybolursa ne kadar süre içinde bildirmem gerekir?
@@ -73,7 +73,7 @@ CPU'da bir cevap 20–60 sn sürer. NVIDIA GPU'lu bir makinede Ollama'yı GPU il
 docker compose -f compose.yaml -f deploy/compose.gpu.yaml up -d --build --wait
 ```
 
-Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde bu tür hata oranı %4'tür. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
+Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde (sürüm 2, GPU) doğru sayfaya atıf yapılan 97 cevabın 3'ünde bilgi yanlış ya da eksikti. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
 ## Panel
 
@@ -166,15 +166,16 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 
 | Ölçüm | Sonuç | Kaynak |
 |---|---|---|
-| Retrieval: doğru sayfa ilk 5 pasajda | 1,00 (ilk sırada 0,88) | `eval/results/retrieval.json` |
-| Cevapta doğru belge ve sayfaya atıf | 1,00 | `eval/results/e2e-gemma4_e2b.json` |
-| Cevapta beklenen bilgi | 0,96 | aynı |
-| Belgelerde olmayan soruya "bulunamadı" | 0,875: eşik 4/4, model 3/4 (kaçan soruda model doğru reddi kendi cümlesiyle yazdı) | aynı |
-| Cevap süresi (CPU, 2 çekirdek) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | aynı |
+| Retrieval: doğru sayfa ilk 5 pasajda (sürüm 2, 112 soru) | 0,955 (ilk sırada 0,804, MRR 0,869) | `eval/results/retrieval.json` |
+| Cevapta doğru belge ve sayfaya atıf (sürüm 2, GPU) | 0,866 | `eval/results/e2e-gemma4_e2b-gpu.json` |
+| Cevapta beklenen bilgi (sürüm 2, GPU) | 0,848 | aynı |
+| Belgelerde olmayan soruya "bulunamadı" (sürüm 2, 28 soru) | 0,536: eşik 6/6, model 9/22. Modelin "yanlış" 13 cevabından 5'i, kendi cümlesiyle yazılmış doğru bir ret | aynı |
+| Cevap süresi (sürüm 2, GPU) | p50 1,4 sn, p95 3,1 sn | aynı |
+| Cevap süresi (CPU, 2 çekirdek; sürüm 1, 33 soru) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | `eval/results/e2e-gemma4_e2b.json` |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
 | Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır) | `docs/capacity.md` |
 
-Set küçüktür (33 soru, 6 sentetik belge) ve eşik aynı veriyle ayarlanmıştır. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
+Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 belge yönetmelik, yeni 5 belge şirket sistemlerinin kılavuzu. Hâlâ küçüktür; eşik ilk 33 soruyla ayarlanmıştı. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
 
 ## Mimari
 
