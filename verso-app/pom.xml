@@ -42,6 +42,11 @@
       <groupId>com.verso</groupId>
       <artifactId>audit-core</artifactId>
     </dependency>
+    <!-- KVKK data-subject requests and answer redaction (ADR-0034): no schema of its own, only the other modules' apis. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>privacy-core</artifactId>
+    </dependency>
     <!-- /actuator/prometheus for the observability stack (ADR-0014; reference 8.7). Version from the Boot BOM. -->
     <dependency>
       <groupId>io.micrometer</groupId>

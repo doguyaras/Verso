@@ -24,6 +24,8 @@ docker compose --profile obs up -d --wait
 - **page:** kullanıcıyı etkiler, hemen bakılır.
 - **ticket:** bir sonraki iş günü bakılır.
 
+**Alarmsız, talep üzerine iş:** [KVKK ilgili kişi başvurusu](kvkk-basvurusu.md): erişim (dışa aktarım), silme, silinen belgeden alıntı yapan cevapları karartma; 30 günlük yanıt süresi (ADR-0034).
+
 **Alarmsız, periyodik iş:** [aylık güvenlik taraması](aylik-guvenlik-taramasi.md): `supply-chain-scan` iş akışı kırmızıysa (CRITICAL ya da düzeltmesi olan HIGH bulgu, süresi dolmuş istisna) bakılacak yer burasıdır (ADR-0030).
 
 **Bildirim kanalı:** henüz bağlı değil. `deploy/obs/alertmanager/alertmanager.yml` içindeki `default` alıcısına bir kanal eklenmeden (Slack, Telegram, e-posta ya da webhook) alarmlar yalnız Grafana ve Alertmanager arayüzlerinde görünür. Kanalın adresi ya da token'ı `/run/secrets` altından `*_file` ayarıyla okunur, YAML'a yazılmaz.

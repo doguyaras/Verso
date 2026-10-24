@@ -149,6 +149,48 @@ class QaSchemaRolesTest {
         assertThat(noSecret.getStderr()).contains("missing, empty or unreadable");
     }
 
+    /**
+     * ADR-0034: svc_qa still has no UPDATE on qa.turn; the redaction function is the only way to change an answer, it
+     * writes only the fixed notice, is bounded, and refuses every login but svc_qa (as audit.purge_expired does).
+     */
+    @Test
+    void redactionFunction_whenCalled_isNarrowAndWritesOnlyTheNotice() throws SQLException {
+        com.verso.support.QaTables.reset();
+        assertThat(privilege("qa.turn", "UPDATE")).isFalse();
+        java.util.UUID document = java.util.UUID.randomUUID();
+        com.verso.support.QaTables.update("insert into qa.conversation (id, account_id, title) values "
+                + "('00000000-0000-7000-8000-0000000000c1', 'acct-redact', 't')");
+        com.verso.support.QaTables.update("insert into qa.turn (id, conversation_id, account_id, question, question_hash, "
+                + "answer, outcome, mode, chat_model, retrieval_ms, chat_ms, total_ms, day) values "
+                + "('00000000-0000-7000-8000-0000000000d1', '00000000-0000-7000-8000-0000000000c1', 'acct-redact', 'q', "
+                + "decode(repeat('ab', 32), 'hex'), 'quoted personal data [1]', 'ANSWERED', 'local', 'm', 0, 0, 0, current_date)");
+        com.verso.support.QaTables.update("insert into qa.turn_citation (turn_id, citation_number, document_id, page, unit) "
+                + "values ('00000000-0000-7000-8000-0000000000d1', 1, ?, 1, 'PAGE')", document);
+        String call = "select qa.redact_answers_citing(array['" + document + "']::uuid[], 100)";
+        try (Connection app = connect("svc_qa", "SECRET_DB_QA_PASSWORD"); Statement st = app.createStatement()) {
+            assertThatThrownBy(() -> st.executeUpdate("update qa.turn set answer = 'x'"))
+                    .satisfies(e -> assertThat(sqlState(e)).isEqualTo("42501"));
+            assertThatThrownBy(() -> st.executeQuery("select qa.redact_answers_citing(array[]::uuid[], 100)"))
+                    .as("no ids").satisfies(e -> assertThat(sqlState(e)).isEqualTo("22023"));
+            assertThatThrownBy(() -> st.executeQuery("select qa.redact_answers_citing(array['" + document + "']::uuid[], 1001)"))
+                    .as("batch too large").satisfies(e -> assertThat(sqlState(e)).isEqualTo("22023"));
+        }
+        for (String[] other : new String[][]{{"svc_qa_migrate", "SECRET_DB_QA_MIGRATE_PASSWORD"},
+                {"verso_backup", "SECRET_DB_BACKUP_PASSWORD"}, {"svc_document", "SECRET_DB_DOCUMENT_PASSWORD"}}) {
+            try (Connection login = connect(other[0], other[1]); Statement st = login.createStatement()) {
+                assertThatThrownBy(() -> st.executeQuery(call)).as(other[0])
+                        .satisfies(e -> assertThat(sqlState(e)).isEqualTo("42501"));
+            }
+        }
+        try (Connection app = connect("svc_qa", "SECRET_DB_QA_PASSWORD"); Statement st = app.createStatement()) {
+            assertThat(single(st, call)).isEqualTo("1");
+            assertThat(single(st, call)).as("idempotent").isEqualTo("0");
+            assertThat(single(st, "select answer from qa.turn where id = '00000000-0000-7000-8000-0000000000d1'"))
+                    .isEqualTo(com.verso.qa.api.QaSubjects.REDACTED_ANSWER);
+        }
+        com.verso.support.QaTables.reset();
+    }
+
     /** Asked as the superuser: svc_document cannot even resolve a name in "qa", which is the point. */
     private static boolean privilege(String table, String privilege) {
         return com.verso.support.QaTables.count("select has_table_privilege('svc_qa', ?, ?)::int", table, privilege) == 1;

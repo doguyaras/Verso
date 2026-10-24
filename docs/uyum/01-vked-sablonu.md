@@ -38,15 +38,16 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 
 | Veri | Tablo / yer | Ne kadar kalır | Silme yolu |
 |---|---|---|---|
-| Yüklenen orijinal dosya | `document.document_file` | Kullanıcı silene kadar; zamana bağlı otomatik silme **yok** | `DELETE /v1/documents/{id}` |
+| Yüklenen orijinal dosya | `document.document_file` | Kullanıcı silene kadar; zamana bağlı otomatik silme **yok** | `DELETE /v1/documents/{id}`; kişinin başvurusunda `DELETE /v1/admin/subjects/{sub}` (kişisel belgeler, ADR-0034) |
 | Belge metni (sayfa) ve dosya adı | `document.document_page`, `document.document` (`file_name`) | Aynı | Aynı `DELETE` (`ON DELETE CASCADE`) |
-| Parçalar (chunk) ve embedding vektörleri | `document.document_chunk` | Aynı | Aynı `DELETE` (llm-rules 4.2) |
-| Soru, cevap, konuşma başlığı | `qa.turn`, `qa.conversation` | Konuşmanın **başlangıcından** `VERSO_HISTORY_RETENTION_DAYS` gün (varsayılan **90**, aralık 1-3650) ya da kullanıcı silene kadar | `DELETE /v1/conversations/{id}`, `DELETE /v1/conversations`; süre dolunca saatlik iş (`HistoryRetentionJob`) |
+| Parçalar (chunk), embedding vektörleri ve tam metin indeksi | `document.document_chunk` (`embedding`, `search_vector`) | Aynı | Aynı `DELETE` (llm-rules 4.2) |
+| Belge okuyucu listesi | `document.document_principal` | Aynı | Aynı `DELETE`. Bütün şemalarda belgeye bağlı satır kalmadığı testlidir; yalnız aşağıdaki atıf referansı, anonim sayaç ve denetim satırı kimliği bilerek kalır (`SubjectRequestApiTest`, ADR-0034) |
+| Soru, cevap, konuşma başlığı | `qa.turn`, `qa.conversation` | Konuşmanın **başlangıcından** `VERSO_HISTORY_RETENTION_DAYS` gün (varsayılan **90**, aralık 1-3650) ya da kullanıcı silene kadar | `DELETE /v1/conversations/{id}`, `DELETE /v1/conversations`; kişinin başvurusunda `DELETE /v1/admin/subjects/{sub}`; süre dolunca saatlik iş (`HistoryRetentionJob`) |
 | Atıf referansı (belge kimliği, sayfa) | `qa.turn_citation` | Turla birlikte. **Pasaj metni saklanmaz** | Turla birlikte |
 | Cevap puanı ve gerekçesi | `qa.turn_feedback` | Turla birlikte | Turla birlikte |
-| Hesap × gün satırı (aktif kullanıcı sayımı için) | `qa.active_account_day` | Geçmişle aynı süre | Geçmişle birlikte; "tümünü sil" ile hemen |
+| Hesap × gün satırı (aktif kullanıcı sayımı için) | `qa.active_account_day` | Geçmişle aynı süre | Geçmişle birlikte; "tümünü sil" ve kişi başvurusuyla hemen |
 | Günlük sayaçlar (soru sayısı, sonuç türü oranları, süre kovaları, geri bildirim) | `qa.usage_daily*` | Süresiz; hesap kimliği ve metin **yok** | Silinmez (anonim) |
-| Denetim kaydı: token `sub`, rol (`verso-admin`/`verso-user`), eylem, hedef kimlikleri, zaman, trace id, mod, model kimliği | `audit.event` | `VERSO_AUDIT_RETENTION_DAYS` gün (varsayılan **365**, aralık 30-3650) | Altı saatte bir çalışan iş, yalnız `audit.purge_expired` ile. Kullanıcının "geçmişimi sil" işlemi denetim satırlarını silmez (içerik yoktur) |
+| Denetim kaydı: token `sub`, rol (`verso-admin`/`verso-user`), eylem, hedef kimlikleri, zaman, trace id, mod, model kimliği | `audit.event` | `VERSO_AUDIT_RETENTION_DAYS` gün (varsayılan **365**, aralık 30-3650) | Altı saatte bir çalışan iş, yalnız `audit.purge_expired` ile. Kullanıcının "geçmişimi sil" işlemi ve kişi başvurusu denetim satırlarını silmez (içerik yoktur; başvurunun kendisi yeni satır olarak yazılır, ADR-0034) |
 | Yedekler | Şifreli yedek | `BACKUP_RETENTION_DAYS` (varsayılan **7**) gün daha; geri yüklemede süresi dolan satırlar bir sonraki çalışmada yeniden silinir | Yedek rotasyonu |
 | Uygulama / gözlem günlükleri | Loki, uygulama logu | Loki'de 168 saat (7 gün, `deploy/obs/loki/loki.yml`); içerik **yok** (aşağıda) | Loki saklama süresi |
 | Tarayıcı | `sessionStorage` | Yalnız tercihler (tema, dil, menü, bildirimin görüldüğü); soru/cevap/token **yok**; sekme kapanınca gider | Sekmeyi kapatmak |
@@ -58,8 +59,9 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 ### 3.1 Açık noktalar (kurumun bilmesi gerekenler)
 
 - **Belgelere zaman bazlı imha yoktur.** Belgeler kullanıcı silene kadar kalır. Kurumun saklama politikası belge için süre öngörüyorsa bu süreç kurumda işletilir: {{BELGE_IMHA_SURECI}}.
-- **Hesap silme akışı yoktur** (ADR-0011, ADR-0023). IdP'de silinen kullanıcının *geçmişi* süre dolunca kendiliğinden silinir; *belgeleri* silinmez. Ayrılan çalışanın belgeleri için kurum süreci: {{AYRILAN_CALISAN_SURECI}}.
-- **Silinen belge, kalan cevap.** Belge silinince geçmişteki atıf "silinmiş" diye işaretlenir; o belgeden alıntı yapan cevap metni, saklama süresi dolana ya da kullanıcı silene kadar turda kalır (ADR-0023 bölüm 7).
+- **Kişi başvurusu yönetici ucuyla yürür** (ADR-0034). `verso-admin`, kişinin hesap kimliğiyle (`sub`) ne tutulduğunu görür (`GET /v1/admin/subjects/{sub}`), JSON olarak dışa aktarır (`GET /v1/admin/subjects/{sub}/export`) ve siler (`DELETE /v1/admin/subjects/{sub}`, gövdede onay): geçmiş, puanlar, hesap × gün satırları ve kişisel belgeler bütün türevleriyle gider. Kişinin **bilgi alanlarına** yüklediği belgeler kurumundur: silinmez, raporlanır; yönetici tek tek karar verir. IdP'deki hesap Verso'nun dışındadır; önce orada kapatılır. Adımlar: `docs/runbooks/kvkk-basvurusu.md`. Ayrılan çalışanın bilgi alanı belgeleri için kurum süreci: {{AYRILAN_CALISAN_SURECI}}.
+- **Silinen belge, kalan cevap.** Belge silinince geçmişteki atıf "silinmiş" diye işaretlenir; o belgeden alıntı yapan cevap metni varsayılan olarak, saklama süresi dolana ya da kullanıcı silene kadar turda kalır (ADR-0023 bölüm 7). Belge kişisel veri içeriyorduysa yönetici `POST /v1/admin/documents/{id}/answer-redaction` ile bu cevapları bütün hesaplarda sabit bir notla değiştirir; soru, atıf ve sayaçlar kalır, işlem geri alınamaz (ADR-0034). Karartma kararını kim verir: {{CEVAP_KARARTMA_KARARI}}.
+- **Belge metninde kişi adıyla arama yoktur** (ADR-0034 bölüm 7). Kişi yalnız hesap kimliğiyle bulunur. Başkasının belgesinde adı geçen kişinin başvurusunda kurum, belgeyi tanıyan birimle ilgili belgeleri belirler; yönetici siler ve cevapları karartır (runbook).
 - **Denetim kaydındaki `sub` kişisel veridir:** IdP'de bir kişiye bağlanabilir; bu yüzden saklama süresi vardır ve dışa aktarım yalnız `verso-admin`'edir (ADR-0026).
 - **Veritabanı yöneticisi** (kurum BT'si) teknik olarak tabloları okuyabilir; bu uygulama katmanının koruması değildir. Erişim {{DB_ERISIM_POLITIKASI}} ile sınırlanır.
 
@@ -99,11 +101,15 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 | Erişim: kendi soru ve cevapları | Panelde "Geçmiş"; `GET /v1/conversations`, `GET /v1/conversations/{id}` |
 | Erişim: kendi belgeleri | Panelde "Belgeler"; `GET /v1/documents` (kişisel belgeler ve okuyabildiği bilgi alanlarının belgeleri) |
 | Silme: geçmiş | `DELETE /v1/conversations/{id}` ya da `DELETE /v1/conversations` (turlar, atıflar, puanlar, hesap-gün satırı; anonim sayaçlar kalır) |
-| Silme: belge | `DELETE /v1/documents/{id}` (dosya, sayfalar, parçalar, vektörler) |
-| Denetim kaydındaki satırlar | Silinmez; veri güvenliği ve hesap verilebilirlik amacıyla süre sonuna kadar tutulur (ADR-0026). Aydınlatma metni bunu söyler |
-| Düzeltme / itiraz / taşınabilirlik | Verso'da özel bir uç yoktur; cevabı Markdown olarak indirme vardır (panel). Kurum başvuru sürecini işletir: {{BASVURU_SURECI}} |
+| Silme: belge | `DELETE /v1/documents/{id}` (dosya, sayfalar, parçalar, vektörler, okuyucu satırları) |
+| Erişim (başvuru, yönetici eliyle): kişi hakkında tutulan her şey | `GET /v1/admin/subjects/{sub}` (özet) ve `GET /v1/admin/subjects/{sub}/export` (tek JSON: konuşmalar, turlar, atıf referansları, puanlar, belge adları ve durumları, kişinin aktör olduğu denetim satırlarının kimlikleri; `no-store`, sınırlı) |
+| Silme (başvuru, yönetici eliyle) | `DELETE /v1/admin/subjects/{sub}` (geçmiş, puanlar, hesap × gün satırları, kişisel belgeler türevleriyle; bilgi alanı belgeleri ve denetim satırları kalır ve raporlanır; tekrarlanabilir) |
+| Silinen belgeden alıntı yapan cevaplar | `POST /v1/admin/documents/{id}/answer-redaction` (sabit not; geri alınamaz) |
+| Denetim kaydındaki satırlar | Silinmez; veri güvenliği ve hesap verilebilirlik amacıyla süre sonuna kadar tutulur (ADR-0026). Başvurunun ele alındığı da kaydedilir (ADR-0034). Dayanak (KVKK md. 5/2-ç hukuki yükümlülük, md. 5/2-f meşru menfaat) kurum hukuk birimi teyit etmeli. Aydınlatma metni bunu söyler |
+| Düzeltme / itiraz | Verso'da özel bir uç yoktur. Kurum başvuru sürecini işletir: {{BASVURU_SURECI}} |
+| Taşınabilirlik | Yönetici dışa aktarımı (JSON); kullanıcı panelde cevabı Markdown olarak indirir |
 
-Başvuru yanıt süresi (kanunda 30 gün) **[repo: `security-rules.md` bölüm 5: "KVKK 30 gün"]**; maddesi kurum hukuk birimi teyit etmeli.
+Başvuru yanıt süresi (kanunda 30 gün, KVKK md. 13) **[repo: `security-rules.md` bölüm 5: "KVKK 30 gün"]**; maddesi kurum hukuk birimi teyit etmeli. İşletim adımları: `docs/runbooks/kvkk-basvurusu.md`.
 
 ## 7. Gereklilik, orantılılık, azaltma
 
@@ -132,7 +138,7 @@ Olasılık ve etki: {{DUSUK_ORTA_YUKSEK}} ile doldurulur. "Verso'daki önlem" s�
 | R8 | Denetim kaydında kişisel veri birikmesi | Yalnız kimlik ve sabit sözcük; 365 gün (ayarlı); silme yalnız `audit.purge_expired` | `sub` kişiye bağlanabilir | Süreyi gerekçelendir; IdP'de `sub` opak tutulur | {{R8}} |
 | R9 | Kayıtların kurcalanması | `svc_audit` yalnız INSERT/SELECT; silme fonksiyonu 30 günden yeni kaydı reddeder | Tablo sahibi ve süper kullanıcı değiştirebilir; WORM değildir (ADR-0026) | Dış arşiv / DB erişim ayrımı | {{R9}} |
 | R10 | Model sunucusuna yetkisiz erişim (Ollama kimlik doğrulamasız) | Ollama'nın host portu yok, yalnız `internal` ağ | Ağ yapılandırması bozulursa açılır | Kurulumda ağ ve güvenlik duvarı denetimi; Ollama'ya host portu eklenmez | {{R10}} |
-| R11 | Silinen kişinin/belgenin izleri | Belge silme türevleri siler; kullanıcı geçmişini siler | Belge imha süresi yok; ayrılan çalışanın belgeleri kalır; silinen belgeden alıntı yapan cevap kalır; yedek +7 gün | Bölüm 3.1 süreçleri | {{R11}} |
+| R11 | Silinen kişinin/belgenin izleri | Belge silme türevleri siler (bütün şemalarda testli); kullanıcı geçmişini siler; yönetici kişi başvurusuyla geçmişi ve kişisel belgeleri siler, silinen belgeden alıntı yapan cevapları karartır (ADR-0034) | Belge imha süresi yok; bilgi alanı belgeleri ve denetim satırları başvuruda kalır; belge metninde adla arama yok; karartma yöneticinin kararına bağlı; yedek +7 gün | Bölüm 3.1 süreçleri; `docs/runbooks/kvkk-basvurusu.md` | {{R11}} |
 | R12 | Gözlem yığınından sızıntı | Loglarda içerik yok; Loki 7 gün; Grafana dış paylaşım kapalı | Yanlış yapılandırma | Gözlem yığınına erişim kısıtlı | {{R12}} |
 | R13 | Modelin kurum dışına bilgi sızdırması (egress) | `local` modda ağ, istemci ve açılış kontrolü; kanıt betiği | Host düzeyi ayarlar kapsam dışı | [05](05-egress-kaniti.md) kontrolleri; kurum güvenlik duvarı | {{R13}} |
 

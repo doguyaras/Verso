@@ -1,6 +1,7 @@
 package com.verso.audit.repository;
 
 import com.verso.audit.api.dto.AuditEntryResponse;
+import com.verso.audit.api.dto.AuditSubjectEvent;
 import com.verso.audit.api.enums.AuditAction;
 import com.verso.audit.api.enums.AuditOutcome;
 import com.verso.audit.api.enums.AuditTargetType;
@@ -109,6 +110,24 @@ public class AuditEventRepository {
     public int purgeExpired(Instant cutoff, int limit) {
         return db.jdbc().sql("SELECT audit.purge_expired(CAST(:cutoff AS timestamptz), :limit)")
                 .param("cutoff", ts(cutoff)).param("limit", limit).query(Integer.class).single();
+    }
+
+    /** Rows naming {@code sub} as the actor (ADR-0034; index idx_event_actor_occurred, V2). */
+    public long countByActor(String sub) {
+        return db.jdbc().sql("SELECT count(*) FROM audit.event WHERE actor_sub = :sub")
+                .param("sub", sub).query(Long.class).single();
+    }
+
+    /** Oldest first, {@code limit} rows of {@code sub} as the actor after {@code after} (keyset). Ids and words only. */
+    public List<AuditSubjectEvent> byActor(String sub, Cursor after, int limit) {
+        String sql = "SELECT id, occurred_at, action, outcome, target_type, target_id FROM audit.event "
+                + "WHERE actor_sub = :sub" + (after == null ? "" : " AND (occurred_at, id) > (:afterAt, :afterId)")
+                + " ORDER BY occurred_at, id LIMIT :limit";
+        JdbcClient.StatementSpec spec = db.jdbc().sql(sql).param("sub", sub).param("limit", limit);
+        if (after != null) spec = spec.param("afterAt", ts(after.occurredAt())).param("afterId", after.id());
+        return spec.query((rs, row) -> new AuditSubjectEvent(rs.getObject("id", UUID.class),
+                rs.getTimestamp("occurred_at").toInstant(), rs.getString("action"), rs.getString("outcome"),
+                rs.getString("target_type"), rs.getObject("target_id", UUID.class))).list();
     }
 
     private static String actionClause(AuditAction action) {

@@ -35,6 +35,7 @@ Kurumlar yapay zekâ ile belgelerine soru sormak istiyor, ama belgeleri, sorular
 - Her hesap kendi belgelerini ve kendisine açılmış **bilgi alanlarının** belgelerini görür. Bilgi alanını yönetici açar ve kurumun kimlik sağlayıcısındaki gruplara (Keycloak'ta grup yolu, Entra'da grup kimliği) ya da tek kullanıcılara verir. Yetki her soruda token'daki gruplarla, arama sorgusunun içinde ve sıralamadan önce uygulanır; grup claim'i bozuksa grup yok sayılır. Yönetici alanları yönetir ama içeriğini sormak için kendisine de erişim verilmesi gerekir (ADR-0028).
 - Sorular ve cevaplar kullanıcının geçmişinde kaynak referanslarıyla durur; kullanıcı cevabı 👍/👎 ile puanlar, geçmişini silebilir. Geçmiş kurumun belirlediği süre kadar (varsayılan 90 gün) tutulur. Yönetici kullanım ve kalite sayılarını tek uçtan alır (ADR-0023).
 - Değiştirilemez denetim kaydı: belge yükleme/silme, soru, geri bildirim, konuşma silme, yönetici metrik görüntüleme, denetim dışa aktarımı ve yönetici uçlarındaki 403'ler `audit` şemasına yalnız kimlik (id) ve sabit sözcüklerle yazılır; soru, cevap, dosya adı, IP ve serbest metin hiç girmez. Uygulama rolü yalnız INSERT ve SELECT yapabilir; varsayılan saklama 365 gün. Yönetici `GET /v1/admin/audit` ile okur, `GET /v1/admin/audit/export` ile CSV alır (ADR-0026).
+- KVKK ilgili kişi başvurusu (md. 11): yönetici bir kişinin hesap kimliğiyle Verso'da tutulanı görür (`GET /v1/admin/subjects/{sub}`), tek JSON dosyası olarak dışa aktarır (`/export`) ve siler (`DELETE`, gövdede onay). Geçmiş, puanlar ve kişisel belgeler bütün türevleriyle gider; ortak bilgi alanına yüklenen belgeler ve denetim satırları kalır ve raporlanır. Silinmiş bir belgeden alıntı yapan cevaplar istenirse sabit bir notla değiştirilir. Belge silmenin hiçbir şemada iz bırakmadığı testlidir (ADR-0034, `docs/runbooks/kvkk-basvurusu.md`).
 
 ## Hızlı başlangıç
 
@@ -189,7 +190,7 @@ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d
 
 Windows'ta (Git Bash) yerel `curl.exe`, argümandaki Türkçe harfleri bozar; gövdeyi UTF-8 bir dosyadan verin: `--data-binary @soru.json` (`scripts/demo.sh` böyle yapar).
 
-Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md), [`docs/api-conversations-integration-v1.md`](docs/api-conversations-integration-v1.md) (geçmiş, geri bildirim, yönetici metrikleri), [`docs/api-audit-integration-v1.md`](docs/api-audit-integration-v1.md) (denetim kaydı: sorgu ve CSV dışa aktarım).
+Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integration-v1.md), [`docs/api-questions-integration-v1.md`](docs/api-questions-integration-v1.md), [`docs/api-conversations-integration-v1.md`](docs/api-conversations-integration-v1.md) (geçmiş, geri bildirim, yönetici metrikleri), [`docs/api-audit-integration-v1.md`](docs/api-audit-integration-v1.md) (denetim kaydı: sorgu ve CSV dışa aktarım), [`docs/api-subjects-integration-v1.md`](docs/api-subjects-integration-v1.md) (KVKK başvurusu: özet, dışa aktarım, silme, cevap karartma).
 
 ## Modlar ve KVKK md. 9
 
@@ -258,7 +259,7 @@ Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026) | document 10000–10999, qa 11000–11999, audit 12000–12999 | `VersoApp` |
+| verso-app | 8080 (API), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -269,6 +270,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 | document | 10000–10999 | belge yükleme, işleme, retrieval, bilgi alanları (10002–10004, 10040–10044; ADR-0028) |
 | qa | 11000–11999 | soru-cevap, model çağrısı |
 | audit | 12000–12999 | denetim kaydı sorgusu ve dışa aktarımı |
+| privacy | 13000–13999 | KVKK ilgili kişi başvurusu ve cevap karartma (ADR-0034) |
 | validation | 90000–90099 | ortak: bean validation, binding, 404/405/415, API sürümü |
 | security | 90100–90199 | ortak: kimlik ve yetki (faz 3) |
 | system | 99997–99999 | ortak: geçici olarak kullanılamıyor (503), upstream, beklenmeyen |

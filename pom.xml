@@ -20,6 +20,8 @@
     <module>services/audit/audit-core</module>
     <module>services/qa/qa-api</module>
     <module>services/qa/qa-core</module>
+    <module>services/privacy/privacy-api</module>
+    <module>services/privacy/privacy-core</module>
     <module>verso-app</module>
   </modules>
 
@@ -151,6 +153,16 @@
       <dependency>
         <groupId>com.verso</groupId>
         <artifactId>qa-core</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>privacy-api</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>privacy-core</artifactId>
         <version>${revision}</version>
       </dependency>
       <dependency>

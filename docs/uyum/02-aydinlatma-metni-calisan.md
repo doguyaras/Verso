@@ -48,7 +48,13 @@ Kendi başınıza şunları hemen yapabilirsiniz:
 
 - **Sorularınızı ve cevaplarınızı görmek:** menüden "Geçmiş".
 - **Bir konuşmayı ya da tüm geçmişinizi silmek:** "Geçmiş" ekranı (konuşmayı sil / tümünü sil).
-- **Belgenizi silmek:** "Belgeler" ekranı. Dosya, metni ve belgeden çıkarılan parçalar birlikte silinir. Bir belgeyi sildiğinizde, o belgeden alıntı yapan eski cevap metni, siz geçmişi silene ya da saklama süresi dolana kadar konuşmanızda kalır.
+- **Belgenizi silmek:** "Belgeler" ekranı. Dosya, metni ve belgeden çıkarılan parçalar birlikte silinir. Bir belgeyi sildiğinizde, o belgeden alıntı yapan eski cevap metni, siz geçmişi silene ya da saklama süresi dolana kadar konuşmanızda kalır; belge kişisel veri içeriyorsa yönetici bu cevapları "kaldırıldı" notuyla değiştirebilir.
+
+Başvurunuz üzerine yönetici şunları yapabilir:
+
+- **Hakkınızda tutulanların dökümü:** sorularınız ve cevaplarınız, puanlarınız, yüklediğiniz belgelerin adları ve durumları, kayıt defterinde sizin yaptığınız işlemlerin listesi (tek bir dosya halinde).
+- **Silme:** geçmişiniz, puanlarınız ve kişisel belgeleriniz (dosya, metin, parçalar) birlikte silinir. Ortak bilgi alanlarına yüklediğiniz belgeler kurumundur; onlar için kurum ayrıca karar verir. İşlem kaydı (kim, ne zaman, hangi işlem) silinmez, süresi dolunca silinir; başvurunuzun ele alındığı da bu kayda yazılır.
+- Belgelerin içinde adınızın geçip geçmediği otomatik aranamaz; böyle bir başvuruda kurum, belgeleri tanıyan birimle ilgili belgeleri belirler.
 - **Bir cevabı kaydetmek:** cevabın altındaki ".md indir" veya "Kopyala".
 
 Silinen veri, yedeklerde {{YEDEK_SAKLAMA_GUN}} gün daha kalabilir ve yedek geri yüklenirse süresi dolanlar yeniden silinir.

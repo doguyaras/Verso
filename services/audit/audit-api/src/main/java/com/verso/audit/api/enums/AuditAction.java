@@ -34,5 +34,13 @@ public enum AuditAction {
     /** A document moved between a personal space and a collection, or between collections. */
     DOCUMENT_MOVED,
     /** An admin endpoint answered 403 to an authenticated caller who lacks the role. */
-    ACCESS_DENIED
+    ACCESS_DENIED,
+    /** A verso-admin read what Verso holds about a data subject (KVKK md. 11, ADR-0034). */
+    SUBJECT_VIEWED,
+    /** A verso-admin exported a data subject's data (access request, ADR-0034). */
+    SUBJECT_EXPORTED,
+    /** A verso-admin deleted a data subject's history and personal documents (erasure request, ADR-0034). */
+    SUBJECT_DELETED,
+    /** A verso-admin replaced the answers that cited a deleted document with a fixed notice (ADR-0034). */
+    ANSWERS_REDACTED
 }
