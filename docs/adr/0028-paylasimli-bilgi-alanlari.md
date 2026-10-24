@@ -27,9 +27,10 @@
 | **B. Belge başına okuyucu listesi (`document_principal`), tek indeksli `EXISTS`** | Kişisel ve paylaşımlı belgeler için tek koşul; grant değişikliği yalnız küçük satırlar yazar | Grant, belge ve taşıma yazımları liste ile aynı transaction'da tutarlı tutulmalı | Orta |
 | C. Okuyucu listesi chunk'ta `text[]` + GIN (`c.principals && :p`) | Chunk düzeyinde indeks; küçük hesapta hızlı | Grant değişikliği bütün chunk'ları yeniden yazar (1024 boyutlu satır, HNSW girdisi); uygulama rolüne chunk `UPDATE` vermek gerekir | Yüksek |
 
-**Ölçüm (B ve C):** `docs/evidence/paylasimli-alanlar-dogrulama.md`. Ayrı bir PostgreSQL 18 + pgvector container'ında 110 bin chunk kullanıldı.
-- B, grup içeren her durumda C'den hızlı çıktı.
-- Grant değişikliği C'de 1 000 chunk için saniyeler sürdü (bütün koleksiyonlarda dakikalar). B'de 10–500 satır, milisaniyeler.
+**Ölçüm (B ve C):** `docs/evidence/paylasimli-alanlar-dogrulama.md`. Ayrı bir PostgreSQL 18 + pgvector container'ında 70 bin chunk kullanıldı.
+- 10 bin chunk'lık okuyucuda C hibrit cümlede p50'de 20–45 ms hızlı. 50 bin chunk'ta B hızlı ve kararlı: p99 341 ms, C'de 549–2 035 ms.
+- Grant değişikliği C'de 1 alan (1 000 chunk) için 6,4 sn sürdü. B'de 10–500 satır yazılır, 1,8–2,5 ms.
+- Tam retrieval veritabanı süresi (B): 10 bin chunk'ta p95 194–206 ms, 50 bin chunk'ta 442–493 ms.
 
 **Yönetici ve okuma:**
 
@@ -152,7 +153,7 @@
 - **Olumsuz / kabul edilen risk:**
   - **Gecikme:** erişim artık belge düzeyinde bir `EXISTS`'tir; chunk düzeyindeki hesap indeksi kullanılamaz.
     - Sözcüksel liste, yaygın sözcüklerde kurulumun bütün eşleşen chunk'larını tarayıp okuyucunun belgelerine süzer.
-    - Maliyet okuyucunun değil kurulumun büyüklüğüyle artar. Sentetik ölçüm (110 bin chunk) evidence dosyasında ve repo-context'tedir.
+    - Maliyet okuyucunun değil kurulumun büyüklüğüyle artar. Sentetik ölçüm (70 bin chunk) evidence dosyasında ve repo-context'tedir.
     - `lexical-candidates: 0` sözcüksel listeyi kapatır.
   - Yönetici paylaşımlı belgelerin adlarını ve metadatasını görür (yönetim için). İçeriği soru-cevapta yalnız erişim verilirse okur.
   - Grup yolu yeniden adlandırma erişimi düşürür (yukarıda). IdP üyelik değişikliği 300 sn gecikir.
