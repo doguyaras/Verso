@@ -172,7 +172,7 @@
   - **Sıcak yolda ek DB yazımı.** Uzak çağrı sayısı değişmedi (2), ama soru başına bir kısa `qa` transaction'ı eklendi; yazma hatası turn'ü kaybettirir, cevabı değil.
   - **p50/p95 yaklaşık:** kova üst sınırıdır.
   - **Admin, politika açıksa dosya adlarını görür** (sahibini görmez). Kişisel yüklemeler varsa adlar kişisel veri taşıyabilir; bu yüzden varsayılan kapalıdır.
-  - **Panel bu dalda değişmedi.** Sürümden sonra paneldeki her soru geçmişe yazılır, ama panelde geçmiş ekranı yoktur; kullanıcı geçmişini yalnız API ile görür ve siler. Geçmiş ve puanlama ekranı takip işidir; o gelene kadar kurulumlar bunu aydınlatma metnine yazmalıdır.
+  - **Panel bu dalda değişmedi.** Sürümden sonra paneldeki her soru geçmişe yazılır, ama panelde geçmiş ekranı yoktur; kullanıcı geçmişini yalnız API ile görür ve siler. Geçmiş ve puanlama ekranı takip işidir; o gelene kadar kurulumlar bunu aydınlatma metnine yazmalıdır. Ekranlar [ADR-0025](0025-gecmis-geri-bildirim-deger-panosu.md) ile geldi.
   - **k-anonimlik sahte hesaplara karşı korumaz:** IdP'de çok hesap açabilen biri k eşiğini doldurabilir. Bu, kurulumun hesap yönetimine bağlıdır.
   - **Geri bildirim sayacı turn'ün gününe yazılır.** Eski bir cevaba bugün verilen puan o günün sayısını değiştirir.
   - **İki havuz:** bağlantı bütçesi 13'ten 18'e çıktı.

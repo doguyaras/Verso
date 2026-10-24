@@ -1,9 +1,37 @@
-// State shared between screens for this tab only: the conversation (memory) and small preferences (sessionStorage).
-// Nothing personal leaves the tab, and no token is ever stored (ADR-0015): questions and answers stay in memory, so a
-// reload starts a new conversation; the preferences survive a reload of the same tab only.
+// State shared between screens for this tab only: the open conversation (memory) and small preferences
+// (sessionStorage). No token is ever stored (ADR-0015). Questions and answers are kept by the server in the user's own
+// history (ADR-0023); in the browser they stay in memory only, never in sessionStorage or localStorage, so a reload
+// starts a new conversation and an earlier one is opened again from "Geçmiş" (ADR-0025). The preferences survive a
+// reload of the same tab only.
 
-/** This tab's questions and answers: { question, result | error | cancelled, ms, at }. */
+/**
+ * The open conversation's questions and answers: { question, result | error | cancelled, ms, at, feedback, restored,
+ * notice }. A result carries conversationId and turnId when the server stored the turn.
+ */
 export const conversation = [];
+
+/**
+ * Which server conversation the next question continues (null: a new one), its title when it was opened from the
+ * history, and a generation that changes whenever another conversation is put in place: an answer that arrives for
+ * the previous one is then dropped instead of being appended to the wrong thread.
+ */
+export const thread = { conversationId: null, title: null, generation: 0 };
+
+/** "Yeni konuşma": the next question starts a new conversation on the server. */
+export function startNewConversation() {
+  conversation.length = 0;
+  thread.conversationId = null;
+  thread.title = null;
+  thread.generation += 1;
+}
+
+/** Puts a conversation opened from the history in place; the next question continues it. */
+export function restoreConversation(id, title, entries) {
+  conversation.splice(0, conversation.length, ...entries);
+  thread.conversationId = id;
+  thread.title = title;
+  thread.generation += 1;
+}
 
 const KEYS = Object.freeze({
   theme: 'verso.panel.theme', // 'light' | 'dark' | 'system'; absent = light, the product's look (ADR-0018)

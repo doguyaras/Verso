@@ -1,5 +1,6 @@
-// Verso panel (ADR-0015, design v3 ADR-0017): overview, questions with citations, documents, and the system view for
-// operators. No framework and no build step; ES modules served by the edge proxy. Screens are hash routes (#/ask, …).
+// Verso panel (ADR-0015, design v3 ADR-0017): overview, questions with citations, documents, the system view for
+// operators, the conversation history drawer (ADR-0025) and the value dashboard for admins. No framework and no build
+// step; ES modules served by the edge proxy. Screens are hash routes (#/ask, …).
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
 import { api, ApiError, lastMode } from './api.js';
 import { applyAccent, loadBranding } from './branding.js';
@@ -8,13 +9,15 @@ import { icon, logo } from './icons.js';
 import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
 import { langSwitch, themeSwitch } from './toggles.js';
-import { canOpen, rolesOf, screensFor, SCREENS } from './roles.js';
+import { canOpen, ROLES, rolesOf, screensFor, SCREENS, withServerRoles } from './roles.js';
 import { el, plainName } from './render.js';
-import { isDark, prefs } from './store.js';
+import { isDark, prefs, startNewConversation } from './store.js';
 import { cardSpotlight, navIndicator, transition } from './motion.js';
 import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
 import { renderDocuments } from './screens/documents.js';
+import { openHistory } from './screens/history.js';
+import { renderInsights } from './screens/insights.js';
 import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
@@ -22,7 +25,10 @@ import { renderSystem } from './screens/system.js';
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
-const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem };
+const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
+  insights: renderInsights };
+/** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
+const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
 
 const $ = (selector) => document.querySelector(selector);
@@ -147,7 +153,7 @@ function show(screen) {
   if (screen === 'system') prefs.markOnboarding({ sawMode: true });
   const ctx = {
     main: $('#main'), roles, identity: currentIdentity(), expiresAt, guarded, withAuth, navigate, setCount, showMode,
-    params, isCurrent: () => shown === view,
+    openHistory: showHistory, params, isCurrent: () => shown === view,
   };
   params = null;
   const result = RENDER[screen](ctx);
@@ -160,13 +166,26 @@ function show(screen) {
   scrollTo(0, 0);
 }
 
+/** The history drawer, from the menu, "g g", the palette or a screen. */
+function showHistory() {
+  openHistory({ guarded, withAuth, navigate });
+}
+
+/** The role under the user's name: the highest of admin, operator, user. */
+function roleLabel() {
+  if (roles.includes(ROLES.ADMIN)) return 'Yönetici';
+  return roles.includes(ROLES.OPERATOR) ? 'Operatör' : 'Kullanıcı';
+}
+
 function accountMenu(anchor, placement) {
   const identity = currentIdentity();
-  const operator = roles.includes('verso-operator');
   openMenu(anchor, [
-    { heading: identity.preferred_username ?? 'kullanıcı', sub: operator ? 'Operatör' : 'Kullanıcı' },
+    { heading: identity.preferred_username ?? 'kullanıcı', sub: roleLabel() },
     ...themeItems(),
     'separator',
+    // Phones have no menu column: the history and the screens kept out of the tab bar are reached from here.
+    { label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory },
+    ...(canOpen('insights', roles) ? [{ label: 'Değer panosu', glyph: 'chart', onSelect: () => navigate('insights') }] : []),
     ...(canOpen('system', roles) ? [{ label: 'Sistem ve güvenlik', glyph: 'server', onSelect: () => navigate('system') }] : []),
     { label: 'Çıkış yap', glyph: 'logout', onSelect: signOut },
   ], { placement });
@@ -188,6 +207,11 @@ function paletteSources() {
     keywords: 'sayfa ekran git', run: () => navigate(id) }));
   const actions = [
     { label: 'Yeni soru sor', glyph: 'chat', keywords: 'soru cevap sor', run: () => navigate('ask', { focus: true }) },
+    { label: 'Konuşma geçmişi', glyph: 'history', hint: 'G G', keywords: 'geçmiş konuşma sohbet eski', run: showHistory },
+    { label: 'Yeni konuşma', glyph: 'plus', keywords: 'konuşma sohbet temiz başlat', run: () => {
+      startNewConversation();
+      navigate('ask', { focus: true });
+    } },
     { label: 'Belge yükle', glyph: 'upload', keywords: 'yükle dosya pdf word', run: () => navigate('documents', { upload: true }) },
     { label: 'Açık temaya geç', glyph: 'sun', keywords: 'tema görünüm', run: () => setTheme('light') },
     { label: 'Koyu temaya geç', glyph: 'moon', keywords: 'tema görünüm karanlık', run: () => setTheme('dark') },
@@ -213,7 +237,12 @@ function shortcuts() {
     if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
     const key = event.key.toLocaleLowerCase('tr');
     if (key === 'g') {
-      pendingG = Date.now();
+      // "g g": the history drawer; "g" then a screen's key: that screen.
+      if (Date.now() - pendingG < 1200) {
+        pendingG = 0;
+        event.preventDefault();
+        showHistory();
+      } else pendingG = Date.now();
       return;
     }
     if (Date.now() - pendingG < 1200) {
@@ -231,7 +260,6 @@ function buildShell() {
   const { client, logo: clientLogo, productName } = CONFIG.deployment;
   const identity = currentIdentity();
   const name = identity.preferred_username ?? 'kullanıcı';
-  const operator = roles.includes('verso-operator');
   if (prefs.rail()) $('#shell').classList.add('rail');
 
   $('#brand').prepend(logo(30));
@@ -251,11 +279,14 @@ function buildShell() {
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 
   const links = screensFor(roles).map((id) => ({ id, ...SCREENS[id] }));
+  // "Geçmiş" sits right under "Soru sor": it opens a drawer over the current screen, so it is a button, not a route.
+  const history = el('button', { class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog', title: 'Geçmiş (G G)', onclick: showHistory },
+    icon('history'), el('span', { class: 'label' }, 'Geçmiş'), el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, 'G G'));
   $('#nav').replaceChildren(
-    ...links.map((s) => el('a', { href: `#/${s.id}`, 'data-screen': s.id, title: `${s.title} (G ${s.key.toUpperCase()})` },
+    ...links.flatMap((s) => [el('a', { href: `#/${s.id}`, 'data-screen': s.id, title: `${s.title} (G ${s.key.toUpperCase()})` },
       icon(s.icon), el('span', { class: 'label' }, s.title),
       s.id === 'documents' ? el('span', { class: 'count' }, String(counts.documents ?? '')) : null,
-      el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${s.key.toUpperCase()}`))));
+      el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${s.key.toUpperCase()}`)), ...(s.id === 'ask' ? [history] : [])]));
   moveIndicator = navIndicator($('#nav'));
   cardSpotlight($('#main'));
   $('#tabbar').replaceChildren(...links.filter((s) => s.tab !== false).map((s) => el('a', { href: `#/${s.id}`, 'data-screen': s.id }, icon(s.icon), s.short)));
@@ -263,7 +294,7 @@ function buildShell() {
   const account = el('button', { class: 'account', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
     onclick: () => accountMenu(account, 'above') },
   el('span', { class: 'avatar' }, initials(name)),
-  el('span', { class: 'who' }, el('strong', {}, name), el('span', {}, operator ? 'Operatör' : 'Kullanıcı')),
+  el('span', { class: 'who' }, el('strong', {}, name), el('span', {}, roleLabel())),
   icon('chevronRight', 'sm'));
   const collapse = el('button', { class: 'icon-button collapse-toggle', id: 'collapse', type: 'button',
     'aria-label': prefs.rail() ? 'Menüyü genişlet' : 'Menüyü daralt', 'aria-expanded': String(!prefs.rail()), onclick: railToggle }, icon('sidebar', 'sm'));
@@ -351,7 +382,10 @@ async function start() {
     showSignIn();
     return;
   }
-  roles = rolesOf(currentClaims());
+  // The admin role is the server's word (/v1/info, ADR-0019): a slow or failed answer only keeps the dashboard hidden.
+  const info = await Promise.race([withAuth(() => api.info()).catch(() => null),
+    new Promise((resolve) => setTimeout(() => resolve(null), INFO_WAIT_MS))]);
+  roles = withServerRoles(rolesOf(currentClaims()), info);
   $('#gate').hidden = true;
   $('#shell').hidden = false;
   buildShell();

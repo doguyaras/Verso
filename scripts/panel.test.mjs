@@ -1,12 +1,21 @@
-// The panel's pure logic (ADR-0015): role matrix, PKCE, token reading, answer and citation splitting, error texts.
-// The sign-in flow runs here with the browser globals stubbed; the screens are checked against the running stack
-// (docs/evidence/faz-10-dogrulama.md).
+// The panel's pure logic (ADR-0015): role matrix, PKCE, token reading, answer and citation splitting, error texts;
+// since ADR-0025 also the conversation id flow, the history filter, the rating state machine and the value dashboard's
+// date ranges, number formats and chart paths. The sign-in flow and the API calls run here with the browser globals
+// stubbed; the screens are checked against the running stack or a fixture (docs/evidence/).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { ICON_NAMES } from '../panel/js/icons.js';
-import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
+import { ROLES, SCREENS, canOpen, rolesOf, screensFor, withServerRoles } from '../panel/js/roles.js';
+import { askBody, continueWith, DELETE_ALL_WORD, deleteAllConfirmed, DELETED_DOCUMENT, filterConversations, hasMore, historyCitation,
+  restoreEntries, startOverNote, startsOver, TITLE_MAX, titleProblem, turnCountLabel } from '../panel/js/conversations.js';
+import { initialFeedback, rate, reasonLabel, REASONS, reasonsFor, thanks } from '../panel/js/feedback.js';
+import { addDays, dailySeries, dayLabel, daysBetween, documentLabel, formatCount, formatLatency, formatPercent, isEmpty, kpis,
+  MAX_RANGE_DAYS, PRESETS, rangeFor, rangeLabel, reasonRows, upRatio, validRange } from '../panel/js/metrics.js';
+import { areaPath, axisDays, isolatedPoints, linePath, nearestIndex, niceScale, tickValues, xAt, yAt } from '../panel/js/chart.js';
+import { conversation as openConversation, restoreConversation, startNewConversation, thread } from '../panel/js/store.js';
+import { api } from '../panel/js/api.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
   signIn, signOut } from '../panel/js/auth.js';
 import { answerParts, answerSegments, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
@@ -66,7 +75,7 @@ test('answer: markers of server citations become citation parts, other text stay
 
 test('errors: every code of the integration documents has a Turkish message', () => {
   const documented = new Set();
-  for (const file of ['docs/api-documents-integration-v1.md', 'docs/api-questions-integration-v1.md']) {
+  for (const file of ['docs/api-documents-integration-v1.md', 'docs/api-questions-integration-v1.md', 'docs/api-conversations-integration-v1.md']) {
     for (const m of readFileSync(file, 'utf8').matchAll(/^\| (1\d{4}) \|/gm)) documented.add(Number(m[1]));
   }
   assert.ok(documented.size >= 8);
@@ -408,7 +417,11 @@ test('palette: the token pairs the screens use keep their contrast in both theme
     ['success-text', 'success-bg', 4.5], ['warning-text', 'warning-bg', 4.5], ['danger-text', 'danger-bg', 4.5], ['info-text', 'info-bg', 4.5],
     // the answer screen (ADR-0024): marked excerpt words, the tinted citing sentence, the excerpt text, quiet actions
     ['fg-default', 'accent-bg-hover', 4.5], ['fg-default', 'accent-bg-subtle', 4.5], ['fg-muted', 'bg-subtle', 4.5], ['fg-subtle', 'bg-subtle', 4.5],
-    ['fg-subtle', 'bg-canvas', 4.5], ['fg-accent', 'bg-surface', 4.5], ['fg-accent-strong', 'accent-bg-subtle', 4.5]];
+    ['fg-subtle', 'bg-canvas', 4.5], ['fg-accent', 'bg-surface', 4.5], ['fg-accent-strong', 'accent-bg-subtle', 4.5],
+    // history, rating and the value dashboard (ADR-0025): chart marks and the quiet row icons of the history drawer are
+    // UI parts (3:1); a pressed 👍/👎, the "Tümünü sil" warning and the drawer's and tooltip's muted text are text (4.5:1)
+    ['chart-1', 'bg-surface', 3], ['chart-2', 'bg-surface', 3], ['fg-subtle', 'bg-raised', 3], ['fg-accent', 'accent-bg-subtle', 4.5],
+    ['danger-text', 'bg-raised', 4.5], ['fg-muted', 'bg-raised', 4.5], ['fg-default', 'bg-raised', 4.5]];
   for (const [name, tokens] of [['light', light], ['dark', dark]]) {
     for (const [fg, bg, min] of pairs) {
       const value = ratio(resolve(tokens, `var(--${fg})`), resolve(tokens, `var(--${bg})`));
@@ -976,4 +989,338 @@ test('answer screen: keyboard and focus (turn keys, Esc, focus back to the box a
   assert.match(ask, /event\.key === 'Escape'/);
   assert.match(ask, /visualViewport/);
   assert.match(ask, /'aria-label': `Kaynak \$\{citation\.number\}: \$\{name\}, \$\{where\}`/, 'the chip keeps the full accessible name');
+});
+
+// ---------- history, rating and the value dashboard (ADR-0025) ----------
+test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm role in the token alone does not open it', () => {
+  const user = rolesOf({ realm_access: { roles: [] } });
+  assert.deepEqual(withServerRoles(user, { roles: ['verso-user'] }), [ROLES.USER]);
+  assert.equal(canOpen('insights', withServerRoles(user, { roles: ['verso-user'] })), false);
+  const fromToken = rolesOf({ realm_access: { roles: ['verso-admin'] } });
+  assert.deepEqual(fromToken, [ROLES.USER], 'the token is not the source of the admin role');
+  assert.equal(canOpen('insights', fromToken), false);
+  const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
+  assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights']);
+  assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
+  const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
+  assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
+  for (const info of [null, undefined, {}, { roles: 'verso-admin' }, { roles: [{ name: 'verso-admin' }] }, { roles: ['VERSO-ADMIN'] }]) {
+    assert.equal(canOpen('insights', withServerRoles(user, info)), false, JSON.stringify(info));
+  }
+  assert.deepEqual(withServerRoles(admin, { roles: ['verso-admin'] }), admin, 'no duplicate role');
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /roles = withServerRoles\(rolesOf\(currentClaims\(\)\), info\);/);
+  assert.match(app, /setTimeout\(\(\) => resolve\(null\), INFO_WAIT_MS\)/, 'a slow /v1/info does not hold the panel');
+  assert.match(app, /canOpen\('insights', roles\) \? \[\{ label: 'Değer panosu'/, 'the account menu leads to the dashboard');
+});
+
+test('conversation ids: a follow-up carries the id, the answer\'s own id wins, a refused conversation starts over once', () => {
+  assert.deepEqual(askBody('Soru?', null), { question: 'Soru?' });
+  assert.deepEqual(askBody('Soru?', 'c1'), { question: 'Soru?', conversationId: 'c1' });
+  assert.equal(continueWith(null, { conversationId: 'c1', turnId: 't1' }), 'c1', 'the first answer opens the conversation');
+  assert.equal(continueWith('c1', { conversationId: 'c1', turnId: 't2' }), 'c1');
+  assert.equal(continueWith('c1', { conversationId: 'c9', turnId: 't3' }), 'c9', 'deleted or expired meanwhile: the server\'s new one');
+  assert.equal(continueWith('c1', { conversationId: null, turnId: null }), 'c1', 'a turn that was not stored keeps the conversation');
+  assert.equal(continueWith(null, { conversationId: null, turnId: null }), null);
+  assert.equal(startsOver(new ApiError(404, 11020)), true);
+  assert.equal(startsOver(new ApiError(409, 11022)), true);
+  for (const error of [new ApiError(503, 11001), new ApiError(404, 11021), new ApiError(400, 90000), new TypeError('x'), null]) {
+    assert.equal(startsOver(error), false);
+  }
+  assert.match(startOverNote(new ApiError(409, 11022)), /dolduğu için/);
+  assert.match(startOverNote(new ApiError(404, 11020)), /artık yok/);
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /api\.ask\(question, controller\.signal, sentTo\)/, 'the question continues the open conversation');
+  assert.match(ask, /if \(!\(sentTo && startsOver\(error\)\)\) throw error;[\s\S]*?api\.ask\(question, controller\.signal, null\)/,
+    'one retry without the id, and only for a follow-up');
+  assert.match(ask, /if \(current\.generation !== generation\) return;\n\s+conversation\.push\(entry\);/,
+    'an answer for a conversation that was left is not appended to the new one');
+  // The answer log element of renderAsk is called "thread": the store's thread is imported under another name, or
+  // its ids would be written onto the DOM node (seen in the fixture: the conversation bar read "null").
+  assert.match(ask, /import \{ conversation, prefs, startNewConversation, thread as current \} from '\.\.\/store\.js';/);
+  assert.doesNotMatch(ask, /\bthread\.(conversationId|title|generation)\b/);
+});
+
+test('conversation ids: "Yeni konuşma" and a conversation from the history replace the open one', () => {
+  startNewConversation();
+  const g0 = thread.generation;
+  assert.deepEqual([thread.conversationId, thread.title, openConversation.length], [null, null, 0]);
+  const stored = { id: 'c1', title: 'İzin', turns: [
+    { id: 't1', question: 'İzin kaç gün?', answer: 'Yirmi gün [1] [2].', outcome: 'ANSWERED', mode: 'local', model: 'm',
+      citations: [{ number: 1, documentId: 'd1', fileName: 'izin.pdf', page: 3, unit: 'PAGE', documentDeleted: false },
+        { number: 2, documentId: 'd2', fileName: null, page: 1, unit: 'SECTION', documentDeleted: true }],
+      feedback: { rating: 'DOWN', reason: 'OUTDATED', citationNumber: null, updatedAt: '2026-10-24T09:00:00Z' },
+      createdAt: '2026-10-24T09:00:00Z', durationMs: 1420 },
+    { id: 't2', question: 'Ya mazeret?', answer: 'Belgelerde bu sorunun cevabı bulunamadı.', outcome: 'NOT_FOUND', mode: 'local',
+      model: 'm', citations: [], feedback: null, createdAt: '2026-10-24T09:01:00Z', durationMs: 300 }] };
+  const entries = restoreEntries(stored);
+  assert.equal(entries.length, 2);
+  assert.deepEqual(entries[0].result.citations, [
+    { number: 1, documentId: 'd1', fileName: 'izin.pdf', page: 3, unit: 'PAGE', deleted: false },
+    { number: 2, documentId: 'd2', fileName: DELETED_DOCUMENT, page: 1, unit: 'SECTION', deleted: true }]);
+  assert.equal(DELETED_DOCUMENT, 'Belge silinmiş');
+  assert.deepEqual([entries[0].result.conversationId, entries[0].result.turnId, entries[0].restored, entries[0].ms], ['c1', 't1', true, 1420]);
+  assert.equal(entries[0].feedback.reason, 'OUTDATED', 'the stored rating comes back');
+  assert.deepEqual([entries[1].result.found, entries[1].result.outcome], [false, 'NOT_FOUND']);
+  assert.equal(historyCitation({ number: 4, documentId: 'd', fileName: undefined, page: 2, documentDeleted: false }).fileName, DELETED_DOCUMENT,
+    'a citation without a name never shows "undefined"');
+  restoreConversation(stored.id, stored.title, entries);
+  assert.deepEqual([thread.conversationId, thread.title, openConversation.length], ['c1', 'İzin', 2]);
+  assert.ok(thread.generation > g0);
+  const g1 = thread.generation;
+  startNewConversation();
+  assert.deepEqual([thread.conversationId, openConversation.length], [null, 0]);
+  assert.ok(thread.generation > g1);
+  assert.equal(turnCountLabel(3), '3 soru');
+  assert.equal(hasMore({ number: 0, size: 20, totalElements: 21, totalPages: 2 }), true);
+  assert.equal(hasMore({ number: 1, size: 20, totalElements: 21, totalPages: 2 }), false);
+  assert.equal(hasMore(null), false);
+});
+
+test('history filter: Turkish letters fold both ways, case does not matter, only loaded titles are searched', () => {
+  const items = [{ id: 1, title: 'İzin talebi nasıl yapılır?' }, { id: 2, title: 'IŞIK ve ısıtma bakımı' }, { id: 3, title: 'Şirket aracı' },
+    { id: 4, title: 'Satın alma  onay matrisi' }, { id: 5, title: null }];
+  const ids = (q) => filterConversations(items, q).map((c) => c.id);
+  assert.deepEqual(ids('izin'), [1]);
+  assert.deepEqual(ids('İZİN'), [1]);
+  assert.deepEqual(ids('ızın'), [1], 'dotless ı matches İ');
+  assert.deepEqual(ids('ışık'), [2], 'lower-case ışık finds IŞIK');
+  assert.deepEqual(ids('sirket'), [3], 'ş without its cedilla');
+  assert.deepEqual(ids('  onay   matrisi '), [4], 'spaces collapse on both sides');
+  assert.deepEqual(ids(''), [1, 2, 3, 4, 5], 'an empty query shows everything');
+  assert.deepEqual(ids('yok'), []);
+});
+
+test('history: a title is checked like the server does; "Tümünü sil" needs the typed word', () => {
+  assert.equal(titleProblem('  İzin notlarım  '), null);
+  assert.match(titleProblem('   '), /boş/);
+  assert.equal(titleProblem('a'.repeat(TITLE_MAX)), null);
+  assert.match(titleProblem('a'.repeat(TITLE_MAX + 1)), /120/);
+  assert.match(titleProblem('fatura‮fdp'), /yön/);
+  assert.match(titleProblem('satır\u0007'), /kontrol/);
+  assert.equal(DELETE_ALL_WORD, 'SİL');
+  for (const typed of ['SİL', 'sil', ' Sil ', 'SIL']) assert.equal(deleteAllConfirmed(typed), true, typed);
+  for (const typed of ['', 's', 'sill', 'evet', null]) assert.equal(deleteAllConfirmed(typed), false, String(typed));
+  const history = readFileSync('panel/js/screens/history.js', 'utf8');
+  assert.match(history, /confirmDialog\(/, 'one conversation: the panel\'s own dialog');
+  assert.match(history, /'aria-disabled': 'true'/, 'all: disabled until the word is typed');
+  assert.match(history, /if \(go\.getAttribute\('aria-disabled'\) !== 'true'\) removeAll\(\);/);
+  assert.match(history, /Konuşmalarınız yalnız size görünür ve kurulumun saklama süresi dolunca kendiliğinden silinir\./,
+    'the API does not expose the retention: generic wording (ADR-0025)');
+  for (const file of readdirSync('panel/js', { recursive: true }).filter((f) => String(f).endsWith('.js'))) {
+    const code = readFileSync(`panel/js/${file}`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
+    assert.doesNotMatch(code, /(^|[^.\w])(window\.)?(confirm|alert|prompt)\(/m, `${file}: no native dialogs`);
+  }
+  assert.match(readFileSync('panel/js/ui.js', 'utf8'), /event\.key === 'Escape' && !document\.querySelector\('dialog\[open\]'\)/,
+    'Esc in the confirmation dialog does not also close the drawer');
+});
+
+test('rating: 👍/👎 replace each other, 👎 opens the reasons, "Yanlış kaynak" asks which [n] when there are several', () => {
+  const two = [{ number: 1 }, { number: 2 }, { number: 1 }];
+  let s = initialFeedback(null);
+  assert.deepEqual(s, { rating: null, reason: null, citationNumber: null, step: null });
+  let out = rate(s, { type: 'up' }, two);
+  assert.deepEqual(out.request, { rating: 'UP' });
+  s = out.state;
+  assert.equal(rate(s, { type: 'up' }, two).request, null, '👍 again sends nothing (no "unrate" in the API)');
+  out = rate(s, { type: 'down' }, two);
+  assert.deepEqual(out.request, { rating: 'DOWN' }, 're-rating replaces the previous one at once');
+  assert.equal(out.state.step, 'reason');
+  s = out.state;
+  out = rate(s, { type: 'reason', reason: 'WRONG_SOURCE' }, two);
+  assert.equal(out.request, null);
+  assert.equal(out.state.step, 'citation', 'two citations: which one?');
+  assert.equal(rate(out.state, { type: 'citation', number: 7 }, two).request, null, 'only a number of this answer');
+  out = rate(out.state, { type: 'citation', number: 2 }, two);
+  assert.deepEqual(out.request, { rating: 'DOWN', reason: 'WRONG_SOURCE', citationNumber: 2 });
+  assert.equal(out.state.step, null);
+  s = out.state;
+  out = rate(s, { type: 'reason', reason: 'OUTDATED' }, two);
+  assert.deepEqual(out.request, { rating: 'DOWN', reason: 'OUTDATED' }, 'another reason replaces the citation');
+  assert.equal(out.state.citationNumber, null);
+  const one = rate({ ...initialFeedback(null), rating: 'DOWN', step: 'reason' }, { type: 'reason', reason: 'WRONG_SOURCE' }, [{ number: 3 }]);
+  assert.deepEqual(one.request, { rating: 'DOWN', reason: 'WRONG_SOURCE', citationNumber: 3 }, 'one citation: no question');
+  assert.equal(rate({ ...initialFeedback(null), rating: 'DOWN' }, { type: 'reason', reason: 'WRONG_SOURCE' }, []).request, null);
+  assert.equal(rate(initialFeedback(null), { type: 'reason', reason: 'OTHER' }, two).request, null, 'a reason only after 👎');
+  assert.equal(rate({ ...initialFeedback(null), rating: 'DOWN' }, { type: 'reason', reason: 'RUDE' }, two).request, null, 'only the API\'s reasons');
+  const open = rate({ rating: 'DOWN', reason: null, citationNumber: null, step: null }, { type: 'down' }, two);
+  assert.deepEqual([open.request, open.state.step], [null, 'reason'], '👎 again only reopens the picker');
+  assert.equal(rate(open.state, { type: 'close' }, two).state.step, null);
+  const saved = rate({ ...open.state }, { type: 'saved', feedback: { rating: 'DOWN', reason: 'OTHER', citationNumber: null } }, two);
+  assert.deepEqual([saved.state.reason, saved.state.step], ['OTHER', 'reason'], 'the server\'s answer is the state; the picker stays');
+  assert.deepEqual(REASONS.map((r) => r.id), ['WRONG_SOURCE', 'INCORRECT_OR_MISSING', 'OUTDATED', 'OTHER']);
+  assert.equal(reasonLabel('SOMETHING_NEW'), 'Diğer', 'an unknown reason reads "Diğer"');
+  assert.deepEqual(reasonsFor([]).map((r) => r.id), ['INCORRECT_OR_MISSING', 'OUTDATED', 'OTHER']);
+  assert.equal(thanks({ rating: 'UP' }), 'Teşekkürler.');
+  assert.equal(thanks({ rating: 'DOWN', reason: 'WRONG_SOURCE', citationNumber: 2 }), 'Teşekkürler. Neden: Yanlış kaynak [2].');
+  const enumSource = readFileSync('services/qa/qa-api/src/main/java/com/verso/qa/api/dto/FeedbackReason.java', 'utf8');
+  const enumValues = [...enumSource.matchAll(/^\s+([A-Z_]+)[,;]?\s*$/gm)].map((m) => m[1]);
+  assert.deepEqual(enumValues, REASONS.map((r) => r.id), 'the panel offers exactly the API\'s reasons');
+  const rating = readFileSync('panel/js/rating.js', 'utf8');
+  assert.match(rating, /'aria-pressed', String\(state\.rating === 'UP'\)/);
+  assert.match(rating, /role: 'status', 'aria-live': 'polite'/, '"Teşekkürler" is announced politely');
+  assert.match(rating, /if \(!result\.conversationId \|\| !result\.turnId\) return null;/, 'no rating without a stored turn');
+});
+
+test('dashboard range: presets end today, both ends included, across months, leap days and years', () => {
+  assert.deepEqual([...PRESETS], [7, 30, 90]);
+  assert.deepEqual(rangeFor(7, '2026-10-24'), { from: '2026-10-18', to: '2026-10-24' });
+  assert.deepEqual(rangeFor(30, '2026-03-01'), { from: '2026-01-31', to: '2026-03-01' });
+  assert.deepEqual(rangeFor(90, '2024-03-01'), { from: '2023-12-03', to: '2024-03-01' }, '2024 is a leap year');
+  for (const days of PRESETS) {
+    const range = rangeFor(days, '2026-01-05');
+    assert.equal(daysBetween(range.from, range.to), days);
+    assert.ok(validRange(range));
+  }
+  assert.deepEqual(rangeFor(7, new Date(2026, 9, 24, 23, 59)), { from: '2026-10-18', to: '2026-10-24' }, 'the browser\'s calendar day, not UTC');
+  assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+  assert.equal(addDays('2026-03-29', 1), '2026-03-30', 'no DST jump');
+  assert.equal(validRange({ from: '2026-10-25', to: '2026-10-24' }), false);
+  assert.equal(validRange({ from: '2025-10-24', to: '2026-10-24' }), true, '366 days');
+  assert.equal(validRange({ from: '2025-10-23', to: '2026-10-24' }), false, `more than ${MAX_RANGE_DAYS} days`);
+  assert.equal(validRange({ from: '2026-1-1', to: '2026-10-24' }), false);
+  assert.equal(rangeLabel({ from: '2026-09-25', to: '2026-10-24' }), '25 Eyl – 24 Eki 2026');
+  assert.equal(rangeLabel({ from: '2025-12-28', to: '2026-01-03' }), '28 Ara 2025 – 3 Oca 2026');
+  assert.equal(dayLabel('2026-10-24'), '24 Eki');
+});
+
+const METRICS = { from: '2026-10-01', to: '2026-10-03', timeZone: 'Europe/Istanbul',
+  totals: { questions: 412, activeUsers: 37, activeUsersComplete: true, outcomes: { answered: 301, notFound: 74, uncited: 37 },
+    outcomeRates: { answered: 0.7306, notFound: 0.1796, uncited: 0.0898 }, latency: { p50Ms: 2000, p95Ms: 5000 },
+    modes: { local: 412, cloud: 0 }, feedback: { up: 58, down: 9, downReasons: { WRONG_SOURCE: 3, INCORRECT_OR_MISSING: 2, OUTDATED: 1, OTHER: 0 }, downWithoutReason: 3 } },
+  daily: [{ day: '2026-10-01', questions: 12, activeUsers: 5, outcomes: { answered: 9, notFound: 2, uncited: 1 } },
+    { day: '2026-10-02', questions: 0, activeUsers: 0, outcomes: { answered: 0, notFound: 0, uncited: 0 } },
+    { day: '2026-10-03', questions: 4, activeUsers: 2, outcomes: { answered: 4, notFound: 0, uncited: 0 } }],
+  documentNamesShown: false, topCitedDocuments: [], neverCitedDocuments: { total: 0, complete: true, documents: [] },
+  unansweredQuestions: { enabled: false, minDistinctUsers: 3, questions: [] } };
+
+test('dashboard numbers: tr-TR counts and percents, latency, 👍 ratio, "–" for what the API did not return', () => {
+  assert.equal(formatCount(1284), '1.284');
+  assert.equal(formatCount(0), '0');
+  assert.equal(formatCount(null), '–');
+  assert.equal(formatPercent(0.7306), '%73,1');
+  assert.equal(formatPercent(1), '%100');
+  assert.equal(formatPercent(0), '%0');
+  assert.equal(formatPercent(null), '–', 'no question in the range: no rate');
+  assert.equal(formatLatency(250), '250 ms');
+  assert.equal(formatLatency(2000), '2 sn');
+  assert.equal(formatLatency(2500), '2,5 sn');
+  assert.equal(formatLatency(180000), '3 dk');
+  assert.equal(formatLatency(null), '–');
+  assert.equal(upRatio({ up: 58, down: 9 }).toFixed(4), '0.8657');
+  assert.equal(upRatio({ up: 0, down: 0 }), null);
+  const tiles = kpis(METRICS.totals);
+  assert.deepEqual(tiles.map((t) => [t.id, t.value]), [['questions', '412'], ['users', '37'], ['cited', '%73,1'], ['notFound', '%18'],
+    ['uncited', '%9'], ['latency', '2 sn / 5 sn'], ['up', '%86,6']]);
+  assert.equal(tiles[6].note, '67 oy');
+  assert.match(kpis({ ...METRICS.totals, activeUsersComplete: false })[1].note, /saklama süresinden eski/);
+  const empty = kpis({ questions: 0, activeUsers: 0, activeUsersComplete: true, outcomes: { answered: 0, notFound: 0, uncited: 0 },
+    outcomeRates: { answered: null, notFound: null, uncited: null }, latency: { p50Ms: null, p95Ms: null }, modes: { local: 0, cloud: 0 },
+    feedback: { up: 0, down: 0, downReasons: {}, downWithoutReason: 0 } });
+  assert.deepEqual(empty.map((t) => t.value), ['0', '0', '–', '–', '–', '– / –', '–']);
+  assert.equal(empty[6].note, 'Henüz oy yok');
+  assert.equal(isEmpty(METRICS), false);
+  assert.equal(isEmpty({ ...METRICS, totals: { ...METRICS.totals, questions: 0 } }), true);
+  assert.deepEqual(dailySeries(METRICS.daily), { days: ['2026-10-01', '2026-10-02', '2026-10-03'], questions: [12, 0, 4],
+    cited: [0.75, null, 1], notFound: [2 / 12, null, 0] }, 'a day without questions has no rate, not 0 %');
+  assert.deepEqual(reasonRows(METRICS.totals.feedback).map((r) => [r.label, r.value]), [['Yanlış kaynak', 3], ['Eksik ya da yanlış', 2],
+    ['Güncel değil', 1], ['Diğer', 0], ['Neden belirtilmedi', 3]]);
+  const doc = { documentId: '0199a3b4-1111-2222-3333-444455556666', fileName: 'izin‮fdp.pdf', documentDeleted: false };
+  assert.equal(documentLabel(doc, false), 'Belge #0199a3b4', 'names hidden by the installation\'s policy');
+  assert.equal(documentLabel({ ...doc, fileName: null }, true), 'Belge #0199a3b4', 'the API gave no name');
+  assert.equal(documentLabel(doc, true), 'izinfdp.pdf', 'a shown name loses its bidi controls');
+  assert.equal(documentLabel({ ...doc, documentDeleted: true, fileName: null }, true), 'Belge silinmiş');
+  const insights = readFileSync('panel/js/screens/insights.js', 'utf8');
+  assert.doesNotMatch(insights.replace(/^\/\/.*$/gm, ''), /kazan|tasarruf|saved/i, 'no "estimated time saved": nothing to derive it from honestly');
+  assert.match(insights, /if \(!list\?\.enabled\) return null;/, 'unanswered questions only when the installation turned them on');
+  assert.match(insights, /k-anonimlik/);
+  assert.match(insights, /status === 403/, 'a refused role gets a calm screen, not an error toast');
+  assert.match(insights, /CONFIG\.deployment\.productName/);
+  for (const file of ['screens/insights.js', 'screens/history.js', 'rating.js', 'chart.js']) {
+    assert.doesNotMatch(readFileSync(`panel/js/${file}`, 'utf8'), /['`"][^'`"\n]*\bVerso\b[^'`"\n]*['`"]/, `${file}: the product name comes from the branding`);
+  }
+});
+
+test('charts: clean scales, gaps for days without data, the wash closes on the baseline, the crosshair snaps to a day', () => {
+  assert.deepEqual(niceScale(412), { top: 500, step: 100 });
+  assert.deepEqual(niceScale(7), { top: 8, step: 2 });
+  assert.deepEqual(niceScale(3), { top: 3, step: 1 });
+  assert.deepEqual(niceScale(2), { top: 2, step: 1 }, 'counts never get fractional ticks');
+  assert.deepEqual(niceScale(2, 5, { integer: false }), { top: 2, step: 0.5 });
+  assert.deepEqual(niceScale(0), { top: 5, step: 1 }, 'an empty range still has an axis');
+  assert.deepEqual(tickValues(niceScale(412)), [0, 100, 200, 300, 400, 500]);
+  assert.deepEqual(tickValues({ top: 1, step: 0.25 }), [0, 0.25, 0.5, 0.75, 1], 'shares on a fixed 0–100 % scale');
+  const frame = { left: 0, right: 100, top: 0, bottom: 100, max: 10 };
+  assert.equal(linePath([0, 5, null, 10, 2], frame), 'M0,100L25,50M75,0L100,80', 'a null breaks the line instead of dropping to 0');
+  assert.equal(linePath([null, null], frame), '');
+  assert.equal(areaPath([0, 5, null, 10, 2], frame), 'M0,100L0,100L25,50L25,100ZM75,100L75,0L100,80L100,100Z');
+  assert.equal(areaPath([1, null, 3], frame), '', 'single points have no area');
+  assert.deepEqual(isolatedPoints([1, null, 3, null, null, 4, 5]), [0, 2], 'lone points become dots');
+  assert.equal(xAt(0, 1, 40, 200), 120, 'one day sits in the middle');
+  assert.equal(yAt(0, 0, 10, 90), 90, 'a zero scale stays on the baseline');
+  assert.equal(nearestIndex(-20, 30, 0, 290), 0);
+  assert.equal(nearestIndex(146, 30, 0, 290), 15);
+  assert.equal(nearestIndex(999, 30, 0, 290), 29);
+  assert.deepEqual(axisDays(90), [0, 44, 89]);
+  assert.deepEqual(axisDays(1), [0]);
+  const chart = readFileSync('panel/js/chart.js', 'utf8');
+  assert.match(chart, /document\.createElementNS\(SVG, tag\)/, 'SVG nodes, no markup strings');
+  assert.match(chart, /'Tablo olarak göster'/, 'every chart has a table twin');
+  assert.match(chart, /ArrowLeft: -1, ArrowRight: 1/, 'the crosshair moves with the keyboard too');
+  assert.doesNotMatch(chart, /setAttribute\(\s*'style'|\.cssText/);
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.chart-line \{ fill: none; stroke-width: 2;/, '2 px lines');
+  assert.match(css, /\.chart-grid line \{ stroke: var\(--border-muted\); stroke-width: 1;/, 'hairline solid grid');
+  assert.doesNotMatch(css.slice(css.indexOf('value dashboard (ADR-0025)')), /stroke-dasharray/, 'no dashed gridlines');
+  assert.match(css, /\.chart-area \{ stroke: none; opacity: \.1; \}/, 'a 10 % wash');
+});
+
+test('api: history, rating and metrics calls go to the documented paths with JSON bodies; ids are path-encoded', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push({ url, method: init.method ?? 'GET', body: init.body, type: init.headers?.['Content-Type'] });
+    const status = init.method === 'DELETE' ? 204 : 200;
+    return { ok: true, status, headers: { get: () => null }, json: async () => ({ ok: true }) };
+  };
+  await api.ask('Soru?', undefined, 'c1');
+  await api.ask('Soru?', undefined);
+  await api.listConversations(2);
+  await api.getConversation('a/b');
+  await api.renameConversation('c1', 'Yeni ad');
+  assert.equal(await api.deleteConversation('c1'), null);
+  assert.equal(await api.deleteAllConversations(), null);
+  await api.rate('c1', 't 1', { rating: 'DOWN', reason: 'WRONG_SOURCE', citationNumber: 2 });
+  await api.metrics('2026-10-01', '2026-10-24');
+  assert.deepEqual(sent.map((r) => [r.method, r.url, r.body ?? null]), [
+    ['POST', '/v1/questions', '{"question":"Soru?","conversationId":"c1"}'],
+    ['POST', '/v1/questions', '{"question":"Soru?"}'],
+    ['GET', '/v1/conversations?page=2&size=20', null],
+    ['GET', '/v1/conversations/a%2Fb', null],
+    ['PATCH', '/v1/conversations/c1', '{"title":"Yeni ad"}'],
+    ['DELETE', '/v1/conversations/c1', null],
+    ['DELETE', '/v1/conversations', null],
+    ['POST', '/v1/conversations/c1/turns/t%201/feedback', '{"rating":"DOWN","reason":"WRONG_SOURCE","citationNumber":2}'],
+    ['GET', '/v1/admin/metrics?from=2026-10-01&to=2026-10-24', null]]);
+  for (const r of sent.filter((x) => x.body)) assert.equal(r.type, 'application/json');
+  signOut();
+});
+
+test('privacy: history and dashboard text stays in memory; nothing personal goes to sessionStorage, the URL or the console', () => {
+  for (const file of ['conversations.js', 'feedback.js', 'metrics.js', 'chart.js', 'rating.js', 'screens/history.js', 'screens/insights.js']) {
+    const source = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.doesNotMatch(source, /sessionStorage|localStorage|indexedDB/, `${file}: no browser storage`);
+    assert.doesNotMatch(source, /location\.hash\s*=(?!=)|history\.(push|replace)State|URLSearchParams/, `${file}: no titles or questions in the URL`);
+  }
+  const store = readFileSync('panel/js/store.js', 'utf8');
+  assert.match(store, /export const thread = \{ conversationId: null, title: null, generation: 0 \};/);
+  assert.deepEqual([...store.matchAll(/^\s+(\w+): 'verso\.panel\.\w+'/gm)].map((m) => m[1]), ['theme', 'rail', 'onboarding', 'lang'],
+    'sessionStorage keys are preferences only');
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog'/, '"Geçmiş" in the menu');
+  assert.match(app, /\{ label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory \}/, 'phones reach the history from the account menu');
+  assert.match(readFileSync('panel/js/screens/ask.js', 'utf8'), /onclick: \(\) => openHistory\(ctx\) \}, icon\('history', 'sm'\), 'Geçmiş'\)/);
 });

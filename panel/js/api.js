@@ -1,9 +1,10 @@
-// The Verso API as the panel uses it (docs/api-documents-integration-v1.md, docs/api-questions-integration-v1.md).
-// Success bodies are plain JSON, errors the common envelope; every error becomes an ApiError with a Turkish message
-// for the screen (the table follows the integration documents). Nothing is logged to the console: questions,
-// answers and file names are personal data (llm-rules 2.1).
+// The Verso API as the panel uses it (docs/api-documents-integration-v1.md, docs/api-questions-integration-v1.md,
+// docs/api-conversations-integration-v1.md). Success bodies are plain JSON, errors the common envelope; every error
+// becomes an ApiError with a Turkish message for the screen (the table follows the integration documents). Nothing is
+// logged to the console: questions, answers, titles and file names are personal data (llm-rules 2.1).
 import { CONFIG } from './config.js';
 import { accessToken } from './auth.js';
+import { askBody, HISTORY_PAGE_SIZE } from './conversations.js';
 
 export const MESSAGES = Object.freeze({
   10001: 'Belge bulunamadı.',
@@ -18,6 +19,11 @@ export const MESSAGES = Object.freeze({
   11002: 'Asistan meşgul; birkaç saniye sonra tekrar deneyin.',
   11010: 'Soru çok uzun.',
   11011: 'İstek gövdesinin uzunluğu bildirilmeli.',
+  11020: 'Konuşma bulunamadı; silinmiş ya da saklama süresi dolmuş olabilir.',
+  11021: 'Bu cevap artık geçmişte yok.',
+  11022: 'Konuşma dolu (200 soru); yeni bir konuşma başlatın.',
+  11023: 'Seçilen kaynak bu cevapta yok.',
+  11030: 'Tarih aralığı geçersiz (en çok 366 gün).',
   90000: 'Soru boş ya da 1000 karakterden uzun.',
   90001: 'İstek okunamadı.',
   90002: 'İstekteki bir değer geçersiz.',
@@ -114,8 +120,22 @@ export const api = {
       xhr.send(form);
     });
   },
-  /** signal: an AbortSignal; aborting stops waiting for the answer (the server finishes its own call). */
-  ask: (question, signal) => request('/v1/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }), signal }),
+  /**
+   * signal: an AbortSignal; aborting stops waiting for the answer (the server finishes its own call). conversationId:
+   * the conversation the question continues, or none for a new one (ADR-0023).
+   */
+  ask: (question, signal, conversationId = null) => request('/v1/questions', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(askBody(question, conversationId)), signal }),
   info: () => request('/v1/info'),
+  listConversations: (page = 0, size = HISTORY_PAGE_SIZE) => request(`/v1/conversations?page=${page}&size=${size}`),
+  getConversation: (id) => request(`/v1/conversations/${encodeURIComponent(id)}`),
+  renameConversation: (id, title) => request(`/v1/conversations/${encodeURIComponent(id)}`, { method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) }),
+  deleteConversation: (id) => request(`/v1/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  deleteAllConversations: () => request('/v1/conversations', { method: 'DELETE' }),
+  /** One rating per answer; a new one replaces the old (docs/api-conversations-integration-v1.md). */
+  rate: (conversationId, turnId, body) => request(`/v1/conversations/${encodeURIComponent(conversationId)}/turns/${encodeURIComponent(turnId)}/feedback`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  /** verso-admin only; from and to are inclusive calendar days (YYYY-MM-DD). */
+  metrics: (from, to) => request(`/v1/admin/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
 };

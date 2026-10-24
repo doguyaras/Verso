@@ -88,7 +88,7 @@ Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikis
 Ekranlar:
 
 - **Tanıtım ve giriş:** panel önce bir tanıtım gösterir: büyük imza ve açık kitapta kurulumun örnek sorusu ile kaynaklı cevabı (marka dosyasında `showcase`; aşağıda). "Giriş yap" kurumun kimlik sağlayıcısına götürür; paketteki demo Keycloak ikiye bölünmüş bir ekranla açılır: solda imzalı boyalı levha, sağda form. İkisinde de sağ üstte tema ve TR / EN anahtarları var.
-- **Genel bakış:** ortada büyük imza ve soru kutusu, kurulumun önerdiği sorular (`suggestions`), sorulabilir belge, kurulum aşaması ve çalışma modu kartları, ilk kullanım listesi, son belgeler ve bu oturumun soruları. Menü varsayılan olarak ince ikon şerididir, genişletilebilir.
+- **Genel bakış:** ortada büyük imza ve soru kutusu, kurulumun önerdiği sorular (`suggestions`), sorulabilir belge, kurulum aşaması ve çalışma modu kartları, ilk kullanım listesi, son belgeler ve açık konuşmanın soruları (öncekiler "Geçmiş"te). Menü varsayılan olarak ince ikon şerididir, genişletilebilir.
 - **Soru sor** ([ADR-0024](docs/adr/0024-cevap-ekrani.md)):
   - **Atıflar:** bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
   - **Kaynak kartları** belgeye göre gruplanır ve her atıfın alıntısını gösterir. Alıntıda cevapla ortak sözcükler işaretlidir; baştaki ya da sondaki "…" alıntının kısaltıldığı yerdir. Atıfla kartı hareket bağlar: birinin üzerine gelmek ya da odaklanmak ikisini birlikte ve dayandığı cümleyi vurgular.
@@ -98,21 +98,25 @@ Ekranlar:
   - **Dışa aktarma:** "Kopyala" cevabı atıfları dipnot olarak Markdown'da kopyalar. ".md indir" aynısını soruyla birlikte dosya olarak indirir.
   - **Klavye:** PageUp/PageDown ya da Alt+↑/↓ sorular arasında gezer; Esc açık önizlemeyi ya da kartı kapatır.
   - **Bekleme:** geçen süre ve gerçekçi bir beklenti görünür. "Durdur"dan sonra odak soru kutusuna döner.
+  - **Konuşma** ([ADR-0025](docs/adr/0025-gecmis-geri-bildirim-deger-panosu.md)): ardışık sorular sunucuda aynı konuşmaya yazılır; "Yeni konuşma" yenisini başlatır. Konuşma silinmiş ya da dolmuşsa soru kendiliğinden yeni konuşmada sorulur ve bir notla belirtilir.
+  - **Geri bildirim:** her cevabın altında 👍/👎. 👎'den sonra küçük bir neden seçici açılır (Yanlış kaynak, Eksik ya da yanlış, Güncel değil, Diğer); "Yanlış kaynak"ta hangi `[n]` olduğu sorulur. Yeni puan eskisinin yerine geçer.
+- **Geçmiş** (menüde "Soru sor"un altında, `g g`, hesap menüsü ya da soru ekranındaki düğme): kendi konuşmalarınız sağdan açılan bir panelde, son etkinliğe göre ve 20'şer. Yüklenen başlıklarda Türkçe harf duyarsız arama; yeniden adlandırma; tek konuşmayı silme (panelin kendi onay penceresi); "Tümünü sil" yalnız `SİL` yazılınca çalışır. Açılan konuşma soru ekranına salt okunur gelir (alıntı saklanmadığı için takip sorusu yok) ve sonraki soru onu sürdürür. Silinmiş belgeye atıf "Belge silinmiş" diye görünür. Konuşmalar kurulumun saklama süresi dolunca silinir (`VERSO_HISTORY_RETENTION_DAYS`, varsayılan 90 gün; panel süreyi API'den alamadığı için sayı yazmaz).
+- **Değer panosu** (yalnız `/v1/info` `verso-admin` rolü verirse; sunucu diğerlerine 403 döner): 7 / 30 / 90 günlük aralık; soru, aktif kullanıcı, kaynaklı / bulunamadı / kaynak gösterilemedi oranları, p50 / p95 süre ve 👍 oranı kartları; günlük soru ve sonuç oranı çizgileri (üzerine gelince ya da ←/→ ile gün gün, tablo olarak da); mod dağılımı, 👎 nedenleri, en çok ve hiç atıf almamış belgeler. Belge adları kurulum açtıysa görünür, yoksa "Belge #…". Cevaplanamayan sorular yalnız kurulum açtıysa ve en az 3 kişi sorduysa listelenir. "Tahmini kazanılan süre" gösterilmez: API'de dürüstçe türetilecek bir veri yok.
 - **Bilgi kaynakları:** sayfanın her yerine sürükle-bırak; dosya başına ilerleme ve "tekrar dene"; Türkçe harf duyarsız arama, durum filtresi ve sıralanabilir tablo; ayrıntı paneli; dosya adıyla silme onayı. Altında planlanan bağlantılar (SharePoint ve dosya paylaşımları, talep yönetimi, ERP) "Planlandı" olarak görünür.
 - **Kurulum durumu:** kurulumu yapan ekibin aşamaları (Keşif, Pilot, Yaygınlaştırma, Entegrasyonlar) ve sistemden okunan kontrol listesi. Aşama, pilot grubu ve kurum adı marka dosyasından gelir.
 - **Sistem ve güvenlik:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
 
-Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` bilgi kaynakları, `g k` kurulum). Varsayılan tema açık ("Fildişi tuval"); koyu tema ("Obscur") ya da "sistemi izle" hesap menüsünden seçilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md).
+Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g g` geçmiş, `g b` bilgi kaynakları, `g k` kurulum, `g d` değer panosu). Varsayılan tema açık ("Fildişi tuval"); koyu tema ("Obscur") ya da "sistemi izle" hesap menüsünden seçilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md).
 
 Panelin özellikleri:
 
 - Bağımlılıksızdır; derleme adımı ve dış kaynak yoktur. İkonlar panelin kendi SVG'leri; başlık fontu Fraunces (OFL) panelin kendi sunucusundan gelir (`font-src 'self'`).
-- Token yalnız bellekte durur.
+- Token yalnız bellekte durur. Açık konuşma da yalnız sekmenin belleğindedir; geçmiş sunucudan okunur, tarayıcı deposuna yazılmaz.
 - Model çıktısı sayfaya yalnız metin olarak girer.
 - Rol matrisi tek dosyadadır (`panel/js/roles.js`).
 - Varsayılan portlarla çalışır (8080, 8180, 3000). Port değişirse `panel/js/config.js`, realm'deki `verso-panel` istemcisi ve `deploy/edge/nginx.conf`'taki CSP birlikte değişir.
 
-Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md), [ADR-0021](docs/adr/0021-kurulum-marka-dosyasi.md), [ADR-0024](docs/adr/0024-cevap-ekrani.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
+Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md), [ADR-0021](docs/adr/0021-kurulum-marka-dosyasi.md), [ADR-0024](docs/adr/0024-cevap-ekrani.md), [ADR-0025](docs/adr/0025-gecmis-geri-bildirim-deger-panosu.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
 
 Daha önce kurulmuş bir yığında panelin IdP istemcisi, `admin` kullanıcısı ya da Verso giriş teması yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz). Sonra Keycloak'ı tema bağlantısıyla yeniden oluşturun; bu, sıkıştırılmış kaynak önbelleğini de siler (tema dosyaları her değiştiğinde de gerekir):
 

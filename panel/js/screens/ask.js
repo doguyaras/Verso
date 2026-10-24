@@ -2,17 +2,23 @@
 // cited passage, source cards that show the excerpt with the words the answer shares marked, an honest state for each
 // outcome and each failure, skeptical follow-ups, and a wait that says how long it has been and may be. On wide screens
 // the cards sit in a sticky column next to the answer and the markers become short "belge · s. 3" chips.
-// The conversation lives in this tab's memory only (store.js); a reload starts a new one.
+// Every answer is stored in the user's server-side history (ADR-0023): a follow-up carries the conversation's id, the
+// answer can be rated 👍/👎, and a conversation opened from "Geçmiş" comes back here read-only and goes on (ADR-0025).
+// In the browser the open conversation lives in this tab's memory only (store.js); a reload starts a new one.
 import { api, lastMode } from '../api.js';
 import { answerMarkdown, chipLabel, errorState, followUps, markdownFileName, selectionQuestion } from '../answer.js';
 import { CONFIG } from '../config.js';
+import { continueWith, startOverNote, startsOver } from '../conversations.js';
 import { citingSpans, citingText, excerptParts, matchRanges } from '../excerpt.js';
 import { prune, tintSentences, writeMarked } from '../highlight.js';
 import { icon, logo } from '../icons.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
-import { conversation, prefs } from '../store.js';
+import { ratingControls } from '../rating.js';
+// The store's thread (which conversation is open) is "current" here: "thread" is the answer log element below.
+import { conversation, prefs, startNewConversation, thread as current } from '../store.js';
 import { pulse, reducedMotion, wordSpans } from '../motion.js';
 import { fileIcon, toast } from '../ui.js';
+import { openHistory } from './history.js';
 
 const MAX_CHARS = 1000;
 // Nielsen's limits: nothing under 1 s, a skeleton up to 10 s, then the elapsed time and what to expect.
@@ -52,7 +58,7 @@ function citationButton(citation, evidence, link) {
     el('span', { class: 'src' }, fileIcon(extension(citation.fileName), 'sm'), el('span', { class: 'fname' }, name), el('span', { class: 'where' }, where)),
     citation.excerpt ? quote(citation, evidence) : null);
   const on = (value) => link.hover(citation.number, value);
-  const button = el('button', { class: 'cite', type: 'button', 'data-number': citation.number, 'aria-describedby': pop.id,
+  const button = el('button', { class: `cite${citation.deleted ? ' deleted' : ''}`, type: 'button', 'data-number': citation.number, 'aria-describedby': pop.id,
     'aria-expanded': 'false', 'aria-label': `Kaynak ${citation.number}: ${name}, ${where}`,
     onclick: () => {
       const open = button.getAttribute('aria-expanded') !== 'true';
@@ -117,18 +123,25 @@ function measure(sources) {
   }
 }
 
+/** Why a citation row has no excerpt: the history keeps none, a deleted document has none to show. */
+function noExcerpt(citation, restored) {
+  if (citation.deleted) return 'Belge silinmiş; alıntı gösterilemez.';
+  return restored ? 'Geçmişte alıntı saklanmaz.' : 'Bu kaynak için alıntı gelmedi.';
+}
+
 /** Source cards grouped by document; each citation row shows its page and its excerpt. */
-function sourceCards(citations, evidence, link) {
+function sourceCards(citations, evidence, link, restored) {
   const sources = el('div', { class: 'sources', role: 'list', 'aria-label': 'Kaynaklar' }, groupSources(citations).map((group) => {
     const name = plainName(group.fileName);
-    const card = el('div', { class: 'source', role: 'listitem', id: nextId('source'), 'data-numbers': group.items.map((c) => c.number).join(' ') },
+    const deleted = group.items.some((c) => c.deleted);
+    const card = el('div', { class: `source${deleted ? ' deleted' : ''}`, role: 'listitem', id: nextId('source'), 'data-numbers': group.items.map((c) => c.number).join(' ') },
       el('div', { class: 'source-head' }, fileIcon(extension(group.fileName), 'sm'), el('span', { class: 'fname', title: name }, name)),
       group.items.map((c) => el('div', { class: 'cite-row', 'data-number': c.number,
         onmouseenter: () => link.hover(c.number, true), onmouseleave: () => link.hover(c.number, false) },
       el('button', { class: 'cite-ref', type: 'button', 'aria-label': `Cevapta göster: kaynak ${c.number}, ${whereOf(c)}`,
         onclick: () => link.reveal(c.number), onfocus: () => link.hover(c.number, true), onblur: () => link.hover(c.number, false) },
       el('span', { class: 'n' }, String(c.number)), whereOf(c)),
-      c.excerpt ? quote(c, evidence.get(c.number)) : el('span', { class: 'quote none' }, 'Bu kaynak için alıntı gelmedi.'))));
+      c.excerpt ? quote(c, evidence.get(c.number)) : el('span', { class: 'quote none' }, noExcerpt(c, restored)))));
     card.append(el('button', { class: 'more', type: 'button', hidden: true, 'aria-expanded': 'false', 'aria-controls': card.id,
       onclick: () => setOpen(card, !card.classList.contains('open')) }, el('span', {}, 'Tamamını göster'), icon('chevronDown', 'sm')));
     return card;
@@ -271,6 +284,9 @@ function answerView(entry, actions) {
   const { result } = entry;
   const { productName } = CONFIG.deployment;
   const notFound = isNotFound(result);
+  // A turn opened from the history is read-only: no excerpt was stored, so no follow-ups and no edits; it can be rated.
+  const restored = Boolean(entry.restored);
+  const rating = ratingControls(entry, actions);
   const evidence = new Map(result.citations.map((c) => [c.number, citingText(result.answer, c.number)]));
   // A fresh answer appears word by word; one drawn again (a later visit) appears at once.
   const counter = entry.fresh && !reducedMotion() ? { i: 0 } : null;
@@ -278,17 +294,19 @@ function answerView(entry, actions) {
   const link = linker(result.answer, segments);
   const text = notFound ? null : answerText(result, evidence, link, counter);
   if (text) segments.push(...text.segments);
-  const sources = result.citations.length ? sourceCards(result.citations, evidence, link) : null;
-  const chips = followUps(result);
+  const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored) : null;
+  const chips = restored ? [] : followUps(result);
   const view = el('div', { class: `answer${sources ? ' has-sources' : ''}` },
     // ADR-0021: the installation's product name, never followed by a Turkish case suffix.
     el('h3', { class: 'sr-only' }, `${productName} cevap verdi`),
-    el('div', { class: 'answer-head' }, outcomeBadge(result)),
+    el('div', { class: 'answer-head' }, outcomeBadge(result),
+      restored ? el('span', { class: 'pill neutral', title: 'Geçmişten açıldı; alıntılar saklanmaz.' }, icon('history', 'sm'), 'Geçmişten') : null),
+    entry.notice ? el('div', { class: 'notice info start-over' }, icon('info', 'sm'), el('div', { class: 'grow' }, entry.notice)) : null,
     notFound
       ? el('div', { class: 'notice neutral answer-empty' }, icon('search', 'sm'), el('div', { class: 'grow' },
         el('strong', {}, 'Yüklediğiniz belgelerde bu sorunun cevabını bulamadım.'),
         el('div', {}, 'Belgelerde dayanak bulunamadığı için tahmin yürütülmedi. Soruyu başka sözcüklerle sorabilir ya da ilgili belgeyi yükleyebilirsiniz.'),
-        el('div', { class: 'actions' },
+        restored ? null : el('div', { class: 'actions' },
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Soruyu düzenle'),
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.navigate('documents', { upload: true }) }, icon('upload', 'sm'), 'Belge yükle'))))
       : text.box,
@@ -312,8 +330,10 @@ function answerView(entry, actions) {
             toast('Kopyalanamadı.');
           }
         } }, icon('copy', 'sm'), 'Kopyala'),
-        notFound ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => download(entry) }, icon('download', 'sm'), '.md indir'),
-        el('button', { class: 'button ghost sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Düzenle'))));
+        notFound || restored ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => download(entry) }, icon('download', 'sm'), '.md indir'),
+        restored ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Düzenle')),
+      rating?.controls ?? null),
+    rating?.picker ?? null);
   link.attach(view);
   return view;
 }
@@ -379,6 +399,7 @@ export function renderAsk(ctx) {
   const actions = {
     ask: (question) => ask(question),
     navigate: ctx.navigate,
+    withAuth: ctx.withAuth,
     edit: prefill,
     sources: (link, result) => {
       // Answered here: the answer already names its documents; asking the model would only guess again.
@@ -430,6 +451,26 @@ export function renderAsk(ctx) {
     if (!pick.hidden) hidePick();
   };
   addEventListener('scroll', onScroll, { passive: true });
+
+  // The conversation bar: the title of a conversation opened from the history, "Geçmiş" (also the way to the history
+  // on phones, where there is no menu) and "Yeni konuşma", which makes the next question start a new conversation.
+  const barTitle = el('span', { class: 'chat-title' });
+  const fresh = el('button', { class: 'button ghost sm', type: 'button', onclick: () => {
+    busy?.abort(); // an answer still on its way belongs to the conversation being left; it is dropped (current.generation)
+    startNewConversation();
+    drawThread();
+    updateBar();
+    announcer.textContent = 'Yeni konuşma başladı.';
+    field.focus();
+  } }, icon('plus', 'sm'), 'Yeni konuşma');
+  const bar = el('div', { class: 'chat-bar' }, barTitle, el('span', { class: 'spacer' }),
+    el('button', { class: 'button ghost sm', type: 'button', 'aria-haspopup': 'dialog', onclick: () => openHistory(ctx) }, icon('history', 'sm'), 'Geçmiş'),
+    fresh);
+  function updateBar() {
+    barTitle.textContent = current.title ? plainName(current.title) : '';
+    barTitle.title = barTitle.textContent;
+    fresh.hidden = !conversation.length && !current.conversationId;
+  }
 
   // Turns: PageUp/PageDown (outside a multi-line question) and Alt+↑/↓ move between them; Esc closes what is open.
   function moveTurn(step) {
@@ -485,7 +526,7 @@ export function renderAsk(ctx) {
       event.preventDefault();
       moveTurn(event.key === 'PageUp' ? -1 : 1);
     }
-  } }, el('h1', { class: 'sr-only' }, 'Soru sor'), thread, announcer, pick, form);
+  } }, el('h1', { class: 'sr-only' }, 'Soru sor'), bar, thread, announcer, pick, form);
 
   // Phones: the visual viewport shrinks when the keyboard opens while the layout viewport does not, so the composer
   // is lifted by the keyboard's height (and the tab bar steps aside) while the question box has the focus.
@@ -531,7 +572,10 @@ export function renderAsk(ctx) {
   async function ask(question) {
     if (!question || busy) return;
     const controller = new AbortController();
+    const generation = current.generation;
+    const sentTo = current.conversationId;
     setBusy(controller);
+    fresh.hidden = false;
     field.value = '';
     resize();
     hidePick();
@@ -558,8 +602,23 @@ export function renderAsk(ctx) {
     }, 250);
     let entry;
     try {
-      const result = await ctx.withAuth(() => api.ask(question, controller.signal));
-      entry = { question, result, ms: Date.now() - started, at: new Date().toISOString() };
+      let result;
+      let notice = null;
+      try {
+        result = await ctx.withAuth(() => api.ask(question, controller.signal, sentTo));
+      } catch (error) {
+        if (!(sentTo && startsOver(error))) throw error;
+        // The conversation is gone or full: refused before any model call, so the question goes to a new one.
+        notice = startOverNote(error);
+        result = await ctx.withAuth(() => api.ask(question, controller.signal, null));
+      }
+      entry = { question, result, ms: Date.now() - started, at: new Date().toISOString(), feedback: null, notice };
+      if (current.generation === generation) {
+        // Always the answer's own id: the server may have started a new conversation (deleted meanwhile, expired).
+        const next = continueWith(notice ? null : sentTo, result);
+        if (next !== sentTo) current.title = null;
+        current.conversationId = next;
+      }
       prefs.markOnboarding({ asked: true });
     } catch (error) {
       entry = error?.name === 'AbortError'
@@ -570,8 +629,12 @@ export function renderAsk(ctx) {
       setBusy(null);
       ctx.showMode();
     }
+    // Another conversation was put in place meanwhile ("Yeni konuşma", "Geçmiş"): this answer is stored in its own
+    // conversation on the server and is not appended to the one now open.
+    if (current.generation !== generation) return;
     conversation.push(entry);
     if (!ctx.isCurrent()) return;
+    updateBar();
     announcer.textContent = entry.cancelled ? 'Bekleme durduruldu.' : entry.error ? `Cevap alınamadı: ${entry.error.title}.`
       : isNotFound(entry.result) ? 'Belgelerde bulunamadı.' : entry.result.outcome === 'UNCITED' ? 'Cevap hazır, kaynak gösterilemedi.' : 'Cevap hazır.';
     bot.replaceWith(botTurn(answerView({ ...entry, fresh: true }, actions)));
@@ -580,6 +643,7 @@ export function renderAsk(ctx) {
 
   main.replaceChildren(chat);
   drawThread();
+  updateBar();
   thread.lastElementChild?.scrollIntoView({ block: 'end' });
   if (ctx.params?.question) ask(ctx.params.question);
   else field.focus();

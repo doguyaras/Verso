@@ -98,8 +98,11 @@ export function openMenu(anchor, items, { placement = 'above' } = {}) {
   return close;
 }
 
-/** A panel sliding in from the right; returns a function that closes it. The opener gets the focus back. */
-export function openDrawer({ title, subtitle, body, actions = [] }) {
+/**
+ * A panel sliding in from the right; returns a function that closes it. The opener gets the focus back. Escape closes
+ * it, except while a confirmation dialog on top of it is open: that Escape belongs to the dialog.
+ */
+export function openDrawer({ title, subtitle, body, actions = [], className = '' }) {
   const opener = document.activeElement;
   const scrim = el('div', { class: 'drawer-scrim' });
   const close = () => {
@@ -109,9 +112,9 @@ export function openDrawer({ title, subtitle, body, actions = [] }) {
     if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
   };
   const onKey = (event) => {
-    if (event.key === 'Escape') close();
+    if (event.key === 'Escape' && !document.querySelector('dialog[open]')) close();
   };
-  const drawer = el('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'drawer-title' },
+  const drawer = el('aside', { class: `drawer ${className}`.trim(), role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'drawer-title' },
     el('div', { class: 'drawer-head' },
       el('div', { class: 'grow' }, el('h2', { id: 'drawer-title' }, title), subtitle ? el('div', { class: 'sub' }, subtitle) : null),
       el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Kapat', onclick: close }, icon('x'))),

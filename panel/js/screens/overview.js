@@ -1,6 +1,7 @@
 // Overview (ADR-0017, home as "ask" in ADR-0018): the signature and a large question box in the middle of the screen
 // with the installation's suggested questions, three small cards (searchable documents, setup phase, mode), the
-// first-run checklist until it is done, then the latest documents and this tab's questions.
+// first-run checklist until it is done, then the latest documents and the open conversation's questions (earlier ones
+// are in "Geçmiş", ADR-0025).
 import { api } from '../api.js';
 import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
@@ -70,7 +71,8 @@ function onboarding(ctx, docs, rerender) {
 function recentQuestions(ctx) {
   const latest = conversation.filter((e) => e.result).slice(-4).reverse();
   if (!latest.length) {
-    return el('p', { class: 'muted' }, 'Bu oturumda henüz soru sorulmadı. Sorular yalnız bu sekmenin belleğinde durur.');
+    return el('p', { class: 'muted' }, 'Bu oturumda henüz soru sorulmadı. Önceki konuşmalarınız ',
+      el('button', { class: 'link-button', type: 'button', onclick: ctx.openHistory }, 'Geçmiş'), '’te.');
   }
   return el('ul', { class: 'list' }, latest.map((entry) => el('li', {},
     el('span', { class: 'file-icon sm', 'aria-hidden': 'true' }, icon('chat', 'sm')),

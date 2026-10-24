@@ -87,5 +87,9 @@ export function transition(update) {
     update();
     return;
   }
-  document.startViewTransition(update);
+  // A quick second navigation skips the running transition; its promise then rejects, which is not an error here
+  // (the update still runs). Without the catch it showed as an uncaught AbortError in the console.
+  const running = document.startViewTransition(update);
+  running.ready?.catch(() => {});
+  running.finished?.catch(() => {});
 }

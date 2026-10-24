@@ -171,7 +171,11 @@ Başarısız sorular (`503`) saklanmaz ve bu sayılarda yoktur; hesap kimliği v
 
 ## Manuel test akışı
 ### Uygulama üzerinden
-Panel bu dalda değişmedi; geçmiş ve puanlama ekranı ayrı bir işte gelir. Şimdilik API ile denenir.
+Panel bu uçları [ADR-0025](adr/0025-gecmis-geri-bildirim-deger-panosu.md) ile kullanır (`panel/js/api.js`):
+1. Soru sor ekranında iki soru sorun; ikincisi aynı konuşmaya yazılır ("Geçmiş"te 2 soru).
+2. Cevabın altındaki 👎 ile bir neden seçin; "Teşekkürler" görünür.
+3. Menüden "Geçmiş"i açın: konuşmayı açın, yeniden adlandırın, silin; "Tümünü sil" için `SİL` yazın.
+4. `admin` kullanıcısıyla "Değer panosu"; `demo` kullanıcısı menüde görmez, adrese elle gidince Genel bakış açılır.
 ### API koleksiyonu ile (curl)
 1. Token al (README "curl ile").
 2. `curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"question":"Yıllık izin kaç gün?"}' http://127.0.0.1:8080/v1/questions` → `conversationId`, `turnId`.
