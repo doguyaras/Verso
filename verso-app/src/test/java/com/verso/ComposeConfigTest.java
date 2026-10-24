@@ -68,7 +68,8 @@ class ComposeConfigTest {
     void composeSettings_whenReferenced_areDocumentedInEnvExample() throws IOException {
         Set<String> used = new TreeSet<>();
         for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml",
-                "deploy/compose.gpu.yaml", "deploy/compose.smb.yaml", "deploy/compose.confluence.yaml")) {
+                "deploy/compose.gpu.yaml", "deploy/compose.smb.yaml", "deploy/compose.confluence.yaml",
+                "deploy/compose.sharepoint.yaml")) {
             Matcher m = COMPOSE_VAR.matcher(read(file));
             while (m.find()) used.add(m.group(1));
         }
@@ -370,6 +371,33 @@ class ComposeConfigTest {
         assertThat(String.valueOf(network.get("ipam"))).contains("subnet=${VERSO_CONFLUENCE_SUBNET:-172.31.251.0/24}");
         assertThat(read("deploy/compose.confluence.yaml")).doesNotContain("ports:").doesNotContain("VERSO_AI_MODE:")
                 .doesNotContain("environment:").contains("iptables -I DOCKER-USER -i verso-cfl -j DROP");
+    }
+
+    /**
+     * ADR-0045: the SharePoint overlay adds only the application's route and the credential's secret; it neither
+     * switches the AI mode nor turns internet egress on, and the base stack mounts no SharePoint secret.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void sharePointOverlay_whenComposed_addsOnlyTheApplicationsRouteAndSecret() throws IOException {
+        Map<String, Object> base = new Yaml().load(read("compose.yaml"));
+        assertThat((Map<String, Object>) base.get("networks")).doesNotContainKey("sharepoint");
+        services().forEach((name, definition) -> assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets")))
+                .as(name).doesNotContain("SECRET_CONNECTOR_SHAREPOINT"));
+
+        Map<String, Object> overlay = new Yaml().load(read("deploy/compose.sharepoint.yaml"));
+        assertThat(overlay.keySet()).containsExactlyInAnyOrder("services", "networks", "secrets");
+        Map<String, Object> services = (Map<String, Object>) overlay.get("services");
+        assertThat(services.keySet()).containsExactly("verso-app");
+        Map<String, Object> app = (Map<String, Object>) services.get("verso-app");
+        assertThat(app.keySet()).containsExactlyInAnyOrder("networks", "secrets");
+        assertThat((List<String>) app.get("networks")).containsExactly("sharepoint");
+        assertThat((List<String>) app.get("secrets")).containsExactly("SECRET_CONNECTOR_SHAREPOINT_CERT");
+        Map<String, Object> network = (Map<String, Object>) ((Map<String, Object>) overlay.get("networks")).get("sharepoint");
+        assertThat(String.valueOf(network.get("driver_opts"))).contains("com.docker.network.bridge.name=verso-spo");
+        assertThat(String.valueOf(network.get("ipam"))).contains("subnet=${VERSO_SHAREPOINT_SUBNET:-172.31.252.0/24}");
+        assertThat(read("deploy/compose.sharepoint.yaml")).doesNotContain("ports:").doesNotContain("VERSO_AI_MODE:")
+                .doesNotContain("environment:").contains("iptables -I DOCKER-USER -i verso-spo -j DROP");
     }
 
     /**

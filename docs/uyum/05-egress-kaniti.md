@@ -46,7 +46,7 @@ Madde 7 Verso'nun kendi kanıtı değil, **kurumun bağımsız gözlemidir**; en
 - Ana makine (host) düzeyi ayarlar (güvenlik duvarı, proxy, yapılandırma yönetimi, uzaktan erişim yazılımları) bu kanıtın dışındadır.
 - `docker compose` yığınına yapılan sonradan değişiklikler (ağın `internal` olmaktan çıkarılması, port eklenmesi) kanıtı geçersiz kılar. Her yapılandırma değişikliğinden sonra madde 1, 4 ve 5 yeniden yapılır.
 - Gözlem yığını (Prometheus, Loki, Grafana, Alloy) iç ağdadır; Grafana'nın dış paylaşım yolları kapalıdır, metriklerde id ve içerik yoktur (llm-rules 1.5, 2.1).
-- Bağlayıcılar (ADR-0038, ADR-0044): SMB ve Confluence Data Center overlay'leri uygulamaya iç olmayan birer ağ ekler; internete kapalılıkları host güvenlik duvarı kuralına bağlıdır ve betiğin 1. adımı bu ağları raporlar (beklenen). Confluence Cloud bağlayıcısı internet ister ve `local` modda kullanılamaz.
+- Bağlayıcılar (ADR-0038, ADR-0044): SMB ve Confluence Data Center overlay'leri uygulamaya iç olmayan birer ağ ekler; internete kapalılıkları host güvenlik duvarı kuralına bağlıdır ve betiğin 1. adımı bu ağları raporlar (beklenen). Confluence Cloud ve SharePoint Online / OneDrive (ADR-0045) bağlayıcıları internet ister ve `local` modda kullanılamaz; `deploy/compose.sharepoint.yaml` yalnız bulut modundaki bir kuruluma eklenir.
 - Kayıtlar: kenar proxy erişim logu kapalıdır; hata logu yalnız `crit` seviyesindedir (ADR-0013).
 
 ## 4. VKED'e nasıl konur

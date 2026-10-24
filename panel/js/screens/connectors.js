@@ -1,5 +1,5 @@
-// "Bağlayıcılar" (ADR-0038, ADR-0042, ADR-0044): verso-admin keeps a folder of an SMB file share or Confluence spaces in
-// sync with a collection (a type selector picks the form's fields). The
+// "Bağlayıcılar" (ADR-0038, ADR-0042, ADR-0044, ADR-0045): verso-admin keeps a folder of an SMB file share, Confluence
+// spaces or SharePoint Online / OneDrive libraries in sync with a collection (a type selector picks the form's fields). The
 // list shows health (derived from the last successful sync, so an index that silently stopped reads "Gecikmiş"), the
 // form creates and edits a connector, and the actions request a sync, page through runs and files, approve deletions
 // the deletion safety held back and delete a connector with a typed confirmation. The password never passes through
@@ -7,7 +7,7 @@
 // Nothing goes into the URL hash or browser storage. Everything is built with el(): text, never markup (CSP, Trusted
 // Types). The rules of the form live in ../connectors.js.
 import { api, ApiError } from '../api.js';
-import { approvalConfirmed, codeText, CONNECTOR_PAGE_SIZE, connectorForm, connectorRequest, deleteConfirmed, DEPLOYMENTS, DOCS,
+import { approvalConfirmed, AUTH_METHODS, codeText, CONNECTOR_PAGE_SIZE, connectorForm, connectorRequest, deleteConfirmed, DEPLOYMENTS, DOCS,
   errorField, healthBadge, PAGE_SIZE_MAX, TYPES, ITEM_FAILURES, ITEM_PAGE_SIZE, ITEM_STATES, MAX_FILE_MB, pageState, pendingApproval, RUN_PAGE_SIZE, RUN_STATUS,
   runSummary, SCHEDULE_MAX, SCHEDULE_MIN, scheduleText, trackedCount } from '../connectors.js';
 import { icon } from '../icons.js';
@@ -32,7 +32,7 @@ export function renderConnectors(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Bağlayıcılar'),
-        el('p', {}, 'Kurumun dosya sunucusundaki (SMB) bir klasörü ya da Confluence alanlarını bir bilgi alanıyla eşitleyin: yeni ve değişen '
+        el('p', {}, 'Kurumun dosya sunucusundaki (SMB) bir klasörü, Confluence alanlarını ya da SharePoint Online / OneDrive kitaplıklarını bir bilgi alanıyla eşitleyin: yeni ve değişen '
           + 'dosyalar ve sayfalar kendiliğinden alınır, kaynakta silinen buradan da bütün türevleriyle silinir. Her değişiklik denetim kaydına yazılır.')),
       el('div', { class: 'page-actions' }, newButton)),
     blocked,
@@ -176,7 +176,7 @@ export function renderConnectors(ctx) {
 
   function drawForm(original, chosenType = 'SMB') {
     fill(detail);
-    const type = original?.type === 'CONFLUENCE' ? 'CONFLUENCE' : original ? 'SMB' : chosenType;
+    const type = original ? (['CONFLUENCE', 'SHAREPOINT'].includes(original.type) ? original.type : 'SMB') : chosenType;
     const values = connectorForm(original, type);
     // The type is fixed after creation (409 14015); switching it on a new connector redraws the form with its fields.
     const typePicker = el('select', { class: 'input', id: 'connector-type', disabled: Boolean(original),
@@ -201,6 +201,44 @@ export function renderConnectors(ctx) {
       'Kısıtlı sayfaları alma (önerilen): okuma kısıtı olan (kendisi ya da üst sayfası) hiçbir sayfa eşitlenmez');
     const deployment = el('select', { class: 'input' },
       Object.entries(DEPLOYMENTS).map(([value, label]) => el('option', { value, selected: value === values.deployment }, label)));
+    const skipUnique = check('connector-skip-unique', values.skipUnique,
+      'Kitaplıktan farklı izinli dosyaları alma (önerilen): benzersiz izni ya da paylaşım bağlantısı olan dosya eşitlenmez');
+    const authMethod = el('select', { class: 'input' },
+      Object.entries(AUTH_METHODS).map(([value, label]) => el('option', { value, selected: value === values.authMethod }, label)));
+    const sharePointFields = type !== 'SHAREPOINT' ? null : {
+      name: field('connector-name', 'Ad', input('name', { maxlength: 100 }), 'Listede görünen ad; kurulumda tekildir.'),
+      siteUrl: field('connector-site-url', 'Site adresi', input('siteUrl', { maxlength: 2048, placeholder: 'Örn. https://kurum.sharepoint.com/sites/ik' }),
+        'Yalnız https ve …sharepoint.com. OneDrive için kişinin adresi (https://kurum-my.sharepoint.com/personal/…). Kurulum bulut modunda olmalı ve '
+        + 'dış bağlantıya izin vermeli; sıkı local modda SharePoint hiç kullanılamaz.'),
+      siteId: field('connector-site-id', 'Site kimliği (isteğe bağlı)', input('siteId', { maxlength: 400, placeholder: 'host,guid,guid' }),
+        'Adres yerine ya da adresle birlikte Graph site kimliği; ikisi aynı siteyi göstermeli.'),
+      drives: field('connector-drives', 'Belge kitaplıkları (isteğe bağlı)', area('drives'),
+        'Satır başına bir kitaplık adı ya da sürücü kimliği, en çok 10. Boş: sitenin varsayılan kitaplığı (Belgeler).'),
+      pathPrefix: field('connector-prefix', 'Klasör (kitaplık içinde, isteğe bağlı)', input('pathPrefix', { maxlength: 1024, placeholder: 'Örn. Politikalar/2026' }),
+        'Boş bırakılırsa bütün kitaplık eşitlenir. Bu klasörün altındaki her şey hedef alanın okuyucularına açılır.'),
+      includeGlobs: field('connector-include', 'Yalnız bu dosyalar (isteğe bağlı)', area('includeGlobs'),
+        'Satır başına bir desen, en çok 20: *.pdf, raporlar/**/*.docx. Ne yazılırsa yazılsın yalnız PDF, DOCX, TXT ve MD alınır.'),
+      excludeGlobs: field('connector-exclude', 'Bunları alma (isteğe bağlı)', area('excludeGlobs'), 'Satır başına bir desen: arsiv/**, *taslak*.'),
+      clientId: field('connector-client-id', 'Uygulama (client) kimliği', input('clientId', { maxlength: 36, placeholder: 'GUID' }),
+        'Bağlayıcının kendi Entra uygulama kaydı (oturum açma uygulaması değil). Önerilen izin Sites.Selected: yönetici uygulamaya yalnız bu siteyi '
+        + 'okuma izni verir. Sites.Read.All bütün sitelere okuma açar; önerilmez.'),
+      tenantId: field('connector-tenant-id', 'Dizin (tenant) kimliği (isteğe bağlı)', input('tenantId', { maxlength: 36, placeholder: 'Boş: kurulumun Entra kiracısı' }),
+        'Boş bırakılırsa oturum açmadaki Entra kiracısı (OIDC_ENTRA_TENANT_ID) kullanılır.'),
+      authMethod: field('connector-auth-method', 'Kimlik doğrulama', authMethod,
+        'Sertifika önerilir: Entra\'ya yalnız sertifikanın açık kısmı yüklenir, özel anahtar sunucuda kalır. İstemci gizlisi süreli ve paylaşılan bir paroladır.'),
+      credentialRef: field('connector-credential', 'Anahtar dosyasının adı', input('credentialRef', { maxlength: 77 }),
+        'Özel anahtar ya da istemci gizlisi bu ekrana yazılmaz ve hiçbir yerde gösterilmez. Kurulum ekibi onu secrets klasöründe bu adla bir dosyaya '
+        + 'yazar (SECRET_CONNECTOR_ ile başlar, ör. SECRET_CONNECTOR_SHAREPOINT_CERT).'),
+      collectionId: field('connector-collection', 'Hedef bilgi alanı', picker, original
+        ? 'Hedef alan sonradan değiştirilemez: taşıma, belgeleri eski erişimlerle geride bırakırdı. Başka alan için yeni bağlayıcı oluşturun.'
+        : 'Bu alana erişimi olan herkes eşitlenen her dosyayı görür; SharePoint izinleri aktarılmaz. Kitaplığı bilgi alanının okuyucularına göre seçin '
+          + '(aşırı paylaşım riski: önce izin denetimi).'),
+      maxFileMb: field('connector-max', 'En büyük dosya (MB)', input('maxFileMb', { inputmode: 'decimal', maxlength: 6, placeholder: String(MAX_FILE_MB) }),
+        `Boş bırakılırsa ${MAX_FILE_MB} MB (belge sınırı, aynı zamanda üst sınır). Daha büyük dosyalar atlanır.`),
+      scheduleMinutes: field('connector-schedule', 'Eşitleme aralığı (dakika)', input('scheduleMinutes', { inputmode: 'numeric', maxlength: 5 }),
+        `${SCHEDULE_MIN} dakika ile ${SCHEDULE_MAX} dakika (1 hafta) arası. Aralıkta yalnız değişenler okunur (delta); günde bir tam liste silinenleri `
+        + 've sonradan izni değişen dosyaları bulur.'),
+    };
     const confluenceFields = type !== 'CONFLUENCE' ? null : {
       name: field('connector-name', 'Ad', input('name', { maxlength: 100 }), 'Listede görünen ad; kurulumda tekildir.'),
       baseUrl: field('connector-base-url', 'Confluence adresi', input('baseUrl', { maxlength: 2048, placeholder: 'Örn. https://wiki.kurum.local ya da https://kurum.atlassian.net/wiki' }),
@@ -230,7 +268,7 @@ export function renderConnectors(ctx) {
         `${SCHEDULE_MIN} dakika ile ${SCHEDULE_MAX} dakika (1 hafta) arası. Aralıkta yalnız değişen sayfalar okunur; günde bir tam liste silinen, `
         + 'arşivlenen ve sonradan kısıtlanan sayfaları bulur.'),
     };
-    const fields = confluenceFields ?? {
+    const fields = confluenceFields ?? sharePointFields ?? {
       name: field('connector-name', 'Ad', input('name', { maxlength: 100 }), 'Listede görünen ad; kurulumda tekildir.'),
       host: field('connector-host', 'Dosya sunucusu', input('host', { maxlength: 253, placeholder: 'Örn. 10.20.30.40 ya da dosya01.kurum.local' }),
         'Yalnız ad ya da IP adresi. Adres kurulumun izinli iç ağlarında olmalı; en güvenlisi IP adresi.'),
@@ -267,6 +305,7 @@ export function renderConnectors(ctx) {
         form.enabled = enabled.checked;
         form.includeAttachments = attachments.box.checked;
         form.skipRestricted = skipRestricted.box.checked;
+        form.skipUnique = skipUnique.box.checked;
         const { problems, body } = connectorRequest(form, original);
         for (const [key, f] of Object.entries(fields)) f.show(problems[key]);
         if (!body) {
@@ -289,6 +328,10 @@ export function renderConnectors(ctx) {
       type === 'CONFLUENCE' ? skipRestricted.node : null,
       type === 'CONFLUENCE' && !values.skipRestricted ? el('p', { class: 'notice bad' }, icon('alert', 'sm'),
         'Kısıtlı sayfalar da alınıyor: sayfa kısıtları aktarılmadığı için, kısıtlı bir sayfa bu bilgi alanının bütün okuyucularına açılır.') : null,
+      type === 'SHAREPOINT' ? skipUnique.node : null,
+      type === 'SHAREPOINT' && !values.skipUnique ? el('p', { class: 'notice bad' }, icon('alert', 'sm'),
+        'Farklı izinli dosyalar da alınıyor: SharePoint izinleri aktarılmadığı için, yalnız birkaç kişiyle paylaşılmış bir dosya bu bilgi alanının '
+        + 'bütün okuyucularına açılır (aşırı paylaşım).') : null,
       el('label', { class: 'connector-check', for: 'connector-enabled' }, enabled,
         el('span', {}, 'Zamanlama açık (kapalıyken belgeler olduğu gibi kalır, yeni eşitleme olmaz)')),
       el('div', { class: 'page-actions' }, save,
@@ -322,7 +365,7 @@ export function renderConnectors(ctx) {
           pending ? approvalCard(connector, pending) : null,
           el('dl', { class: 'facts' },
             fact('Tür', TYPES[connector.type] ?? TYPES.SMB),
-            ...(connector.type === 'CONFLUENCE' ? confluenceFacts(connector) : [
+            ...(connector.type === 'CONFLUENCE' ? confluenceFacts(connector) : connector.type === 'SHAREPOINT' ? sharePointFacts(connector) : [
               fact('Sunucu', `${connector.host}${connector.port && connector.port !== 445 ? `:${connector.port}` : ''}`),
               fact('Paylaşım ve klasör', `${connector.share}${connector.pathPrefix ? ` / ${connector.pathPrefix}` : ' (bütün paylaşım)'}`),
               fact('Servis hesabı', `${connector.domain ? `${connector.domain}\\` : ''}${connector.username}`),
@@ -358,6 +401,19 @@ export function renderConnectors(ctx) {
       fact('Kısıtlı sayfalar', c.skipRestricted === false ? 'Alınıyor (bütün okuyuculara açılır)' : 'Alınmıyor (v1 güvenlik kuralı)'),
       fact('Ekler', c.includeAttachments ? 'PDF ve DOCX ekleri alınıyor' : 'Alınmıyor'),
       fact('Son tam liste ve kısıt taraması', c.lastFullListingAt ? formatDate(c.lastFullListingAt) : 'Henüz yok'),
+    ];
+  }
+
+  /** The SharePoint settings of a connector; the key or secret is only named, never shown. */
+  function sharePointFacts(connector) {
+    const s = connector.sharePoint ?? {};
+    return [
+      fact('Site', String(s.siteUrl ?? s.siteId ?? '')),
+      fact('Kitaplık ve klasör', `${(s.drives ?? []).length ? s.drives.join(', ') : 'Varsayılan kitaplık'}${connector.pathPrefix ? ` / ${connector.pathPrefix}` : ''}`),
+      fact('Uygulama', `${String(s.clientId ?? '')} (${AUTH_METHODS[s.authMethod] ?? String(s.authMethod ?? '')})`),
+      fact('Anahtar dosyası', el('span', { class: 'code' }, String(connector.credentialRef ?? ''))),
+      fact('Farklı izinli dosyalar', s.skipUniquePermissions === false ? 'Alınıyor (bütün okuyuculara açılır)' : 'Alınmıyor (v1 güvenlik kuralı)'),
+      fact('Son tam liste ve izin taraması', s.lastFullListingAt ? formatDate(s.lastFullListingAt) : 'Henüz yok'),
     ];
   }
 
@@ -493,10 +549,15 @@ export function renderConnectors(ctx) {
             + 'SECRET_CONNECTOR_CONFLUENCE_TOKEN dosyasına yazın; sunucunun adresini VERSO_CONNECTOR_ALLOWED_NETWORKS ile izin verin; yığını '
             + 'Confluence eki (overlay) ile açın ve güvenlik duvarında yalnız sunucunun 443 portuna izin verin.'),
           el('li', {}, 'Confluence Cloud internet bağlantısı ister: VERSO_CONNECTOR_EXTERNAL_EGRESS=true ve VERSO_CONNECTOR_EXTERNAL_HOSTS=*.atlassian.net. '
-            + 'Sıkı local modda (yerel model) uygulama bu ayarla açılmaz; Cloud yalnız bulut modunda kullanılır ve VKED\'de yeni veri kaynağı ve aktarım olarak yazılır.')),
+            + 'Sıkı local modda (yerel model) uygulama bu ayarla açılmaz; Cloud yalnız bulut modunda kullanılır ve VKED\'de yeni veri kaynağı ve aktarım olarak yazılır.'),
+          el('li', {}, 'SharePoint Online / OneDrive: Entra\'da bağlayıcıya ayrı bir uygulama kaydı açın, Microsoft Graph uygulama izni olarak Sites.Selected '
+            + 'verin ve yönetici onayından sonra uygulamaya yalnız eşitlenecek siteyi "read" rolüyle açın (Sites.Read.All bütün sitelere okuma verir, önerilmez). '
+            + 'Sertifikanın özel anahtarı ve sertifika secrets klasöründe SECRET_CONNECTOR_SHAREPOINT_CERT dosyasına yazılır. Bulut modu, '
+            + 'VERSO_CONNECTOR_EXTERNAL_EGRESS=true ve VERSO_CONNECTOR_EXTERNAL_HOSTS=graph.microsoft.com,login.microsoftonline.com,<kiracı>.sharepoint.com gerekir.')),
         el('p', { class: 'muted' }, 'Ayrıntılar: ', el('code', {}, DOCS.readme), ', ', el('code', {}, DOCS.overlay), ', ', el('code', {}, DOCS.api),
           ', ', el('code', {}, DOCS.adr), '; Confluence için ', el('code', {}, DOCS.confluenceReadme), ', ', el('code', {}, DOCS.confluenceOverlay),
-          ', ', el('code', {}, DOCS.confluenceAdr), '; gecikme alarmı için ', el('code', {}, DOCS.runbook), '.')));
+          ', ', el('code', {}, DOCS.confluenceAdr), '; SharePoint için ', el('code', {}, DOCS.sharePointReadme), ', ',
+          el('code', {}, DOCS.sharePointOverlay), ', ', el('code', {}, DOCS.sharePointAdr), '; gecikme alarmı için ', el('code', {}, DOCS.runbook), '.')));
   }
 
   load(0);

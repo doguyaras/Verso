@@ -1,10 +1,10 @@
-# API istemcisi bağlayıcı entegrasyonu (SMB ve Confluence) [v1]
+# API istemcisi bağlayıcı entegrasyonu (SMB, Confluence ve SharePoint Online / OneDrive) [v1]
 
-Verso bir SMB (Windows / Samba) paylaşımındaki klasörü ya da Confluence (Data Center/Server ya da Cloud) alanlarındaki sayfaları bir bilgi alanına eşitler: yeni ve değişen dosyalar belge olarak alınır, kaynakta silinen dosya Verso'da bütün türevleriyle silinir. `verso-admin` rolündeki yönetici bağlayıcıları oluşturur, değiştirir, siler, eşitlemeyi tetikler ve koşuları izler. Eşitlenen belgeleri, hedef bilgi alanına erişimi olan herkes okur (ADR-0028).
+Verso bir SMB (Windows / Samba) paylaşımındaki klasörü, Confluence (Data Center/Server ya da Cloud) alanlarındaki sayfaları ya da SharePoint Online / OneDrive belge kitaplıklarındaki dosyaları bir bilgi alanına eşitler: yeni ve değişen dosyalar belge olarak alınır, kaynakta silinen dosya Verso'da bütün türevleriyle silinir. `verso-admin` rolündeki yönetici bağlayıcıları oluşturur, değiştirir, siler, eşitlemeyi tetikler ve koşuları izler. Eşitlenen belgeleri, hedef bilgi alanına erişimi olan herkes okur (ADR-0028).
 
 > **OpenAPI doğrulanmadı:** uçlar ve alanlar `AdminConnectorController`, `ConnectorAdminServiceImpl` ve `connector-api` DTO'larından çıkarıldı (ADR-0004). Generated client paketi: yok.
 
-Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'indeki koda (taban `develop` `86e73d1`) ve Confluence için `feature/doguyaras-confluence` branch'ine dayanır. Kararlar: [ADR-0038](adr/0038-smb-baglayicisi.md) (SMB), [ADR-0044](adr/0044-confluence-baglayicisi.md) (Confluence, `pendingDeletions`).
+Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'indeki koda (taban `develop` `86e73d1`) ve Confluence için `feature/doguyaras-confluence`, SharePoint için `feature/doguyaras-sharepoint` (25 Ekim 2026) branch'ine dayanır. Kararlar: [ADR-0038](adr/0038-smb-baglayicisi.md) (SMB), [ADR-0044](adr/0044-confluence-baglayicisi.md) (Confluence, `pendingDeletions`), [ADR-0045](adr/0045-sharepoint-baglayicisi.md) (SharePoint).
 
 ## Değişikliklerin özeti
 - Yeni yönetici uçları: `/v1/admin/connectors` altında oluşturma, liste, okuma, değiştirme, silme, eşitleme isteği, koşu geçmişi ve izlenen dosyalar.
@@ -20,6 +20,13 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 - Yeni hata kodları 14012–14015. Bir değişiklik: SMB isteğinde `host`, `share` ya da `username` eksikse yanıt artık genel doğrulama kodu yerine `400 14012`'dir (HTTP durumu aynı).
 - Yeni koşu kodları ve dosya kodları aşağıdaki listelerdedir; bilinmeyen kodu ham gösteren istemci etkilenmez.
 - Yeni denetim eylemi yok; Confluence de aynı eylemleri yazar. Kısıtlandığı için kaldırılan sayfanın `CONNECTOR_DOCUMENT_DELETED` ayrıntısı `SOURCE_RESTRICTED`'tır.
+
+### ADR-0045 ile gelen değişiklikler (ekleyici)
+- `type` için yeni değer `SHAREPOINT`; `ConnectorRequest`'e `sharePoint` nesnesi, `ConnectorResponse`'a `sharePoint` (başka türde `null`) eklendi. SMB ve Confluence istek ve yanıtları değişmedi (yalnız yanıtta yeni `sharePoint: null` alanı).
+- **Yeni hata kodu yok**; 14003, 14009, 14012, 14013 ve 14014 SharePoint için de kullanılır (tabloda).
+- Yeni koşu kodları: `DRIVE_NOT_FOUND`, `PARENT_UNKNOWN`, `CREDENTIAL_INVALID`, `CREDENTIAL_EXPIRED`; yeni dosya kodu `RESTRICTION_CHECK_FAILED`. Bilinmeyen kodu ham gösteren istemci etkilenmez.
+- Bir artımlı (`INCREMENTAL`) SharePoint koşusu silebilir: Graph delta'sının `deleted` facet'i ve kapsamdan çıkan dosyalar silinir (aynı %20 emniyetiyle). Confluence'ta artımlı koşu silmez (değişmedi).
+- Yeni denetim eylemi yok; farklı izinli olduğu için kaldırılan dosyanın `CONNECTOR_DOCUMENT_DELETED` ayrıntısı `SOURCE_RESTRICTED`'tır.
 
 ## Kurallar
 - **Kritik:** Bütün uçlar yalnız `verso-admin` rolündedir (ADR-0019). Başka her kimlikli çağıran `403` (`90101 ACCESS_DENIED`; denetim kaydına `ACCESS_DENIED` / `ADMIN_CONNECTOR` olarak yazılır), kimliksiz `401` alır.
@@ -101,9 +108,42 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 - `includeAttachments` (varsayılan `false`): sayfaların PDF ve DOCX ekleri, aynı boyut sınırıyla; ek sayfasının kısıtına uyar. Cloud ekleri medya sunucusuna yönlendirildiği için bu sürümde atlanır (`REDIRECT_REFUSED`).
 - Sayfa belgesinin adı sayfa başlığı + `.md`'dir; içerik storage formatından Markdown'a çevrilir (başlıklar ve tablolar korunur, makro parametreleri ve HTML makroları alınmaz).
 
+### `ConnectorRequest` (SharePoint Online / OneDrive)
+
+```json
+{
+  "type": "SHAREPOINT",
+  "name": "İK sitesi",
+  "pathPrefix": "Politikalar",
+  "includeGlobs": ["*.pdf", "*.docx"],
+  "excludeGlobs": ["arsiv/**"],
+  "credentialRef": "SECRET_CONNECTOR_SHAREPOINT_CERT",
+  "collectionId": "0192...",
+  "maxFileBytes": 10485760,
+  "scheduleMinutes": 60,
+  "enabled": true,
+  "sharePoint": {
+    "siteUrl": "https://kurum.sharepoint.com/sites/ik",
+    "siteId": null,
+    "drives": ["Belgeler"],
+    "tenantId": null,
+    "clientId": "9e8d7c6b-5a49-4837-a625-14f3e2d1c0b9",
+    "authMethod": "CERTIFICATE",
+    "skipUniquePermissions": true
+  }
+}
+```
+
+- `host`, `port`, `share`, `domain`, `username` ve `confluence` gönderilmez (`400 14012`). `sharePoint` zorunludur. `PUT` tam gövdedir ve `type: "SHAREPOINT"`'i yeniden gönderir (yoksa `409 14015`).
+- `siteUrl`: `https://<kiracı>.sharepoint.com[/sites/…]` ya da OneDrive `https://<kiracı>-my.sharepoint.com/personal/…`; https, port, kullanıcı bilgisi, sorgu, `#`, `..` ve kodlanmış karakter yok (`400 14014`). Yerine ya da yanında `siteId` (`host,guid,guid`); ikisi verilirse aynı host'u göstermeli (`14014`). Site host'u kurulumun dış bağlantı listesinde ve SharePoint host'u olmalı, Graph ve Entra da listede olmalı; dış bağlantı kapalıysa ya da sıkı local moddaysa `400 14013`.
+- `drives`: kitaplık adları ya da sürücü kimlikleri, en çok 10 (boş: varsayılan kitaplık). `pathPrefix`: her kitaplığın içindeki klasör (`400 14003`); `includeGlobs`/`excludeGlobs` o klasöre göre göreli yolda (`400 14009`). Yalnız PDF, DOCX, TXT, MD.
+- `tenantId`: dizin GUID'i; boşsa kurulumun Entra kiracısı (`OIDC_ENTRA_TENANT_ID`), o da yoksa `400 14012`. `clientId`: bağlayıcının **kendi** uygulama kaydı. `authMethod`: `CERTIFICATE` (önerilen; gizli dosya PKCS#8 özel anahtar + sertifika PEM) ya da `CLIENT_SECRET`. Önerilen Graph uygulama izni `Sites.Selected` + site başına `read` (README).
+- `skipUniquePermissions` (varsayılan `true`): kitaplık kökünden miras almayan izinli dosya (benzersiz izin, doğrudan yetki, paylaşım bağlantısı) alınmaz, önceden alınmışsa silinir; `false` bu dosyaları alanın bütün okuyucularına açar.
+- Belge adı dosya adıdır; `path` `drives/<sürücü id>/items/<öğe id>`'dir (ad değil).
+
 ### `ConnectorResponse` (alanlar)
 
-`id`, `name`, `host`, `port`, `share`, `pathPrefix` (normalize: `IK/Politikalar`), `domain`, `username`, `credentialRef`, `collectionId`, `includeGlobs`, `excludeGlobs`, `maxFileBytes`, `scheduleMinutes`, `enabled`, `health` (`OK`, `FAILING`, `STALE`, `NEVER_SYNCED`, `DISABLED`, `DELETING`), `lastSuccessAt`, `lastFailureAt`, `consecutiveFailures`, `lastErrorCode`, `nextRunAt`, `items` (`synced`, `failed`, `skipped`), `createdAt`, `updatedAt`, `type`, `confluence` (`baseUrl`, `deployment`, `spaceKeys`, `label`, `ancestorId`, `includeAttachments`, `skipRestricted`, `pageSize`, `lastFullListingAt`; SMB'de `null`). Zamanlar UTC ISO-8601.
+`id`, `name`, `host`, `port`, `share`, `pathPrefix` (normalize: `IK/Politikalar`), `domain`, `username`, `credentialRef`, `collectionId`, `includeGlobs`, `excludeGlobs`, `maxFileBytes`, `scheduleMinutes`, `enabled`, `health` (`OK`, `FAILING`, `STALE`, `NEVER_SYNCED`, `DISABLED`, `DELETING`), `lastSuccessAt`, `lastFailureAt`, `consecutiveFailures`, `lastErrorCode`, `nextRunAt`, `items` (`synced`, `failed`, `skipped`), `createdAt`, `updatedAt`, `type`, `confluence` (`baseUrl`, `deployment`, `spaceKeys`, `label`, `ancestorId`, `includeAttachments`, `skipRestricted`, `pageSize`, `lastFullListingAt`; başka türde `null`), `sharePoint` (`siteUrl`, `siteId`, `drives`, `tenantId`, `clientId`, `authMethod`, `skipUniquePermissions`, `lastFullListingAt`; başka türde `null`; SharePoint'te `host` site host'u, `pathPrefix` kitaplık içindeki klasördür). Zamanlar UTC ISO-8601.
 
 ### `SyncRunResponse`
 
@@ -113,13 +153,13 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 - `pendingDeletions`: silme emniyetinin bu koşuda beklettiği silmelerin kesin sayısı (yoksa 0). Onay (`confirmMassDeletion: true`) tam bu sayıdaki belgeyi siler; Confluence'ta onaylı koşu tam listedir. Bu alandan önceki koşularda `null`. `errorCode` ilk sorunu taşıdığı için silmeler bekletildiği hâlde kod başka olabilir; onay kutusu `pendingDeletions > 0`'a bakmalıdır.
 - `listingComplete`: listede boşluk yok (okunamayan klasör, kesilen liste, okunamayan bir kısıt).
 
-- `PARTIAL`: kaynak listelendi ama bazı dosyalar başarısız (`FILES_FAILED`), sınıra ya da kuyruğa takıldı (`RUN_LIMIT`, `BACKLOG`; devamı birkaç dakika sonra), silmeler emniyetten bekletildi (`DELETION_SAFETY`), liste yarım kaldı (`DIRECTORY_UNREADABLE`, `LINK_NOT_FOLLOWED`, `LISTING_TOO_DEEP`, `LISTING_TOO_LARGE`) ya da uygulama kapandı (`INTERRUPTED`). Confluence'a özgü liste sorunları: bir sayfanın kısıtları okunamadı (`RESTRICTION_CHECK_FAILED`; o sayfa alınmaz, hiçbir şey silinmez), devam bağlantısı başka bir yere gidiyordu (`LISTING_LINK_REFUSED`), bir sayfanın ekleri listelenemedi (`ATTACHMENTS_UNREADABLE`).
-- `FAILED`: kaynağa ulaşılamadı; **hiçbir belge silinmez**. Kodlar: `EGRESS_DENIED`, `SOURCE_UNREACHABLE`, `SOURCE_AUTH_FAILED`, `CREDENTIAL_MISSING`, `SHARE_NOT_FOUND`, `PATH_NOT_FOUND`, `PATH_UNREADABLE`, `COLLECTION_MISSING`, `CONFIG_INVALID`, `SYNC_ERROR`. Confluence: `RATE_LIMITED` (429, `Retry-After` ve geri çekilmeyle denendikten sonra), `SOURCE_UNAVAILABLE` (503), `REDIRECT_REFUSED` (başka sunucuya yönlendirme; belirteç gönderilmez), `SITE_NOT_FOUND` (arama ucu 403/404), `INVALID_RESPONSE`, `SOURCE_ERROR`.
+- `PARTIAL`: kaynak listelendi ama bazı dosyalar başarısız (`FILES_FAILED`), sınıra ya da kuyruğa takıldı (`RUN_LIMIT`, `BACKLOG`; devamı birkaç dakika sonra), silmeler emniyetten bekletildi (`DELETION_SAFETY`), liste yarım kaldı (`DIRECTORY_UNREADABLE`, `LINK_NOT_FOLLOWED`, `LISTING_TOO_DEEP`, `LISTING_TOO_LARGE`) ya da uygulama kapandı (`INTERRUPTED`). Confluence'a özgü liste sorunları: bir sayfanın kısıtları okunamadı (`RESTRICTION_CHECK_FAILED`; o sayfa alınmaz, hiçbir şey silinmez), devam bağlantısı başka bir yere gidiyordu (`LISTING_LINK_REFUSED`), bir sayfanın ekleri listelenemedi (`ATTACHMENTS_UNREADABLE`). SharePoint: bir dosyanın izinleri okunamadı (`RESTRICTION_CHECK_FAILED`), sayfa bağlantısı Graph dışına gidiyordu (`LISTING_LINK_REFUSED`), bir dosyanın klasörü listede yoktu (`PARENT_UNKNOWN`).
+- `FAILED`: kaynağa ulaşılamadı; **hiçbir belge silinmez**. Kodlar: `EGRESS_DENIED`, `SOURCE_UNREACHABLE`, `SOURCE_AUTH_FAILED`, `CREDENTIAL_MISSING`, `SHARE_NOT_FOUND`, `PATH_NOT_FOUND`, `PATH_UNREADABLE`, `COLLECTION_MISSING`, `CONFIG_INVALID`, `SYNC_ERROR`. Confluence: `RATE_LIMITED` (429, `Retry-After` ve geri çekilmeyle denendikten sonra), `SOURCE_UNAVAILABLE` (503), `REDIRECT_REFUSED` (başka sunucuya yönlendirme; belirteç gönderilmez), `SITE_NOT_FOUND` (arama ucu 403/404), `INVALID_RESPONSE`, `SOURCE_ERROR`. SharePoint: aynı kodlar (429/503/504 Graph ve Entra için) ve `SITE_NOT_FOUND`, `DRIVE_NOT_FOUND` (çoğunlukla `Sites.Selected` izni verilmemiş), `SOURCE_AUTH_FAILED` (Entra uygulamayı, sertifikayı ya da gizliyi reddetti), `CREDENTIAL_INVALID` (anahtar ve sertifika okunamadı ya da eşleşmiyor), `CREDENTIAL_EXPIRED`.
 - `ABANDONED` / `INSTANCE_STOPPED`: koşan instance durdu; iş başka bir koşuda kaldığı yerden, çift belge üretmeden tamamlandı.
 
 ### `ConnectorItemResponse`
 
-`path` (önekten göreli; Confluence'ta `pages/<sayfa id>` ya da `attachments/<sayfa id>/<ek id>`, başlık değil), `state`, `failureCode` (`READ_FAILED`, `READ_TIMEOUT`, `ACCESS_DENIED`, `FILE_VANISHED`, `COLLECTION_FULL`, `TOO_LARGE`, `EMPTY`, `UNSUPPORTED`, `UNSAFE_LINK`, `RESTRICTED`, `NOT_FOUND`, `REDIRECT_REFUSED`), `attempts`, `nextAttemptAt`, `sizeBytes`, `modifiedAt`, `documentId`, `updatedAt`. Yollar kişisel veri içerebilir: yalnız yöneticiye gösterilir, URL'e ya da analitiğe konmaz.
+`path` (önekten göreli; Confluence'ta `pages/<sayfa id>` ya da `attachments/<sayfa id>/<ek id>`, başlık değil; SharePoint'te `drives/<sürücü id>/items/<öğe id>`, ad değil), `state`, `failureCode` (`READ_FAILED`, `READ_TIMEOUT`, `ACCESS_DENIED`, `FILE_VANISHED`, `COLLECTION_FULL`, `TOO_LARGE`, `EMPTY`, `UNSUPPORTED`, `UNSAFE_LINK`, `RESTRICTED`, `RESTRICTION_CHECK_FAILED`, `NOT_FOUND`, `REDIRECT_REFUSED`), `attempts`, `nextAttemptAt`, `sizeBytes`, `modifiedAt`, `documentId`, `updatedAt`. Yollar kişisel veri içerebilir: yalnız yöneticiye gösterilir, URL'e ya da analitiğe konmaz.
 
 ## Hata kodları
 
@@ -136,9 +176,9 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 | 14009 | 400 | `CONNECTOR_GLOB_INVALID` | desen kullanılamaz (kapanmamış `{`, `..`) |
 | 14010 | 400 | `CONNECTOR_FILE_SIZE_INVALID` | `maxFileBytes` belge sınırından büyük |
 | 14011 | 400 | `CONNECTOR_PAGE_INVALID` | `page` / `size` aralık dışı |
-| 14012 | 400 | `CONNECTOR_SETTINGS_INVALID` | alanlar türe uymuyor (SMB'de `host`/`share`/`username` eksik ya da `confluence` var; Confluence'ta SMB alanı var, Data Center'da `username` var, Cloud'da e-posta yok) |
-| 14013 | 400 | `CONNECTOR_EXTERNAL_EGRESS_DISABLED` | Cloud host'u kurulumun dış bağlantı listesinde değil, dış bağlantı kapalı ya da sıkı local mod |
-| 14014 | 400 | `CONNECTOR_URL_INVALID` | `baseUrl` https değil ya da kullanıcı bilgisi, sorgu, `#`, `..` içeriyor |
+| 14012 | 400 | `CONNECTOR_SETTINGS_INVALID` | alanlar türe uymuyor (SMB'de `host`/`share`/`username` eksik ya da `confluence` var; Confluence'ta SMB alanı var, Data Center'da `username` var, Cloud'da e-posta yok; SharePoint'te SMB/Confluence alanı var ya da tenant yok) |
+| 14013 | 400 | `CONNECTOR_EXTERNAL_EGRESS_DISABLED` | Cloud ya da SharePoint host'u (SharePoint'te Graph ve Entra da) kurulumun dış bağlantı listesinde değil, dış bağlantı kapalı ya da sıkı local mod |
+| 14014 | 400 | `CONNECTOR_URL_INVALID` | `baseUrl` ya da SharePoint `siteUrl`/`siteId` geçersiz: https değil, kullanıcı bilgisi, sorgu, `#`, `..` içeriyor (SharePoint: port ya da kodlanmış karakter; adres ve kimlik farklı host) |
 | 14015 | 409 | `CONNECTOR_TYPE_IMMUTABLE` | `PUT` türü değiştirmeye çalıştı |
 | 90001 vb. | 400 | doğrulama | alan biçimi (`credentialRef` `SECRET_CONNECTOR_*` değil, `share` eğik çizgi içeriyor …) |
 
@@ -157,3 +197,10 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 2. `POST /v1/admin/connectors` (`type: CONFLUENCE`) → `201`. İlk koşu tam listedir ("FULL"): bütün sayfalar, her birinin kısıtı okunur.
 3. Sonraki koşular "INCREMENTAL": yalnız imleçten (son uygulanan "son değişiklik") bu yana değişen sayfalar. Silinen, arşivlenen ya da sonradan kısıtlanan sayfa ancak günde bir yapılan tam listede görülür (`verso.connector.confluence.full-listing-interval`, 24 saat).
 4. `GET …/items?state=SKIPPED` → `failureCode: RESTRICTED` olan sayfalar kısıt yüzünden alınmadı.
+
+### SharePoint Online / OneDrive akışı
+
+1. Kurulum (README "SharePoint Online / OneDrive bağlayıcısı"): Entra'da bağlayıcıya ayrı uygulama kaydı, sertifika, Graph uygulama izni `Sites.Selected` + yönetici onayı + sitenin `read` izni; `SECRET_CONNECTOR_SHAREPOINT_CERT`, `deploy/compose.sharepoint.yaml`, bulut modu, `VERSO_CONNECTOR_EXTERNAL_EGRESS=true`, `VERSO_CONNECTOR_EXTERNAL_HOSTS=graph.microsoft.com,login.microsoftonline.com,<kiracı>.sharepoint.com`.
+2. `POST /v1/admin/connectors` (`type: SHAREPOINT`) → `201`. İlk koşu "FULL": kitaplığın bütün öğeleri delta'dan; indirilen her dosyanın izni okunur.
+3. Sonraki koşular "INCREMENTAL": saklanan delta bağlantısından yalnız değişenler; silinen ya da kapsamdan çıkan dosya **bu koşuda** silinir. Günde bir tam liste (`verso.connector.sharepoint.full-listing-interval`) bütün dosyaların iznini yeniden okur (sonradan farklılaşan izin) ve yokluktan siler. Delta bağlantısının süresi dolduysa (410) koşu kendiliğinden "FULL" olur.
+4. `GET …/items?state=SKIPPED` → `failureCode: RESTRICTED` olan dosyalar kitaplıktan farklı izinleri yüzünden alınmadı; `REDIRECT_REFUSED` olanlar izinli olmayan bir host'a yönlendirildi.

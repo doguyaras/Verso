@@ -31,7 +31,8 @@ public class ConnectorRepository {
             exclude_globs, max_file_bytes, schedule_minutes, enabled, deleting, mass_deletion_confirmed, created_by,
             created_at, updated_at, next_run_at, sync_requested_at, locked_until, claim_token, consecutive_failures,
             last_success_at, last_failure_at, last_error_code, type, base_url, deployment, space_keys, label, ancestor_id,
-            include_attachments, skip_restricted, page_size, sync_cursor, full_listing_at""";
+            include_attachments, skip_restricted, page_size, sync_cursor, full_listing_at, site_id, drive_names,
+            tenant_id, client_id, auth_method""";
 
     static final RowMapper<ConnectorRow> ROW = (rs, n) -> new ConnectorRow(
             rs.getObject("id", UUID.class), rs.getString("name"), rs.getString("host"), rs.getInt("port"),
@@ -43,13 +44,23 @@ public class ConnectorRepository {
             instant(rs, "sync_requested_at"), instant(rs, "locked_until"), rs.getObject("claim_token", UUID.class),
             rs.getInt("consecutive_failures"), instant(rs, "last_success_at"), instant(rs, "last_failure_at"),
             rs.getString("last_error_code"), rs.getString("type"), confluence(rs), instant(rs, "sync_cursor"),
-            instant(rs, "full_listing_at"));
+            instant(rs, "full_listing_at"), sharePoint(rs));
 
     /** The settings an admin gives; validated by the service. */
     public record Settings(String name, String host, int port, String share, String pathPrefix, String domain,
                            String username, String credentialRef, List<String> includeGlobs, List<String> excludeGlobs,
                            long maxFileBytes, int scheduleMinutes, boolean enabled, String type,
-                           ConnectorRow.Confluence confluence) {
+                           ConnectorRow.Confluence confluence, ConnectorRow.SharePoint sharePoint) {
+
+        /** SMB and Confluence settings (the shape before ADR-0045). */
+        public Settings(String name, String host, int port, String share, String pathPrefix, String domain,
+                        String username, String credentialRef, List<String> includeGlobs, List<String> excludeGlobs,
+                        long maxFileBytes, int scheduleMinutes, boolean enabled, String type,
+                        ConnectorRow.Confluence confluence) {
+            this(name, host, port, share, pathPrefix, domain, username, credentialRef, includeGlobs, excludeGlobs,
+                    maxFileBytes, scheduleMinutes, enabled, type, confluence, null);
+        }
+
         @Override
         public String toString() {
             return "Settings[scheduleMinutes=" + scheduleMinutes + "]";
@@ -84,10 +95,12 @@ public class ConnectorRepository {
         return confluence(db.jdbc().sql("INSERT INTO connector.connector (name, host, port, share, path_prefix, domain, username, "
                         + "credential_ref, collection_id, include_globs, exclude_globs, max_file_bytes, schedule_minutes, "
                         + "enabled, created_by, created_at, updated_at, next_run_at, type, base_url, deployment, space_keys, label, "
-                        + "ancestor_id, include_attachments, skip_restricted, page_size) VALUES (:name, :host, :port, "
+                        + "ancestor_id, include_attachments, skip_restricted, page_size, site_id, drive_names, tenant_id, "
+                        + "client_id, auth_method) VALUES (:name, :host, :port, "
                         + ":share, :prefix, :domain, :username, :ref, :collection, :include, :exclude, :max, :schedule, "
                         + ":enabled, :createdBy, :now, :now, :now, :type, :baseUrl, :deployment, :spaces, :label, :ancestor, "
-                        + ":attachments, :skipRestricted, :pageSize) RETURNING " + COLUMNS)
+                        + ":attachments, :skipRestricted, :pageSize, :siteId, :drives, :tenant, :client, :auth) RETURNING "
+                        + COLUMNS)
                 .param("name", s.name()).param("host", s.host()).param("port", s.port()).param("share", s.share())
                 .param("prefix", s.pathPrefix()).param("domain", s.domain()).param("username", s.username())
                 .param("ref", s.credentialRef()).param("collection", collectionId)
@@ -106,7 +119,8 @@ public class ConnectorRepository {
                         + "base_url = :baseUrl, deployment = :deployment, space_keys = :spaces, label = :label, "
                         + "ancestor_id = :ancestor, include_attachments = :attachments, skip_restricted = :skipRestricted, "
                         // New settings may name other spaces or filters: the next run lists everything again.
-                        + "page_size = :pageSize, sync_cursor = NULL, full_listing_at = NULL "
+                        + "page_size = :pageSize, site_id = :siteId, drive_names = :drives, tenant_id = :tenant, "
+                        + "client_id = :client, auth_method = :auth, sync_cursor = NULL, full_listing_at = NULL "
                         + "WHERE id = :id AND NOT deleting AND type = :type RETURNING " + COLUMNS)
                 .param("id", id).param("name", s.name()).param("host", s.host()).param("port", s.port())
                 .param("share", s.share()).param("prefix", s.pathPrefix()).param("domain", s.domain())
@@ -192,7 +206,7 @@ public class ConnectorRepository {
     }
 
     /**
-     * Confluence: moves the incremental cursor and records a complete full listing, in the finishing transaction and
+     * Confluence and SharePoint: moves the incremental cursor and records a complete full listing, in the finishing transaction and
      * only for the claim holder (called before {@link #finish}, which releases the claim). Null keeps a value.
      */
     public void advance(UUID id, UUID token, Instant cursor, Instant fullListingAt) {
@@ -218,18 +232,37 @@ public class ConnectorRepository {
                 .param("id", id).param("token", token).update() == 1;
     }
 
-    /** The type and the Confluence columns of an insert or update; SMB rows get the column defaults. */
+    /**
+     * The type and the Confluence and SharePoint columns of an insert or update; the other types get the column
+     * defaults. base_url and skip_restricted are shared: the Confluence site or the SharePoint site URL, and the v1
+     * safety rule of either (restricted pages, files with unique permissions).
+     */
     private static JdbcClient.StatementSpec confluence(JdbcClient.StatementSpec spec, Settings s) {
         ConnectorRow.Confluence c = s.confluence();
+        ConnectorRow.SharePoint p = s.sharePoint();
+        String baseUrl = c != null ? c.baseUrl() : p != null ? p.siteUrl() : null;
+        boolean skipRestricted = c != null ? c.skipRestricted() : p == null || p.skipUnique();
         return spec.param("type", s.type())
-                .param("baseUrl", c == null ? null : c.baseUrl(), Types.VARCHAR)
+                .param("baseUrl", baseUrl, Types.VARCHAR)
                 .param("deployment", c == null ? null : c.deployment(), Types.VARCHAR)
                 .param("spaces", c == null ? new String[0] : c.spaceKeys().toArray(String[]::new))
                 .param("label", c == null ? null : c.label(), Types.VARCHAR)
                 .param("ancestor", c == null ? null : c.ancestorId(), Types.BIGINT)
                 .param("attachments", c != null && c.includeAttachments())
-                .param("skipRestricted", c == null || c.skipRestricted())
-                .param("pageSize", c == null ? 50 : c.pageSize());
+                .param("skipRestricted", skipRestricted)
+                .param("pageSize", c == null ? 50 : c.pageSize())
+                .param("siteId", p == null ? null : p.siteId(), Types.VARCHAR)
+                .param("drives", p == null ? new String[0] : p.drives().toArray(String[]::new))
+                .param("tenant", p == null ? null : p.tenantId(), Types.VARCHAR)
+                .param("client", p == null ? null : p.clientId(), Types.VARCHAR)
+                .param("auth", p == null ? null : p.authMethod(), Types.VARCHAR);
+    }
+
+    private static ConnectorRow.SharePoint sharePoint(ResultSet rs) throws SQLException {
+        if (!ConnectorRow.SHAREPOINT.equals(rs.getString("type"))) return null;
+        return new ConnectorRow.SharePoint(rs.getString("base_url"), rs.getString("site_id"), strings(rs, "drive_names"),
+                rs.getString("tenant_id"), rs.getString("client_id"), rs.getString("auth_method"),
+                rs.getBoolean("skip_restricted"));
     }
 
     private static ConnectorRow.Confluence confluence(ResultSet rs) throws SQLException {

@@ -32,6 +32,7 @@ import org.springframework.util.unit.DataSize;
  * @param smb                   SMB client settings
  * @param confluence            Confluence client and sync settings (ADR-0044)
  * @param externalEgress        internet egress of connectors, off by default (ADR-0044)
+ * @param sharepoint            SharePoint Online / OneDrive over Microsoft Graph (ADR-0045)
  */
 @ConfigurationProperties("verso.connector")
 public record ConnectorProperties(
@@ -54,7 +55,121 @@ public record ConnectorProperties(
         @DefaultValue("100") int keepRuns,
         @DefaultValue Smb smb,
         @DefaultValue Confluence confluence,
-        @DefaultValue ExternalEgress externalEgress) {
+        @DefaultValue ExternalEgress externalEgress,
+        @DefaultValue SharePoint sharepoint) {
+
+    /** The global Microsoft Graph and Entra endpoints; national clouds are out of scope (ADR-0045). */
+    public static final String GRAPH_URL = "https://graph.microsoft.com/v1.0";
+    public static final String AUTHORITY = "https://login.microsoftonline.com";
+
+    /**
+     * The SharePoint Online / OneDrive client and sync over Microsoft Graph (ADR-0045).
+     *
+     * @param graphUrl            Graph's v1.0 base; only {@link #GRAPH_URL} while https is required (a test stub changes
+     *                            it together with requireHttps=false)
+     * @param authority           Entra's sign-in host; only {@link #AUTHORITY} while https is required
+     * @param downloadHosts       host patterns a file download may be redirected to (the pre-authenticated SharePoint
+     *                            URL), {@code *.sharepoint.com}; each must also be in the external egress allowlist
+     * @param defaultTenantId     the Entra tenant a connector uses when it names none (OIDC_ENTRA_TENANT_ID, ADR-0041);
+     *                            "" requires one per connector
+     * @param connectTimeout      TCP and TLS connect
+     * @param readTimeout         one response
+     * @param fullListingInterval a full delta enumeration (deletions by absence, and the sweep that re-reads every file's
+     *                            permissions) at least this often
+     * @param maxAttempts         attempts of one request on 429, 503, 504 or a transport error, then the run stops
+     * @param retryBase           backoff without Retry-After: base · 2^(attempt-1) with jitter ...
+     * @param maxRetryWait        ... and at most this, also for a longer Retry-After (then the run stops and the
+     *                            connector backs off as a whole)
+     * @param maxResponseSize     the largest JSON response read
+     * @param pageSize            items per delta page ($top)
+     * @param assertionAlgorithm  RS256 or PS256 for the client assertion of a certificate credential
+     * @param requireHttps        https everywhere and the global endpoints only; only a test stub turns it off
+     */
+    public record SharePoint(
+            @DefaultValue(GRAPH_URL) String graphUrl,
+            @DefaultValue(AUTHORITY) String authority,
+            @DefaultValue("*.sharepoint.com") String downloadHosts,
+            @DefaultValue("") String defaultTenantId,
+            @DefaultValue("10s") Duration connectTimeout,
+            @DefaultValue("60s") Duration readTimeout,
+            @DefaultValue("24h") Duration fullListingInterval,
+            @DefaultValue("5") int maxAttempts,
+            @DefaultValue("1s") Duration retryBase,
+            @DefaultValue("60s") Duration maxRetryWait,
+            @DefaultValue("32MB") DataSize maxResponseSize,
+            @DefaultValue("200") int pageSize,
+            @DefaultValue("RS256") String assertionAlgorithm,
+            @DefaultValue("true") boolean requireHttps) {
+
+        private static final java.util.regex.Pattern GUID =
+                java.util.regex.Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+        public SharePoint {
+            if (graphUrl == null || graphUrl.isBlank()) graphUrl = GRAPH_URL;
+            if (authority == null || authority.isBlank()) authority = AUTHORITY;
+            graphUrl = graphUrl.strip().replaceAll("/+$", "");
+            authority = authority.strip().replaceAll("/+$", "");
+            if (requireHttps && (!GRAPH_URL.equals(graphUrl) || !AUTHORITY.equals(authority))) {
+                throw new IllegalStateException("verso.connector.sharepoint graph-url and authority are the global "
+                        + "Microsoft endpoints; national clouds are not supported (ADR-0045)");
+            }
+            endpoint(graphUrl, "graph-url");
+            endpoint(authority, "authority");
+            if (HostAllowlist.parse(downloadHosts).isEmpty()) {
+                throw new IllegalStateException("verso.connector.sharepoint.download-hosts must name the SharePoint hosts");
+            }
+            if (defaultTenantId == null) defaultTenantId = "";
+            defaultTenantId = defaultTenantId.strip();
+            if (!defaultTenantId.isEmpty() && !GUID.matcher(defaultTenantId).matches()) {
+                throw new IllegalStateException("verso.connector.sharepoint.default-tenant-id must be a directory GUID");
+            }
+            if (connectTimeout.isNegative() || connectTimeout.isZero() || connectTimeout.compareTo(Duration.ofMinutes(1)) > 0) {
+                throw new IllegalStateException("verso.connector.sharepoint.connect-timeout must be 1ms..1m");
+            }
+            if (readTimeout.isNegative() || readTimeout.isZero() || readTimeout.compareTo(Duration.ofMinutes(10)) > 0) {
+                throw new IllegalStateException("verso.connector.sharepoint.read-timeout must be 1ms..10m");
+            }
+            if (fullListingInterval.compareTo(Duration.ofHours(1)) < 0 || fullListingInterval.compareTo(Duration.ofDays(7)) > 0) {
+                throw new IllegalStateException("verso.connector.sharepoint.full-listing-interval must be 1h..7d");
+            }
+            if (maxAttempts < 1 || maxAttempts > 10) throw new IllegalStateException("verso.connector.sharepoint.max-attempts must be 1..10");
+            if (retryBase.isNegative() || retryBase.isZero() || maxRetryWait.compareTo(retryBase) < 0
+                    || maxRetryWait.compareTo(Duration.ofMinutes(5)) > 0) {
+                throw new IllegalStateException("verso.connector.sharepoint retry-base must be > 0 and <= max-retry-wait <= 5m");
+            }
+            if (maxResponseSize.toBytes() < 1024 || maxResponseSize.toMegabytes() > 256) {
+                throw new IllegalStateException("verso.connector.sharepoint.max-response-size must be 1KB..256MB");
+            }
+            if (pageSize < 1 || pageSize > 1000) throw new IllegalStateException("verso.connector.sharepoint.page-size must be 1..1000");
+            if (!"RS256".equals(assertionAlgorithm) && !"PS256".equals(assertionAlgorithm)) {
+                throw new IllegalStateException("verso.connector.sharepoint.assertion-algorithm must be RS256 or PS256");
+            }
+        }
+
+        private static void endpoint(String value, String name) {
+            java.net.URI uri;
+            try {
+                uri = new java.net.URI(value);
+            } catch (java.net.URISyntaxException e) {
+                throw new IllegalStateException("verso.connector.sharepoint." + name + " is not a URL");
+            }
+            if (uri.getHost() == null || uri.getRawUserInfo() != null || uri.getRawQuery() != null
+                    || uri.getRawFragment() != null || !("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))) {
+                throw new IllegalStateException("verso.connector.sharepoint." + name + " is not a plain http(s) URL");
+            }
+        }
+
+        /** The download redirect targets (pre-authenticated SharePoint URLs). */
+        public HostAllowlist downloadHostList() {
+            return HostAllowlist.parse(downloadHosts);
+        }
+
+        static SharePoint defaults() {
+            return new SharePoint(GRAPH_URL, AUTHORITY, "*.sharepoint.com", "", Duration.ofSeconds(10),
+                    Duration.ofSeconds(60), Duration.ofHours(24), 5, Duration.ofSeconds(1), Duration.ofSeconds(60),
+                    DataSize.ofMegabytes(32), 200, "RS256", true);
+        }
+    }
 
     /**
      * The Confluence REST client and sync (ADR-0044).
@@ -185,6 +300,7 @@ public record ConnectorProperties(
         if (smb == null) smb = new Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false);
         if (confluence == null) confluence = Confluence.defaults();
         if (externalEgress == null) externalEgress = new ExternalEgress(false, "");
+        if (sharepoint == null) sharepoint = SharePoint.defaults();
     }
 
     public NetworkAllowlist allowlist() {

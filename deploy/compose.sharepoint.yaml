@@ -1,0 +1,45 @@
+# SharePoint Online / OneDrive connector overlay (ADR-0045): gives the application a route to Microsoft Graph and
+# Entra ID and the app registration's credential. The overlay does not switch the AI mode and does not enable internet
+# egress by itself.
+#
+#   # certificate (recommended): the private key (PKCS#8) and the certificate, PEM, in one file; never committed
+#   cat verso-spo.key verso-spo.crt > secrets/SECRET_CONNECTOR_SHAREPOINT_CERT
+#   docker compose -f compose.yaml -f deploy/compose.cloud.yaml -f deploy/compose.sharepoint.yaml up -d --wait
+#
+# SharePoint Online is on the internet only: cloud mode (deploy/compose.cloud.yaml) and, in .env,
+# VERSO_CONNECTOR_EXTERNAL_EGRESS=true and
+# VERSO_CONNECTOR_EXTERNAL_HOSTS=graph.microsoft.com,login.microsoftonline.com,<tenant>.sharepoint.com
+# (add <tenant>-my.sharepoint.com for OneDrive). Strict local mode (VERSO_AI_MODE=local) refuses to start with external
+# egress on (README "SharePoint Online / OneDrive bağlayıcısı", VKED in docs/uyum).
+#
+# Two layers keep the rest of the internet closed:
+#  1. the application: only the allowed host names, only on public addresses; the file download follows Graph's
+#     redirect only to an allowed SharePoint host and without the token; no other redirect;
+#  2. the network: "sharepoint" is a plain bridge with a fixed subnet and interface name, so the host firewall can allow
+#     it 443 only (Microsoft 365 addresses change; an FQDN-aware proxy or firewall is the stricter option):
+#       iptables -I DOCKER-USER -i verso-spo -j DROP
+#       iptables -I DOCKER-USER -i verso-spo -p tcp --dport 443 -j ACCEPT
+#       iptables -I DOCKER-USER -i verso-spo -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# Known limit (ADR-0045): scripts/prove-local-mode.sh step 1 reports "sharepoint" as a network with a gateway, by
+# design; this overlay belongs to a cloud mode installation.
+services:
+  verso-app:
+    # Added to the application's networks (compose merges the lists); nothing else of the stack joins "sharepoint".
+    networks: [sharepoint]
+    secrets:
+      # The connector names this file (credentialRef); the config tree reads it at sync time, no placeholder, no fallback.
+      # A client secret instead: a file SECRET_CONNECTOR_SHAREPOINT_SECRET and authMethod CLIENT_SECRET.
+      - SECRET_CONNECTOR_SHAREPOINT_CERT
+
+networks:
+  sharepoint:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: verso-spo
+    ipam:
+      config:
+        - subnet: ${VERSO_SHAREPOINT_SUBNET:-172.31.252.0/24}
+
+secrets:
+  SECRET_CONNECTOR_SHAREPOINT_CERT:
+    file: ./secrets/SECRET_CONNECTOR_SHAREPOINT_CERT

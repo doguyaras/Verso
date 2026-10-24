@@ -45,23 +45,27 @@ class ConnectorArchitectureTest {
                 .layer("Worker").definedBy(ROOT + ".worker..")
                 .layer("Smb").definedBy(ROOT + ".smb..")
                 .layer("Confluence").definedBy(ROOT + ".confluence..")
+                .layer("SharePoint").definedBy(ROOT + ".sharepoint..")
                 .layer("Repository").definedBy(ROOT + ".repository..")
                 .whereLayer("Controller").mayOnlyBeAccessedByLayers("Config")
                 .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Config")
                 .whereLayer("Worker").mayOnlyBeAccessedByLayers("Config")
-                .whereLayer("Smb").mayOnlyBeAccessedByLayers("Service", "Worker", "Config", "Confluence")
-                .whereLayer("Confluence").mayOnlyBeAccessedByLayers("Service", "Worker", "Config")
+                .whereLayer("Smb").mayOnlyBeAccessedByLayers("Service", "Worker", "Config", "Confluence", "SharePoint")
+                // ADR-0045: SharePoint reuses the external egress policy and the transport's refusal types.
+                .whereLayer("Confluence").mayOnlyBeAccessedByLayers("Service", "Worker", "Config", "SharePoint")
+                .whereLayer("SharePoint").mayOnlyBeAccessedByLayers("Service", "Worker", "Config")
                 .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service", "Worker", "Config")
                 .check(classes);
         noClasses().that().resideInAPackage(ROOT + ".controller..")
                 .should().dependOnClassesThat().resideInAnyPackage(ROOT + ".repository..", ROOT + ".worker..",
-                        ROOT + ".smb..", ROOT + ".confluence..")
+                        ROOT + ".smb..", ROOT + ".confluence..", ROOT + ".sharepoint..")
                 .check(classes);
         classes().that().areAnnotatedWith(RestController.class).should().resideInAPackage(ROOT + ".controller..")
                 .check(classes);
         noClasses().that().resideInAPackage(ROOT + ".domain..")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", ROOT + ".repository..",
-                        ROOT + ".smb..", ROOT + ".confluence..", ROOT + ".config..", "org.jsoup..")
+                        ROOT + ".smb..", ROOT + ".confluence..", ROOT + ".sharepoint..", ROOT + ".config..",
+                        "org.jsoup..", "com.nimbusds..")
                 .because("the sync rules stay pure functions, tested without a file server or a database")
                 .check(classes);
     }
@@ -88,12 +92,19 @@ class ConnectorArchitectureTest {
         noClasses().that().resideOutsideOfPackage(ROOT + ".smb..")
                 .should().dependOnClassesThat().resideInAnyPackage("com.hierynomus..")
                 .check(classes);
-        // ADR-0044: the HTML parser and the HTTP client stay in the Confluence package.
+        // ADR-0044: the HTML parser stays in the Confluence package; ADR-0045: the HTTP client in the Confluence and
+        // SharePoint packages, the JOSE library (client assertion) in the SharePoint package.
         noClasses().that().resideOutsideOfPackage(ROOT + ".confluence..")
-                .should().dependOnClassesThat().resideInAnyPackage("org.jsoup..", "org.springframework.web.client..",
+                .should().dependOnClassesThat().resideInAnyPackage("org.jsoup..")
+                .check(classes);
+        noClasses().that().resideOutsideOfPackages(ROOT + ".confluence..", ROOT + ".sharepoint..")
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework.web.client..",
                         "org.springframework.boot.http.client..")
                 .check(classes);
-        noClasses().that().resideInAPackage(ROOT + ".confluence..")
+        noClasses().that().resideOutsideOfPackage(ROOT + ".sharepoint..")
+                .should().dependOnClassesThat().resideInAnyPackage("com.nimbusds..")
+                .check(classes);
+        noClasses().that().resideInAnyPackage(ROOT + ".confluence..", ROOT + ".sharepoint..")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework.transaction..",
                         "org.springframework.jdbc..", ROOT + ".repository..")
                 .check(classes);

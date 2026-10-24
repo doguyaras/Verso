@@ -20,7 +20,11 @@ import com.verso.connector.outbox.ConnectorAudit;
 import com.verso.connector.repository.ConnectorDatabase;
 import com.verso.connector.config.ConnectorProperties;
 import com.verso.connector.confluence.ConfluenceSourceFactory;
+import com.verso.connector.repository.SharePointStateRepository;
+import com.verso.connector.sharepoint.SharePointSourceFactory;
+import com.verso.connector.domain.DeltaCheckpoint;
 import com.verso.connector.domain.SyncPlanner.ListedFile;
+import com.verso.connector.sharepoint.SharePointRunSettings;
 import com.verso.connector.repository.ConnectorItemRepository;
 import com.verso.connector.repository.ConnectorItemRepository.ItemRow;
 import com.verso.connector.repository.ConnectorRepository;
@@ -70,6 +74,8 @@ class SyncRunnerTest {
     private final SyncRunRepository runs = mock(SyncRunRepository.class);
     private final FileSourceFactory sources = mock(FileSourceFactory.class);
     private final ConfluenceSourceFactory confluenceSources = mock(ConfluenceSourceFactory.class);
+    private final SharePointSourceFactory sharePointSources = mock(SharePointSourceFactory.class);
+    private final SharePointStateRepository sharePointState = mock(SharePointStateRepository.class);
     private final DocumentIngestion documents = mock(DocumentIngestion.class);
     private final ConnectorAudit audit = mock(ConnectorAudit.class);
     private final ConnectorDatabase db = mock(ConnectorDatabase.class);
@@ -342,9 +348,80 @@ class SyncRunnerTest {
                         true, 50), cursor, fullListingAt);
     }
 
+    /**
+     * ADR-0045: a complete incremental SharePoint listing deletes what the delta reported deleted (through the deletion
+     * safety), and a run that applied everything stores the delta checkpoint with its result.
+     */
+    @Test
+    void run_whenSharePointDeltaReportsDeletions_deletesThem_andStoresTheCheckpoint() {
+        UUID gone = UUID.randomUUID();
+        source.add("drives/d/items/1", "changed", false);
+        source.incremental = true;
+        source.deleted = Set.of("drives/d/items/2", "drives/d/items/never-tracked");
+        source.checkpoint = new DeltaCheckpoint(false, List.of());
+        when(items.all(connectorId)).thenReturn(List.of(item("drives/d/items/2", gone, "ab")));
+        when(documents.submit(any())).thenReturn(new IngestionResult(Outcome.CREATED, UUID.randomUUID()));
+        when(documents.delete(collectionId, gone, "SOURCE_DELETED")).thenReturn(true);
+
+        run(sharePoint(NOW.minusSeconds(600), NOW.minusSeconds(3600)));
+
+        verify(documents).delete(collectionId, gone, "SOURCE_DELETED");
+        verify(items).delete(connectorId, "drives/d/items/2");
+        Tally tally = finishedRun("SUCCEEDED", null);
+        assertThat(tally.listingMode()).isEqualTo("INCREMENTAL");
+        assertThat(tally.deleted()).isEqualTo(1);
+        verify(sharePointState).apply(connectorId, source.checkpoint);
+        verify(connectors).advance(connectorId, token, NOW, null);
+        ArgumentCaptor<SharePointRunSettings> opened = ArgumentCaptor.forClass(SharePointRunSettings.class);
+        verify(sharePointSources).open(opened.capture());
+        assertThat(opened.getValue().full()).isFalse();
+        assertThat(opened.getValue().sweep()).isFalse();
+    }
+
+    /** ADR-0045: a delta link cannot stop half-way, so a failed file keeps the previous one (the next run replays). */
+    @Test
+    void run_whenASharePointFileFails_keepsThePreviousDeltaLink_butRecordsTheFullListing() {
+        source.add("drives/d/items/1", null, false);
+        source.checkpoint = new DeltaCheckpoint(true, List.of());
+
+        run(sharePoint(null, null));
+
+        verify(sharePointState, never()).apply(any(), any());
+        verify(connectors).advance(connectorId, token, null, NOW);
+        finishedRun("PARTIAL", "FILES_FAILED");
+    }
+
+    /** ADR-0045: unique permissions found at fetch time skip the file and remove the version synced before. */
+    @Test
+    void run_whenTheFetchFindsUniquePermissions_skipsTheFile_andRemovesItsDocument() {
+        UUID previous = UUID.randomUUID();
+        source.add("drives/d/items/1", "x", false);
+        source.restrictedOnRead.add("drives/d/items/1");
+        when(items.all(connectorId)).thenReturn(List.of(new ItemRow("drives/d/items/1", 99, 4, MODIFIED,
+                sha("old"), previous, "SYNCED", null, 0, null, NOW)));
+        when(documents.delete(collectionId, previous, "SOURCE_RESTRICTED")).thenReturn(true);
+
+        run(sharePoint(null, null));
+
+        verify(documents).delete(collectionId, previous, "SOURCE_RESTRICTED");
+        verify(items).skipped(eq(connectorId), eq("drives/d/items/1"), anyLong(), anyLong(), any(), eq("RESTRICTED"),
+                eq(NOW));
+        verify(documents, never()).submit(any());
+    }
+
+    private ConnectorRow sharePoint(Instant cursor, Instant fullListingAt) {
+        when(sharePointSources.open(any())).thenReturn(source);
+        return new ConnectorRow(connectorId, "Belgeler", "contoso.sharepoint.com", 443, null, "", null, null,
+                "SECRET_CONNECTOR_SHAREPOINT_CERT", collectionId, List.of(), List.of(), 1_000_000, 60, true, false, false,
+                "admin", NOW.minusSeconds(7200), NOW, NOW, null, null, token, 0, null, null, null, ConnectorRow.SHAREPOINT,
+                null, cursor, fullListingAt, new ConnectorRow.SharePoint("https://contoso.sharepoint.com/sites/hr", null,
+                List.of(), "11111111-2222-3333-4444-555555555555", "66666666-7777-8888-9999-000000000000", "CERTIFICATE",
+                true));
+    }
+
     private void run(ConnectorRow connector) {
-        if (connector.isConfluence()) {
-            SyncRunner runner = new SyncRunner(connectors, items, runs, sources, confluenceSources, documents,
+        if (connector.isConfluence() || connector.isSharePoint()) {
+            SyncRunner runner = new SyncRunner(connectors, items, runs, sources, confluenceSources, sharePointSources, sharePointState, documents,
                     properties(), new ConnectorMetrics(new SimpleMeterRegistry(), Clock.fixed(NOW, ZoneOffset.UTC)),
                     audit, db, Clock.fixed(NOW, ZoneOffset.UTC));
             runner.run(connector, token, () -> false);
@@ -360,7 +437,7 @@ class SyncRunnerTest {
                 maxFileBytes, connector.scheduleMinutes(), true, false, connector.massDeletionConfirmed(),
                 connector.createdBy(), connector.createdAt(), connector.updatedAt(), connector.nextRunAt(), null, null,
                 token, 0, null, null, null);
-        SyncRunner runner = new SyncRunner(connectors, items, runs, sources, confluenceSources, documents, properties(),
+        SyncRunner runner = new SyncRunner(connectors, items, runs, sources, confluenceSources, sharePointSources, sharePointState, documents, properties(),
                 new ConnectorMetrics(new SimpleMeterRegistry(), Clock.fixed(NOW, ZoneOffset.UTC)), audit, db,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         runner.run(sized, token, () -> false);
@@ -397,7 +474,7 @@ class SyncRunnerTest {
         return new ConnectorProperties(true, Duration.ofSeconds(30), Duration.ofMinutes(10), "10.0.0.0/8", 50, 500,
                 DataSize.ofGigabytes(2), 100_000, 32, Duration.ofMinutes(5), Duration.ofHours(24), Duration.ofMinutes(1),
                 Duration.ofMinutes(2), 20, 20, 3, 100,
-                new ConnectorProperties.Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false), null, null);
+                new ConnectorProperties.Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false), null, null, null);
     }
 
     /** A file server in memory: null content means "cannot be read". */
@@ -408,6 +485,9 @@ class SyncRunnerTest {
         boolean complete = true;
         boolean incremental;
         Instant highWater;
+        Set<String> deleted = Set.of();
+        DeltaCheckpoint checkpoint;
+        final Set<String> restrictedOnRead = new java.util.HashSet<>();
 
         void add(String path, String content) {
             add(path, content, false);
@@ -428,12 +508,13 @@ class SyncRunnerTest {
         public Listing list(Runnable keepAlive) {
             keepAlive.run();
             return new Listing(List.copyOf(files), complete, complete ? null : "DIRECTORY_UNREADABLE", 0, incremental,
-                    highWater);
+                    highWater, deleted, checkpoint);
         }
 
         @Override
         public byte[] read(String relativePath, long maxBytes) {
             reads.add(relativePath);
+            if (restrictedOnRead.contains(relativePath)) throw SourceException.file("RESTRICTED");
             String content = contents.get(relativePath);
             if (content == null) throw SourceException.file("READ_FAILED");
             return content.getBytes(StandardCharsets.UTF_8);

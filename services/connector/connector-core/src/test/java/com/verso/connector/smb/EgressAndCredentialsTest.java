@@ -74,6 +74,6 @@ class EgressAndCredentialsTest {
         return new ConnectorProperties(true, Duration.ofSeconds(30), Duration.ofMinutes(10), allowed, 50, 500,
                 DataSize.ofGigabytes(2), 100_000, 32, Duration.ofMinutes(5), Duration.ofHours(24), Duration.ofMinutes(1),
                 Duration.ofMinutes(2), 20, 20, 3, 100,
-                new ConnectorProperties.Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false), null, null);
+                new ConnectorProperties.Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false), null, null, null);
     }
 }

@@ -3,11 +3,13 @@ package com.verso.connector.service;
 import com.verso.connector.api.dto.ConfluenceResponse;
 import com.verso.connector.api.dto.ConnectorItemResponse;
 import com.verso.connector.api.dto.ConnectorResponse;
+import com.verso.connector.api.dto.SharePointResponse;
 import com.verso.connector.api.dto.SyncRunResponse;
 import com.verso.connector.api.enums.ConfluenceDeployment;
 import com.verso.connector.api.enums.ConnectorType;
 import com.verso.connector.api.enums.ItemState;
 import com.verso.connector.api.enums.ListingMode;
+import com.verso.connector.api.enums.SharePointAuthMethod;
 import com.verso.connector.api.enums.SyncRunStatus;
 import com.verso.connector.domain.HealthRule;
 import com.verso.connector.repository.ConnectorItemRepository.Counts;
@@ -29,7 +31,14 @@ public final class ConnectorMapper {
                         c.scheduleMinutes(), staleFactor, now),
                 c.lastSuccessAt(), c.lastFailureAt(), c.consecutiveFailures(), c.lastErrorCode(), c.nextRunAt(),
                 new ConnectorResponse.ItemCounts(counts.synced(), counts.failed(), counts.skipped()), c.createdAt(),
-                c.updatedAt(), ConnectorType.valueOf(c.type()), confluence(c));
+                c.updatedAt(), ConnectorType.valueOf(c.type()), confluence(c), sharePoint(c));
+    }
+
+    private static SharePointResponse sharePoint(ConnectorRow c) {
+        ConnectorRow.SharePoint s = c.sharePoint();
+        if (s == null) return null;
+        return new SharePointResponse(s.siteUrl(), s.siteId(), s.drives(), s.tenantId(), s.clientId(),
+                SharePointAuthMethod.valueOf(s.authMethod()), s.skipUnique(), c.fullListingAt());
     }
 
     private static ConfluenceResponse confluence(ConnectorRow c) {

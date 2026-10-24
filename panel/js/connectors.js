@@ -13,16 +13,28 @@ export const DOCS = Object.freeze({
   confluenceReadme: 'README.md → "Confluence bağlayıcısı"',
   confluenceAdr: 'docs/adr/0044-confluence-baglayicisi.md',
   confluenceOverlay: 'deploy/compose.confluence.yaml',
+  sharePointReadme: 'README.md → "SharePoint Online / OneDrive bağlayıcısı"',
+  sharePointAdr: 'docs/adr/0045-sharepoint-baglayicisi.md',
+  sharePointOverlay: 'deploy/compose.sharepoint.yaml',
 });
 
 /** Connector types (ConnectorType) and Confluence deployments (ConfluenceDeployment) in plain Turkish. */
-export const TYPES = Object.freeze({ SMB: 'Dosya paylaşımı (SMB)', CONFLUENCE: 'Confluence' });
+export const TYPES = Object.freeze({ SMB: 'Dosya paylaşımı (SMB)', CONFLUENCE: 'Confluence', SHAREPOINT: 'SharePoint Online / OneDrive' });
 export const DEPLOYMENTS = Object.freeze({ DATA_CENTER: 'Data Center / Server (kurum içi)', CLOUD: 'Cloud (atlassian.net)' });
+/** How the SharePoint connector's app registration signs in (SharePointAuthMethod). */
+export const AUTH_METHODS = Object.freeze({ CERTIFICATE: 'Sertifika (önerilen)', CLIENT_SECRET: 'İstemci gizlisi (client secret)' });
 
 /** The secret file a new connector of each type names by default. */
 export const DEFAULT_CREDENTIAL = Object.freeze({
   SMB: 'SECRET_CONNECTOR_SMB_PASSWORD', CONFLUENCE: 'SECRET_CONNECTOR_CONFLUENCE_TOKEN',
+  SHAREPOINT: 'SECRET_CONNECTOR_SHAREPOINT_CERT',
 });
+
+/** SharePointRequest's limits: at most 10 libraries; GUIDs for the tenant and the app. */
+export const MAX_DRIVES = 10;
+const DRIVE_HIDDEN = /[\p{Cc}‪-‮⁦-⁩]/u;
+const SITE_SEGMENT = /^[A-Za-z0-9._~-]{1,128}$/;
+const SITE_ID = /^[A-Za-z0-9.-]{1,253},[0-9A-Fa-f-]{36},[0-9A-Fa-f-]{36}$/;
 
 /** ConfluenceRequest's limits: 1-20 space keys, page size 1-250 (default 50), a label of letters, digits and _ . : -. */
 export const MAX_SPACES = 20;
@@ -119,8 +131,12 @@ export const RUN_CODES = Object.freeze({
   RESTRICTION_CHECK_FAILED: 'Bir sayfanın kısıtları okunamadı; o sayfa alınmadı ve liste eksik olduğu için hiçbir şey silinmedi.',
   LISTING_LINK_REFUSED: 'Sunucu listenin devamını başka bir adrese yönlendirdi; izlenmedi, hiçbir şey silinmedi.',
   ATTACHMENTS_UNREADABLE: 'Bir sayfanın ekleri listelenemedi; liste eksik olduğu için hiçbir şey silinmedi.',
-  RATE_LIMITED: 'Confluence istek sınırına takıldı (429); bağlayıcı bir süre sonra yeniden dener.',
-  SOURCE_UNAVAILABLE: 'Confluence geçici olarak hizmet veremiyor (503); bağlayıcı bir süre sonra yeniden dener.',
+  RATE_LIMITED: 'Kaynak (Confluence ya da Microsoft Graph) istek sınırına takıldı (429); bağlayıcı bir süre sonra yeniden dener.',
+  SOURCE_UNAVAILABLE: 'Kaynak (Confluence ya da Microsoft Graph) geçici olarak hizmet veremiyor (503); bağlayıcı bir süre sonra yeniden dener.',
+  DRIVE_NOT_FOUND: 'Belge kitaplığı bulunamadı ya da uygulamanın bu siteye erişimi yok (Sites.Selected izni verildi mi?).',
+  PARENT_UNKNOWN: 'Bir dosyanın klasörü listede yoktu; liste eksik olduğu için hiçbir şey silinmedi.',
+  CREDENTIAL_INVALID: 'Sertifika ya da anahtar dosyası okunamadı (PKCS#8 özel anahtar ve sertifika, eşleşmeli).',
+  CREDENTIAL_EXPIRED: 'Uygulama sertifikasının süresi dolmuş ya da henüz geçerli değil; yenisini yükleyin.',
   REDIRECT_REFUSED: 'Sunucu başka bir adrese yönlendirdi; belirteç başka sunucuya gönderilmedi.',
   SITE_NOT_FOUND: 'Site adresi ya da arama erişimi bulunamadı (adres veya hesap izni).',
   INVALID_RESPONSE: 'Sunucunun yanıtı okunamadı.',
@@ -143,7 +159,8 @@ export const ITEM_FAILURES = Object.freeze({
   EMPTY: 'Boş dosya',
   UNSUPPORTED: 'Desteklenmeyen tür ya da yapı',
   UNSAFE_LINK: 'Bağlantı olduğu için atlandı',
-  RESTRICTED: 'Confluence\'ta okuma kısıtı var (v1 kuralı: alınmaz)',
+  RESTRICTED: 'Okuma kısıtı ya da kitaplıktan farklı izni var (v1 kuralı: alınmaz)',
+  RESTRICTION_CHECK_FAILED: 'İzinleri okunamadı; alınmadı, sonra yeniden denenecek',
   NOT_FOUND: 'Kaynakta bulunamadı',
   REDIRECT_REFUSED: 'Başka adrese yönlendirildi, izlenmedi',
 });
@@ -296,6 +313,7 @@ const blank = (value) => String(value ?? '').trim();
 export function connectorRequest(form, original = null) {
   const type = original?.type ?? form.type ?? 'SMB';
   if (type === 'CONFLUENCE') return confluenceRequest(form, original);
+  if (type === 'SHAREPOINT') return sharePointRequest(form, original);
   const problems = {};
   const name = blank(form.name);
   if (!name) problems.name = 'Ad boş olamaz.';
@@ -467,6 +485,111 @@ function confluenceRequest(form, original) {
   };
 }
 
+/**
+ * The SharePoint site as SharePointSite accepts it: https, a *.sharepoint.com host, no port, user info, query or
+ * fragment, plain path segments (e.g. /sites/ik or a OneDrive's /personal/...). Returns the problem text or null.
+ */
+export function siteUrlProblem(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+  if (text.length > 2048) return 'Adres en çok 2048 karakterdir.';
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    return 'Geçerli bir adres yazın (https:// ile başlar).';
+  }
+  if (url.protocol !== 'https:') return 'Adres https:// ile başlamalı.';
+  if (url.username || url.password) return 'Adrese kullanıcı adı ya da parola yazılmaz.';
+  if (url.port) return 'Adres port içermez.';
+  if (url.search || url.hash || text.includes('?') || text.includes('#')) return 'Adres soru işareti ya da # içermez; yalnız site yolu.';
+  if (!url.hostname.toLowerCase().endsWith('.sharepoint.com')) return 'SharePoint Online adresi yazın (…sharepoint.com).';
+  const segments = url.pathname.replace(/\/+$/, '').split('/').slice(1).filter((s) => s !== '');
+  if (segments.some((s) => !SITE_SEGMENT.test(s) || s === '.' || s === '..')) {
+    return 'Site yolu yalnız harf, rakam ve . _ ~ - içerir (ör. /sites/ik); boşluklu ya da kodlanmış adres kullanmayın.';
+  }
+  return null;
+}
+
+/** Library names of a textarea: one per line, blanks dropped, duplicates removed. */
+export function parseDrives(text) {
+  return [...new Set(String(text ?? '').split(/\r?\n/).map((name) => name.trim()).filter(Boolean))];
+}
+
+/** The SharePoint form as POST/PUT /v1/admin/connectors takes it (ADR-0045); same contract as connectorRequest. */
+function sharePointRequest(form, original) {
+  const problems = {};
+  const name = blank(form.name);
+  if (!name) problems.name = 'Ad boş olamaz.';
+  else if (name.length > 100) problems.name = 'Ad en çok 100 karakterdir.';
+  else if (NAME_HIDDEN.test(name)) problems.name = 'Ad görünmeyen denetim karakteri içeremez.';
+
+  const siteUrl = blank(form.siteUrl).replace(/\/+$/, '');
+  const siteId = blank(form.siteId);
+  if (!siteUrl && !siteId) problems.siteUrl = 'Sitenin adresini yazın (ör. https://kurum.sharepoint.com/sites/ik) ya da site kimliğini.';
+  else if (siteProblem(siteUrl)) problems.siteUrl = siteProblem(siteUrl);
+  if (siteId && !SITE_ID.test(siteId)) problems.siteId = 'Site kimliği "host,guid,guid" biçimindedir (Graph\'taki id).';
+
+  const drives = parseDrives(form.drives);
+  if (drives.length > MAX_DRIVES) problems.drives = `En çok ${MAX_DRIVES} belge kitaplığı.`;
+  else if (drives.some((d) => d.length > 255 || DRIVE_HIDDEN.test(d))) problems.drives = 'Kitaplık adı en çok 255 karakterdir, denetim karakteri içermez.';
+
+  const prefix = normalizePrefix(form.pathPrefix);
+  if (prefix.problem) problems.pathPrefix = prefix.problem;
+
+  const includeGlobs = parseGlobs(form.includeGlobs);
+  const excludeGlobs = parseGlobs(form.excludeGlobs);
+  const includeIssue = globsProblem(includeGlobs);
+  const excludeIssue = globsProblem(excludeGlobs);
+  if (includeIssue) problems.includeGlobs = includeIssue;
+  if (excludeIssue) problems.excludeGlobs = excludeIssue;
+
+  const tenantId = blank(form.tenantId);
+  if (tenantId && !UUID_PATTERN.test(tenantId)) problems.tenantId = 'Dizin (tenant) kimliği bir GUID\'dir; boş bırakılırsa kurulumun Entra kiracısı kullanılır.';
+  const clientId = blank(form.clientId);
+  if (!UUID_PATTERN.test(clientId)) problems.clientId = 'Bağlayıcının uygulama kaydının (application/client) kimliğini yazın; bir GUID.';
+
+  const authMethod = form.authMethod === 'CLIENT_SECRET' ? 'CLIENT_SECRET' : form.authMethod === 'CERTIFICATE' ? 'CERTIFICATE' : null;
+  if (!authMethod) problems.authMethod = 'Kimlik doğrulama yöntemini seçin.';
+
+  const credentialRef = blank(form.credentialRef);
+  if (!CREDENTIAL_REF.test(credentialRef)) {
+    problems.credentialRef = 'SECRET_CONNECTOR_ ile başlayan, büyük harf, rakam ve _ içeren bir dosya adı yazın. Anahtarın ya da gizlinin kendisini değil.';
+  }
+
+  const collectionId = original ? original.collectionId : blank(form.collectionId);
+  if (!UUID_PATTERN.test(String(collectionId ?? ''))) problems.collectionId = 'Hedef bilgi alanını seçin.';
+
+  let maxFileBytes = null;
+  if (blank(form.maxFileMb)) {
+    const mb = Number(blank(form.maxFileMb).replace(',', '.'));
+    if (!Number.isFinite(mb) || mb <= 0 || mb > MAX_FILE_MB) problems.maxFileMb = `En büyük dosya 0 ile ${MAX_FILE_MB} MB arasında olmalı.`;
+    else maxFileBytes = Math.max(1, Math.round(mb * 1024 * 1024));
+  }
+
+  const schedule = Number(blank(form.scheduleMinutes));
+  if (!Number.isInteger(schedule) || schedule < SCHEDULE_MIN || schedule > SCHEDULE_MAX) {
+    problems.scheduleMinutes = `Eşitleme aralığı ${SCHEDULE_MIN} ile ${SCHEDULE_MAX} dakika (1 hafta) arasında bir tam sayıdır.`;
+  }
+
+  if (Object.keys(problems).length) return { problems, body: null };
+  return {
+    problems,
+    body: {
+      type: 'SHAREPOINT', name, pathPrefix: prefix.value, includeGlobs, excludeGlobs, credentialRef, collectionId, maxFileBytes,
+      scheduleMinutes: schedule, enabled: form.enabled !== false,
+      sharePoint: {
+        siteUrl: siteUrl || null, siteId: siteId || null, drives, tenantId: tenantId || null, clientId, authMethod,
+        skipUniquePermissions: form.skipUnique !== false,
+      },
+    },
+  };
+}
+
+function siteProblem(siteUrl) {
+  return siteUrl ? siteUrlProblem(siteUrl) : null;
+}
+
 /** The form values of a connector being edited (the inverse of connectorRequest). */
 export function connectorForm(connector, type = 'SMB') {
   const confluence = connector?.confluence ?? null;
@@ -477,14 +600,22 @@ export function connectorForm(connector, type = 'SMB') {
     skipRestricted: confluence ? confluence.skipRestricted !== false : true,
     pageSize: confluence?.pageSize && confluence.pageSize !== 50 ? String(confluence.pageSize) : '',
   };
+  const sharePoint = connector?.sharePoint ?? null;
+  const sharePointValues = {
+    siteUrl: sharePoint?.siteUrl ?? '', siteId: sharePoint?.siteId ?? '', drives: (sharePoint?.drives ?? []).join('\n'),
+    tenantId: sharePoint?.tenantId ?? '', clientId: sharePoint?.clientId ?? '', authMethod: sharePoint?.authMethod ?? 'CERTIFICATE',
+    skipUnique: sharePoint ? sharePoint.skipUniquePermissions !== false : true,
+  };
+  const known = (value) => (value === 'CONFLUENCE' || value === 'SHAREPOINT' ? value : 'SMB');
   if (!connector) {
-    const kind = type === 'CONFLUENCE' ? 'CONFLUENCE' : 'SMB';
+    const kind = known(type);
     return { type: kind, name: '', host: '', port: '', share: '', pathPrefix: '', domain: '', username: '', credentialRef: DEFAULT_CREDENTIAL[kind],
-      collectionId: '', includeGlobs: '', excludeGlobs: '', maxFileMb: '', scheduleMinutes: '60', enabled: true, ...confluenceValues };
+      collectionId: '', includeGlobs: '', excludeGlobs: '', maxFileMb: '', scheduleMinutes: '60', enabled: true, ...confluenceValues,
+      ...sharePointValues };
   }
   const mb = Number.isFinite(connector.maxFileBytes) ? connector.maxFileBytes / 1024 / 1024 : null;
   return {
-    type: connector.type === 'CONFLUENCE' ? 'CONFLUENCE' : 'SMB', ...confluenceValues,
+    type: known(connector.type), ...confluenceValues, ...sharePointValues,
     name: connector.name ?? '', host: connector.host ?? '', port: connector.port && connector.port !== 445 ? String(connector.port) : '',
     share: connector.share ?? '', pathPrefix: connector.pathPrefix ?? '', domain: connector.domain ?? '', username: connector.username ?? '',
     credentialRef: connector.credentialRef ?? '', collectionId: connector.collectionId ?? '',
@@ -500,9 +631,13 @@ export const ERROR_FIELDS = Object.freeze({
   14010: 'maxFileMb', 14013: 'baseUrl', 14014: 'baseUrl',
 });
 
-/** A Confluence connector has no host field: the site URL carries it (14004 lands there). */
+/**
+ * A Confluence connector has no host field: the site URL carries it (14004 lands there). A SharePoint connector's site
+ * URL takes 14004, 14013 and 14014.
+ */
 export function errorField(code, type = 'SMB') {
   if (type === 'CONFLUENCE' && Number(code) === 14004) return 'baseUrl';
+  if (type === 'SHAREPOINT' && [14004, 14013, 14014].includes(Number(code))) return 'siteUrl';
   return ERROR_FIELDS[code] ?? null;
 }
 

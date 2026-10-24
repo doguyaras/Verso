@@ -6,6 +6,7 @@ import com.verso.audit.api.enums.AuditTargetType;
 import com.verso.connector.config.ConnectorProperties;
 import com.verso.connector.confluence.ConfluenceRunSettings;
 import com.verso.connector.confluence.ConfluenceSourceFactory;
+import com.verso.connector.domain.DeltaCheckpoint;
 import com.verso.connector.domain.GlobSet;
 import com.verso.connector.domain.SourcePaths;
 import com.verso.connector.domain.SourceSettings;
@@ -25,6 +26,9 @@ import com.verso.connector.repository.ConnectorRow;
 import com.verso.connector.repository.SyncRunRepository;
 import com.verso.connector.repository.SyncRunRepository.RunRow;
 import com.verso.connector.repository.SyncRunRepository.Tally;
+import com.verso.connector.repository.SharePointStateRepository;
+import com.verso.connector.sharepoint.SharePointRunSettings;
+import com.verso.connector.sharepoint.SharePointSourceFactory;
 import com.verso.connector.smb.FileSource;
 import com.verso.connector.smb.FileSource.Listing;
 import com.verso.connector.smb.FileSourceFactory;
@@ -81,6 +85,8 @@ public class SyncRunner {
     private final SyncRunRepository runs;
     private final FileSourceFactory sources;
     private final ConfluenceSourceFactory confluence;
+    private final SharePointSourceFactory sharePoint;
+    private final SharePointStateRepository sharePointState;
     private final DocumentIngestion documents;
     private final ConnectorProperties properties;
     private final ConnectorMetrics metrics;
@@ -89,7 +95,8 @@ public class SyncRunner {
     private final Clock clock;
 
     public SyncRunner(ConnectorRepository connectors, ConnectorItemRepository items, SyncRunRepository runs,
-                      FileSourceFactory sources, ConfluenceSourceFactory confluence, DocumentIngestion documents,
+                      FileSourceFactory sources, ConfluenceSourceFactory confluence, SharePointSourceFactory sharePoint,
+                      SharePointStateRepository sharePointState, DocumentIngestion documents,
                       ConnectorProperties properties, ConnectorMetrics metrics, ConnectorAudit audit, ConnectorDatabase db,
                       Clock clock) {
         this.connectors = connectors;
@@ -97,6 +104,8 @@ public class SyncRunner {
         this.runs = runs;
         this.sources = sources;
         this.confluence = confluence;
+        this.sharePoint = sharePoint;
+        this.sharePointState = sharePointState;
         this.documents = documents;
         this.properties = properties;
         this.metrics = metrics;
@@ -142,6 +151,8 @@ public class SyncRunner {
         Instant highWater;
         /** The oldest modification time of a file left for later: the cursor may not pass it. */
         Instant floor;
+        /** SharePoint: the delta links and folders to store when the run applied everything it listed. */
+        DeltaCheckpoint checkpoint;
 
         void problem(String code) {
             if (problem == null) problem = code;
@@ -195,6 +206,7 @@ public class SyncRunner {
                 count.listingComplete = listing.complete();
                 count.incremental = listing.incremental();
                 count.highWater = listing.highWater();
+                count.checkpoint = listing.checkpoint();
                 count.listed = listing.files().size();
                 if (!listing.complete()) count.problem(listing.problem());
                 // Only a complete listing of the whole source may delete; an incremental one sees changes only.
@@ -231,8 +243,10 @@ public class SyncRunner {
                     bytes += outcome.bytes;
                     if (outcome.backlog) backlog = true;
                 }
-                if (deletable && !interrupted) {
-                    deletions(connector, plan.delete(), known.size(), count, lease);
+                // A complete incremental listing deletes what the source reported deleted (SharePoint delta, ADR-0045).
+                List<KnownItem> gone = deletable ? plan.delete() : reported(listing, known);
+                if (listing.complete() && !interrupted) {
+                    deletions(connector, gone, known.size(), count, lease);
                 }
             }
         } catch (SourceException e) {
@@ -279,7 +293,10 @@ public class SyncRunner {
             content = source.read(file.path(), maxFileBytes);
         } catch (SourceException e) {
             if (e.isFatal()) throw e;
-            if (SKIP_CODES.contains(e.code())) {
+            if (SyncPlanner.RESTRICTED.equals(e.code())) {
+                // ADR-0045: the permission check at fetch time found unique permissions; same rule as a listed one.
+                skip(connector, file, previous, SyncPlanner.RESTRICTED, "SOURCE_RESTRICTED", count, now);
+            } else if (SKIP_CODES.contains(e.code())) {
                 skip(connector, file, previous, e.code(), count, now);
             } else {
                 fail(connector, file, known, e.code(), count, now);
@@ -409,13 +426,26 @@ public class SyncRunner {
             // Held deletions keep the next run a full listing, so a confirmation can apply them.
             if (!count.incremental && count.pendingDeletions == 0) fullListingAt = run.startedAt();
         }
+        DeltaCheckpoint checkpoint = null;
+        if (connector.isSharePoint() && fatal == null && !interrupted && count.listingComplete) {
+            // A delta link cannot stop half-way: it is stored only when every listed change was applied (nothing failed,
+            // deferred or held back); otherwise the next run replays the same delta from the previous link.
+            if (count.floor == null && count.pendingDeletions == 0 && count.checkpoint != null) {
+                checkpoint = count.checkpoint;
+                cursor = run.startedAt();
+            }
+            if (!count.incremental && count.pendingDeletions == 0) fullListingAt = run.startedAt();
+        }
         Instant newCursor = cursor;
         Instant fullAt = fullListingAt;
+        DeltaCheckpoint newCheckpoint = checkpoint;
         boolean stored = db.transactionally(() -> {
             runs.finish(run.id(), status, errorCode, count.tally());
             connectors.advance(connector.id(), token, newCursor, fullAt);
             boolean held = connectors.finish(connector.id(), token, run.startedAt(),
                     new Finish(result, errorCode, next, count.consumedMassDeletion));
+            // Only the claim holder writes the checkpoint, in the same transaction as its result.
+            if (held && newCheckpoint != null) sharePointState.apply(connector.id(), newCheckpoint);
             if (held) {
                 audit.appendSystem(AuditEvent.success(AuditAction.CONNECTOR_SYNC_FINISHED, AuditTargetType.CONNECTOR,
                         connector.id()).withDetail(status));
@@ -485,19 +515,52 @@ public class SyncRunner {
      * deletions, archived pages and restriction changes are seen (ADR-0044). SMB always lists everything.
      */
     private boolean fullListingDue(ConnectorRow connector) {
-        if (!connector.isConfluence()) return true;
+        if (!connector.isConfluence() && !connector.isSharePoint()) return true;
         if (connector.syncCursor() == null || connector.fullListingAt() == null || connector.massDeletionConfirmed()) {
             return true;
         }
-        return !clock.instant().isBefore(connector.fullListingAt().plus(properties.confluence().fullListingInterval()));
+        return !clock.instant().isBefore(connector.fullListingAt().plus(fullListingInterval(connector)));
+    }
+
+    private Duration fullListingInterval(ConnectorRow connector) {
+        return connector.isSharePoint() ? properties.sharepoint().fullListingInterval()
+                : properties.confluence().fullListingInterval();
+    }
+
+    /** Tracked items an incremental listing reported as deleted (or moved out of scope) and did not list again. */
+    private static List<KnownItem> reported(Listing listing, Map<String, KnownItem> known) {
+        if (listing.deleted().isEmpty()) return List.of();
+        Set<String> listed = new HashSet<>();
+        for (ListedFile file : listing.files()) listed.add(file.path());
+        List<KnownItem> gone = new ArrayList<>();
+        for (String path : listing.deleted().stream().sorted().toList()) {
+            KnownItem item = known.get(path);
+            if (item != null && !listed.contains(path)) gone.add(item);
+        }
+        return gone;
     }
 
     private FileSource open(ConnectorRow c, boolean full) {
+        if (c.isSharePoint()) return openSharePoint(c, full);
         if (!c.isConfluence()) return sources.open(settings(c));
         ConnectorRow.Confluence s = c.confluence();
         return confluence.open(new ConfluenceRunSettings(c.id(), s.baseUrl(), s.deployment(), s.spaceKeys(), s.label(),
                 s.ancestorId(), s.includeAttachments(), s.skipRestricted(), s.pageSize(), c.username(),
                 c.credentialRef(), full, full ? null : c.syncCursor()));
+    }
+
+    /**
+     * A SharePoint run (ADR-0045): full when due (first run, the interval, a confirmed mass deletion), then also the
+     * permission sweep when it is the periodic one (a cursor exists); else from the stored delta links.
+     */
+    private FileSource openSharePoint(ConnectorRow c, boolean full) {
+        ConnectorRow.SharePoint s = c.sharePoint();
+        boolean sweep = full && c.syncCursor() != null;
+        List<DeltaCheckpoint.Stored> stored = full ? List.of() : sharePointState.load(c.id());
+        return sharePoint.open(new SharePointRunSettings(c.id(), s.siteUrl(), s.siteId(), s.drives(),
+                SourcePaths.normalizePrefix(c.pathPrefix()), GlobSet.compile(c.includeGlobs()),
+                GlobSet.compile(c.excludeGlobs()), s.skipUnique(), s.tenantId(), s.clientId(), s.authMethod(),
+                c.credentialRef(), full, sweep, stored));
     }
 
     /** Settings as stored; rules re-checked (a row written by an older version may not pass today's). */

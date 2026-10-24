@@ -289,6 +289,45 @@ Kurulum ekibi için, ortak adımlar:
 - Cloud internete çıkış ister ve varsayılan olarak **kapalıdır**: `VERSO_CONNECTOR_EXTERNAL_EGRESS=true` ve `VERSO_CONNECTOR_EXTERNAL_HOSTS=kurum.atlassian.net` (en dar hâli kurumun tam site adıdır; `*.atlassian.net` jokeri bir yöneticinin belirteci başka bir Atlassian sitesine göndermesine izin verir). Local mod **sıkıdır**: `VERSO_AI_MODE=local` iken uygulama bu ayarla **açılmaz**, local modun "internete çıkış yok" vaadinin istisnası yoktur. Cloud bağlayıcısı yalnız bulut modunda (`deploy/compose.cloud.yaml`) kullanılır. `/actuator/info` dış bağlantıyı ve izinli host'ları gösterir; VKED'e Atlassian yeni veri kaynağı ve aktarım olarak yazılır ([docs/uyum](docs/uyum/README.md)).
 - Güvenlik duvarı: `verso-cfl` arayüzünden yalnız 443. Uygulama yalnız listedeki host adlarına ve yalnız genel (public) adreslere bağlanır, başka host'a yönlendirmeyi izlemez. Cloud ekleri medya sunucusuna yönlendiği için bu sürümde alınmaz.
 
+## SharePoint Online / OneDrive bağlayıcısı
+
+Bir SharePoint Online sitesinin (ya da bir OneDrive'ın) belge kitaplıklarındaki PDF, DOCX, TXT ve MD dosyalarını, isteğe bağlı bir klasör ve desenlerle, bir bilgi alanına eşitler ([ADR-0045](docs/adr/0045-sharepoint-baglayicisi.md), API: [docs/api-connectors-integration-v1.md](docs/api-connectors-integration-v1.md)). SMB ve Confluence ile aynı motoru kullanır: koşu geçmişi, sağlık rozeti, `ConnectorSyncStale` alarmı, eksiksiz silme, %20 silme emniyeti. Microsoft Graph'a bağlayıcının **kendi** Entra uygulama kaydıyla (istemci kimlik bilgileri) bağlanır; kullanıcı adına değil.
+
+- **Eşitleme:** Graph `driveItem/delta`. İlk koşu kitaplığın tamamını listeler; sonrakiler yalnız değişenleri okur ve silinen ya da kapsamdan çıkan dosyayı **aynı koşuda** siler. Delta bağlantısının süresi dolarsa (410) koşu kendiliğinden baştan listeler. Günde bir tam liste yapılır. Graph 429/503 dönerse `Retry-After`'a uyulur, sürerse koşu durur ve bağlayıcı bir süre sonra yeniden dener.
+- **Okuma yetkisi** hedef bilgi alanının erişimlerinden gelir; SharePoint izinleri bu sürümde **aktarılmaz**. **Güvenlik kuralı (varsayılan):** izinleri kitaplıktan farklı olan dosya (benzersiz izin, doğrudan verilmiş yetki, paylaşım bağlantısı; ya da benzersiz izinli bir klasörün içinde) hiç alınmaz; izni okunamayan dosya da alınmaz. Sonradan farklılaşan izin günlük tam listede (izin taraması) yakalanır ve belge silinir. Kuralı kapatmak (`skipUniquePermissions: false`) bu dosyaları alanın bütün okuyucularına açar.
+- **Aşırı paylaşım (alıcıların bir numaralı kaygısı):** kural yalnız kitaplıktan *farklı* izinleri yakalar; kitaplığın kendisi geniş açıksa ("Herkes", EEEU grupları, site üyeleri) o dosyalar da alanın okuyucularına açılır. **Kurulumdan önce kitaplığın izin denetimini yap** ve kitaplığı bilgi alanının okuyucu kitlesine göre seç (VKED R16).
+- **Yalnız bulut modu.** SharePoint Online internettedir: `VERSO_AI_MODE=local` iken dış bağlantı ayarıyla uygulama **açılmaz**; API ve her eşitleme de reddeder. Ulusal bulutlar (ABD kamu, 21Vianet) desteklenmez.
+
+Kurulum ekibi için (Entra uygulama kaydı ve en az yetki):
+
+1. **Uygulama kaydı.** Entra yönetim merkezi → Uygulama kayıtları → Yeni kayıt: ad "Verso SharePoint bağlayıcısı", yalnız bu kuruluş, yönlendirme adresi yok. Oturum açma uygulamasını (ADR-0041) **kullanma**; bağlayıcıya ayrı kayıt aç. Uygulama (client) kimliğini ve dizin (tenant) kimliğini not et.
+2. **İzin: `Sites.Selected` (önerilen).** API izinleri → İzin ekle → Microsoft Graph → **Uygulama izinleri** → `Sites.Selected` → "Yönetici onayı ver". Bu izin tek başına **hiçbir siteyi** açmaz; site ayrıca verilir (adım 4). `Sites.Read.All` de çalışır ama kiracının **bütün** sitelerini okutur; önerilmez.
+3. **Sertifika (önerilen; istemci gizlisi yerine).** Anahtar ve sertifikayı üret, sertifikayı (yalnız açık kısmı) Entra'ya yükle, ikisini tek secret dosyasına koy:
+
+   ```bash
+   openssl req -x509 -newkey rsa:3072 -nodes -keyout verso-spo.key -out verso-spo.crt -days 365 -subj "/CN=verso-sharepoint"
+   # Entra: Sertifikalar ve gizli diziler → Sertifikayı karşıya yükle → verso-spo.crt
+   cat verso-spo.key verso-spo.crt > secrets/SECRET_CONNECTOR_SHAREPOINT_CERT && rm verso-spo.key
+   ```
+
+   Anahtar PKCS#8 (`-----BEGIN PRIVATE KEY-----`, RSA ≥ 2048) olmalıdır. Sertifika süresi dolmadan yenisini yükleyip dosyayı değiştir (süresi dolunca koşu `CREDENTIAL_EXPIRED`). İstemci gizlisi kullanılacaksa: `printf '%s' '<gizli>' > secrets/SECRET_CONNECTOR_SHAREPOINT_SECRET`, formda "İstemci gizlisi" ve bu dosya adı; overlay'deki secret adını da buna göre değiştir.
+4. **Siteye okuma izni (yalnız eşitlenecek site).** Kiracı yöneticisi (Graph PowerShell; yönetici bir kez `Sites.FullControl.All` ile oturum açar, bağlayıcı uygulaması değil):
+
+   ```powershell
+   Install-Module Microsoft.Graph.Sites -Scope CurrentUser
+   Connect-MgGraph -TenantId "<tenant-id>" -Scopes "Sites.FullControl.All"
+   $site = Get-MgSite -SiteId "kurum.sharepoint.com:/sites/ik"
+   New-MgSitePermission -SiteId $site.Id -BodyParameter @{
+     roles = @("read")
+     grantedToIdentities = @(@{ application = @{ id = "<client-id>"; displayName = "Verso SharePoint bağlayıcısı" } })
+   }
+   Get-MgSitePermission -SiteId $site.Id    # doğrulama; geri almak: Remove-MgSitePermission -SiteId $site.Id -PermissionId <id>
+   ```
+
+   PnP.PowerShell ile aynısı: `Grant-PnPAzureADAppSitePermission -AppId <client-id> -DisplayName "Verso SharePoint bağlayıcısı" -Site https://kurum.sharepoint.com/sites/ik -Permissions Read`. Her ek site için tekrarla; OneDrive için kişinin sitesi (`kurum-my.sharepoint.com:/personal/...`).
+5. **Dış bağlantı ve overlay.** Bulut modunda (`deploy/compose.cloud.yaml`), `.env`: `VERSO_CONNECTOR_EXTERNAL_EGRESS=true`, `VERSO_CONNECTOR_EXTERNAL_HOSTS=graph.microsoft.com,login.microsoftonline.com,kurum.sharepoint.com` (OneDrive için `kurum-my.sharepoint.com` da; joker `*.sharepoint.com` başka kiracıların sitelerine de izin verir). `docker compose -f compose.yaml -f deploy/compose.cloud.yaml -f deploy/compose.sharepoint.yaml up -d --wait`. Overlay `verso-spo` arayüzlü bir ağ (`VERSO_SHAREPOINT_SUBNET`, varsayılan `172.31.252.0/24`) ve secret'ı ekler; güvenlik duvarında yalnız 443 (komutlar dosyanın başında). Uygulama yalnız listedeki adlara ve genel adreslere bağlanır; dosya indirmesi yalnız izinli `sharepoint.com` host'una ve erişim belirteci **olmadan** yönlendirilir.
+6. **Bağlayıcı.** Panelde "Yönetim → Bağlayıcılar → Yeni bağlayıcı" → tür **SharePoint Online / OneDrive**: site adresi, isteğe bağlı kitaplıklar, klasör ve desenler, uygulama kimliği, isteğe bağlı dizin kimliği (boşsa `OIDC_ENTRA_TENANT_ID`), kimlik doğrulama, anahtar dosyasının adı, hedef alan. `DRIVE_NOT_FOUND` / `SITE_NOT_FOUND` çoğunlukla adım 4'ün yapılmadığını gösterir.
+
 ## Ölçümler
 
 | Ölçüm | Sonuç | Kaynak |

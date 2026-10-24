@@ -37,8 +37,8 @@ public class ConnectorEgressConfiguration {
         boolean local = !"cloud".equals(aiMode == null ? "local" : aiMode.strip().toLowerCase(Locale.ROOT));
         if (local) {
             throw new IllegalStateException("verso.connector.external-egress.enabled=true is refused in strict local mode "
-                    + "(verso.ai.mode=local): local mode promises no internet egress. Confluence Cloud needs cloud mode "
-                    + "(ADR-0044)");
+                    + "(verso.ai.mode=local): local mode promises no internet egress. Confluence Cloud and SharePoint Online need cloud mode "
+                    + "(ADR-0044, ADR-0045)");
         }
         log.warn("Connector external egress enabled: aiMode=cloud hosts={}", egress.allowedHosts().split(",").length);
     }

@@ -54,7 +54,7 @@ class ConnectorEgressConfigurationTest {
     private static ExternalEgressPolicy policy(ConnectorProperties.ExternalEgress egress, String mode) {
         ConnectorProperties properties = new ConnectorProperties(true, Duration.ofSeconds(30), Duration.ofMinutes(10),
                 "10.0.0.0/8", 50, 500, DataSize.ofGigabytes(2), 100_000, 32, Duration.ofMinutes(5), Duration.ofHours(24),
-                Duration.ofMinutes(1), Duration.ofMinutes(2), 20, 20, 3, 100, null, null, egress);
+                Duration.ofMinutes(1), Duration.ofMinutes(2), 20, 20, 3, 100, null, null, egress, null);
         return new ExternalEgressPolicy(properties, new MockEnvironment().withProperty("verso.ai.mode", mode));
     }
 }

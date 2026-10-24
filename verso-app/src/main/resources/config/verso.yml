@@ -289,12 +289,13 @@ verso:
     # Failure retention: DEAD rows are deleted after this; the alert OutboxDeadRows fires on the first one.
     dead-retention: 30d
     purge-interval: 1h
-  # File-share (SMB, ADR-0038) and Confluence (ADR-0044) connectors: the module's own schema "connector", its own pool as svc_connector (DML) and
+  # File-share (SMB, ADR-0038), Confluence (ADR-0044) and SharePoint (ADR-0045) connectors: the module's own schema "connector", its own pool as svc_connector (DML) and
   # its own Flyway as svc_connector_migrate (owner, DDL), like audit (ADR-0026). Passwords from /run/secrets
   # (SECRET_DB_CONNECTOR_PASSWORD, SECRET_DB_CONNECTOR_MIGRATE_PASSWORD), no fallback. A connector's service account
   # password is a secret file too, named by the connector (credentialRef, only SECRET_CONNECTOR_* names, e.g.
   # SECRET_CONNECTOR_SMB_PASSWORD from deploy/compose.smb.yaml, SECRET_CONNECTOR_CONFLUENCE_TOKEN from
-  # deploy/compose.confluence.yaml); it is read through the config tree at sync time and
+  # deploy/compose.confluence.yaml, SECRET_CONNECTOR_SHAREPOINT_CERT from deploy/compose.sharepoint.yaml); it is read
+  # through the config tree at sync time and
   # never stored. Starting values; see ConnectorProperties for each limit.
   connector:
     datasource:
@@ -363,6 +364,26 @@ verso:
     external-egress:
       enabled: ${VERSO_CONNECTOR_EXTERNAL_EGRESS:false}
       allowed-hosts: ${VERSO_CONNECTOR_EXTERNAL_HOSTS:}
+    # SharePoint Online / OneDrive over Microsoft Graph (ADR-0045). Cloud only: needs cloud mode, external egress and
+    # VERSO_CONNECTOR_EXTERNAL_HOSTS=graph.microsoft.com,login.microsoftonline.com,<tenant>.sharepoint.com (or
+    # *.sharepoint.com). The connector's own Entra app registration signs in with client credentials (certificate
+    # recommended); its tenant defaults to the Entra sign-in tenant (ADR-0041). Global Microsoft cloud only: graph-url
+    # and authority cannot change while https is required (national clouds are out of scope). Incremental by
+    # driveItem/delta; every full-listing-interval a full enumeration with the permission sweep.
+    sharepoint:
+      default-tenant-id: ${OIDC_ENTRA_TENANT_ID:}
+      download-hosts: "*.sharepoint.com"
+      connect-timeout: PT10S
+      read-timeout: PT60S
+      full-listing-interval: PT24H
+      max-attempts: 5
+      retry-base: PT1S
+      max-retry-wait: PT60S
+      max-response-size: 32MB
+      page-size: 200
+      # RS256 or PS256 for the certificate's client assertion.
+      assertion-algorithm: RS256
+      require-https: true
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
     # The document module's own pool (ADR-0039), as svc_document (DML only), and its own Flyway as

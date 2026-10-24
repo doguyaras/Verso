@@ -2071,6 +2071,80 @@ test('connectors: pendingDeletions (ADR-0044) gives the exact count; old runs fa
   assert.match(run, /Integer pendingDeletions\)/, 'the field the panel reads exists in the API');
 });
 
+test('connectors: the SharePoint form (ADR-0045) mirrors SharePointRequest, recommends Sites.Selected and never asks for a key', async () => {
+  const { AUTH_METHODS, connectorForm, connectorRequest, DEFAULT_CREDENTIAL, errorField, MAX_DRIVES, parseDrives, siteUrlProblem, TYPES,
+    codeText, ITEM_FAILURES } = await import('../panel/js/connectors.js');
+  const id = '0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b';
+  const app = '9e8d7c6b-5a49-4837-a625-14f3e2d1c0b9';
+  const form = { ...connectorForm(null, 'SHAREPOINT'), name: 'IK sitesi', siteUrl: 'https://kurum.sharepoint.com/sites/ik/', drives: 'Belgeler\nPolitikalar\nBelgeler',
+    pathPrefix: '/2026/', includeGlobs: '*.pdf', clientId: app, collectionId: id, scheduleMinutes: '30' };
+  assert.equal(form.type, 'SHAREPOINT');
+  assert.equal(form.credentialRef, DEFAULT_CREDENTIAL.SHAREPOINT);
+  assert.equal(form.authMethod, 'CERTIFICATE', 'the certificate is the default (recommended)');
+  assert.equal(form.skipUnique, true, 'skipping files with unique permissions is the default (v1 safety rule)');
+  const { problems, body } = connectorRequest(form);
+  assert.deepEqual(problems, {});
+  assert.deepEqual(body, { type: 'SHAREPOINT', name: 'IK sitesi', pathPrefix: '2026', includeGlobs: ['*.pdf'], excludeGlobs: [],
+    credentialRef: 'SECRET_CONNECTOR_SHAREPOINT_CERT', collectionId: id, maxFileBytes: null, scheduleMinutes: 30, enabled: true,
+    sharePoint: { siteUrl: 'https://kurum.sharepoint.com/sites/ik', siteId: null, drives: ['Belgeler', 'Politikalar'], tenantId: null,
+      clientId: app, authMethod: 'CERTIFICATE', skipUniquePermissions: true } });
+  assert.ok(![...Object.keys(body), ...Object.keys(body.sharePoint)].some((k) => /password|token|secret|key/i.test(k)), 'no secret field, ever');
+  assert.ok(!('host' in body) && !('share' in body) && !('username' in body) && !('confluence' in body), 'no other type\'s field');
+  assert.equal(connectorRequest({ ...form, skipUnique: false }).body.sharePoint.skipUniquePermissions, false);
+  assert.equal(connectorRequest({ ...form, authMethod: 'CLIENT_SECRET' }).body.sharePoint.authMethod, 'CLIENT_SECRET');
+  const byId = connectorRequest({ ...form, siteUrl: '', siteId: 'kurum.sharepoint.com,0f0e0d0c-0b0a-0908-0706-050403020100,00010203-0405-0607-0809-0a0b0c0d0e0f' });
+  assert.equal(byId.body.sharePoint.siteUrl, null);
+
+  const bad = (patch, field) => {
+    const result = connectorRequest({ ...form, ...patch });
+    assert.equal(result.body, null, JSON.stringify(patch));
+    assert.ok(result.problems[field], `${JSON.stringify(patch)} → ${field}`);
+  };
+  for (const url of ['http://kurum.sharepoint.com/sites/ik', 'https://u:p@kurum.sharepoint.com', 'https://kurum.sharepoint.com:8443/sites/ik',
+    'https://kurum.sharepoint.com/sites/ik?x=1', 'https://kurum.example.com/sites/ik', 'https://kurum.sharepoint.com/sites/ik%20x',
+    'kurum.sharepoint.com']) bad({ siteUrl: url }, 'siteUrl');
+  bad({ siteUrl: '', siteId: '' }, 'siteUrl');
+  bad({ siteId: 'kurum.sharepoint.com' }, 'siteId');
+  bad({ drives: Array.from({ length: MAX_DRIVES + 1 }, (_, i) => `K${i}`).join('\n') }, 'drives');
+  bad({ clientId: '' }, 'clientId');
+  bad({ clientId: 'not-a-guid' }, 'clientId');
+  bad({ tenantId: 'common' }, 'tenantId');
+  bad({ authMethod: 'PASSWORD' }, 'authMethod');
+  bad({ pathPrefix: '../x' }, 'pathPrefix');
+  bad({ credentialRef: 'SECRET_DB_APP_PASSWORD' }, 'credentialRef');
+  assert.equal(siteUrlProblem('https://kurum-my.sharepoint.com/personal/ayse_kurum_com'), null, 'a OneDrive');
+  assert.deepEqual(parseDrives(' a \r\nb\n\na'), ['a', 'b']);
+  for (const code of [14004, 14013, 14014]) assert.equal(errorField(code, 'SHAREPOINT'), 'siteUrl');
+  assert.equal(errorField(14003, 'SHAREPOINT'), 'pathPrefix');
+  assert.ok(TYPES.SHAREPOINT && AUTH_METHODS.CERTIFICATE && AUTH_METHODS.CLIENT_SECRET);
+  for (const code of ['DRIVE_NOT_FOUND', 'CREDENTIAL_INVALID', 'CREDENTIAL_EXPIRED', 'PARENT_UNKNOWN']) assert.notEqual(codeText(code), code, code);
+  assert.notEqual(codeText('RESTRICTION_CHECK_FAILED', ITEM_FAILURES), 'RESTRICTION_CHECK_FAILED');
+
+  // Editing: type and collection stay; the stored SharePoint settings come back into the form.
+  const original = { id: 'c3', type: 'SHAREPOINT', ...body, sharePoint: { ...body.sharePoint, tenantId: '0a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9',
+    lastFullListingAt: null } };
+  const values = connectorForm(original);
+  assert.equal(values.type, 'SHAREPOINT');
+  assert.equal(values.drives, 'Belgeler\nPolitikalar');
+  assert.equal(values.tenantId, '0a1b2c3d-4e5f-4061-8273-94a5b6c7d8e9');
+  const edited = connectorRequest({ ...values, type: 'SMB', collectionId: '0192a3b4-c5d6-7e8f-9a0b-000000000000' }, original);
+  assert.equal(edited.body.type, 'SHAREPOINT', 'the type of an existing connector cannot change (409 14015)');
+  assert.equal(edited.body.collectionId, id);
+
+  // The rules are the server's (SharePointRequest, SharePointAuthMethod), and the screen explains Sites.Selected.
+  const request = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/dto/SharePointRequest.java', 'utf8');
+  assert.match(request, new RegExp(`@Size\\(max = ${MAX_DRIVES}\\) List`));
+  const methods = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/enums/SharePointAuthMethod.java', 'utf8');
+  for (const value of Object.keys(AUTH_METHODS)) assert.match(methods, new RegExp(`\\b${value}\\b`));
+  const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  assert.match(screen, /Sites\.Selected/);
+  assert.match(screen, /type === 'SHAREPOINT' \? skipUnique\.node/);
+  assert.match(screen, /aşırı paylaşım/);
+  for (const field of ['siteUrl', 'siteId', 'drives', 'clientId', 'tenantId', 'authMethod']) {
+    assert.match(screen, new RegExp(`\\b${field}: field\\(`), `${field} is a form field`);
+  }
+});
+
 test('connectors: the Confluence form (ADR-0044) has its own fields, mirrors ConfluenceRequest and never asks for a token', async () => {
   const { baseUrlProblem, connectorForm, connectorRequest, DEFAULT_CREDENTIAL, DEPLOYMENTS, errorField, MAX_SPACES, PAGE_SIZE_MAX,
     parseSpaceKeys, TYPES } = await import('../panel/js/connectors.js');

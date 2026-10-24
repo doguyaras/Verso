@@ -8,6 +8,7 @@ import com.verso.connector.api.dto.ConnectorItemResponse;
 import com.verso.connector.api.dto.ConnectorPageResponse;
 import com.verso.connector.api.dto.ConnectorRequest;
 import com.verso.connector.api.dto.ConnectorResponse;
+import com.verso.connector.api.dto.SharePointRequest;
 import com.verso.connector.api.dto.SyncRunResponse;
 import com.verso.connector.api.enums.ConfluenceDeployment;
 import com.verso.connector.api.enums.ConnectorType;
@@ -17,6 +18,7 @@ import com.verso.connector.confluence.ExternalEgressPolicy;
 import com.verso.connector.domain.ConfluenceUrl;
 import com.verso.connector.domain.GlobSet;
 import com.verso.connector.domain.NetworkAllowlist;
+import com.verso.connector.domain.SharePointSite;
 import com.verso.connector.domain.SourcePaths;
 import com.verso.connector.exception.ConnectorErrorCode;
 import com.verso.connector.exception.ConnectorServiceException;
@@ -29,11 +31,13 @@ import com.verso.connector.repository.ConnectorRow;
 import com.verso.connector.repository.SyncRunRepository;
 import com.verso.connector.service.ConnectorAdminService;
 import com.verso.connector.service.ConnectorMapper;
+import com.verso.connector.sharepoint.SharePointEgress;
 import com.verso.connector.smb.EgressGuard;
 import com.verso.connector.smb.SourceException;
 import com.verso.document.api.DocumentIngestion;
 import java.time.Clock;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -69,14 +73,16 @@ public class ConnectorAdminServiceImpl implements ConnectorAdminService {
     private final DocumentIngestion documents;
     private final EgressGuard egress;
     private final ExternalEgressPolicy external;
+    private final SharePointEgress sharePointEgress;
     private final ConnectorProperties properties;
     private final ConnectorAudit audit;
     private final Clock clock;
 
     public ConnectorAdminServiceImpl(ConnectorDatabase db, ConnectorRepository connectors, ConnectorItemRepository items,
                                      SyncRunRepository runs, DocumentIngestion documents, EgressGuard egress,
-                                     ExternalEgressPolicy external, ConnectorProperties properties, ConnectorAudit audit,
-                                     Clock clock) {
+                                     ExternalEgressPolicy external, SharePointEgress sharePointEgress,
+                                     ConnectorProperties properties, ConnectorAudit audit, Clock clock) {
+        this.sharePointEgress = sharePointEgress;
         this.db = db;
         this.connectors = connectors;
         this.items = items;
@@ -203,7 +209,61 @@ public class ConnectorAdminServiceImpl implements ConnectorAdminService {
     }
 
     private Settings validated(ConnectorRequest r) {
-        return type(r) == ConnectorType.CONFLUENCE ? confluence(r) : smb(r);
+        return switch (type(r)) {
+            case CONFLUENCE -> confluence(r);
+            case SHAREPOINT -> sharePoint(r);
+            case SMB -> smb(r);
+        };
+    }
+
+    /**
+     * A SharePoint Online / OneDrive connector (ADR-0045): the site strictly parsed (https, a host and plain path
+     * segments, or a Graph site id), allowed only when the installation's external egress reaches that SharePoint host
+     * and Graph and Entra (never in strict local mode); the folder and globs as for SMB; the app's tenant (the
+     * installation's Entra tenant by default, ADR-0041) and client id; no SMB or Confluence field.
+     */
+    private Settings sharePoint(ConnectorRequest r) {
+        SharePointRequest s = r.sharePoint();
+        boolean otherFields = !isBlank(r.host()) || !isBlank(r.share()) || !isBlank(r.domain()) || !isBlank(r.username())
+                || r.port() != null || r.confluence() != null;
+        if (s == null || otherFields) throw rejected(ConnectorErrorCode.CONNECTOR_SETTINGS_INVALID, "SETTINGS_INVALID");
+        SharePointSite site;
+        try {
+            site = SharePointSite.parse(s.siteUrl(), s.siteId(), false);
+        } catch (IllegalArgumentException e) {
+            throw rejected(ConnectorErrorCode.CONNECTOR_URL_INVALID, e.getMessage());
+        }
+        if (!sharePointEgress.allowsSite(site.host())) {
+            throw rejected(ConnectorErrorCode.CONNECTOR_EXTERNAL_EGRESS_DISABLED, "EXTERNAL_EGRESS_DISABLED");
+        }
+        String prefix;
+        try {
+            prefix = SourcePaths.normalizePrefix(r.pathPrefix());
+        } catch (IllegalArgumentException e) {
+            throw rejected(ConnectorErrorCode.CONNECTOR_PATH_INVALID, e.getMessage());
+        }
+        List<String> include = globs(r.includeGlobs());
+        List<String> exclude = globs(r.excludeGlobs());
+        List<String> drives = s.drives() == null ? List.of()
+                : s.drives().stream().map(String::strip).filter(d -> !d.isEmpty()).distinct().toList();
+        String tenant = isBlank(s.tenantId()) ? properties.sharepoint().defaultTenantId() : s.tenantId().strip();
+        if (tenant.isEmpty()) throw rejected(ConnectorErrorCode.CONNECTOR_SETTINGS_INVALID, "TENANT_MISSING");
+        long maxFileBytes = maxFileBytes(r);
+        return new Settings(r.name().strip(), site.host(), 443, null, prefix, null, null, r.credentialRef(), include,
+                exclude, maxFileBytes, r.scheduleMinutes(), r.enabled() == null || r.enabled(), ConnectorRow.SHAREPOINT,
+                null, new ConnectorRow.SharePoint(site.url(), site.siteId(), drives, tenant.toLowerCase(Locale.ROOT),
+                s.clientId().strip().toLowerCase(Locale.ROOT), s.authMethod().name(),
+                s.skipUniquePermissions() == null || s.skipUniquePermissions()));
+    }
+
+    private static List<String> globs(List<String> raw) {
+        List<String> globs = raw == null ? List.of() : raw.stream().map(String::strip).toList();
+        try {
+            GlobSet.compile(globs);
+        } catch (IllegalArgumentException e) {
+            throw rejected(ConnectorErrorCode.CONNECTOR_GLOB_INVALID, "GLOB_INVALID");
+        }
+        return globs;
     }
 
     /**
@@ -216,7 +276,9 @@ public class ConnectorAdminServiceImpl implements ConnectorAdminService {
         boolean smbFields = !isBlank(r.host()) || !isBlank(r.share()) || !isBlank(r.pathPrefix()) || !isBlank(r.domain())
                 || r.port() != null || (r.includeGlobs() != null && !r.includeGlobs().isEmpty())
                 || (r.excludeGlobs() != null && !r.excludeGlobs().isEmpty());
-        if (c == null || smbFields) throw rejected(ConnectorErrorCode.CONNECTOR_SETTINGS_INVALID, "SETTINGS_INVALID");
+        if (c == null || smbFields || r.sharePoint() != null) {
+            throw rejected(ConnectorErrorCode.CONNECTOR_SETTINGS_INVALID, "SETTINGS_INVALID");
+        }
         ConfluenceUrl url;
         try {
             url = ConfluenceUrl.parse(c.baseUrl(), !properties.confluence().requireHttps());
@@ -248,7 +310,7 @@ public class ConnectorAdminServiceImpl implements ConnectorAdminService {
     }
 
     private Settings smb(ConnectorRequest r) {
-        if (r.confluence() != null || isBlank(r.host()) || isBlank(r.share()) || isBlank(r.username())
+        if (r.confluence() != null || r.sharePoint() != null || isBlank(r.host()) || isBlank(r.share()) || isBlank(r.username())
                 || !SMB_ACCOUNT.matcher(r.username().strip()).matches()) {
             throw rejected(ConnectorErrorCode.CONNECTOR_SETTINGS_INVALID, "SETTINGS_INVALID");
         }

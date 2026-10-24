@@ -38,6 +38,8 @@
       <groupId>com.verso</groupId>
       <artifactId>platform-core</artifactId>
     </dependency>
+    <!-- Also brings Nimbus JOSE+JWT (Apache-2.0, through Spring Security's resource server, version from its BOM),
+         which signs the SharePoint connector's client assertion to Entra ID (ADR-0045); no MSAL or Graph SDK. -->
     <dependency>
       <groupId>com.verso</groupId>
       <artifactId>platform-security</artifactId>
@@ -72,7 +74,8 @@
       <groupId>org.jsoup</groupId>
       <artifactId>jsoup</artifactId>
     </dependency>
-    <!-- Confluence REST client: Boot's HTTP client with a per-client InetAddressFilter (ADR-0044). -->
+    <!-- Confluence REST and Microsoft Graph clients: Boot's HTTP client with a per-client InetAddressFilter
+         (ADR-0044, ADR-0045). -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-http-client</artifactId>

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Create or replace a connector (ADR-0038 SMB, ADR-0044 Confluence; verso-admin only). The password is never part of a request: it lives in
+ * Create or replace a connector (ADR-0038 SMB, ADR-0044 Confluence, ADR-0045 SharePoint; verso-admin only). The password is never part of a request: it lives in
  * a secret file under /run/secrets whose name {@code credentialRef} gives (security-rules 1). Shapes are checked here;
  * the path prefix, the globs, the host against the egress allowlist and the size against the pipeline limit are checked
  * by the server. Which fields a type needs is checked by the server too (400 14012): SMB needs host, share and
@@ -35,8 +35,11 @@ import java.util.UUID;
  * @param maxFileBytes    larger files are skipped; default and upper bound: the pipeline's limit (ADR-0016)
  * @param scheduleMinutes how often a sync runs, 5-10080 (one week)
  * @param enabled         false pauses the schedule; default true
- * @param type            SMB (default when null) or CONFLUENCE; fixed after creation (409 14015)
+ * @param type            SMB (default when null), CONFLUENCE or SHAREPOINT; fixed after creation (409 14015)
  * @param confluence      the Confluence settings, for type CONFLUENCE only
+ * @param sharePoint      the SharePoint Online / OneDrive settings, for type SHAREPOINT only (ADR-0045). A SHAREPOINT
+ *                        connector takes {@code pathPrefix} as the folder inside each library and the globs, and no
+ *                        host, port, share, domain or username
  */
 public record ConnectorRequest(
         @NotBlank @Size(max = 100)
@@ -67,5 +70,15 @@ public record ConnectorRequest(
         @NotNull @Min(5) @Max(10080) Integer scheduleMinutes,
         Boolean enabled,
         ConnectorType type,
-        @Valid ConfluenceRequest confluence) {
+        @Valid ConfluenceRequest confluence,
+        @Valid SharePointRequest sharePoint) {
+
+    /** The shape before ADR-0045 (SMB and Confluence callers). */
+    public ConnectorRequest(String name, String host, Integer port, String share, String pathPrefix, String domain,
+                            String username, String credentialRef, UUID collectionId, List<String> includeGlobs,
+                            List<String> excludeGlobs, Long maxFileBytes, Integer scheduleMinutes, Boolean enabled,
+                            ConnectorType type, ConfluenceRequest confluence) {
+        this(name, host, port, share, pathPrefix, domain, username, credentialRef, collectionId, includeGlobs,
+                excludeGlobs, maxFileBytes, scheduleMinutes, enabled, type, confluence, null);
+    }
 }
