@@ -1,0 +1,25 @@
+# Release overlay (ADR-0040): run the signed image that release.yml pushed instead of building from the checkout.
+# Production never builds (reference 18.1, ADR-0007 #42): verso-app and migrate both use the one image, named by its
+# digest, because a tag is a movable pointer.
+#
+#   export VERSO_IMAGE=ghcr.io/<owner>/verso@sha256:<64 hex>
+#   bash scripts/verify-release.sh                      # cosign signature + CycloneDX attestation; stop on failure
+#   docker compose -f compose.yaml -f deploy/compose.release.yaml pull verso-app
+#   docker compose -f compose.yaml -f deploy/compose.release.yaml run --rm migrate
+#   docker compose -f compose.yaml -f deploy/compose.release.yaml up -d --wait
+#
+# VERSO_IMAGE must be a full digest reference. Compose cannot check the shape, so scripts/verify-release.sh refuses a
+# tag (and every step in docs/runbooks/surum-yukseltme-ve-geri-alma.md runs it first); the variable has no default on
+# purpose: forgetting it is an error, never a silent fall back to a local build.
+# The image holds only the application: compose files, edge config, panel, realm and init scripts come from the
+# checkout of the same release tag.
+services:
+  migrate:
+    image: ${VERSO_IMAGE:?set VERSO_IMAGE to ghcr.io/<owner>/verso@sha256:<digest>}
+    # compose.yaml says "never" because the local image is built by verso-app; here the image must be pulled.
+    pull_policy: missing
+  verso-app:
+    image: ${VERSO_IMAGE:?set VERSO_IMAGE to ghcr.io/<owner>/verso@sha256:<digest>}
+    pull_policy: missing
+    # Drops build: . from compose.yaml (Compose 2.24+): a release install never builds.
+    build: !reset null

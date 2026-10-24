@@ -52,12 +52,18 @@ jobs:
           node --test scripts/ollama-serve.test.js
           node --test scripts/panel.test.mjs
           node --test scripts/uyum-paketi.test.js
+          node --test scripts/migration-contract.test.js
+          node --test scripts/verify-release.test.js
       - name: migration degismezligi (PR base'ine ya da develop'a karsi)
         # A pushed feature/fix branch is checked against develop, where it goes without a pull request.
         if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/fix/')
         # base_ref goes through env, never straight into the script text (expression injection)
         env: { BASE_REF: "${{ github.base_ref || 'develop' }}" }
         run: node scripts/flyway-immutability.js check --base "origin/$BASE_REF"
+      - name: yeni migration DROP/RENAME iceriyorsa "-- contract:" isareti (expand/contract, ADR-0040)
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/fix/')
+        env: { BASE_REF: "${{ github.base_ref || 'develop' }}" }
+        run: node scripts/migration-contract.js check --base "origin/$BASE_REF"
       - name: config lint (secret fallback / literal secret yok)
         # dosya listesi bossa script exit 3 verir (dogrulanamadi); liste pre-commit ile ortak dosyadan gelir (ucuncu tur B22)
         run: |

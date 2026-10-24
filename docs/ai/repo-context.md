@@ -93,6 +93,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Ollama | 0.40.10 (digest ile pinli; ADR-0033, canlı doğrulandı) | bge-m3 (embedding), gemma4:e2b (chat); local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla (`manifests-v2` orada yazılır), çalışan Ollama volume'ü salt okunur bağlar |
 | Keycloak (demo IdP) | 26.8.1 (digest ile pinli) | prod modu, kendi `keycloak` veritabanı ve rolü; realm `verso` ES256; yalnız 127.0.0.1:8180 (ADR-0005, ADR-0010) |
 | docling-serve (isteğe bağlı, ADR-0032) | 1.38.1 CPU (docling 2.142.1, digest ile pinli) + Tesseract `tur` | `deploy/compose.docling.yaml`, `deploy/docling/Dockerfile`; yalnız iç `parsers` ağında, portsuz, internetsiz; 4 GB / 2 CPU (ölçülen tepe 2,2 GB) |
+| İmzalı imajdan kurulum ve geri alma (ADR-0040) | `deploy/compose.release.yaml` (zorunlu `VERSO_IMAGE` = `@sha256:` digest; verso-app ve migrate; build yok), `scripts/verify-release.sh` (cosign verify + verify-attestation cyclonedx, kimlik `release.yml` @ `refs/tags/v*`), `scripts/migration-contract.js` (yeni `V*.sql`'de `DROP`/`RENAME` için `-- contract:` işareti; `ci.yml`), `docs/runbooks/surum-yukseltme-ve-geri-alma.md` | Müşteri imajı derlemez; geri alma = önceki digest, uyumsuz şemada yedek |
 | Gözlem (faz 7, `obs` profili, ADR-0014) | Alloy → Loki (yalnız verso-app, migrate, edge, backup log'ları), Prometheus + Alertmanager (10 alarm, runbook'lar), Grafana (iç ağda; `obs-edge` ile 127.0.0.1:3000) | Prometheus scrape'i token'sız yalnız ayrı management portunda |
 
 ## 6. Komutlar

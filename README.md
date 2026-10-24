@@ -519,6 +519,8 @@ bash scripts/restore-drill.sh
 
 **İmaj yayını** (`.github/workflows/release.yml`): `v*` etiketi önce o commit'te build ve testleri koşar, sonra uygulama imajını bir kez build edip SBOM ve provenance ile `ghcr.io/<owner>/verso` adresine iter. Digest cosign ile anahtarsız imzalanır, CycloneDX SBOM'u atestasyon olarak eklenir ve ikisi doğrulandıktan sonra sürüm etiketi, geri çekilip kontrol edilen digest'e konur. İmaj yalnız uygulamayı içerir: compose dosyaları, kenar proxy ayarı, panel, realm ve init script'leri depodan bağlanır. Yani imajdan kurulum için de depo checkout'u gerekir.
 
+**İmzalı imajdan kurulum, yükseltme ve geri alma** ([ADR-0040](docs/adr/0040-imzali-imajdan-kurulum-ve-geri-alma.md)): müşteri imajı derlemez; `VERSO_IMAGE=ghcr.io/<owner>/verso@sha256:<digest>` verir, `bash scripts/verify-release.sh` imzayı ve CycloneDX atestasyonunu doğrular (tag kabul edilmez, hata varsa durur), sonra `docker compose -f compose.yaml -f deploy/compose.release.yaml ...` kullanır. Sıra, migration politikası (expand/contract), geri alma ve ileri düzeltme kararı: [sürüm yükseltme ve geri alma](docs/runbooks/surum-yukseltme-ve-geri-alma.md).
+
 **Aylık SBOM ve zafiyet taraması** (`.github/workflows/supply-chain-scan.yml`, [ADR-0030](docs/adr/0030-sbom-ve-zafiyet-taramasi.md)): her ayın 1'inde, elle ve pom, `compose.yaml`, `Dockerfile` ya da sürüm tablosu değişince Java derlemesinin ve compose'taki her imajın CycloneDX SBOM'unu üretir (artifact olarak saklanır), Grype ile tarar; CRITICAL ve düzeltmesi olan HIGH bulgusu işi kırar. Kabul edilmiş riskler [`.github/vuln-allowlist.yaml`](.github/vuln-allowlist.yaml) dosyasında gerekçe ve son kullanma tarihiyle durur. Şimdilik zorunlu kontrol değildir. Adımlar: [aylık güvenlik taraması](docs/runbooks/aylik-guvenlik-taramasi.md).
 
 ## Geliştirme
@@ -530,7 +532,7 @@ Gereksinimler: JDK 25, Docker (testler gerçek PostgreSQL'e karşı Testcontaine
 ```
 
 ```bash
-GITLEAKS=<gitleaks ikilisi> node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js scripts/panel.test.mjs
+GITLEAKS=<gitleaks ikilisi> node --test scripts/flyway-immutability.test.js scripts/config-lint.test.js scripts/gitleaks-check.test.js scripts/pre-commit.test.js scripts/review-gate.test.js scripts/repo-hygiene.test.js scripts/keycloak-start.test.js scripts/ollama-pull.test.js scripts/migration-contract.test.js scripts/verify-release.test.js scripts/panel.test.mjs
 ```
 
 IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye açan katman. Port `VERSO_DB_LOCAL_PORT` ile değişir. IDE'nin çalışma dizini depo kökü olmalı; parolalar `secrets/`'tan okunur.

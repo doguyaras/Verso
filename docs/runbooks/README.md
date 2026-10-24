@@ -38,3 +38,5 @@ docker compose --profile obs up -d --wait
 **Alarm testleri:** `deploy/obs/prometheus/alerts.test.yml` (promtool). Her alarm hem kendi kesintisinde çalar hem normal durumda susar; CI'da `scripts/obs-smoke.sh` koşar.
 
 **Log'larda ne yok:** belge içeriği, soru, cevap ve dosya adı log'a yazılmaz (llm-rules 2.1). Teşhis id, süre, sayı ve sabit sonuç kelimeleriyle yapılır. Grafana'da: `{service="verso-app"} |= "outcome="`.
+
+**Alarmsız, elle izlenen iş:** [Sürüm yükseltme ve geri alma](surum-yukseltme-ve-geri-alma.md): imzalı digest ile kurulum, yükseltme sırası, expand/contract, geri alma ve ileri düzeltme kararı (ADR-0040).

@@ -343,6 +343,34 @@ class ComposeConfigTest {
     }
 
     /**
+     * ADR-0040: a customer installs the signed image by digest. The overlay replaces the local build for verso-app and
+     * migrate with one required variable (no default, so no silent local build) and touches nothing else. The shape
+     * of the value (a digest, not a tag) is enforced by scripts/verify-release.sh (scripts/verify-release.test.js).
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void releaseOverlay_whenComposed_usesOneRequiredDigestVariableAndNeverBuilds() throws IOException {
+        // snakeyaml cannot construct Compose's "!reset" tag; the tag is asserted on the text, the rest is parsed.
+        String text = read("deploy/compose.release.yaml");
+        assertThat(text).contains("build: !reset null");
+        Map<String, Object> overlay = new Yaml().load(text.replace("!reset ", ""));
+        assertThat(overlay.keySet()).containsExactly("services");
+        Map<String, Object> services = (Map<String, Object>) overlay.get("services");
+        assertThat(services.keySet()).containsExactlyInAnyOrder("migrate", "verso-app");
+        for (String name : services.keySet()) {
+            Map<String, Object> service = (Map<String, Object>) services.get(name);
+            assertThat(String.valueOf(service.get("image"))).as(name).startsWith("${VERSO_IMAGE:?")
+                    .doesNotContain(":-").doesNotContain("VERSO_IMAGE_TAG");
+            assertThat(service).as(name).containsEntry("pull_policy", "missing");
+        }
+        assertThat((Map<String, Object>) services.get("migrate")).doesNotContainKey("build");
+        // The base still builds locally and never pulls the migrate image: only the overlay switches to the release.
+        Map<String, Object> base = services();
+        assertThat(((Map<String, Object>) base.get("verso-app"))).containsEntry("build", ".");
+        assertThat(((Map<String, Object>) base.get("migrate"))).containsEntry("pull_policy", "never");
+    }
+
+    /**
      * ADR-0014: the observability stack is opt-in (profile "obs"), on the internal "obs" network; Prometheus also on
      * "backend" (it scrapes the application), Grafana also on "default" (its published port). Alloy reads the Docker
      * socket read-only and has no published port. Grafana does not call home.
