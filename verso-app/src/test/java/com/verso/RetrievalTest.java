@@ -275,6 +275,49 @@ class RetrievalTest {
         assertThat(retrieval.search(alice, "topic-leave", 5)).hasSize(3);
     }
 
+    /**
+     * ADR-0022: a passage that only the full-text list finds (its embedding is unrelated to the question) is fused into
+     * the result and ranked first; its cosine similarity is still reported as it is, not replaced by the fused score.
+     */
+    @Test
+    void search_whenOnlyTheFullTextMatches_fusesThePassageInWithItsOwnSimilarity() {
+        for (int i = 0; i < 4; i++) ready(alice, "Annual leave rules part " + i + ".");
+        UUID code = ready(alice, "Error SAT-E027 means the budget is exceeded.");
+
+        List<RetrievedPassage> found = retrieval.search(alice, "What is SAT-E027?", 5);
+
+        assertThat(found.getFirst().documentId()).isEqualTo(code);
+        assertThat(found.getFirst().similarity()).as("cosine, not the fused score").isLessThan(0.5);
+    }
+
+    /**
+     * llm-rules 4.1 for the full-text list and the term counts: Bob's passages with the same code are neither returned
+     * to Alice nor counted in her term shares.
+     */
+    @Test
+    void search_whenAnotherAccountHasTheSameTerm_neitherReturnsNorCountsIt() {
+        for (int i = 0; i < 10; i++) ready(alice, "Annual leave rules part " + i + ".");
+        UUID mine = ready(alice, "Error SAT-E027 means the budget is exceeded.");
+        for (int i = 0; i < 5; i++) ready(bob, "Error SAT-E027 in Bob's copy " + i + ".");
+
+        List<RetrievedPassage> found = retrieval.search(alice, "What is SAT-E027?", 5);
+
+        assertThat(found).allSatisfy(p -> assertThat(documents.find(alice, p.documentId())).isPresent());
+        RetrievedPassage hit = found.stream().filter(p -> p.documentId().equals(mine)).findFirst().orElseThrow();
+        // 1 of Alice's 11 chunks contains the code; Bob's five do not count.
+        assertThat(hit.specificTermShare()).isCloseTo(1.0 / 11, org.assertj.core.data.Offset.offset(1e-9));
+        assertThat(found.stream().filter(p -> !p.documentId().equals(mine)))
+                .as("passages without a shared rare term").allSatisfy(p -> assertThat(p.specificTermShare()).isEqualTo(1.0));
+    }
+
+    /** ADR-0022: a term in 10 % or more of the account's chunks is common and reads as 1, not as its share. */
+    @Test
+    void search_whenTheSharedTermIsCommon_reportsShareOne() {
+        for (int i = 0; i < 3; i++) ready(alice, "Budget rule " + i + ".");
+        List<RetrievedPassage> found = retrieval.search(alice, "budget", 5);
+        assertThat(found).hasSize(3).allSatisfy(p -> assertThat(p.specificTermShare()).isEqualTo(1.0));
+    }
+
     /** ADR-0016: a passage of a file without pages carries its section number and says so. */
     @Test
     void search_whenTheDocumentHasNoPages_citesASection() {

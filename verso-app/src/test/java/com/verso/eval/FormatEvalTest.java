@@ -10,6 +10,7 @@ import com.verso.document.repository.DocumentRow;
 import com.verso.document.testing.TestDocx;
 import com.verso.document.worker.IngestionWorker;
 import com.verso.qa.config.QaProperties;
+import com.verso.qa.service.AnswerabilityGate;
 import com.verso.support.TestChatModel;
 import com.verso.support.TestIdp;
 import com.verso.support.VersoPostgres;
@@ -43,7 +44,7 @@ import tools.jackson.databind.json.JsonMapper;
  * "Başlık 1" style) and as Markdown ("##" headings). Every answerable question of eval/eval-set.json is searched in
  * each account. Pages and sections do not line up, so instead of recall of a page this measures, per format:
  * the expected document among the top 5, the expected fact (as a whole word or number) in the top-5 passages, and how
- * the best similarity sits against the threshold. Writes eval/results/retrieval-formats.json. Tag "eval", like
+ * the answerability gate (ADR-0022) decides. Writes eval/results/retrieval-formats.json. Tag "eval", like
  * {@link RetrievalEvalTest}; needs Ollama with bge-m3:567m.
  *
  * <pre>./mvnw -pl verso-app -am test -Dverso.excludedGroups=none -Dgroups=eval -Dtest=FormatEvalTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false</pre>
@@ -79,6 +80,9 @@ class FormatEvalTest {
     @Autowired
     QaProperties qa;
 
+    @Autowired
+    AnswerabilityGate gate;
+
     @Test
     void evalSet_whenTheSamplesAreDocxOrMarkdown_retrievesAsWellAsFromPdf() throws Exception {
         jdbc.update("DELETE FROM document.document");
@@ -92,7 +96,9 @@ class FormatEvalTest {
             int answerable = 0, docHit = 0, factHit = 0, above = 0, unanswerable = 0, below = 0;
             for (JsonNode q : set.get("questions")) {
                 List<RetrievedPassage> found = retrieval.search(account, q.get("question").asString(), 5);
-                double best = found.isEmpty() ? 0 : found.getFirst().similarity();
+                // Fused order (ADR-0022): the best cosine is not necessarily the first passage.
+                double best = found.stream().mapToDouble(RetrievedPassage::similarity).max().orElse(0);
+                boolean answered = gate.decide(found) != AnswerabilityGate.Decision.NONE;
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("id", q.get("id").asString());
                 row.put("bestSimilarity", round(best));
@@ -104,20 +110,20 @@ class FormatEvalTest {
                     boolean fact = Stream.of(q.get("expect").asString().split("\\|")).anyMatch(e -> containsFact(passages, e));
                     if (doc) docHit++;
                     if (fact) factHit++;
-                    if (best >= qa.minSimilarity()) above++;
+                    if (answered) above++;
                     row.put("documentInTop5", doc);
                     row.put("factInTop5", fact);
                 } else {
                     unanswerable++;
-                    if (best < qa.minSimilarity()) below++;
+                    if (!answered) below++;
                 }
                 perQuestion.add(row);
             }
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("documentHitAt5", ratio(docHit, answerable));
             summary.put("factInTop5", ratio(factHit, answerable));
-            summary.put("answerableAboveThreshold", ratio(above, answerable));
-            summary.put("unanswerableBelowThreshold", ratio(below, unanswerable));
+            summary.put("answerablePassGate", ratio(above, answerable));
+            summary.put("unanswerableStoppedByGate", ratio(below, unanswerable));
             summaries.put(format.name(), summary);
             rows.put(format.name(), perQuestion);
             System.out.println("FORMAT EVAL " + format + " " + summary);
@@ -125,7 +131,8 @@ class FormatEvalTest {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("measuredAt", Instant.now().toString());
         result.put("embeddingModel", "bge-m3:567m");
-        result.put("threshold", qa.minSimilarity());
+        result.put("gate", Map.of("minSimilarity", qa.minSimilarity(), "lexicalMinSimilarity", qa.lexicalMinSimilarity(),
+                "specificTermMaxShare", qa.specificTermMaxShare()));
         result.put("summary", summaries);
         result.put("questions", rows);
         Files.writeString(ROOT.resolve("eval/results/retrieval-formats.json"),

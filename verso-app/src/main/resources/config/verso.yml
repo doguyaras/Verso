@@ -151,9 +151,17 @@ verso:
   # Question answering (ADR-0008, llm-rules 3.4/3.5). Starting values; the eval set (phase 8) measures them.
   qa:
     top-k: 5
-    # Measured on the Turkish eval set with bge-m3 (phase 8, eval/results/retrieval.json): every answerable question
-    # scored >= 0.522, half of the unanswerable ones < 0.50. The chat model handles the rest ("bulunamadı").
-    min-similarity: 0.50
+    # Answerability gate (llm-rules 3.4, ADR-0022), measured on eval set version 2 with bge-m3 and hybrid search
+    # (eval/README.md "Eşikler ve karar"): the model is asked when the most similar passage reaches min-similarity, or
+    # reaches lexical-min-similarity and names a question term found in at most specific-term-max-share of the
+    # account's chunks (a code or an abbreviation). Otherwise "bulunamadı" without a model call.
+    min-similarity: 0.47
+    lexical-min-similarity: 0.44
+    specific-term-max-share: 0.045
+    # Once the gate is open: the most similar passage and every passage at or above this go into the prompt. With all
+    # five passages (or a 0.44 floor) the model said "bulunamadı" to 10-11 of 28 unanswerable questions, with this
+    # 17 of 28 (ADR-0022, end-to-end eval on GPU).
+    passage-min-similarity: 0.50
     max-passage-chars: 1500
     # One chat call at a time per instance: Ollama runs one request per model anyway, and on a CPU host a second
     # concurrent answer only doubles both waits and starves the question embeddings (phase 8, docs/capacity.md).
@@ -226,6 +234,11 @@ verso:
     retrieval:
       embedding-timeout: 10s
       embedding-concurrency: 4
+      # Hybrid search (ADR-0022): 20 nearest chunks by cosine and 20 best by full-text rank, fused by Reciprocal Rank
+      # Fusion (k = 60). lexical-candidates 0 falls back to vector search only.
+      vector-candidates: 20
+      lexical-candidates: 20
+      rrf-k: 60
     ingestion:
       enabled: true
       poll-interval-ms: 5000

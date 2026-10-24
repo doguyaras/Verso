@@ -6,9 +6,12 @@ import com.verso.document.config.DocumentProperties;
 import com.verso.document.exception.DocumentErrorCode;
 import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.RetrievalRepository;
+import com.verso.document.repository.RetrievalRepository.Candidate;
 import java.time.Duration;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,8 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * {@link DocumentRetrieval} (phase 5): the question is embedded with the documents' own model, outside any transaction
- * (llm-rules 5.1), then the nearest chunks of the account are read in one short read-only transaction. A model that
+ * {@link DocumentRetrieval} (phase 5, ADR-0022): the question is embedded with the documents' own model, outside any
+ * transaction (llm-rules 5.1); then, in one short read-only transaction, the hybrid query fuses the account's nearest
+ * chunks with its best full-text matches, and the term shares of the returned passages are counted. A model that
  * does not answer is a 503; documents indexed with another model fail closed instead of returning noise (6.1).
  */
 @Service
@@ -107,11 +111,30 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         if (vector.length != properties.embeddingDimensions()) {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
-        List<RetrievedPassage> passages = readOnly.execute(status -> {
-            repository.prepareFilteredScan(topK);
-            return repository.nearest(accountId, model, vector, topK);
+        DocumentProperties.Retrieval settings = properties.retrieval();
+        int vectorCandidates = Math.max(settings.vectorCandidates(), topK);
+        return readOnly.execute(status -> {
+            repository.prepareFilteredScan(vectorCandidates);
+            List<Candidate> found = repository.hybrid(accountId, model, vector, question, vectorCandidates,
+                    settings.lexicalCandidates(), settings.rrfK(), topK);
+            Map<UUID, Double> shares = settings.lexicalCandidates() == 0 ? Map.of() : termShares(accountId, model, question, found);
+            return found.stream().map(c -> new RetrievedPassage(c.documentId(), c.fileName(), c.pageNumber(), c.unit(),
+                    c.content(), c.similarity(), shares.getOrDefault(c.chunkId(), 1.0))).toList();
         });
-        // The iterative scan returns rows in relaxed order: sort by similarity, best first.
-        return passages.stream().sorted(Comparator.comparingDouble(RetrievedPassage::similarity).reversed()).toList();
+    }
+
+    /**
+     * Share of the account's searchable chunks that contain each passage's rarest question term (ADR-0022). Terms in
+     * {@link DocumentRetrieval#TERM_SHARE_LIMIT} or more of the chunks are not counted further and read as 1.
+     */
+    private Map<UUID, Double> termShares(String accountId, String model, String question, List<Candidate> found) {
+        if (found.isEmpty()) return Map.of();
+        long total = repository.searchableChunks(accountId, model);
+        if (total == 0) return Map.of();
+        long cap = (long) Math.ceil(DocumentRetrieval.TERM_SHARE_LIMIT * total);
+        Map<UUID, Double> shares = new HashMap<>();
+        repository.rarestSharedTermCounts(accountId, model, question, found.stream().map(Candidate::chunkId).toList(), cap)
+                .forEach((id, chunks) -> shares.put(id, chunks >= cap ? 1.0 : (double) chunks / total));
+        return shares;
     }
 }

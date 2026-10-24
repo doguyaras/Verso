@@ -1,25 +1,29 @@
 {
-  "measuredAt" : "2026-10-24T00:59:00.771301100Z",
+  "measuredAt" : "2026-10-24T09:31:59.710045700Z",
   "embeddingModel" : "bge-m3:567m",
-  "threshold" : 0.5,
+  "gate" : {
+    "specificTermMaxShare" : 0.045,
+    "lexicalMinSimilarity" : 0.44,
+    "minSimilarity" : 0.47
+  },
   "summary" : {
     "PDF" : {
       "documentHitAt5" : 1.0,
-      "factInTop5" : 0.946,
-      "answerableAboveThreshold" : 0.955,
-      "unanswerableBelowThreshold" : 0.214
+      "factInTop5" : 0.973,
+      "answerablePassGate" : 1.0,
+      "unanswerableStoppedByGate" : 0.25
     },
     "DOCX" : {
       "documentHitAt5" : 1.0,
-      "factInTop5" : 1.0,
-      "answerableAboveThreshold" : 0.973,
-      "unanswerableBelowThreshold" : 0.179
+      "factInTop5" : 0.991,
+      "answerablePassGate" : 0.991,
+      "unanswerableStoppedByGate" : 0.071
     },
     "MD" : {
       "documentHitAt5" : 1.0,
-      "factInTop5" : 1.0,
-      "answerableAboveThreshold" : 0.973,
-      "unanswerableBelowThreshold" : 0.179
+      "factInTop5" : 0.991,
+      "answerablePassGate" : 0.991,
+      "unanswerableStoppedByGate" : 0.071
     }
   },
   "questions" : {
@@ -35,7 +39,7 @@
       "factInTop5" : true
     }, {
       "id" : "izin-3",
-      "bestSimilarity" : 0.6,
+      "bestSimilarity" : 0.586,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -150,7 +154,7 @@
       "factInTop5" : true
     }, {
       "id" : "yok-1",
-      "bestSimilarity" : 0.526
+      "bestSimilarity" : 0.45
     }, {
       "id" : "yok-2",
       "bestSimilarity" : 0.563
@@ -162,7 +166,7 @@
       "bestSimilarity" : 0.508
     }, {
       "id" : "yok-5",
-      "bestSimilarity" : 0.547
+      "bestSimilarity" : 0.524
     }, {
       "id" : "yok-6",
       "bestSimilarity" : 0.431
@@ -171,7 +175,7 @@
       "bestSimilarity" : 0.467
     }, {
       "id" : "yok-8",
-      "bestSimilarity" : 0.468
+      "bestSimilarity" : 0.442
     }, {
       "id" : "depo-1",
       "bestSimilarity" : 0.638,
@@ -181,7 +185,7 @@
       "id" : "depo-2",
       "bestSimilarity" : 0.547,
       "documentInTop5" : true,
-      "factInTop5" : false
+      "factInTop5" : true
     }, {
       "id" : "depo-3",
       "bestSimilarity" : 0.678,
@@ -256,7 +260,7 @@
       "id" : "depo-17",
       "bestSimilarity" : 0.474,
       "documentInTop5" : true,
-      "factInTop5" : false
+      "factInTop5" : true
     }, {
       "id" : "depo-18",
       "bestSimilarity" : 0.493,
@@ -284,9 +288,9 @@
       "factInTop5" : true
     }, {
       "id" : "erp-3",
-      "bestSimilarity" : 0.619,
+      "bestSimilarity" : 0.59,
       "documentInTop5" : true,
-      "factInTop5" : true
+      "factInTop5" : false
     }, {
       "id" : "erp-4",
       "bestSimilarity" : 0.629,
@@ -341,7 +345,7 @@
       "id" : "erp-14",
       "bestSimilarity" : 0.67,
       "documentInTop5" : true,
-      "factInTop5" : false
+      "factInTop5" : true
     }, {
       "id" : "erp-15",
       "bestSimilarity" : 0.577,
@@ -356,7 +360,7 @@
       "id" : "erp-17",
       "bestSimilarity" : 0.619,
       "documentInTop5" : true,
-      "factInTop5" : false
+      "factInTop5" : true
     }, {
       "id" : "erp-18",
       "bestSimilarity" : 0.677,
@@ -369,7 +373,7 @@
       "factInTop5" : true
     }, {
       "id" : "bt-2",
-      "bestSimilarity" : 0.523,
+      "bestSimilarity" : 0.519,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -384,7 +388,7 @@
       "factInTop5" : true
     }, {
       "id" : "bt-5",
-      "bestSimilarity" : 0.528,
+      "bestSimilarity" : 0.508,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -434,7 +438,7 @@
       "factInTop5" : true
     }, {
       "id" : "bt-15",
-      "bestSimilarity" : 0.649,
+      "bestSimilarity" : 0.604,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -529,7 +533,7 @@
       "factInTop5" : true
     }, {
       "id" : "crm-13",
-      "bestSimilarity" : 0.586,
+      "bestSimilarity" : 0.537,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -612,7 +616,7 @@
       "bestSimilarity" : 0.501
     }, {
       "id" : "depo-yok-2",
-      "bestSimilarity" : 0.513
+      "bestSimilarity" : 0.496
     }, {
       "id" : "depo-yok-3",
       "bestSimilarity" : 0.546
@@ -636,7 +640,7 @@
       "bestSimilarity" : 0.603
     }, {
       "id" : "bt-yok-2",
-      "bestSimilarity" : 0.49
+      "bestSimilarity" : 0.468
     }, {
       "id" : "bt-yok-3",
       "bestSimilarity" : 0.47
@@ -798,13 +802,13 @@
       "bestSimilarity" : 0.5
     }, {
       "id" : "yok-2",
-      "bestSimilarity" : 0.556
+      "bestSimilarity" : 0.517
     }, {
       "id" : "yok-3",
-      "bestSimilarity" : 0.526
+      "bestSimilarity" : 0.482
     }, {
       "id" : "yok-4",
-      "bestSimilarity" : 0.552
+      "bestSimilarity" : 0.507
     }, {
       "id" : "yok-5",
       "bestSimilarity" : 0.584
@@ -899,7 +903,7 @@
       "factInTop5" : true
     }, {
       "id" : "depo-17",
-      "bestSimilarity" : 0.437,
+      "bestSimilarity" : 0.424,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -929,9 +933,9 @@
       "factInTop5" : true
     }, {
       "id" : "erp-3",
-      "bestSimilarity" : 0.6,
+      "bestSimilarity" : 0.591,
       "documentInTop5" : true,
-      "factInTop5" : true
+      "factInTop5" : false
     }, {
       "id" : "erp-4",
       "bestSimilarity" : 0.643,
@@ -1029,7 +1033,7 @@
       "factInTop5" : true
     }, {
       "id" : "bt-5",
-      "bestSimilarity" : 0.513,
+      "bestSimilarity" : 0.508,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -1169,7 +1173,7 @@
       "factInTop5" : true
     }, {
       "id" : "crm-12",
-      "bestSimilarity" : 0.671,
+      "bestSimilarity" : 0.656,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -1272,7 +1276,7 @@
       "bestSimilarity" : 0.598
     }, {
       "id" : "erp-yok-3",
-      "bestSimilarity" : 0.527
+      "bestSimilarity" : 0.52
     }, {
       "id" : "erp-yok-4",
       "bestSimilarity" : 0.567
@@ -1281,7 +1285,7 @@
       "bestSimilarity" : 0.601
     }, {
       "id" : "bt-yok-2",
-      "bestSimilarity" : 0.54
+      "bestSimilarity" : 0.526
     }, {
       "id" : "bt-yok-3",
       "bestSimilarity" : 0.474
@@ -1443,13 +1447,13 @@
       "bestSimilarity" : 0.5
     }, {
       "id" : "yok-2",
-      "bestSimilarity" : 0.556
+      "bestSimilarity" : 0.517
     }, {
       "id" : "yok-3",
-      "bestSimilarity" : 0.526
+      "bestSimilarity" : 0.482
     }, {
       "id" : "yok-4",
-      "bestSimilarity" : 0.552
+      "bestSimilarity" : 0.507
     }, {
       "id" : "yok-5",
       "bestSimilarity" : 0.584
@@ -1544,7 +1548,7 @@
       "factInTop5" : true
     }, {
       "id" : "depo-17",
-      "bestSimilarity" : 0.437,
+      "bestSimilarity" : 0.424,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -1574,9 +1578,9 @@
       "factInTop5" : true
     }, {
       "id" : "erp-3",
-      "bestSimilarity" : 0.6,
+      "bestSimilarity" : 0.591,
       "documentInTop5" : true,
-      "factInTop5" : true
+      "factInTop5" : false
     }, {
       "id" : "erp-4",
       "bestSimilarity" : 0.643,
@@ -1674,7 +1678,7 @@
       "factInTop5" : true
     }, {
       "id" : "bt-5",
-      "bestSimilarity" : 0.513,
+      "bestSimilarity" : 0.508,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -1814,7 +1818,7 @@
       "factInTop5" : true
     }, {
       "id" : "crm-12",
-      "bestSimilarity" : 0.671,
+      "bestSimilarity" : 0.656,
       "documentInTop5" : true,
       "factInTop5" : true
     }, {
@@ -1917,7 +1921,7 @@
       "bestSimilarity" : 0.598
     }, {
       "id" : "erp-yok-3",
-      "bestSimilarity" : 0.527
+      "bestSimilarity" : 0.52
     }, {
       "id" : "erp-yok-4",
       "bestSimilarity" : 0.567
@@ -1926,7 +1930,7 @@
       "bestSimilarity" : 0.601
     }, {
       "id" : "bt-yok-2",
-      "bestSimilarity" : 0.54
+      "bestSimilarity" : 0.526
     }, {
       "id" : "bt-yok-3",
       "bestSimilarity" : 0.474

@@ -9,6 +9,8 @@ import com.verso.document.repository.DocumentRepository;
 import com.verso.document.repository.DocumentRow;
 import com.verso.document.worker.IngestionWorker;
 import com.verso.qa.config.QaProperties;
+import com.verso.qa.service.AnswerabilityGate;
+import com.verso.qa.service.AnswerabilityGate.Decision;
 import com.verso.support.TestChatModel;
 import com.verso.support.TestIdp;
 import com.verso.support.VersoPostgres;
@@ -19,10 +21,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -37,8 +41,9 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Retrieval quality on the Turkish eval set (phase 8, llm-rules 7.1) with the real embedding model: the sample PDFs
  * are ingested by the real worker into a real PostgreSQL + pgvector, then every question of eval/eval-set.json is
- * searched like a question to /v1/questions. Measures recall@1/@5 and MRR of the expected page, and how the best
- * similarity separates answerable from unanswerable questions (the 0.50 threshold, llm-rules 3.4). Writes
+ * searched like a question to /v1/questions (hybrid search, ADR-0022). Measures recall@1/@5 and MRR of the expected
+ * page, overall and per question type, and how the shipped answerability gate (AnswerabilityGate, llm-rules 3.4)
+ * treats answerable and unanswerable questions: precision and recall of its "bulunamadı". Writes
  * eval/results/retrieval.json. Not part of the build (tag "eval"); needs Ollama with bge-m3:567m on
  * VERSO_EVAL_OLLAMA_URL (default http://localhost:11434, e.g. deploy/compose.local.yaml):
  *
@@ -57,9 +62,14 @@ class RetrievalEvalTest {
 
     private static final Path ROOT = VersoPostgres.repoRoot();
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final List<String> TAGS = List.of("paraphrase", "abbreviation", "number", "table", "disambiguation",
+            "on-topic");
 
     @Autowired
     QaProperties qa;
+
+    @Autowired
+    AnswerabilityGate gate;
 
     @Autowired
     DocumentRetrieval retrieval;
@@ -75,6 +85,20 @@ class RetrievalEvalTest {
 
     private final String account = "acct-eval-" + UUID.randomUUID();
 
+    /** One question's outcome. rank: 1-based position of the expected page in the top 5, 0 when absent. */
+    private record Outcome(JsonNode question, int rank, boolean documentFound, boolean answered) {
+        boolean answerable() {
+            return question.get("answerable").asBoolean();
+        }
+
+        boolean tagged(String tag) {
+            JsonNode tags = question.get("tags");
+            if (tags == null) return false;
+            for (JsonNode t : tags) if (t.asString().equals(tag)) return true;
+            return false;
+        }
+    }
+
     @Test
     void evalSet_whenSearched_findsTheExpectedPages() throws Exception {
         jdbc.update("DELETE FROM document.document");
@@ -82,61 +106,59 @@ class RetrievalEvalTest {
         JsonNode set = JSON.readTree(Files.readString(ROOT.resolve("eval/eval-set.json"), StandardCharsets.UTF_8));
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        int answerable = 0, hit1 = 0, hit5 = 0, docHit5 = 0, aboveThreshold = 0, unanswerable = 0, belowThreshold = 0;
-        double reciprocal = 0;
-        double threshold = qa.minSimilarity(); // the shipped threshold, not a copy (phase 8 review L1)
+        List<Outcome> outcomes = new ArrayList<>();
+        List<Long> searchMs = new ArrayList<>();
         for (JsonNode q : set.get("questions")) {
             long started = System.nanoTime();
             List<RetrievedPassage> found = retrieval.search(account, q.get("question").asString(), 5);
             long ms = (System.nanoTime() - started) / 1_000_000;
-            double best = found.isEmpty() ? 0 : found.getFirst().similarity();
+            searchMs.add(ms);
+            // Fused order (ADR-0022): the most similar passage is not necessarily the first one.
+            RetrievedPassage best = found.stream().max(Comparator.comparingDouble(RetrievedPassage::similarity)).orElse(null);
+            Decision decision = gate.decide(found);
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", q.get("id").asString());
             row.put("answerable", q.get("answerable").asBoolean());
-            row.put("bestSimilarity", round(best));
+            // Four decimals: the gate's edges sit within 0.001 of measured questions (eval/README.md).
+            row.put("bestSimilarity", best == null ? 0 : Math.round(best.similarity() * 10_000) / 10_000.0);
+            row.put("bestSpecificTermShare", best == null ? 1 : Math.round(best.specificTermShare() * 10_000) / 10_000.0);
+            row.put("decision", decision.name());
             row.put("searchMs", ms);
             row.put("top5", found.stream().map(p -> p.fileName() + "#" + p.pageNumber() + " " + round(p.similarity())).toList());
+            int rank = 0;
+            boolean docFound = false;
             if (q.get("answerable").asBoolean()) {
-                answerable++;
                 String doc = q.get("document").asString();
                 List<Integer> pages = new ArrayList<>();
                 q.get("pages").forEach(p -> pages.add(p.asInt()));
-                int rank = 0;
                 for (int i = 0; i < found.size(); i++) {
                     if (found.get(i).fileName().equals(doc) && pages.contains(found.get(i).pageNumber())) {
                         rank = i + 1;
                         break;
                     }
                 }
-                boolean docFound = found.stream().anyMatch(p -> p.fileName().equals(doc));
-                if (rank == 1) hit1++;
-                if (rank >= 1) {
-                    hit5++;
-                    reciprocal += 1.0 / rank;
-                }
-                if (docFound) docHit5++;
-                if (best >= threshold) aboveThreshold++;
+                docFound = found.stream().anyMatch(p -> p.fileName().equals(doc));
                 row.put("rank", rank);
-            } else {
-                unanswerable++;
-                if (best < threshold) belowThreshold++;
             }
+            outcomes.add(new Outcome(q, rank, docFound, decision != Decision.NONE));
             rows.add(row);
         }
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("embeddingModel", "bge-m3:567m");
         summary.put("topK", 5);
-        summary.put("threshold", threshold);
-        summary.put("answerable", answerable);
-        summary.put("unanswerable", unanswerable);
-        summary.put("recallAt1", ratio(hit1, answerable));
-        summary.put("recallAt5", ratio(hit5, answerable));
-        summary.put("documentRecallAt5", ratio(docHit5, answerable));
-        summary.put("mrr", round(reciprocal / answerable));
-        summary.put("answerableAboveThreshold", ratio(aboveThreshold, answerable));
-        summary.put("unanswerableBelowThreshold", ratio(belowThreshold, unanswerable));
+        summary.put("gate", Map.of("minSimilarity", qa.minSimilarity(), "lexicalMinSimilarity", qa.lexicalMinSimilarity(),
+                "specificTermMaxShare", qa.specificTermMaxShare()));
+        summary.putAll(measure(outcomes, o -> true));
+        Map<String, Object> byTag = new LinkedHashMap<>();
+        byTag.put("version1", measure(outcomes, o -> o.question().get("tags") == null));
+        byTag.put("version2", measure(outcomes, o -> o.question().get("tags") != null));
+        for (String tag : TAGS) byTag.put(tag, measure(outcomes, o -> o.tagged(tag)));
+        summary.put("byTag", byTag);
         summary.put("answerableBestSimilarity", stats(rows, true));
         summary.put("unanswerableBestSimilarity", stats(rows, false));
+        List<Long> sorted = searchMs.stream().sorted().toList();
+        summary.put("searchMs", Map.of("p50", sorted.get(sorted.size() / 2),
+                "p95", sorted.get((int) Math.ceil(sorted.size() * 0.95) - 1), "max", sorted.getLast()));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("measuredAt", Instant.now().toString());
         result.put("summary", summary);
@@ -147,13 +169,41 @@ class RetrievalEvalTest {
                 StandardCharsets.UTF_8);
         System.out.println("RETRIEVAL EVAL " + summary);
 
-        // Regression guard at the measured level (eval/README.md); a change that drops below it needs a decision.
-        assertThat((double) summary.get("recallAt5")).as("recall@5").isGreaterThanOrEqualTo(0.8);
-        // Set version 2 (2026-10-24) measured 107/112 answerable questions above the threshold: five short
-        // abbreviation questions ("FEFO ne demek?", "CAB toplantısı hangi gün?") score 0.45-0.49 and would be answered
-        // "bulunamadı". The guard sits at that measured level so it catches further losses; the gap itself is an open
-        // retrieval defect, not an accepted state (eval/README.md "Eşikler ve karar").
-        assertThat((double) summary.get("answerableAboveThreshold")).as("answerable above the threshold").isGreaterThanOrEqualTo(0.95);
+        // Regression guards at the measured level of ADR-0022 (eval/README.md "Eşikler ve karar"); a change that drops
+        // below them needs a decision, not a quieter guard.
+        assertThat((double) summary.get("recallAt5")).as("recall@5").isGreaterThanOrEqualTo(0.97);
+        assertThat((double) summary.get("mrr")).as("MRR").isGreaterThanOrEqualTo(0.86);
+        // Every answerable question reaches the model; the five short abbreviation questions the 0.50 cosine threshold
+        // stopped (set version 2) pass through the specific-term branch.
+        assertThat((double) summary.get("answerablePassGate")).as("answerable questions through the gate").isEqualTo(1.0);
+        assertThat((double) summary.get("unanswerableStoppedByGate")).as("unanswerable questions stopped by the gate")
+                .isGreaterThanOrEqualTo(0.2);
+    }
+
+    /** Recall, MRR and the gate's confusion counts over the questions the filter keeps. */
+    private static Map<String, Object> measure(List<Outcome> all, Predicate<Outcome> filter) {
+        List<Outcome> outcomes = all.stream().filter(filter).toList();
+        List<Outcome> answerable = outcomes.stream().filter(Outcome::answerable).toList();
+        List<Outcome> unanswerable = outcomes.stream().filter(o -> !o.answerable()).toList();
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("answerable", answerable.size());
+        m.put("unanswerable", unanswerable.size());
+        if (!answerable.isEmpty()) {
+            m.put("recallAt1", ratio(answerable.stream().filter(o -> o.rank() == 1).count(), answerable.size()));
+            m.put("recallAt5", ratio(answerable.stream().filter(o -> o.rank() >= 1).count(), answerable.size()));
+            m.put("hitsAt5", answerable.stream().filter(o -> o.rank() >= 1).count());
+            m.put("documentRecallAt5", ratio(answerable.stream().filter(Outcome::documentFound).count(), answerable.size()));
+            m.put("mrr", round(answerable.stream().mapToDouble(o -> o.rank() == 0 ? 0 : 1.0 / o.rank()).sum() / answerable.size()));
+            m.put("answerablePassGate", ratio(answerable.stream().filter(Outcome::answered).count(), answerable.size()));
+        }
+        long answerableStopped = answerable.stream().filter(o -> !o.answered()).count();
+        long unanswerableStopped = unanswerable.stream().filter(o -> !o.answered()).count();
+        if (!unanswerable.isEmpty()) m.put("unanswerableStoppedByGate", ratio(unanswerableStopped, unanswerable.size()));
+        // "bulunamadı" from the gate as the positive class: of the questions it stopped, how many had no answer
+        // (precision), and of the questions without an answer, how many it stopped (recall).
+        m.put("notFoundPrecision", ratio(unanswerableStopped, answerableStopped + unanswerableStopped));
+        m.put("notFoundRecall", ratio(unanswerableStopped, unanswerable.size()));
+        return m;
     }
 
     private void ingestSamples() throws IOException, InterruptedException {
@@ -176,7 +226,7 @@ class RetrievalEvalTest {
 
     private static Map<String, Object> stats(List<Map<String, Object>> rows, boolean answerable) {
         List<Double> values = rows.stream().filter(r -> r.get("answerable").equals(answerable))
-                .map(r -> (Double) r.get("bestSimilarity")).sorted().toList();
+                .map(r -> ((Number) r.get("bestSimilarity")).doubleValue()).sorted().toList();
         Map<String, Object> s = new LinkedHashMap<>();
         s.put("min", values.getFirst());
         s.put("median", values.get(values.size() / 2));
@@ -184,7 +234,7 @@ class RetrievalEvalTest {
         return s;
     }
 
-    private static double ratio(int part, int whole) {
+    private static double ratio(long part, long whole) {
         return round(whole == 0 ? 0 : (double) part / whole);
     }
 

@@ -20,19 +20,26 @@ class ConfigProfilesTest {
     static class Empty {}
 
     /**
-     * Phase 8 measurements (docs/capacity.md, eval/README.md): the threshold and the chat bulkhead in the shipped
-     * config, and the code defaults behind them (QaProperties), are the measured values.
+     * Phase 8 and ADR-0022 measurements (docs/capacity.md, eval/README.md): the answerability gate and the chat
+     * bulkhead in the shipped config, and the code defaults behind them (QaProperties), are the measured values.
      */
     @Test
     void qaSettings_whenDeployProfile_areTheMeasuredValues() {
         try (ConfigurableApplicationContext context = start("prod")) {
             Environment env = context.getEnvironment();
-            assertThat(env.getProperty("verso.qa.min-similarity", Double.class)).isEqualTo(0.50);
+            assertThat(env.getProperty("verso.qa.min-similarity", Double.class)).isEqualTo(0.47);
+            assertThat(env.getProperty("verso.qa.lexical-min-similarity", Double.class)).isEqualTo(0.44);
+            assertThat(env.getProperty("verso.qa.specific-term-max-share", Double.class)).isEqualTo(0.045);
+            assertThat(env.getProperty("verso.qa.passage-min-similarity", Double.class)).isEqualTo(0.50);
+            assertThat(env.getProperty("verso.document.retrieval.lexical-candidates", Integer.class)).isEqualTo(20);
             assertThat(env.getProperty("verso.qa.chat-concurrency", Integer.class)).isEqualTo(1);
         }
         var defaults = org.springframework.boot.context.properties.bind.Binder.get(new org.springframework.core.env.StandardEnvironment())
                 .bindOrCreate("verso.qa", com.verso.qa.config.QaProperties.class);
-        assertThat(defaults.minSimilarity()).isEqualTo(0.50);
+        assertThat(defaults.minSimilarity()).isEqualTo(0.47);
+        assertThat(defaults.lexicalMinSimilarity()).isEqualTo(0.44);
+        assertThat(defaults.specificTermMaxShare()).isEqualTo(0.045);
+        assertThat(defaults.passageMinSimilarity()).isEqualTo(0.50);
         assertThat(defaults.chatConcurrency()).isEqualTo(1);
     }
 

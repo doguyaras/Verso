@@ -71,6 +71,18 @@ class DocumentPropertiesTest {
                 Duration.ofMinutes(20), Duration.ofMinutes(10), 16, 10, Duration.ofSeconds(30), Duration.ofMinutes(5))).hasMessageContaining("max >= first");
     }
 
+    /** ADR-0022: the fusion inputs are bounded; 0 lexical candidates is allowed (vector search only). */
+    @Test
+    void retrieval_whenACandidateCountOrRrfKIsOutOfRange_failsAtStartup() {
+        Duration ten = Duration.ofSeconds(10);
+        assertThatThrownBy(() -> new DocumentProperties.Retrieval(ten, 4, 0, 20, 60)).hasMessageContaining("vector-candidates");
+        assertThatThrownBy(() -> new DocumentProperties.Retrieval(ten, 4, 101, 20, 60)).hasMessageContaining("vector-candidates");
+        assertThatThrownBy(() -> new DocumentProperties.Retrieval(ten, 4, 20, -1, 60)).hasMessageContaining("lexical-candidates");
+        assertThatThrownBy(() -> new DocumentProperties.Retrieval(ten, 4, 20, 101, 60)).hasMessageContaining("lexical-candidates");
+        assertThatThrownBy(() -> new DocumentProperties.Retrieval(ten, 4, 20, 20, 0)).hasMessageContaining("rrf-k");
+        new DocumentProperties.Retrieval(ten, 4, 20, 0, 60);
+    }
+
     private static DocumentProperties props(DataSize maxFile, int maxPages, int chunkSize, int overlap, String model,
                                             int dimensions) {
         return new DocumentProperties(maxFile, maxPages, 2_000_000, 50_000, DataSize.ofMegabytes(64), 200, 4, 20,

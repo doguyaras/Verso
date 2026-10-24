@@ -99,7 +99,7 @@ public final class TestPdfs {
                 chunkSize, chunkOverlap, "test-embedding", 1024,
                 new DocumentProperties.Ingestion(true, 5000, Duration.ofMinutes(10), 5, Duration.ofSeconds(30),
                         Duration.ofMinutes(10), 16, 10, Duration.ofSeconds(30), Duration.ofMinutes(5)),
-                new DocumentProperties.Retrieval(Duration.ofSeconds(10), 4));
+                new DocumentProperties.Retrieval(Duration.ofSeconds(10), 4, 20, 20, 60));
     }
 
     private static byte[] rawPage(String operators, COSName filter, boolean withFont) {

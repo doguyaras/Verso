@@ -48,14 +48,25 @@ public record DocumentProperties(
      * @param embeddingTimeout     the question embedding gives up after this (ADR-0008: 10 s), independent of the
      *                             90 s HTTP read timeout the ingestion worker's batches need
      * @param embeddingConcurrency question embeddings in flight per instance (bulkhead)
+     * @param vectorCandidates     nearest chunks by cosine that enter the fusion (ADR-0022); at least top-k
+     * @param lexicalCandidates    best chunks by full-text rank that enter the fusion; 0 turns the lexical list off
+     *                             (vector search only, the behaviour before ADR-0022)
+     * @param rrfK                 the k of Reciprocal Rank Fusion, score = Σ 1 / (k + rank); 60 as in Cormack et al.
      */
     public record Retrieval(
             @DefaultValue("10s") Duration embeddingTimeout,
-            @DefaultValue("4") int embeddingConcurrency) {
+            @DefaultValue("4") int embeddingConcurrency,
+            @DefaultValue("20") int vectorCandidates,
+            @DefaultValue("20") int lexicalCandidates,
+            @DefaultValue("60") int rrfK) {
 
         public Retrieval {
             if (!embeddingTimeout.isPositive()) throw new IllegalStateException("verso.document.retrieval.embedding-timeout must be positive");
             if (embeddingConcurrency < 1) throw new IllegalStateException("verso.document.retrieval.embedding-concurrency must be positive");
+            // Upper bounds keep one question's database work bounded (hot path, ADR-0008).
+            if (vectorCandidates < 1 || vectorCandidates > 100) throw new IllegalStateException("verso.document.retrieval.vector-candidates must be 1..100");
+            if (lexicalCandidates < 0 || lexicalCandidates > 100) throw new IllegalStateException("verso.document.retrieval.lexical-candidates must be 0..100");
+            if (rrfK < 1) throw new IllegalStateException("verso.document.retrieval.rrf-k must be positive");
         }
     }
 

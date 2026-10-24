@@ -5,7 +5,9 @@
 //     precision (citations on an expected page, of all citations), and whether the answer contains the expected fact
 //     (as a whole word or number, citation markers removed);
 //   - unanswerable questions: not-found accuracy (the answer is the fixed "bulunamadı" sentence; an uncited answer
-//     is wrong), split into those the threshold stopped (eval/results/retrieval.json) and those the model decided;
+//     is wrong), split into those the answerability gate stopped (eval/results/retrieval.json) and those the model
+//     decided; next to it, a lenient count that also accepts the model's own uncited refusal ("... bilgi
+//     bulunmamaktadır"), which the strict metric counts as wrong;
 //   - latency p50/p95.
 // Writes eval/results/e2e-<chat model>.json (or eval/results/<OUT>) and prints a summary. Removes its uploads at the
 // end. OUT keeps a run on other hardware (e2e-gemma4_e2b-gpu.json) from overwriting the CPU baseline.
@@ -28,6 +30,9 @@ const SECRET = readFileSync(join(ROOT, 'secrets/SECRET_KEYCLOAK_CI_CLIENT_SECRET
 const tr = (s) => s.normalize('NFC').toLocaleLowerCase('tr');
 const NOT_FOUND = 'Belgelerde bu sorunun cevabı bulunamadı';
 const saysNotFound = (answer) => answer.trim().replace(/\.$/, '').trim() === NOT_FOUND;
+/** A refusal in the model's own words: no citation, and it says the documents do not hold the information. */
+const ownRefusal = (answer, citations) => citations.length === 0
+  && /bulun(a|ma)m|belirtilme|yer alm(a|ı)m/.test(tr(answer));
 /** The expected fact as a whole word or number: "2" must not match "[2]", "30.000" or "200" (phase 8 review L2). */
 function containsFact(answer, fact) {
   const text = tr(answer.replace(/\[\d+\]/g, ' '));
@@ -108,6 +113,7 @@ try {
         row.factFound = q.expect.split('|').some((e) => containsFact(body.answer, e));
       } else {
         row.saysNotFound = saysNotFound(body.answer);
+        row.ownRefusal = !row.saysNotFound && ownRefusal(body.answer, body.citations);
       }
     } else {
       row.error = body?.error?.code;
@@ -132,7 +138,9 @@ const summary = {
   factAccuracy: ratio(answerable.filter((r) => r.factFound).length, answerable.length),
   unanswerable: unanswerable.length,
   notFoundAccuracy: ratio(unanswerable.filter((r) => r.status === 200 && r.saysNotFound).length, unanswerable.length),
-  // From the retrieval measurement: how many unanswerable questions the threshold stopped before the model.
+  notFoundOrOwnRefusal: ratio(unanswerable.filter((r) => r.status === 200 && (r.saysNotFound || r.ownRefusal)).length,
+    unanswerable.length),
+  // From the retrieval measurement: how many unanswerable questions the gate stopped before the model.
   ...notFoundSplit(unanswerable),
   latencyMs: { p50: percentile(rows.map((r) => r.ms), 50), p95: percentile(rows.map((r) => r.ms), 95),
     max: Math.max(...rows.map((r) => r.ms)) },
@@ -144,8 +152,9 @@ function notFoundSplit(unanswerableRows) {
   } catch {
     return {};
   }
-  const below = new Set(retrieval.questions.filter((q) => !q.answerable && q.bestSimilarity < retrieval.summary.threshold)
-    .map((q) => q.id));
+  // ADR-0022: the gate's own decision per question; files from before it carry a single threshold instead.
+  const stopped = (q) => (q.decision ? q.decision === 'NONE' : q.bestSimilarity < retrieval.summary.threshold);
+  const below = new Set(retrieval.questions.filter((q) => !q.answerable && stopped(q)).map((q) => q.id));
   const byModel = unanswerableRows.filter((r) => !below.has(r.id));
   return { stoppedByThreshold: unanswerableRows.length - byModel.length, decidedByModel: byModel.length,
     modelNotFoundAccuracy: ratio(byModel.filter((r) => r.status === 200 && r.saysNotFound).length, byModel.length) };

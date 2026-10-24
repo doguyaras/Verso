@@ -178,6 +178,24 @@ class QuestionApiTest {
         assertThat(response.body()).contains("\"found\":false", "\"outcome\":\"NOT_FOUND\"", "\"citations\":[]",
                 "Belgelerde bu sorunun cevabı bulunamadı.");
         assertThat(TestChatModel.INSTANCE.calls()).isZero();
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("answerability=none")
+                && e.getFormattedMessage().contains("outcome=not_found"));
+    }
+
+    /**
+     * ADR-0022: the full-text list retrieves the SAT-E027 passage, but its cosine similarity is below
+     * passage-min-similarity and it is not the most similar passage, so it stays out of the prompt; the passage that
+     * opened the gate goes in.
+     */
+    @Test
+    void ask_whenAFullTextPassageIsBelowTheFloor_keepsItOutOfThePrompt() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        ready("Error SAT-E027 means the budget is exceeded.");
+
+        assertThat(ask("topic-leave SAT-E027?").statusCode()).isEqualTo(200);
+
+        String user = TestChatModel.INSTANCE.lastPrompt().getInstructions().get(1).getText();
+        assertThat(user).contains("Annual leave rules.").doesNotContain("SAT-E027 means");
     }
 
     /** Phase 10 review C1: the model's own not-found sentence and an uncited text are told apart by outcome. */
@@ -418,7 +436,8 @@ class QuestionApiTest {
         TestChatModel.INSTANCE.failWith(new IllegalStateException("MarkerProviderEcho"));
         ask("topic-leave MarkerQuestionAgain?");
 
-        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("outcome=answered"));
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("outcome=answered")
+                && e.getFormattedMessage().contains("answerability=similarity"));
         for (ILoggingEvent event : appender.list) {
             String text = event.getFormattedMessage() + event.getMDCPropertyMap()
                     + (event.getArgumentArray() == null ? "" : Stream.of(event.getArgumentArray()).map(String::valueOf)

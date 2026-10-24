@@ -11,6 +11,8 @@ import com.verso.qa.config.QaProperties;
 import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.exception.QaErrorCode;
 import com.verso.qa.exception.QaServiceException;
+import com.verso.qa.service.AnswerabilityGate;
+import com.verso.qa.service.AnswerabilityGate.Decision;
 import com.verso.qa.service.CitationExtractor;
 import com.verso.qa.service.CitationExtractor.Extracted;
 import com.verso.qa.service.ModelCircuitBreaker;
@@ -46,8 +48,9 @@ import org.springframework.stereotype.Service;
  * Question answering (ADR-0008): two remote calls on the hot path, no transaction, no retry.
  *
  * <ol>
- *   <li>Retrieval through document-api (embedding + vector search of the caller's READY documents).</li>
- *   <li>Below the similarity threshold the chat model is not asked: a fixed "not found" answer (llm-rules 3.4).</li>
+ *   <li>Retrieval through document-api (embedding + hybrid search of the caller's READY documents, ADR-0022).</li>
+ *   <li>When the {@link AnswerabilityGate} finds nothing that can answer, the chat model is not asked: a fixed "not
+ *       found" answer (llm-rules 3.4, ADR-0022).</li>
  *   <li>Otherwise one chat call, bounded per instance (bulkhead) and by the HTTP client timeout; while the model is
  *       down a circuit breaker answers 503 at once.</li>
  *   <li>Citations are mapped on the server to the passages that were retrieved (3.3).</li>
@@ -75,10 +78,12 @@ public class QuestionServiceImpl implements QuestionService {
     private final ModelCircuitBreaker circuit;
     private final QaMetrics metrics;
     private final ConversationHistory history;
+    private final AnswerabilityGate gate;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
-                               ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history) {
+                               ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
+                               AnswerabilityGate gate) {
         this.history = history;
         this.retrieval = retrieval;
         this.chatModel = chatModel;
@@ -89,6 +94,7 @@ public class QuestionServiceImpl implements QuestionService {
         this.chatSlots = new Semaphore(properties.chatConcurrency());
         this.circuit = circuit;
         this.metrics = metrics;
+        this.gate = gate;
     }
 
     @Override
@@ -125,11 +131,11 @@ public class QuestionServiceImpl implements QuestionService {
         }
         long retrievalMs = elapsedMs(retrievalStarted);
         metrics.retrievalTook(retrievalMs);
-        List<RetrievedPassage> relevant = passages.stream()
-                .filter(p -> p.similarity() >= properties.minSimilarity()).toList();
+        Decision decision = gate.decide(passages);
+        List<RetrievedPassage> relevant = decision == Decision.NONE ? List.of() : gate.promptPassages(passages);
         if (relevant.isEmpty()) {
-            log.info("Question answered: passages={} relevant=0 retrievalMs={} chatMs=0 totalMs={} outcome=not_found",
-                    passages.size(), retrievalMs, elapsedMs(started));
+            log.info("Question answered: passages={} relevant=0 answerability=none retrievalMs={} chatMs=0 totalMs={} "
+                    + "outcome=not_found", passages.size(), retrievalMs, elapsedMs(started));
             metrics.record(Outcome.NOT_FOUND);
             return new Answered(new AnswerResponse(PromptBuilder.NOT_FOUND, false, AnswerOutcome.NOT_FOUND, List.of(),
                     ai.mode().header(), ai.chatModel(), null, null), retrievalMs, 0);
@@ -142,8 +148,9 @@ public class QuestionServiceImpl implements QuestionService {
         Extracted extracted = citations.extract(raw, relevant);
         AnswerOutcome outcome = !extracted.citations().isEmpty() ? AnswerOutcome.ANSWERED
                 : PromptBuilder.saysNotFound(extracted.answer()) ? AnswerOutcome.NOT_FOUND : AnswerOutcome.UNCITED;
-        log.info("Question answered: passages={} relevant={} citations={} promptChars={} answerChars={} retrievalMs={} "
-                        + "chatMs={} totalMs={} outcome={}", passages.size(), relevant.size(), extracted.citations().size(),
+        log.info("Question answered: passages={} relevant={} answerability={} citations={} promptChars={} answerChars={} "
+                        + "retrievalMs={} chatMs={} totalMs={} outcome={}", passages.size(), relevant.size(),
+                decision.name().toLowerCase(java.util.Locale.ROOT), extracted.citations().size(),
                 prompt.system().length() + prompt.user().length(), extracted.answer().length(), retrievalMs, chatMs,
                 elapsedMs(started), outcome.name().toLowerCase(java.util.Locale.ROOT));
         metrics.record(Outcome.valueOf(outcome.name()));
