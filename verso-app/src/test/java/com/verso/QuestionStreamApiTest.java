@@ -310,6 +310,16 @@ class QuestionStreamApiTest {
                 .POST(HttpRequest.BodyPublishers.ofString("{\"question\":\"izin?\"}")).build(),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(anonymous.statusCode()).isEqualTo(401);
+
+        // The body bound of the JSON endpoint holds here too: a chunked body (no Content-Length) is refused, unread.
+        HttpResponse<String> chunked = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port
+                        + "/v1/questions/stream")).header("Authorization", TestIdp.bearer(account))
+                .header("Content-Type", "application/json").header("Accept", "text/event-stream, application/json")
+                .POST(HttpRequest.BodyPublishers.ofInputStream(() -> new java.io.ByteArrayInputStream(
+                        "{\"question\":\"izin?\"}".getBytes(StandardCharsets.UTF_8)))).build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(chunked.statusCode()).isEqualTo(411);
+        assertThat(chunked.body()).contains("\"code\":11011");
         assertThat(TestChatModel.INSTANCE.calls()).isZero();
     }
 

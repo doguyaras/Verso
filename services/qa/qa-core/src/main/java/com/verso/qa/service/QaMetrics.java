@@ -20,8 +20,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class QaMetrics {
 
-    /** How a question ended. */
-    /** CANCELLED: a streamed answer the client left before its end (ADR-0035). */
+    /** How a question ended; CANCELLED: a streamed answer the client left before its end (ADR-0035). */
     public enum Outcome {
         ANSWERED, UNCITED, NOT_FOUND, MODEL_UNAVAILABLE, MODEL_BUSY, CIRCUIT_OPEN, RETRIEVAL_FAILED, CANCELLED
     }

@@ -14,7 +14,7 @@
 | Komut | Sonuç |
 |---|---|
 | `./mvnw -B -ntp -T 1 -DskipTests install` | derleme başarılı (test kaynakları dahil) |
-| `./mvnw -pl services/qa/qa-core,services/document/document-core test` | qa-core 102, document-core 95 test, hata yok (yeni `QuestionStreamTest` 8 test) |
+| `./mvnw -pl services/qa/qa-core,services/document/document-core test` | qa-core 105, document-core 95 test, hata yok (yeni `QuestionStreamTest` 11 test) |
 | `./mvnw -pl platform/platform-observability,platform/platform-security test` | 39 + 43 test, hata yok (async dispatch kuralı mevcut güvenlik testlerini bozmadı) |
 | `./mvnw -pl services/qa/qa-api,services/document/document-api test` | sözleşme testleri (yeni olay kayıtları ve `DocumentPageResponse` record) yeşil |
 | `./mvnw -pl verso-app test -Dtest=ComposeConfigTest,ArchitectureRulesTest,TransactionBoundaryRulesTest,ModuleStructureTest,ErrorCodeUniquenessTest,ConfigDriftTest,ImageVersionsTest` | 35 test, hata yok (nginx akış konumu, CSP değişmedi, 10005 tekil) |
@@ -27,7 +27,8 @@
 - istemci üçüncü delta'da gidince: `cancelled`, model aboneliği iptal, iptalden sonra yeni kelime yok, `history.record` hiç çağrılmadı, tek slot hemen boşaldı (sonraki soru `WRITING`'e ulaştı);
 - model hiç yazmadan istemci gidince keep-alive denetiminde iptal (0 kelime);
 - 2 sn sınırı aşılınca `11001` / `TIMEOUT` ve model iptali; sağlayıcı hatasında yalnız tip (`IllegalStateException`), mesaj yok;
-- JSON yol tek slotu tutarken akış `11002` ile biter, `WRITING` hiç gelmez (ortak bulkhead).
+- JSON yol tek slotu tutarken akış `11002` ile biter, `WRITING` hiç gelmez (ortak bulkhead);
+- `WRITING` yazılamazsa (istemci gitti) slot geri verilir, model çağrılmaz; sağlayıcı akışı kurarken fırlatırsa `11001` ve slot geri; retrieval'da veritabanı hatası `99997`.
 
 Panel (`scripts/panel.test.mjs`, ADR-0035 bölümü): SSE ayrıştırıcı her bölme noktasında (CRLF'nin ortası dahil) aynı olayları verir, karakter karakter de; çok satırlı `data`, CR satır sonu, keep-alive yorumları, sonlanmamış son olay atılır; bayt parçalarında çok baytlı harfler bütün kalır. Aşama metinleri; taslakta `[n]` ve yarım işaret gizli; `askLive` token, `Accept`, gövde ve sonuç; `error` olayı → `ApiError` (`retryAfter`), 404 `11020` geri düşmez, abort geri düşmez, JSON dönen proxy / boş akış / 404 `90010` bir kez JSON uca düşer, olaylardan sonra kopma `TypeError`. Sayfa gezinmesi sınırlar içinde, başlık sayfa/bölüm, alıntı satır sonları ve `…` işaretleri arasından bulunur ve sayfa metnine geri eşlenir. Ekran kaynağı: günlük `aria-live="off"`, delta duyurulmaz, aşama duyurulur, "Durdur", akıştan sonra kelime efekti yok, çekmecede `aria-modal`, Esc, Tab tuzağı, odak geri, `writeMarked` (CSS highlight ya da `<mark>`); yeni dosyalarda `innerHTML`, inline stil, `EventSource` yok.
 
@@ -41,7 +42,21 @@ Panel (`scripts/panel.test.mjs`, ADR-0035 bölümü): SSE ayrıştırıcı her b
 | `AnthropicCloudModeTest` | cloud modda akış: sağlayıcının SSE'si aktarılır, atıflar sunucuda (`[4]` atılır), giden gövdede dosya adı yok, log temiz |
 | `ComposeConfigTest` | (yerelde de koştu) yalnız akış konumunda `proxy_buffering off`, başlık temizliği, 150 sn |
 
-## 3. Doğrulanmayanlar (canlı kontrol gerekir)
+## 3. Review skill'leri (her biri bir kez, bağımsız bir gözden geçirici)
+
+| Skill | Karar | Uygulanan düzeltme |
+|---|---|---|
+| verso-security-review | APPROVE WITH NON-BLOCKING COMMENTS | – (ASYNC `permitAll` ve sayfa ucunun IDOR'a kapalılığı onaylandı) |
+| verso-llm-review | APPROVE WITH NON-BLOCKING COMMENTS | – |
+| verso-resilience-review | APPROVE WITH NON-BLOCKING COMMENTS | abonelik `subscribeOn(boundedElastic)` (abone olurken bloklayan sağlayıcı süre sınırını tutmasın); bulut iptali notu koda yazıldı |
+| verso-api-contract-review | APPROVE WITH NON-BLOCKING COMMENTS | – (`error` olayına `status` eklemek sonra eklemeli yapılabilir) |
+| verso-spring-code-review | APPROVE WITH NON-BLOCKING COMMENTS | yetim Javadoc, import sırası, `qa-core`'da `platform-observability` açık bağımlılık |
+| verso-test-writer | APPROVE WITH NON-BLOCKING COMMENTS | `WRITING` yazılamaması, akış kurulurken hata, DB hatası (birim) ve akış ucunda 411 (entegrasyon) testleri eklendi |
+| verso-environment-impact-review | APPROVE WITH NON-BLOCKING COMMENTS | – |
+
+Açık bırakılan yorumlar: `QuestionEventStream` için ayrı birim testi yok (davranışı entegrasyon testi kapsar); `QuestionServiceImpl` ~450 satır; `delta` olayında `status`/`traceId` yok.
+
+## 4. Doğrulanmayanlar (canlı kontrol gerekir)
 
 - **Tarayıcıda görsel ve ekran okuyucu kontrolü yapılmadı** (Docker kapalı, yığın yok): aşama satırı, taslağın akışı, "Durdur", JSON'a geri düşme, sayfa çekmecesi, `CSS.highlights` vurgusu ve `<mark>` yedeği, odak tuzağı, dar ekran.
 - Gerçek Ollama'da ilk metin süresi ve iptalin Ollama üretimini durdurduğu (mekanizma JSON yolun zaman aşımıyla aynı ve faz 8'de ölçülmüştü; akış yolu için sahte sunucuyla gösterildi).

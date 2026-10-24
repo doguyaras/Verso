@@ -39,6 +39,11 @@
       <groupId>com.verso</groupId>
       <artifactId>platform-core</artifactId>
     </dependency>
+    <!-- TraceIds: a streamed answer's background thread keeps the request's trace id (ADR-0035). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-observability</artifactId>
+    </dependency>
     <!-- @CurrentAccount AccountId (ADR-0010). -->
     <dependency>
       <groupId>com.verso</groupId>

@@ -1,6 +1,5 @@
 package com.verso.platform.security.config;
 
-import jakarta.servlet.DispatcherType;
 import com.verso.platform.security.authority.CallerGroups;
 import com.verso.platform.security.authority.CallerRoles;
 import com.verso.platform.security.authority.ClaimAuthoritiesConverter;
@@ -13,6 +12,7 @@ import com.verso.platform.security.web.EnvelopeAccessDeniedHandler;
 import com.verso.platform.security.web.EnvelopeAuthenticationEntryPoint;
 import com.verso.platform.security.web.EnvelopeRequestRejectedHandler;
 import com.verso.platform.security.web.ManagementServerPort;
+import jakarta.servlet.DispatcherType;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.beans.factory.ListableBeanFactory;

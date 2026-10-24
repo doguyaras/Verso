@@ -215,11 +215,57 @@ class QuestionStreamTest {
         json.join(5000);
     }
 
+    /** A client gone before WRITING: the slot taken for it is given back and the model is never asked. */
+    @Test
+    void stream_whenTheWritingStageCannotBeWritten_freesTheSlotWithoutAModelCall() throws Exception {
+        Recording out = new Recording(n -> true);
+        out.refuseStage = AnswerStage.WRITING;
+
+        service.stream(ACCOUNT, "Yıllık izin?", null, out);
+
+        assertThat(out.await()).isEqualTo("cancelled");
+        assertThat(model.calls.get()).isZero();
+        Recording next = new Recording(n -> true);
+        service.stream(ACCOUNT, "Yıllık izin?", null, next);
+        assertThat(next.await()).as("the only slot is free again").isEqualTo("completed");
+    }
+
+    /** A provider that throws while the stream is built: a safe 11001 and the slot back. */
+    @Test
+    void stream_whenTheModelThrowsBeforeStreaming_failsAndFreesTheSlot() throws Exception {
+        model.throwOnStream = new IllegalStateException("MarkerProviderEcho");
+        Recording out = new Recording(n -> true);
+
+        service.stream(ACCOUNT, "Yıllık izin?", null, out);
+
+        assertThat(out.await()).isEqualTo("failed");
+        assertThat(out.failure.getErrorCode().getCode()).isEqualTo(11001);
+        model.throwOnStream = null;
+        Recording next = new Recording(n -> true);
+        service.stream(ACCOUNT, "Yıllık izin?", null, next);
+        assertThat(next.await()).isEqualTo("completed");
+    }
+
+    /** A database failure during retrieval ends the stream with 99997, like the JSON path's 503. */
+    @Test
+    void stream_whenTheDatabaseFails_failsServiceUnavailable() throws Exception {
+        when(retrieval.search(any(Reader.class), anyString(), anyInt()))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("db down"));
+        Recording out = new Recording(n -> true);
+
+        service.stream(ACCOUNT, "Yıllık izin?", null, out);
+
+        assertThat(out.await()).isEqualTo("failed");
+        assertThat(out.failure.getErrorCode().getCode()).isEqualTo(99997);
+        assertThat(model.calls.get()).isZero();
+    }
+
     /** A model whose stream emits the answer word by word, counting words and noticing a cancel. */
     static final class CountingModel implements ChatModel {
         volatile String answer = "Yirmi gün [1].";
         volatile Duration delay = Duration.ZERO;
         volatile RuntimeException failure;
+        volatile RuntimeException throwOnStream;
         volatile CountDownLatch blockCallsOn;
         final AtomicInteger calls = new AtomicInteger();
         final AtomicInteger emitted = new AtomicInteger();
@@ -238,6 +284,7 @@ class QuestionStreamTest {
 
         @Override
         public Flux<ChatResponse> stream(Prompt prompt) {
+            if (throwOnStream != null) throw throwOnStream;
             return Flux.defer(() -> {
                 calls.incrementAndGet();
                 if (failure != null) return Flux.<ChatResponse>error(failure);
@@ -258,6 +305,7 @@ class QuestionStreamTest {
         final List<String> stages = new CopyOnWriteArrayList<>();
         final List<String> deltas = new CopyOnWriteArrayList<>();
         final AtomicBoolean alive = new AtomicBoolean(true);
+        volatile AnswerStage refuseStage;
         private final IntPredicate accepts;
         private final CountDownLatch end = new CountDownLatch(1);
         volatile String how;
@@ -275,6 +323,7 @@ class QuestionStreamTest {
 
         @Override
         public boolean stage(AnswerStage stage, int retrieved, int relevant) {
+            if (stage == refuseStage) return false;
             stages.add(stage == AnswerStage.PASSAGES_FOUND ? stage + " " + retrieved + "/" + relevant : stage.name());
             return true;
         }

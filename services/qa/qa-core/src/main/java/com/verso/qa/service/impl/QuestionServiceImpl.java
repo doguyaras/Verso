@@ -59,6 +59,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import reactor.core.Disposable;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Question answering (ADR-0008): two remote calls on the hot path, no transaction, no retry.
@@ -349,8 +350,12 @@ public class QuestionServiceImpl implements QuestionService {
         BlockingQueue<Object> items = new LinkedBlockingQueue<>();
         Disposable call;
         try {
-            // The slot is freed when the generation really ends: completed, failed or cancelled (bulkhead).
+            // The slot is freed when the generation ends: completed, failed or cancelled (bulkhead). On a cancel that is
+            // when the connection closes; Ollama then stops (measured), a cloud provider's stop is not verified (ADR-0035).
+            // Subscribed on another thread: a provider that blocks while subscribing cannot hold up the time bound or the
+            // keep-alive check below.
             call = chatModel.stream(request(prompt))
+                    .subscribeOn(Schedulers.boundedElastic())
                     .doFinally(signal -> release.run())
                     .subscribe(chunk -> {
                         String text = textOf(chunk);
