@@ -16,7 +16,7 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-mcp-sunucusu` branch'ind
 | Taşıma | Streamable HTTP, **durumsuz** (oturum yok, `Mcp-Session-Id` yok); `GET` 405 |
 | Spesifikasyon | **2025-11-25** (MCP Java SDK 2.0.0, Spring AI 2.0.1). 2026-07-28 yok |
 | Yetenekler | yalnız `tools` (resources, prompts, completion, sampling yok) |
-| Kimlik | OAuth 2.1 bearer token; `aud` **`verso-mcp`**, ES256, `typ: at+jwt`, issuer Verso API'ninkiyle aynı |
+| Kimlik | OAuth 2.1 bearer token; `aud` **`verso-mcp`**, ES256, `typ: at+jwt`, issuer Verso API'ninkiyle aynı. Entra ID açıksa (ADR-0041) ayrıca Entra'nın MCP uygulaması için verdiği token: `aud` `OIDC_ENTRA_MCP_AUDIENCES`, RS256, `typ: JWT`; metadata'daki `authorization_servers` o zaman iki issuer'ı da listeler. Geriye uyumlu: yeni alan yok, liste yalnız uzar |
 | Keşif | `GET /.well-known/oauth-protected-resource/mcp` (RFC 9728; kimliksiz) |
 | İstemci kaydı | IdP'de yönetici kaydeder. **Dinamik istemci kaydı (DCR) yok**, CIMD yok |
 

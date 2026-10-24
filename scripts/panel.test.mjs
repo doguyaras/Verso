@@ -16,8 +16,8 @@ import { addDays, dailySeries, dayLabel, daysBetween, documentLabel, formatCount
 import { areaPath, axisDays, isolatedPoints, linePath, nearestIndex, niceScale, tickValues, xAt, yAt } from '../panel/js/chart.js';
 import { conversation as openConversation, restoreConversation, startNewConversation, thread } from '../panel/js/store.js';
 import { api } from '../panel/js/api.js';
-import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
-  signIn, signOut } from '../panel/js/auth.js';
+import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, endpointsOf,
+  randomString, signIn, signOut } from '../panel/js/auth.js';
 import { answerParts, answerSegments, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
   sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
@@ -52,6 +52,27 @@ test('roles: an operator also sees the system screen; unknown screens are closed
   assert.ok(screensFor(roles).filter((id) => SCREENS[id].tab !== false).length <= 4, 'four tabs at most on mobile');
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
+});
+
+test('roles: Entra ID app roles (ADR-0041) count like realm roles; verso-admin still only from /v1/info', () => {
+  assert.deepEqual(rolesOf({ roles: ['verso-operator'] }), [ROLES.OPERATOR]);
+  assert.deepEqual(rolesOf({ roles: ['verso-admin'] }), [ROLES.USER]);
+  assert.deepEqual(rolesOf({ roles: 'verso-operator', realm_access: { roles: 'x' } }), [ROLES.USER], 'not a list: nothing');
+});
+
+test('oidc: Keycloak paths by default; configured endpoints (Entra ID v2.0) win; only https or a loopback IdP', () => {
+  assert.deepEqual(endpointsOf(CONFIG), {
+    auth: 'http://localhost:8180/realms/verso/protocol/openid-connect/auth',
+    token: 'http://localhost:8180/realms/verso/protocol/openid-connect/token',
+    logout: 'http://localhost:8180/realms/verso/protocol/openid-connect/logout',
+  });
+  const base = 'https://login.microsoftonline.com/6f1c2a4e-3b5d-4c7e-9f80-1a2b3c4d5e6f/oauth2/v2.0';
+  const entra = { issuer: 'https://login.microsoftonline.com/6f1c2a4e-3b5d-4c7e-9f80-1a2b3c4d5e6f/v2.0',
+    authorizationEndpoint: `${base}/authorize`, tokenEndpoint: `${base}/token`, endSessionEndpoint: `${base}/logout` };
+  assert.deepEqual(endpointsOf(entra), { auth: `${base}/authorize`, token: `${base}/token`, logout: `${base}/logout` });
+  assert.throws(() => endpointsOf({ ...entra, tokenEndpoint: 'http://idp.example/token' }), /https/);
+  assert.equal(CONFIG.scope, 'openid', 'Keycloak: the realm adds the API audience itself');
+  assert.match(readFileSync('panel/js/auth.js', 'utf8'), /scope: CONFIG\.scope/);
 });
 
 test('pkce: the challenge is base64url(SHA-256(verifier)) (RFC 7636 appendix B)', async () => {

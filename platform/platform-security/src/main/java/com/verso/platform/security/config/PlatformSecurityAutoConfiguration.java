@@ -2,10 +2,13 @@ package com.verso.platform.security.config;
 
 import com.verso.platform.security.authority.CallerGroups;
 import com.verso.platform.security.authority.CallerRoles;
-import com.verso.platform.security.authority.ClaimAuthoritiesConverter;
 import com.verso.platform.security.authority.VersoAuthorityProperties;
 import com.verso.platform.security.jwt.JwtValidation;
+import com.verso.platform.security.jwt.TrustedIssuer;
+import com.verso.platform.security.jwt.TrustedIssuers;
 import com.verso.platform.security.jwt.VersoJwtProperties;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import com.verso.platform.security.web.CurrentAccountArgumentResolver;
 import com.verso.platform.security.web.CurrentAccountParameterCheck;
 import com.verso.platform.security.web.EnvelopeAccessDeniedHandler;
@@ -77,21 +80,29 @@ public class PlatformSecurityAutoConfiguration {
             "org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType",
             PlatformSecurityAutoConfiguration.class.getClassLoader());
 
+    /** The issuer allowlist (ADR-0041): the primary issuer and, when configured, Microsoft Entra ID. */
     @Bean
     @ConditionalOnMissingBean
-    JwtDecoder jwtDecoder(VersoJwtProperties properties, Clock clock) {
-        return JwtValidation.decoder(properties, clock);
+    TrustedIssuers trustedIssuers(VersoJwtProperties jwt, VersoAuthorityProperties authorities) {
+        return TrustedIssuers.of(jwt, authorities);
+    }
+
+    /** The API surface: each trusted issuer with its API audiences; the token's iss selects the issuer first. */
+    @Bean
+    @ConditionalOnMissingBean
+    JwtDecoder jwtDecoder(TrustedIssuers issuers, VersoJwtProperties properties, Clock clock) {
+        return JwtValidation.decoder(issuers.all(), TrustedIssuer::audiences, properties, clock);
     }
 
     /**
-     * Roles and groups of the token as authorities (ADR-0019); the claim paths are configuration, not Keycloak's
-     * shape. The principal name stays {@code sub}, the account (ADR-0005).
+     * Roles and groups of the token as authorities (ADR-0019), with the claim paths of the token's own issuer
+     * (ADR-0041). The principal name stays {@code sub}, the account (ADR-0005; for Entra ID the {@code oid}).
      */
     @Bean
     @ConditionalOnMissingBean
-    JwtAuthenticationConverter jwtAuthenticationConverter(VersoAuthorityProperties properties) {
+    JwtAuthenticationConverter jwtAuthenticationConverter(TrustedIssuers issuers, ObjectProvider<MeterRegistry> meters) {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(new ClaimAuthoritiesConverter(properties));
+        converter.setJwtGrantedAuthoritiesConverter(issuers.authoritiesConverter(meters.getIfAvailable()));
         return converter;
     }
 

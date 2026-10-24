@@ -97,6 +97,8 @@ Bugün yalnız-admin bir uç yoktur; mekanizma `PlatformSecurityTest`'teki bir d
    - Keycloak'ı Entra'ya aracı yapmak (identity brokering). Keycloak ES256 `at+jwt` token üretir; Entra rolleri ve grupları IdP mapper'larıyla Keycloak rollerine taşınır, Keycloak varsayılanları geçerli olur.
    - Ayrı bir ADR ile RS256'yı ve boş `type-header`'ı açmak.
 
+   **Güncelleme (ADR-0041):** ikinci yol, global kuralı gevşetmeden, issuer başına güven listesiyle seçildi. Entra ID ikinci bir güvenilen issuer'dır (`OIDC_ENTRA_*`): yalnız RS256, `typ: JWT`, v2.0, kiracı `tid`, dolu `scp`; roller `roles`, gruplar `groups`, hesap `oid`; overage'da grup verilmez. Keycloak aracılığı isteyen kurulum için geçerli kalır. Panel rolü artık `roles`'tan da okur.
+
    Gerçek bir Entra kiracısıyla denenmedi: **net kanıt bulunamadı**. Dönüştürücü Entra biçimini birim ve uçtan uca testlerde okur.
 
 Başka IdP'ler: Okta'da `groups` claim'i ve özel bir `roles` claim'i tanımlanır. Auth0 özel claim'lere ad alanı (`https://…/roles`) koyar. Adında nokta geçtiği için bu claim bu yol sözdizimiyle okunamaz (yeniden değerlendirme koşulu).

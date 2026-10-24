@@ -291,6 +291,31 @@ class PlatformSecurityTest {
         }
     }
 
+    /**
+     * Entra ID as a second trusted issuer (ADR-0041), bound from properties as an installation sets them: Entra's
+     * RS256 tokens reach the endpoint with the oid as the account and Entra's role claim, the Keycloak tokens next to
+     * them keep their own rules, and an unknown issuer is a plain 401.
+     */
+    @Test
+    void entraIssuer_whenConfiguredNextToKeycloak_acceptsBothWithTheirOwnRules() throws Exception {
+        com.verso.platform.security.testing.TestEntraProvider entraIdp = com.verso.platform.security.testing.TestEntraProvider.get();
+        try (ConfigurableApplicationContext app = start(new Class<?>[]{App.class}, entraIdp.propertyPairs())) {
+            String entraAdmin = entraIdp.token().roles("verso-admin").build();
+            assertThat(get(port(app), "/v1/probe/me", "Bearer " + entraAdmin).body())
+                    .isEqualTo("11111111-2222-4333-8444-555555555555");
+            assertThat(get(port(app), "/v1/probe/admin", "Bearer " + entraAdmin).statusCode()).isEqualTo(200);
+            assertThat(get(port(app), "/v1/probe/admin", "Bearer " + entraIdp.token().build()).statusCode()).isEqualTo(403);
+            String keycloakAdmin = IDP.token().subject("acct-kc-admin").realmRoles("verso-admin").build();
+            assertThat(get(port(app), "/v1/probe/admin", "Bearer " + keycloakAdmin).statusCode()).isEqualTo(200);
+            assertThat(get(port(app), "/v1/probe/me", "Bearer " + keycloakAdmin).body()).isEqualTo("acct-kc-admin");
+            assertThat(get(port(app), "/v1/probe/me", "Bearer " + entraIdp.token()
+                    .signature(com.verso.platform.security.testing.TestEntraProvider.Signature.ES256).build()).statusCode())
+                    .isEqualTo(401);
+            assertThat(get(port(app), "/v1/probe/me", "Bearer " + entraIdp.token().issuer("https://evil.example/v2.0").build())
+                    .statusCode()).isEqualTo(401);
+        }
+    }
+
     @Test
     void adminEndpoint_whenKeycloakClientRolesPathIsConfigured_acceptsTheClientRole() throws Exception {
         try (ConfigurableApplicationContext clientRoles = start(new Class<?>[]{App.class},

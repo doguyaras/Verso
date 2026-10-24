@@ -45,8 +45,22 @@ public final class ClaimAuthoritiesConverter implements Converter<Jwt, Collectio
      */
     private final Set<String> reported = ConcurrentHashMap.newKeySet();
 
+    /** Called on an Entra groups overage; null when the issuer has no such marker. */
+    private final Runnable groupsOverage;
+
     public ClaimAuthoritiesConverter(VersoAuthorityProperties properties) {
+        this(properties, null);
+    }
+
+    /**
+     * @param groupsOverage when not null, the token is checked for Entra ID's groups overage (more than 200 groups:
+     *                      the groups claim is replaced by a {@code _claim_names} pointer to Microsoft Graph). Verso
+     *                      does not call Graph (ADR-0041); the caller then has no group at all, never a partial list,
+     *                      and this callback counts it.
+     */
+    public ClaimAuthoritiesConverter(VersoAuthorityProperties properties, Runnable groupsOverage) {
         this.properties = properties;
+        this.groupsOverage = groupsOverage;
     }
 
     @Override
@@ -55,8 +69,24 @@ public final class ClaimAuthoritiesConverter implements Converter<Jwt, Collectio
         authorities.add(new SimpleGrantedAuthority(properties.rolePrefix() + VersoRoles.USER));
         add(authorities, properties.rolePrefix(), values(jwt, properties.rolesClaim(), "roles"));
         add(authorities, properties.rolePrefix(), values(jwt, properties.clientRolesClaim(), "client-roles"));
-        add(authorities, properties.groupPrefix(), values(jwt, properties.groupsClaim(), "groups"));
+        if (groupsOverage != null && hasGroupsOverage(jwt)) {
+            // Fail closed: a list the IdP marks as incomplete grants nothing, even if a groups claim is also present.
+            // Logged once per instance (every request of such a user carries it); the counter has every occurrence.
+            if (reported.add("groups:OVERAGE")) {
+                log.warn("Authority claim rejected: code=GROUPS_OVERAGE reason=GROUPS_NOT_IN_TOKEN claim=groups");
+            }
+            groupsOverage.run();
+        } else {
+            add(authorities, properties.groupPrefix(), values(jwt, properties.groupsClaim(), "groups"));
+        }
         return List.copyOf(authorities);
+    }
+
+    /** Entra's overage markers: {@code _claim_names.groups} (JWT access tokens) or {@code hasgroups: true}. */
+    private static boolean hasGroupsOverage(Jwt jwt) {
+        return jwt.getClaims().get("_claim_names") instanceof Map<?, ?> names && names.containsKey("groups")
+                || Boolean.TRUE.equals(jwt.getClaims().get("hasgroups"))
+                || "true".equals(jwt.getClaims().get("hasgroups"));
     }
 
     private static void add(Set<GrantedAuthority> authorities, String prefix, List<String> values) {

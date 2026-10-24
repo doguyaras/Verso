@@ -31,7 +31,28 @@ export function claimsOf(jwt) {
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(json, (c) => c.charCodeAt(0))));
 }
 
-const endpoint = (name) => `${CONFIG.issuer}/protocol/openid-connect/${name}`;
+/**
+ * The IdP's authorization, token and logout endpoints: the configured ones (any OIDC IdP, e.g. Entra ID's v2.0
+ * endpoints, ADR-0041), else Keycloak's paths under the issuer. Only https, or http on a loopback host (the demo IdP):
+ * the code, the PKCE verifier and the tokens travel to these addresses.
+ */
+export function endpointsOf(config) {
+  const keycloak = (name) => `${config.issuer}/protocol/openid-connect/${name}`;
+  const endpoints = {
+    auth: config.authorizationEndpoint ?? keycloak('auth'),
+    token: config.tokenEndpoint ?? keycloak('token'),
+    logout: config.endSessionEndpoint ?? keycloak('logout'),
+  };
+  for (const url of Object.values(endpoints)) {
+    const { protocol, hostname } = new URL(url);
+    if (protocol !== 'https:' && !(protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(hostname))) {
+      throw new Error('IdP endpoints must be https');
+    }
+  }
+  return endpoints;
+}
+
+const endpoint = (name) => endpointsOf(CONFIG)[name];
 
 /**
  * Sends the browser to the IdP. With `prompt: 'login'` the IdP shows its sign-in form even when it still has a session
@@ -43,7 +64,7 @@ export async function signIn({ prompt } = {}) {
   const state = randomString(16);
   sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state }));
   const params = new URLSearchParams({
-    client_id: CONFIG.clientId, response_type: 'code', scope: 'openid', redirect_uri: CONFIG.redirectUri, state,
+    client_id: CONFIG.clientId, response_type: 'code', scope: CONFIG.scope, redirect_uri: CONFIG.redirectUri, state,
     code_challenge: await challengeOf(verifier), code_challenge_method: 'S256',
     // the IdP's sign-in page opens in the intro screen's language (Turkish unless EN was picked), whatever the browser's
     ui_locales: prefs.lang(),

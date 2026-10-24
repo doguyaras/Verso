@@ -71,6 +71,13 @@ verso:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).
       issuer: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso
       jwk-set-uri: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso/protocol/openid-connect/certs
+      # Microsoft Entra ID (ADR-0041): off in an IDE run; docs/entra-kurulumu.md for a test tenant.
+      entra:
+        tenant-id: ""
+        authority: https://login.microsoftonline.com
+        jwk-set-uri: ""
+        audiences: ""
+        mcp-audiences: ""
     # The compose Keycloak's token shape (ADR-0019): realm roles and the panel's "groups" mapper.
     authorities:
       roles-claim: realm_access.roles

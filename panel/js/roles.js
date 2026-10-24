@@ -1,7 +1,7 @@
 // Role matrix of the panel, in one file (reference 17). A screen is shown when the user holds one of its roles; the
 // API enforces the real rules (every request carries the token, ownership is checked on the server, ADR-0005). The
 // panel only hides what a role cannot use. The panel roles come from the access token's realm_access.roles (Keycloak
-// realm roles); a signed-in user without any Verso role is a "verso-user". The admin role is taken from GET /v1/info
+// realm roles) or roles (Entra ID app roles, ADR-0041); a signed-in user without any Verso role is a "verso-user". The admin role is taken from GET /v1/info
 // only (ADR-0019, ADR-0025): the server reads it through its configurable claim paths, so the panel shows the value
 // dashboard exactly when the server would serve it, whatever IdP the installation uses.
 
@@ -41,8 +41,11 @@ export function adminScreens(roles) {
 
 /** The roles of a decoded access token payload; every authenticated user is at least a verso-user. */
 export function rolesOf(claims) {
-  const realm = claims?.realm_access?.roles ?? [];
-  const known = realm.filter((role) => TOKEN_ROLES.includes(role));
+  // Keycloak realm roles, or Entra ID app roles ("roles", ADR-0041); only the panel's own role names count.
+  const realm = claims?.realm_access?.roles;
+  const app = claims?.roles;
+  const all = [...(Array.isArray(realm) ? realm : []), ...(Array.isArray(app) ? app : [])];
+  const known = all.filter((role) => TOKEN_ROLES.includes(role));
   return known.length ? known : [ROLES.USER];
 }
 

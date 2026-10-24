@@ -73,6 +73,12 @@ class ConfigDriftTest {
             "spring.security.oauth2.resourceserver.jwt.",
             "verso.security.jwt.issuer",
             "verso.security.jwt.jwk-set-uri",
+            // Microsoft Entra ID as a second trusted issuer (ADR-0041): tenant, cloud, keys and audiences.
+            "verso.security.jwt.entra.tenant-id",
+            "verso.security.jwt.entra.authority",
+            "verso.security.jwt.entra.jwk-set-uri",
+            "verso.security.jwt.entra.audiences",
+            "verso.security.jwt.entra.mcp-audiences",
             // The token shape of the IdP (ADR-0019); the authority prefixes are the same everywhere.
             "verso.security.authorities.roles-claim",
             "verso.security.authorities.client-roles-claim",

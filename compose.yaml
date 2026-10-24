@@ -44,6 +44,13 @@ x-db-env: &db-env
   OIDC_ROLES_CLAIM: realm_access.roles
   OIDC_CLIENT_ROLES_CLAIM: ""
   OIDC_GROUPS_CLAIM: groups
+  # Microsoft Entra ID as a second trusted issuer (ADR-0041, docs/entra-kurulumu.md); off while the tenant id is empty.
+  # Its keys live on the internet: in local mode set OIDC_ENTRA_JWK_SET_URI to a mirror on the internal network.
+  OIDC_ENTRA_TENANT_ID: ${OIDC_ENTRA_TENANT_ID:-}
+  OIDC_ENTRA_AUTHORITY: ${OIDC_ENTRA_AUTHORITY:-https://login.microsoftonline.com}
+  OIDC_ENTRA_JWK_SET_URI: ${OIDC_ENTRA_JWK_SET_URI:-}
+  OIDC_ENTRA_AUDIENCES: ${OIDC_ENTRA_AUDIENCES:-}
+  OIDC_ENTRA_MCP_AUDIENCES: ${OIDC_ENTRA_MCP_AUDIENCES:-}
   # Embeddings from the local Ollama (ADR-0006, ADR-0011); the model name is the one ollama-pull fetched.
   OLLAMA_BASE_URL: http://ollama:11434
   OLLAMA_EMBEDDING_MODEL: &embedding-model bge-m3:567m

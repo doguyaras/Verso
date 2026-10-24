@@ -50,6 +50,19 @@ export const CONFIG = Object.freeze({
   api: '',
   issuer: 'http://localhost:8180/realms/verso',
   clientId: 'verso-panel',
+  // The IdP's endpoints (auth.js endpointsOf). null: Keycloak's paths under the issuer. Another OIDC IdP sets them all;
+  // Microsoft Entra ID (ADR-0041, docs/entra-kurulumu.md), with <tenant> the directory id:
+  //   issuer: 'https://login.microsoftonline.com/<tenant>/v2.0', clientId: '<panel app (client) id>',
+  //   authorizationEndpoint: 'https://login.microsoftonline.com/<tenant>/oauth2/v2.0/authorize',
+  //   tokenEndpoint: 'https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token',
+  //   endSessionEndpoint: 'https://login.microsoftonline.com/<tenant>/oauth2/v2.0/logout',
+  //   scope: 'openid profile offline_access api://<api app id>/access_as_user'
+  // and the edge CSP's connect-src names https://login.microsoftonline.com (README, Entra ID).
+  authorizationEndpoint: null,
+  tokenEndpoint: null,
+  endSessionEndpoint: null,
+  // Keycloak adds the API audience itself (verso-realm.json); Entra needs the API's scope named here.
+  scope: 'openid',
   // globalThis.location: the module is also loaded by the node tests (scripts/panel.test.mjs), which have no window.
   redirectUri: `${globalThis.location?.origin ?? "http://localhost:8080"}/panel/`,
   grafana: 'http://localhost:3000',

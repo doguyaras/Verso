@@ -135,6 +135,22 @@ verso:
       # Connect and read timeout of the key fetch; keys are cached, so this is paid only on a cache miss (ADR-0010).
       jwks-timeout: 2s
       allow-http: ${OIDC_JWKS_ALLOW_HTTP:false}
+      # Signature algorithms of the primary issuer (ADR-0041): never taken from the token; HMAC and none cannot be set.
+      algorithms: ES256
+      # Microsoft Entra ID as a directly trusted issuer (ADR-0041, docs/entra-kurulumu.md); off while the tenant id is
+      # empty. Fixed rules: v2.0 tokens of this tenant only, RS256, typ JWT, a delegated scp, oid as the account.
+      # OIDC_ISSUER and OIDC_JWK_SET_URI may both be empty for an Entra-only installation.
+      entra:
+        tenant-id: ${OIDC_ENTRA_TENANT_ID:}
+        authority: ${OIDC_ENTRA_AUTHORITY:https://login.microsoftonline.com}
+        # Empty: <authority>/<tenant-id>/discovery/v2.0/keys. A mirror when the application has no route out (ADR-0013).
+        jwk-set-uri: ${OIDC_ENTRA_JWK_SET_URI:}
+        # The API's application (client) id and/or Application ID URI, comma-separated.
+        audiences: ${OIDC_ENTRA_AUDIENCES:}
+        # The MCP resource's own application id (ADR-0031); empty: Entra tokens are not accepted on /mcp.
+        mcp-audiences: ${OIDC_ENTRA_MCP_AUDIENCES:}
+        roles-claim: roles
+        groups-claim: groups
     # Roles and groups of the access token as authorities (ADR-0019). The claim paths depend on the IdP; the defaults
     # are Keycloak's (realm roles in realm_access.roles, a "groups" mapper), Entra ID uses "roles" and "groups". A
     # caller without a Verso role is a verso-user; verso-admin only when the token names it.

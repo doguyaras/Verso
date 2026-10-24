@@ -1,6 +1,6 @@
 # ADR-0010: Kimlik altyapısı (demo IdP, token kuralları, istemci akışları)
 
-- **Durum:** Kabul edildi (faz 3)
+- **Durum:** Kabul edildi (faz 3). Token kuralları ADR-0041 ile issuer başına oldu: aşağıdaki tablo birincil issuer'ın (Keycloak) kurallarıdır ve değişmedi; Entra ID'nin kuralları ADR-0041'dedir.
 - **Tarih:** 2026-10-02
 - **Karar verenler:** doguyaras
 - **İlgili eşik (referans Bölüm 24):** Servis kimliği satırı; ADR-0005'in uygulama ayrıntısıdır.
