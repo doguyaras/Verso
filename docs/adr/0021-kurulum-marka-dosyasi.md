@@ -88,7 +88,7 @@
 - **Dosya herkese açıktır.** Kenar proxy'ye erişen herkes, giriş yapmadan okuyabilir; tanıtım ekranı zaten girişten önce gösterir. İçine gizli bilgi, iç sunucu adı ya da kişisel veri yazılmaz. `team` alanındaki iletişim adresi bir ekip adresi olmalıdır.
 - **Doğrulama yalnız tarayıcıdadır.** Hata kullanıcıya değil, konsola yazılır. Kurulum ekibi dosyayı değiştirince paneli açıp konsola bakar (README). Sunucu tarafı doğrulama 2. adımdadır.
 - **Açılışta bir istek daha** (aynı origin, çoğunlukla 304). En kötü durumda ilk ekran 3 sn gecikir.
-- **Bazı metinler hâlâ "Verso" der:** Soru sor ekranındaki "Verso cevapladı" (ekran okuyucu) ve "Verso hata yapabilir" uyarısı. O ekran ayrı bir işte değişiyor; ad orada ayrıca bağlanacak.
+- **Bazı metinler "Verso" diyordu:** Soru sor ekranındaki "Verso cevapladı" (ekran okuyucu) ve "Verso hata yapabilir" uyarısı. [ADR-0024](0024-cevap-ekrani.md) ile ürün adına bağlandı ("X cevap verdi", "X hata yapabilir").
 - Logo SVG'si sanitize edilmez: yalnız kurulum ekibinden gelir, `<img>` içinde script çalışmaz, doğrudan açılışı CSP `sandbox` korur.
 
 **Etkilenen dosyalar:**

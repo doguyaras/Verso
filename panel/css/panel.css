@@ -668,9 +668,14 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .notice.neutral { background: var(--bg-subtle); color: var(--fg-muted); border-color: var(--border-muted); }
 .notice .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
-/* ---------- ask ---------- */
-.chat { display: grid; grid-template-rows: 1fr auto; min-height: calc(100vh - 76px); gap: 16px; max-width: 820px; width: 100%; margin: 0 auto; }
+/* ---------- ask (ADR-0017; answer screen ADR-0024) ---------- */
+.chat { display: grid; grid-template-rows: 1fr auto; min-height: calc(100vh - 76px); min-height: calc(100dvh - 76px); gap: 16px; max-width: 820px; width: 100%; margin: 0 auto; }
 .thread { display: flex; flex-direction: column; gap: 28px; padding: 8px 0; outline: none; }
+.thread:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; border-radius: var(--r-lg); }
+/* one question and its answer; focusable by the turn keys (PageUp/PageDown, Alt+↑/↓), never a tab stop */
+.turn { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 16px; border-radius: var(--r-lg); outline-offset: 6px; }
+.turn:focus { outline: none; }
+.turn:focus-visible { outline: 2px solid var(--focus-ring); }
 .turn-user { align-self: flex-end; max-width: 78%; }
 .turn-user .bubble {
   padding: 10px 14px; border-radius: var(--r-lg); border-bottom-right-radius: var(--r-sm); background: var(--bg-surface);
@@ -681,41 +686,100 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .answer { display: grid; gap: 12px; min-width: 0; }
 .answer-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .answer-text { font-size: var(--text-lg); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 72ch; }
+
+/* the [n] marker: a number, or on wide screens a "belge · s. 3" chip (the accessible name is the full source) */
 .cite {
   position: relative; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin: 0 1px;
   border-radius: var(--r-sm); border: 1px solid var(--accent-border); background: var(--accent-bg-subtle); color: var(--fg-accent-strong);
   font: 650 11px/1 var(--font-sans); vertical-align: 2px; cursor: pointer; white-space: normal;
-  transition: background var(--dur-fast);
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
+.cite .cite-chip { display: none; }
+.cite.hl { box-shadow: 0 0 0 2px var(--accent-fill); }
 .cite:hover, .cite:focus-visible, .cite[aria-expanded="true"] { background: var(--accent-emphasis); color: var(--fg-on-emphasis); border-color: var(--accent-emphasis); }
 .cite-pop {
   position: absolute; z-index: 30; bottom: calc(100% + 8px); left: 50%; width: min(340px, 80vw); transform: translateX(-50%);
   display: none; text-align: left; padding: 12px; border-radius: var(--r-lg); border: 1px solid var(--border-muted);
   background: var(--bg-raised); color: var(--fg-default); box-shadow: var(--shadow-2); cursor: default;
-  font: 400 var(--text-sm)/1.5 var(--font-sans);
+  font: 400 var(--text-sm)/1.5 var(--font-sans); letter-spacing: normal;
 }
 .cite.pop-below .cite-pop { bottom: auto; top: calc(100% + 8px); }
 .cite.pop-left .cite-pop { left: 0; transform: none; }
 .cite.pop-right .cite-pop { left: auto; right: 0; transform: none; }
 .cite:hover .cite-pop, .cite:focus-visible .cite-pop, .cite[aria-expanded="true"] .cite-pop { display: grid; gap: 8px; animation: rise var(--dur-base) var(--ease-out); }
+/* Esc hides the preview without moving the pointer or the focus (WCAG 1.4.13) */
+.cite.dismissed .cite-pop { display: none !important; }
 .cite-pop .src { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .cite-pop .src .where { margin-left: auto; color: var(--fg-muted); font-weight: 500; white-space: nowrap; }
 .cite-pop .src .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.cite-pop .quote { display: block; margin: 0; padding: 8px 10px; white-space: normal; border-left: 3px solid var(--accent-emphasis); background: var(--bg-subtle); border-radius: 0 var(--r-sm) var(--r-sm) 0; color: var(--fg-muted); font-size: var(--text-sm); }
-.sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-.source {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 10px 12px;
-  border: 1px solid var(--border-muted); border-radius: var(--r-lg); background: var(--bg-surface); transition: border-color var(--dur-fast), background var(--dur-fast);
+
+/* the excerpt: passage text, the words the answer shares marked, "…" where the server cut the passage */
+.quote {
+  display: block; margin: 0; padding: 8px 10px; white-space: normal; border-left: 3px solid var(--accent-fill); background: var(--bg-subtle);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0; color: var(--fg-muted); font: 400 var(--text-sm)/1.55 var(--font-sans); overflow-wrap: anywhere;
 }
-.source { transition: border-color var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out); }
-.source.hl, .source.flash { border-color: var(--accent-emphasis); background: var(--accent-bg-subtle); }
-.source .fname { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.source .where { grid-column: 2; font-size: var(--text-xs); color: var(--fg-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.source .where .n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--r-sm); background: var(--accent-bg-subtle); color: var(--fg-accent-strong); font-weight: 650; font-size: 11px; }
+.quote.none { border-left-color: var(--border-default); font-style: italic; }
+.quote .cut { color: var(--fg-subtle); font-weight: 600; padding: 0 1px; cursor: help; }
+::highlight(verso-match) { background-color: var(--accent-bg-hover); color: var(--fg-default); }
+.quote mark.match { background: var(--accent-bg-hover); color: var(--fg-default); border-radius: 2px; padding: 0 1px; }
+/* the answer sentence that cites the source under the pointer or the focus */
+::highlight(verso-cited) { background-color: var(--accent-bg-subtle); color: var(--fg-default); }
+
+/* source cards, grouped by document: every citation with its page and excerpt (clamped until the card is opened) */
+.sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-content: start; }
+.source {
+  display: grid; gap: 8px; align-content: start; padding: 10px 12px 12px; min-width: 0;
+  border: 1px solid var(--border-muted); border-radius: var(--r-lg); background: var(--bg-surface);
+  transition: border-color var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+.source.hl, .source.flash { border-color: var(--accent-fill); box-shadow: 0 0 0 1px var(--accent-fill); }
+.source.flash { background: var(--accent-bg-subtle); }
+.source-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.source-head .fname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cite-row { display: grid; gap: 6px; border-radius: var(--r-md); }
+.cite-row.hl .quote { border-left-color: var(--accent-emphasis); background: var(--accent-bg-subtle); }
+.cite-ref {
+  justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 2px 8px 2px 3px; border: 0;
+  border-radius: var(--r-sm); background: transparent; color: var(--fg-muted); font-size: var(--text-xs); font-weight: 500; cursor: pointer;
+}
+.cite-ref:hover, .cite-row.hl .cite-ref { background: var(--bg-control-hover); color: var(--fg-default); }
+.cite-ref .n, .source .n {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--r-sm);
+  background: var(--accent-bg-subtle); color: var(--fg-accent-strong); font-weight: 650; font-size: 11px; border: 1px solid var(--accent-border);
+}
+.quote-body { display: block; }
+.source:not(.open) .quote-body { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+.source .more {
+  justify-self: start; display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px; margin-left: -4px; border: 0;
+  border-radius: var(--r-sm); background: transparent; color: var(--fg-accent); font-size: var(--text-xs); font-weight: 600; cursor: pointer;
+}
+.source .more:hover { background: var(--bg-control-hover); }
+.source .more svg { transition: transform var(--dur-base) var(--ease-out); }
+.source.open .more svg { transform: rotate(180deg); }
+
+/* skeptical follow-ups (NN/g): whole questions, since the service answers each question on its own */
+.follow-ups { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip.follow { display: inline-flex; align-items: center; gap: 6px; }
+.chip.follow svg { color: var(--fg-accent); }
+
 .answer-foot { display: flex; align-items: center; gap: 4px; color: var(--fg-muted); font-size: var(--text-xs); flex-wrap: wrap; }
 .answer-foot .meta { display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; }
 .answer-foot .meta svg { width: 14px; height: 14px; }
 .answer-foot .meta.local svg { color: var(--success-solid); }
+.answer-actions { display: flex; flex-wrap: wrap; gap: 2px; }
+/* the actions stay quiet until the answer is hovered or one of them has the focus (mice; touch shows them as usual) */
+@media (hover: hover) {
+  .answer-actions .button.ghost { color: var(--fg-subtle); }
+  .turn:hover .answer-actions .button.ghost, .answer-actions:focus-within .button.ghost { color: var(--fg-muted); }
+  .answer-actions .button.ghost:hover, .answer-actions .button.ghost:focus-visible { color: var(--fg-default); }
+}
+.notice strong { display: block; color: inherit; font-weight: 600; }
+.notice .grow > div + div { margin-top: 2px; }
+.notice .button[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
+
+/* "Bunu sor" over a selection in an answer or an excerpt (ask.js sets --x / --y through the CSSOM) */
+.pick-ask { position: fixed; z-index: 45; left: var(--x, 0); top: var(--y, 0); box-shadow: var(--shadow-2); animation: rise var(--dur-fast) var(--ease-out); }
+
 .waiting { display: grid; gap: 10px; padding-top: 4px; }
 .waiting .status { display: flex; align-items: center; gap: 10px; color: var(--fg-muted); font-size: var(--text-sm); }
 .waiting .skeleton.line { height: 14px; }
@@ -756,6 +820,28 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .suggestion svg { color: var(--fg-accent); margin-top: 2px; }
 .welcome .privacy-line { margin-top: 18px; display: inline-flex; gap: 8px; align-items: center; font-size: var(--text-xs); color: var(--fg-muted); }
 .welcome .privacy-line svg { color: var(--success-solid); }
+
+/* wide screens: the source cards in a sticky column next to the answer, the markers as short source chips */
+@media (min-width: 1200px) {
+  .chat { --sources-w: 300px; --sources-gap: 28px; max-width: 1180px; }
+  .chat .composer { margin-right: calc(var(--sources-w) + var(--sources-gap)); margin-left: 42px; }
+  .turn-user { margin-right: calc(var(--sources-w) + var(--sources-gap)); }
+  .answer:not(.has-sources), .turn-bot > .waiting { margin-right: calc(var(--sources-w) + var(--sources-gap)); }
+  .answer.has-sources { grid-template-columns: minmax(0, 1fr) var(--sources-w); grid-template-rows: repeat(5, auto) 1fr; column-gap: var(--sources-gap); row-gap: 0; }
+  .answer.has-sources > * { grid-column: 1; }
+  .answer.has-sources > .answer-head { grid-row: 1; }
+  .answer.has-sources > .answer-text { grid-row: 2; margin-top: 12px; }
+  .answer.has-sources > .notice { grid-row: 3; margin-top: 12px; }
+  .answer.has-sources > .follow-ups { grid-row: 4; margin-top: 14px; }
+  .answer.has-sources > .answer-foot { grid-row: 5; margin-top: 12px; }
+  .answer.has-sources > .sources {
+    grid-column: 2; grid-row: 1 / -1; position: sticky; top: 16px; align-self: start; grid-template-columns: minmax(0, 1fr);
+    max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: 2px;
+  }
+  .cite { height: 22px; padding: 0 8px; border-radius: var(--r-full); vertical-align: 1px; font-weight: 600; letter-spacing: .01em; }
+  .cite .cite-n { display: none; }
+  .cite .cite-chip { display: inline; white-space: nowrap; }
+}
 
 /* ---------- drawer, dialog, palette, toasts ---------- */
 .drawer-scrim { position: fixed; inset: 0; z-index: 50; background: var(--scrim); animation: fade var(--dur-base) var(--ease-out); }
@@ -859,8 +945,12 @@ dialog.palette::backdrop { background: var(--scrim); }
   .tabbar a[aria-current="page"] svg { color: var(--fg-accent); }
   .main { padding: 18px 16px 96px; gap: 18px; }
   .page-head h1 { font-size: 28px; }
-  .chat { min-height: calc(100vh - 56px - 96px); }
+  .chat { min-height: calc(100vh - 56px - 96px); min-height: calc(100dvh - 56px - 96px); }
   .composer { bottom: 80px; }
+  .turn { scroll-margin-top: 68px; }
+  /* the keyboard is open (ask.js reads visualViewport): the composer rides on it and the tab bar steps aside */
+  :root.keyboard-open .composer { bottom: calc(var(--kb, 0px) + 8px); }
+  :root.keyboard-open .tabbar { display: none; }
   .suggestions { grid-template-columns: minmax(0, 1fr); }
   .intro { padding: 72px 16px 28px; align-content: start; }
   .intro .book { grid-template-columns: minmax(0, 1fr); min-height: 0; }
@@ -881,6 +971,13 @@ dialog.palette::backdrop { background: var(--scrim); }
   .toolbar .input-icon { max-width: none; }
   .row-actions { opacity: 1; }
   .turn-user { max-width: 90%; }
+}
+/* touch: every control of the answer screen is at least 44 px (WCAG 2.5.5); an inline marker keeps its size in the
+   line and gets a larger invisible hit area instead */
+@media (pointer: coarse) {
+  .answer-actions .button.sm, .notice .actions .button, .chip.follow, .cite-ref, .source .more, .pick-ask, .suggestion { min-height: 44px; }
+  .composer .button.icon-only { width: 44px; height: 44px; }
+  .cite::after { content: ""; position: absolute; inset: -12px -6px; }
 }
 /* screens cross-fade (motion.js transition: the View Transitions API where the browser has it) */
 .main { view-transition-name: main; }

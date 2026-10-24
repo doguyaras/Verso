@@ -1,46 +1,85 @@
-// Questions as a conversation (ADR-0017): the answer with citation buttons that preview the cited passage, source cards
-// grouped by document, an honest state for each outcome, and a wait that says how long it has been and may be.
+// Questions as a conversation (ADR-0017, answer screen ADR-0024): the answer with citation buttons that preview the
+// cited passage, source cards that show the excerpt with the words the answer shares marked, an honest state for each
+// outcome and each failure, skeptical follow-ups, and a wait that says how long it has been and may be. On wide screens
+// the cards sit in a sticky column next to the answer and the markers become short "belge · s. 3" chips.
 // The conversation lives in this tab's memory only (store.js); a reload starts a new one.
-import { api, ApiError, lastMode } from '../api.js';
+import { api, lastMode } from '../api.js';
+import { answerMarkdown, chipLabel, errorState, followUps, markdownFileName, selectionQuestion } from '../answer.js';
 import { CONFIG } from '../config.js';
+import { citingSpans, citingText, excerptParts, matchRanges } from '../excerpt.js';
+import { prune, tintSentences, writeMarked } from '../highlight.js';
 import { icon, logo } from '../icons.js';
-import { answerParts, answerWithSources, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
+import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { conversation, prefs } from '../store.js';
-import { pulse, wordSpans } from '../motion.js';
+import { pulse, reducedMotion, wordSpans } from '../motion.js';
 import { fileIcon, toast } from '../ui.js';
 
 const MAX_CHARS = 1000;
 // Nielsen's limits: nothing under 1 s, a skeleton up to 10 s, then the elapsed time and what to expect.
 const SHOW_WAIT_MS = 1000;
 const SLOW_MS = 10000;
+/** How long a source card stays lit after its marker was clicked (ADR-0024; was 1200 ms). */
+export const FLASH_MS = 600;
+/** Keys that move between turns (APG feed-like): PageUp/PageDown, or Alt+↑/↓ also from the question box. */
+const TURN_KEYS = 'Alt+ArrowUp Alt+ArrowDown PageUp PageDown';
 
-/** The [n] marker as a button; hover, focus or a click shows the source and its passage (NotebookLM-style). */
-function citationButton(citation, onPick, onHover) {
-  const where = sourceLabel(citation).slice(citation.fileName.length + 2);
-  const pop = el('span', { class: 'cite-pop', role: 'tooltip', id: `cite-pop-${citation.number}-${Math.random().toString(36).slice(2, 8)}` },
-    el('span', { class: 'src' }, fileIcon(citation.fileName.split('.').pop()?.toUpperCase(), 'sm'),
-      el('span', { class: 'fname' }, plainName(citation.fileName)), el('span', { class: 'where' }, where)),
-    citation.excerpt ? el('span', { class: 'quote' }, citation.excerpt) : null);
-  const button = el('button', { class: 'cite', type: 'button', 'aria-describedby': pop.id, 'aria-expanded': 'false',
-    'aria-label': `Kaynak ${citation.number}: ${plainName(citation.fileName)}, ${where}`,
+let ids = 0;
+const nextId = (prefix) => `${prefix}-${++ids}`;
+const extension = (fileName) => String(fileName).split('.').pop()?.toUpperCase();
+const whereOf = (citation) => sourceLabel(citation).slice(citation.fileName.length + 2);
+const isNotFound = (result) => result.outcome === 'NOT_FOUND' || (result.outcome == null && !result.found && !result.citations.length);
+
+/** The excerpt with the server's cut marks shown as such and the words the answer shares marked (CSS highlights). */
+function quote(citation, evidence) {
+  const { text, before, after } = excerptParts(citation.excerpt);
+  const body = el('span', { class: 'quote-text' });
+  writeMarked(body, text, matchRanges(text, evidence));
+  // The body is what a closed card clamps; the padding stays on the frame, so no half line shows under the clamp.
+  return el('span', { class: 'quote' }, el('span', { class: 'quote-body' },
+    before ? el('span', { class: 'cut', title: 'Alıntının başı kısaltıldı' }, '…') : null,
+    body,
+    after ? el('span', { class: 'cut', title: 'Alıntının sonu kısaltıldı' }, '…') : null));
+}
+
+/**
+ * The [n] marker as a button: a number, or on wide screens a "belge · s. 3" chip; its accessible name is always the
+ * full source. Hover, focus or a click shows the source and its passage (NotebookLM-style) and lights the source card.
+ */
+function citationButton(citation, evidence, link) {
+  const where = whereOf(citation);
+  const name = plainName(citation.fileName);
+  const pop = el('span', { class: 'cite-pop', role: 'tooltip', id: nextId('cite-pop') },
+    el('span', { class: 'src' }, fileIcon(extension(citation.fileName), 'sm'), el('span', { class: 'fname' }, name), el('span', { class: 'where' }, where)),
+    citation.excerpt ? quote(citation, evidence) : null);
+  const on = (value) => link.hover(citation.number, value);
+  const button = el('button', { class: 'cite', type: 'button', 'data-number': citation.number, 'aria-describedby': pop.id,
+    'aria-expanded': 'false', 'aria-label': `Kaynak ${citation.number}: ${name}, ${where}`,
     onclick: () => {
       const open = button.getAttribute('aria-expanded') !== 'true';
+      button.classList.remove('dismissed');
       button.setAttribute('aria-expanded', String(open));
-      onPick(citation);
+      if (open) link.open(citation.number);
+    },
+    onfocus: () => {
+      place(button);
+      on(true);
     },
     onblur: () => {
       button.setAttribute('aria-expanded', 'false');
-      onHover(citation, false);
+      button.classList.remove('dismissed');
+      on(false);
     },
     onmouseenter: () => {
       place(button);
-      onHover(citation, true);
+      on(true);
     },
-    onmouseleave: () => onHover(citation, false) }, String(citation.number), pop);
-  button.addEventListener('focus', () => {
-    place(button);
-    onHover(citation, true);
-  });
+    onmouseleave: () => {
+      button.classList.remove('dismissed');
+      on(false);
+    } },
+  el('span', { class: 'cite-n', 'aria-hidden': 'true' }, String(citation.number)),
+  el('span', { class: 'cite-chip', 'aria-hidden': 'true' }, chipLabel(citation)),
+  pop);
   return button;
 }
 
@@ -48,7 +87,7 @@ function citationButton(citation, onPick, onHover) {
 function place(button) {
   const box = button.getBoundingClientRect();
   button.classList.toggle('pop-below', box.top < 240);
-  const column = button.closest('.answer')?.getBoundingClientRect() ?? { left: 0, right: innerWidth };
+  const column = button.closest('.answer-text')?.getBoundingClientRect() ?? { left: 0, right: innerWidth };
   button.classList.toggle('pop-left', box.left - column.left < 170);
   button.classList.toggle('pop-right', column.right - box.right < 170 && box.left - column.left >= 170);
 }
@@ -61,13 +100,41 @@ function outcomeBadge(result) {
   return el('span', { class: 'pill neutral' }, icon('search', 'sm'), 'Belgelerde bulunamadı');
 }
 
-function sourceCards(citations) {
-  return el('div', { class: 'sources', role: 'list', 'aria-label': 'Kaynaklar' }, groupSources(citations).map((group) =>
-    el('div', { class: 'source', role: 'listitem', 'data-numbers': group.items.map((c) => c.number).join(' ') },
-      fileIcon(group.fileName.split('.').pop()?.toUpperCase(), 'sm'),
-      el('span', { class: 'fname', title: plainName(group.fileName) }, plainName(group.fileName)),
-      el('span', { class: 'where' }, group.items.map((c) => [el('span', { class: 'n' }, String(c.number)),
-        sourceLabel(c).slice(c.fileName.length + 2)]).flat()))));
+/** Opens or closes a card: a closed card clamps each excerpt to a few lines. */
+function setOpen(card, open) {
+  card.classList.toggle('open', open);
+  const more = card.querySelector('.more');
+  if (!more) return;
+  more.setAttribute('aria-expanded', String(open));
+  more.firstChild.textContent = open ? 'Daralt' : 'Tamamını göster';
+}
+
+/** Shows the "Tamamını göster" button only on cards whose excerpts are clamped (measured after layout). */
+function measure(sources) {
+  for (const card of sources.querySelectorAll('.source')) {
+    const clamped = [...card.querySelectorAll('.quote-body')].some((q) => q.scrollHeight > q.clientHeight + 1);
+    card.querySelector('.more').hidden = !clamped && !card.classList.contains('open');
+  }
+}
+
+/** Source cards grouped by document; each citation row shows its page and its excerpt. */
+function sourceCards(citations, evidence, link) {
+  const sources = el('div', { class: 'sources', role: 'list', 'aria-label': 'Kaynaklar' }, groupSources(citations).map((group) => {
+    const name = plainName(group.fileName);
+    const card = el('div', { class: 'source', role: 'listitem', id: nextId('source'), 'data-numbers': group.items.map((c) => c.number).join(' ') },
+      el('div', { class: 'source-head' }, fileIcon(extension(group.fileName), 'sm'), el('span', { class: 'fname', title: name }, name)),
+      group.items.map((c) => el('div', { class: 'cite-row', 'data-number': c.number,
+        onmouseenter: () => link.hover(c.number, true), onmouseleave: () => link.hover(c.number, false) },
+      el('button', { class: 'cite-ref', type: 'button', 'aria-label': `Cevapta göster: kaynak ${c.number}, ${whereOf(c)}`,
+        onclick: () => link.reveal(c.number), onfocus: () => link.hover(c.number, true), onblur: () => link.hover(c.number, false) },
+      el('span', { class: 'n' }, String(c.number)), whereOf(c)),
+      c.excerpt ? quote(c, evidence.get(c.number)) : el('span', { class: 'quote none' }, 'Bu kaynak için alıntı gelmedi.'))));
+    card.append(el('button', { class: 'more', type: 'button', hidden: true, 'aria-expanded': 'false', 'aria-controls': card.id,
+      onclick: () => setOpen(card, !card.classList.contains('open')) }, el('span', {}, 'Tamamını göster'), icon('chevronDown', 'sm')));
+    return card;
+  }));
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => measure(sources)).observe(sources);
+  return sources;
 }
 
 function modeMeta(result, ms) {
@@ -77,79 +144,208 @@ function modeMeta(result, ms) {
   icon(local ? 'shield' : 'cloud', 'sm'), `${local ? 'Yerel' : 'Bulut'} · ${result.model} · ${formatSeconds(ms)}`);
 }
 
+/** The answer as a Markdown file (Blob + <a download>: same document, no new CSP directive; ADR-0024). */
+function download(entry) {
+  const text = answerMarkdown(entry.result, { question: entry.question, productName: CONFIG.deployment.productName,
+    mode: entry.result.mode, model: entry.result.model, at: entry.at });
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+  const anchor = el('a', { href: url, download: markdownFileName(entry.question), hidden: true });
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const TONES = Object.freeze({ down: ['bad', 'alert'], offline: ['bad', 'alert'], other: ['bad', 'alert'], busy: ['wait', 'clock'],
+  invalid: ['wait', 'alert'], reindex: ['info', 'info'], auth: ['neutral', 'lock'] });
+
+/** A failed question: what happened in plain words, and the one thing to do next. */
+function failureView(entry, actions) {
+  const state = entry.error;
+  const [tone, glyph] = TONES[state.kind] ?? TONES.other;
+  const buttons = [];
+  if (state.retry) {
+    const retry = el('button', { class: 'button secondary sm', type: 'button', onclick: () => {
+      if (retry.getAttribute('aria-disabled') !== 'true') actions.ask(entry.question);
+    } }, icon('refresh', 'sm'), el('span', {}, 'Tekrar dene'));
+    // With Retry-After the button counts down first: asking again earlier only gets the same answer.
+    const until = Date.parse(entry.at) + (state.retryAfter ?? 0) * 1000;
+    const tick = () => {
+      const left = Math.ceil((until - Date.now()) / 1000);
+      retry.setAttribute('aria-disabled', String(left > 0));
+      retry.lastChild.textContent = left > 0 ? `Tekrar dene (${left} sn)` : 'Tekrar dene';
+      return left > 0;
+    };
+    if (tick()) {
+      const timer = setInterval(() => {
+        if (!tick() || !document.contains(retry)) clearInterval(timer);
+      }, 1000);
+    }
+    buttons.push(retry);
+  }
+  if (state.kind === 'invalid') {
+    buttons.push(el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Soruyu düzenle'));
+  }
+  return el('div', { class: 'answer' }, el('div', { class: `notice ${tone}`, role: entry.fresh ? 'alert' : null }, icon(glyph, 'sm'),
+    el('div', { class: 'grow' }, el('strong', {}, state.title), el('div', {}, state.text),
+      buttons.length ? el('div', { class: 'actions' }, buttons) : null)));
+}
+
+/**
+ * Links an answer's markers, its source cards and its sentences: hovering or focusing either side lights both and
+ * tints the answer sentence that cites the source; a click on a marker opens its card, one on a card's page shows the
+ * marker in the answer.
+ */
+function linker(answer, segments) {
+  let box = null;
+  const cites = (n) => box.querySelectorAll(`.cite[data-number="${n}"]`);
+  const rows = (n) => box.querySelectorAll(`.cite-row[data-number="${n}"]`);
+  const cardOf = (n) => box.querySelector(`.source[data-numbers~="${n}"]`);
+  return {
+    attach(node) {
+      box = node;
+    },
+    hover(n, on) {
+      if (!box) return;
+      for (const node of cites(n)) node.classList.toggle('hl', on);
+      for (const node of rows(n)) node.classList.toggle('hl', on);
+      cardOf(n)?.classList.toggle('hl', on);
+      tintSentences(segments, on ? citingSpans(answer, n) : []);
+    },
+    open(n) {
+      const card = cardOf(n);
+      if (!card) return;
+      setOpen(card, true);
+      card.classList.add('flash');
+      card.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+      pulse(card);
+      setTimeout(() => card.classList.remove('flash'), FLASH_MS);
+    },
+    reveal(n) {
+      const marker = cites(n)[0];
+      if (!marker) return;
+      marker.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+      marker.focus({ preventScroll: true });
+    },
+    all() {
+      for (const card of box?.querySelectorAll('.source') ?? []) {
+        card.classList.add('flash');
+        pulse(card);
+        setTimeout(() => card.classList.remove('flash'), FLASH_MS);
+      }
+      box?.querySelector('.sources')?.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    },
+  };
+}
+
+/** The answer text: plain text nodes (or one span per word when fresh) and the marker buttons, with each text's offset. */
+function answerText(result, evidence, link, counter) {
+  const box = el('div', { class: `answer-text${counter ? ' reveal' : ''}` });
+  const segments = [];
+  for (const part of answerSegments(result.answer, result.citations)) {
+    if (part.citation) {
+      box.append(citationButton(part.citation, evidence.get(part.citation.number), link));
+      continue;
+    }
+    let offset = part.start;
+    for (const piece of counter ? wordSpans(part.text, counter) : [part.text]) {
+      const node = typeof piece === 'string' ? document.createTextNode(piece) : piece;
+      const text = node.nodeType === Node.TEXT_NODE ? node : node.firstChild;
+      segments.push({ node: text, start: offset });
+      offset += text.data.length;
+      box.append(node);
+    }
+  }
+  return { box, segments };
+}
+
 function answerView(entry, actions) {
   if (entry.cancelled) {
     return el('div', { class: 'answer' }, el('div', { class: 'notice neutral' }, icon('stop', 'sm'),
-      el('div', {}, 'Bekleme durduruldu.', el('div', { class: 'actions' },
-        el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.ask(entry.question) }, icon('refresh', 'sm'), 'Tekrar sor')))));
+      el('div', { class: 'grow' }, el('strong', {}, 'Bekleme durduruldu.'),
+        el('div', {}, 'Cevap bu ekrana gelmeyecek. Aynı soruyu yeniden sorabilirsiniz.'),
+        el('div', { class: 'actions' },
+          el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.ask(entry.question) }, icon('refresh', 'sm'), 'Tekrar sor')))));
   }
-  if (entry.error) {
-    return el('div', { class: 'answer' }, el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'),
-      el('div', {}, entry.error, el('div', { class: 'actions' },
-        el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.ask(entry.question) }, icon('refresh', 'sm'), 'Tekrar dene')))));
-  }
+  if (entry.error) return failureView(entry, actions);
   const { result } = entry;
-  const sources = result.citations.length ? sourceCards(result.citations) : null;
-  const cardOf = (citation) => sources?.querySelector(`[data-numbers~="${citation.number}"]`);
-  const flash = (citation) => {
-    const card = cardOf(citation);
-    if (!card) return;
-    card.classList.add('flash');
-    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    pulse(card);
-    setTimeout(() => card.classList.remove('flash'), 1200);
-  };
-  const hover = (citation, on) => cardOf(citation)?.classList.toggle('hl', on);
+  const { productName } = CONFIG.deployment;
+  const notFound = isNotFound(result);
+  const evidence = new Map(result.citations.map((c) => [c.number, citingText(result.answer, c.number)]));
   // A fresh answer appears word by word; one drawn again (a later visit) appears at once.
-  const counter = entry.fresh ? { i: 0 } : null;
-  const text = (value) => (counter ? wordSpans(value, counter) : value);
-  const notFound = result.outcome === 'NOT_FOUND' || (result.outcome == null && !result.found && !result.citations.length);
-  return el('div', { class: 'answer' },
-    el('h3', { class: 'sr-only' }, 'Verso cevapladı'),
+  const counter = entry.fresh && !reducedMotion() ? { i: 0 } : null;
+  const segments = [];
+  const link = linker(result.answer, segments);
+  const text = notFound ? null : answerText(result, evidence, link, counter);
+  if (text) segments.push(...text.segments);
+  const sources = result.citations.length ? sourceCards(result.citations, evidence, link) : null;
+  const chips = followUps(result);
+  const view = el('div', { class: `answer${sources ? ' has-sources' : ''}` },
+    // ADR-0021: the installation's product name, never followed by a Turkish case suffix.
+    el('h3', { class: 'sr-only' }, `${productName} cevap verdi`),
     el('div', { class: 'answer-head' }, outcomeBadge(result)),
     notFound
-      ? el('div', { class: 'notice neutral' }, icon('search', 'sm'), el('div', {},
+      ? el('div', { class: 'notice neutral answer-empty' }, icon('search', 'sm'), el('div', { class: 'grow' },
         el('strong', {}, 'Yüklediğiniz belgelerde bu sorunun cevabını bulamadım.'),
-        el('div', {}, 'Asistan tahmin yürütmez. Soruyu başka sözcüklerle sorabilir ya da ilgili belgeyi yükleyebilirsiniz.'),
+        el('div', {}, 'Belgelerde dayanak bulunamadığı için tahmin yürütülmedi. Soruyu başka sözcüklerle sorabilir ya da ilgili belgeyi yükleyebilirsiniz.'),
         el('div', { class: 'actions' },
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Soruyu düzenle'),
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.navigate('documents', { upload: true }) }, icon('upload', 'sm'), 'Belge yükle'))))
-      : el('div', { class: `answer-text${counter ? ' reveal' : ''}` }, answerParts(result.answer, result.citations)
-        .map((part) => (part.citation ? citationButton(part.citation, flash, hover) : text(part.text))).flat()),
+      : text.box,
     result.outcome === 'UNCITED'
-      ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), 'Bu cevabı belgelerinizdeki bir kaynağa bağlayamadım; kullanmadan önce doğrulayın.')
+      ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), el('div', { class: 'grow' },
+        el('strong', {}, 'Bu cevap bir kaynağa bağlanamadı.'),
+        el('div', {}, 'Doğru olabilir ama belgelerinizden doğrulanamadı; kullanmadan önce ilgili belgeye bakın.')))
       : null,
     sources,
+    chips.length ? el('div', { class: 'follow-ups', role: 'group', 'aria-label': 'Takip soruları' }, chips.map((f) =>
+      // The tooltip is the question as it will be sent: a new question, the conversation is not sent along.
+      el('button', { class: 'chip follow', type: 'button', title: f.local ? 'Kaynaklar bu cevapta gösteriliyor; yeni soru sorulmaz.' : f.question(entry.question), onclick: () => (f.local ? actions.sources(link, result) : actions.ask(f.question(entry.question))) },
+        icon(f.local ? 'book' : 'chat', 'sm'), f.label))) : null,
     el('div', { class: 'answer-foot' }, modeMeta(result, entry.ms), el('span', { class: 'spacer' }),
-      notFound ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: async () => {
-        try {
-          await navigator.clipboard.writeText(answerWithSources(result));
-          toast('Cevap kaynaklarıyla kopyalandı.', 'ok');
-        } catch {
-          toast('Kopyalanamadı.');
-        }
-      } }, icon('copy', 'sm'), 'Kopyala'),
-      el('button', { class: 'button ghost sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Düzenle')));
+      el('div', { class: 'answer-actions', role: 'group', 'aria-label': 'Cevap eylemleri' },
+        notFound ? null : el('button', { class: 'button ghost sm', type: 'button', title: 'Markdown olarak, kaynaklar dipnotta', onclick: async () => {
+          try {
+            await navigator.clipboard.writeText(answerMarkdown(result));
+            toast('Cevap kaynaklarıyla kopyalandı (Markdown).', 'ok');
+          } catch {
+            toast('Kopyalanamadı.');
+          }
+        } }, icon('copy', 'sm'), 'Kopyala'),
+        notFound ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => download(entry) }, icon('download', 'sm'), '.md indir'),
+        el('button', { class: 'button ghost sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Düzenle'))));
+  link.attach(view);
+  return view;
 }
 
-function userTurn(question) {
-  return el('div', { class: 'turn-user' }, el('h3', { class: 'sr-only' }, 'Siz sordunuz'), el('div', { class: 'bubble' }, question));
+function userTurn(question, id) {
+  return el('div', { class: 'turn-user' }, el('h3', { class: 'sr-only' }, 'Siz sordunuz'), el('div', { class: 'bubble', id }, question));
 }
 
 function botTurn(content) {
   return el('div', { class: 'turn-bot' }, logo(30), content);
 }
 
+/** One question and its answer; focusable (not tabbable) so the turn keys can move to it. */
+function turn(question, content) {
+  const id = nextId('question');
+  return el('article', { class: 'turn', tabindex: -1, 'aria-labelledby': id }, userTurn(question, id), botTurn(content));
+}
+
 export function renderAsk(ctx) {
   const { main } = ctx;
-  const thread = el('div', { class: 'thread', role: 'log', 'aria-live': 'off', 'aria-label': 'Soru-cevap geçmişi', tabindex: 0 });
+  const { productName } = CONFIG.deployment;
+  const thread = el('div', { class: 'thread', role: 'log', 'aria-live': 'off', 'aria-label': 'Soru-cevap geçmişi', tabindex: 0,
+    'aria-keyshortcuts': TURN_KEYS });
   // Only the start and the end of an answer are announced, never the answer body (screen readers would read it twice).
   const announcer = el('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
-  const field = el('textarea', { rows: 1, maxlength: MAX_CHARS, placeholder: 'Belgelerinize bir soru sorun…', 'aria-label': 'Soru' });
+  const field = el('textarea', { rows: 1, maxlength: MAX_CHARS, placeholder: 'Belgelerinize bir soru sorun…', 'aria-label': 'Soru',
+    'aria-keyshortcuts': 'Alt+ArrowUp' });
   const counter = el('span', { class: 'tabular' }, `0 / ${MAX_CHARS}`);
   const send = el('button', { class: 'button icon-only', type: 'submit', 'aria-label': 'Gönder' }, icon('send'));
   let busy = null; // the AbortController of the question in flight
   let ticker = null;
+  let picked = '';
 
   const resize = () => {
     field.style.height = 'auto';
@@ -166,20 +362,143 @@ export function renderAsk(ctx) {
 
   const form = el('form', { class: 'composer', onsubmit: (event) => {
     event.preventDefault();
-    if (busy) busy.abort();
-    else ask(field.value.trim());
+    if (busy) {
+      busy.abort();
+      field.focus(); // the stop button turns back into "send": the focus goes where the next question is typed
+    } else ask(field.value.trim());
   } }, field, send,
-  el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), 'Verso hata yapabilir; cevabı kaynağından doğrulayın.'), counter));
+  el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), `${productName} hata yapabilir; cevabı kaynağından doğrulayın.`), counter));
+
+  const prefill = (value) => {
+    field.value = value;
+    resize();
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  };
 
   const actions = {
     ask: (question) => ask(question),
     navigate: ctx.navigate,
-    edit: (question) => {
-      field.value = question;
-      resize();
-      field.focus();
+    edit: prefill,
+    sources: (link, result) => {
+      // Answered here: the answer already names its documents; asking the model would only guess again.
+      link.all();
+      const names = groupSources(result.citations).map((g) => `${plainName(g.fileName)} (${g.items.map(whereOf).join(', ')})`);
+      toast(`Bu cevap ${names.length} belgeye dayanıyor: ${names.join('; ')}.`, 'info');
     },
   };
+
+  // "Bunu sor": selecting text in an answer or an excerpt offers to ask about it (NN/g); the button prefills the box.
+  const pick = el('button', { class: 'button sm pick-ask', type: 'button', hidden: true, 'aria-label': 'Seçili metni sor',
+    onpointerdown: (event) => event.preventDefault(), // keep the selection while the button is pressed
+    onclick: () => {
+      const value = picked;
+      hidePick();
+      getSelection()?.removeAllRanges();
+      prefill(value);
+    } }, icon('chat', 'sm'), 'Bunu sor');
+  function hidePick() {
+    pick.hidden = true;
+    picked = '';
+  }
+  let frame = 0;
+  const onSelection = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      const selection = getSelection();
+      if (!selection || selection.isCollapsed || !selection.rangeCount) {
+        if (!pick.contains(document.activeElement)) hidePick();
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const host = (node) => (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest('.answer-text, .source .quote');
+      const start = host(range.startContainer);
+      const value = selectionQuestion(selection.toString());
+      if (!start || start !== host(range.endContainer) || !thread.contains(start) || !value) {
+        hidePick();
+        return;
+      }
+      picked = value;
+      const box = range.getBoundingClientRect();
+      pick.style.setProperty('--x', `${Math.round(Math.min(innerWidth - 124, Math.max(8, box.left + box.width / 2 - 56)))}px`);
+      pick.style.setProperty('--y', `${Math.round(box.top < 64 ? box.bottom + 8 : box.top - 48)}px`);
+      pick.hidden = false;
+    });
+  };
+  document.addEventListener('selectionchange', onSelection);
+  const onScroll = () => {
+    if (!pick.hidden) hidePick();
+  };
+  addEventListener('scroll', onScroll, { passive: true });
+
+  // Turns: PageUp/PageDown (outside a multi-line question) and Alt+↑/↓ move between them; Esc closes what is open.
+  function moveTurn(step) {
+    const turns = [...thread.querySelectorAll('.turn')];
+    if (!turns.length) return;
+    const at = turns.findIndex((t) => t.contains(document.activeElement));
+    const next = at < 0 ? (step < 0 ? turns.length - 1 : -1) : at + step;
+    if (next >= turns.length) {
+      field.focus();
+      return;
+    }
+    if (next < 0) return;
+    turns[next].focus({ preventScroll: true });
+    turns[next].scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }
+  function escape() {
+    if (!pick.hidden) {
+      hidePick();
+      return true;
+    }
+    const active = document.activeElement;
+    const open = thread.querySelector('.cite[aria-expanded="true"]');
+    if (open) {
+      open.setAttribute('aria-expanded', 'false');
+      open.classList.add('dismissed');
+      return true;
+    }
+    const shown = active?.classList?.contains('cite') && !active.classList.contains('dismissed') ? active : thread.querySelector('.cite:hover:not(.dismissed)');
+    if (shown) {
+      shown.classList.add('dismissed'); // WCAG 1.4.13: the preview can be dismissed without moving the pointer or focus
+      return true;
+    }
+    const card = active?.closest?.('.source.open') ?? thread.querySelector('.source.open');
+    if (card) {
+      setOpen(card, false);
+      if (card.contains(active)) card.querySelector('.more:not([hidden])')?.focus();
+      return true;
+    }
+    return false;
+  }
+  const chat = el('div', { class: 'chat', onkeydown: (event) => {
+    if (event.key === 'Escape') {
+      if (escape()) event.preventDefault();
+      return;
+    }
+    const inField = event.target === field;
+    const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+    if (event.altKey && vertical) {
+      event.preventDefault();
+      moveTurn(event.key === 'ArrowUp' ? -1 : 1);
+    } else if ((event.key === 'PageUp' || event.key === 'PageDown') && !event.altKey && !event.ctrlKey && !event.metaKey
+      && !(inField && field.value.includes('\n'))) {
+      event.preventDefault();
+      moveTurn(event.key === 'PageUp' ? -1 : 1);
+    }
+  } }, el('h1', { class: 'sr-only' }, 'Soru sor'), thread, announcer, pick, form);
+
+  // Phones: the visual viewport shrinks when the keyboard opens while the layout viewport does not, so the composer
+  // is lifted by the keyboard's height (and the tab bar steps aside) while the question box has the focus.
+  const viewport = globalThis.visualViewport;
+  const onViewport = () => {
+    const keyboard = document.activeElement === field ? Math.max(0, Math.round(innerHeight - viewport.height - viewport.offsetTop)) : 0;
+    chat.style.setProperty('--kb', `${keyboard}px`);
+    document.documentElement.classList.toggle('keyboard-open', keyboard > 80);
+  };
+  viewport?.addEventListener('resize', onViewport);
+  viewport?.addEventListener('scroll', onViewport);
+  field.addEventListener('focus', onViewport);
+  field.addEventListener('blur', onViewport);
 
   function welcome() {
     return el('div', { class: 'welcome' },
@@ -194,11 +513,12 @@ export function renderAsk(ctx) {
   }
 
   function drawThread() {
+    prune();
     if (!conversation.length) {
       thread.replaceChildren(welcome());
       return;
     }
-    thread.replaceChildren(...conversation.flatMap((entry) => [userTurn(entry.question), botTurn(answerView(entry, actions))]));
+    thread.replaceChildren(...conversation.map((entry) => turn(entry.question, answerView(entry, actions))));
   }
 
   function setBusy(controller) {
@@ -214,6 +534,7 @@ export function renderAsk(ctx) {
     setBusy(controller);
     field.value = '';
     resize();
+    hidePick();
     if (!conversation.length) thread.replaceChildren();
     const started = Date.now();
     const elapsed = el('span', { class: 'tabular' });
@@ -221,9 +542,10 @@ export function renderAsk(ctx) {
     const waiting = el('div', { class: 'waiting', hidden: true },
       el('div', { class: 'status' }, el('span', { class: 'spinner' }), el('span', { class: 'thinking' }, 'Cevap hazırlanıyor'), elapsed),
       el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }), el('div', { class: 'skeleton line' }), expect);
-    const pending = botTurn(waiting);
-    thread.append(userTurn(question), pending);
-    pending.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const pending = turn(question, waiting);
+    const bot = pending.querySelector('.turn-bot');
+    thread.append(pending);
+    pending.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'end' });
     announcer.textContent = 'Cevap hazırlanıyor.';
     ticker = setInterval(() => {
       const ms = Date.now() - started;
@@ -242,7 +564,7 @@ export function renderAsk(ctx) {
     } catch (error) {
       entry = error?.name === 'AbortError'
         ? { question, cancelled: true, ms: Date.now() - started, at: new Date().toISOString() }
-        : { question, error: error instanceof ApiError ? error.message : 'Bağlantı kurulamadı.', ms: Date.now() - started, at: new Date().toISOString() };
+        : { question, error: errorState(error), ms: Date.now() - started, at: new Date().toISOString() };
     } finally {
       clearInterval(ticker);
       setBusy(null);
@@ -250,17 +572,25 @@ export function renderAsk(ctx) {
     }
     conversation.push(entry);
     if (!ctx.isCurrent()) return;
-    announcer.textContent = entry.cancelled ? 'Bekleme durduruldu.' : entry.error ? 'Cevap alınamadı.'
-      : entry.result.outcome === 'NOT_FOUND' ? 'Belgelerde bulunamadı.' : 'Cevap hazır.';
-    pending.replaceWith(botTurn(answerView({ ...entry, fresh: true }, actions)));
+    announcer.textContent = entry.cancelled ? 'Bekleme durduruldu.' : entry.error ? `Cevap alınamadı: ${entry.error.title}.`
+      : isNotFound(entry.result) ? 'Belgelerde bulunamadı.' : entry.result.outcome === 'UNCITED' ? 'Cevap hazır, kaynak gösterilemedi.' : 'Cevap hazır.';
+    bot.replaceWith(botTurn(answerView({ ...entry, fresh: true }, actions)));
     field.focus();
   }
 
-  main.replaceChildren(el('div', { class: 'chat' }, el('h1', { class: 'sr-only' }, 'Soru sor'), thread, announcer, form));
+  main.replaceChildren(chat);
   drawThread();
   thread.lastElementChild?.scrollIntoView({ block: 'end' });
   if (ctx.params?.question) ask(ctx.params.question);
   else field.focus();
   // Leaving the screen does not cancel a question: its answer is kept in the conversation for the next visit.
-  return () => clearInterval(ticker);
+  return () => {
+    clearInterval(ticker);
+    document.removeEventListener('selectionchange', onSelection);
+    removeEventListener('scroll', onScroll);
+    viewport?.removeEventListener('resize', onViewport);
+    viewport?.removeEventListener('scroll', onViewport);
+    document.documentElement.classList.remove('keyboard-open');
+    setTimeout(prune, 1000); // after the next screen replaced this one (view transitions swap a frame later)
+  };
 }

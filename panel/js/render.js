@@ -20,6 +20,25 @@ export function answerParts(answer, citations) {
   return parts;
 }
 
+/**
+ * answerParts with the offset of each text part in the answer ({ text, start }): the answer screen tints sentences by
+ * their offsets over the text it drew (ADR-0024). Text parts are exact slices, so answer.slice(start, …) === text.
+ */
+export function answerSegments(answer, citations) {
+  const marker = /\[(\d+)\]/y;
+  let cursor = 0;
+  return answerParts(answer, citations).map((part) => {
+    if (part.citation) {
+      marker.lastIndex = cursor;
+      cursor += marker.exec(answer)?.[0].length ?? 0;
+      return part;
+    }
+    const start = cursor;
+    cursor += part.text.length;
+    return { text: part.text, start };
+  });
+}
+
 export const STATUS = Object.freeze({
   PENDING: { label: 'Sırada', tone: 'wait' },
   PROCESSING: { label: 'İşleniyor', tone: 'wait' },

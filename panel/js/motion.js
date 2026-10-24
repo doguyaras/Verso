@@ -71,14 +71,14 @@ export function cardSpotlight(root) {
   });
 }
 
-/** A short pulse on an element (a source card a citation points to). */
+/** A short pulse (600 ms, as long as the card's flash) on an element: the source card a citation points to. */
 export function pulse(node) {
   if (reducedMotion() || typeof node.animate !== 'function') return;
   node.animate([
     { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(217, 188, 124, .55)' },
     { transform: 'scale(1.015)', boxShadow: '0 0 0 6px rgba(217, 188, 124, .25)', offset: 0.35 },
     { transform: 'scale(1)', boxShadow: '0 0 0 12px rgba(217, 188, 124, 0)' },
-  ], { duration: 700, easing: 'cubic-bezier(.2, 0, 0, 1)' });
+  ], { duration: 600, easing: 'cubic-bezier(.2, 0, 0, 1)' });
 }
 
 /** Runs `update` inside a view transition where the browser has one (a soft cross-fade between screens). */

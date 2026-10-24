@@ -50,6 +50,8 @@ const SHAPES = Object.freeze({
   monitor: [['rect', { x: 3.5, y: 4.5, width: 17, height: 11.5, rx: 2 }], ['path', { d: 'M9 20h6M12 16v4' }]],
   edit: [['path', { d: 'M4.5 19.5h4l10-10a2.1 2.1 0 0 0-3-3l-10 10Z' }], ['path', { d: 'm13.5 8.5 3 3' }]],
   chevronRight: [['path', { d: 'm9.5 6 6 6-6 6' }]],
+  chevronDown: [['path', { d: 'm6 9.5 6 6 6-6' }]],
+  download: [['path', { d: 'M12 4v11' }], ['path', { d: 'm7.5 10.5 4.5 4.5 4.5-4.5' }], ['path', { d: 'M4.5 15v3.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15' }]],
   lock: [['rect', { x: 5, y: 10.5, width: 14, height: 10, rx: 2 }], ['path', { d: 'M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5' }]],
   building: [['path', { d: 'M4.5 20.5V5.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15' }], ['path', { d: 'M14.5 9.5h4a1 1 0 0 1 1 1v10' }],
     ['path', { d: 'M3 20.5h18M8 8.5h3M8 12h3M8 15.5h3' }]],

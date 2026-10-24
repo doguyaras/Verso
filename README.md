@@ -88,12 +88,15 @@ Ekranlar:
 
 - **Tanıtım ve giriş:** panel önce bir tanıtım gösterir: büyük imza ve açık kitapta kurulumun örnek sorusu ile kaynaklı cevabı (marka dosyasında `showcase`; aşağıda). "Giriş yap" kurumun kimlik sağlayıcısına götürür; paketteki demo Keycloak ikiye bölünmüş bir ekranla açılır: solda imzalı boyalı levha, sağda form. İkisinde de sağ üstte tema ve TR / EN anahtarları var.
 - **Genel bakış:** ortada büyük imza ve soru kutusu, kurulumun önerdiği sorular (`suggestions`), sorulabilir belge, kurulum aşaması ve çalışma modu kartları, ilk kullanım listesi, son belgeler ve bu oturumun soruları. Menü varsayılan olarak ince ikon şerididir, genişletilebilir.
-- **Soru sor:**
-  - Sohbet görünümünde bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
-  - Kaynak kartları belgeye göre gruplanır.
-  - Cevabın türü (kaynaklı, bulunamadı, kaynak gösterilemedi) kendi görünümüyle gösterilir; bulunamadığında "soruyu düzenle" ve "belge yükle" önerilir.
-  - Beklerken geçen süre ve gerçekçi bir beklenti görünür; bir durdurma düğmesi vardır.
-  - Kopyalanan cevap kaynaklarıyla birlikte gelir.
+- **Soru sor** ([ADR-0024](docs/adr/0024-cevap-ekrani.md)):
+  - **Atıflar:** bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
+  - **Kaynak kartları** belgeye göre gruplanır ve her atıfın alıntısını gösterir. Alıntıda cevapla ortak sözcükler işaretlidir; baştaki ya da sondaki "…" alıntının kısaltıldığı yerdir. Atıfla kartı hareket bağlar: birinin üzerine gelmek ya da odaklanmak ikisini birlikte ve dayandığı cümleyi vurgular.
+  - **Geniş ekranda (≥1200 px)** kartlar cevabın yanında yapışkan bir sütundadır ve atıflar "belge · s. 3" çipine dönüşür.
+  - **Cevap türleri:** kaynaklı, bulunamadı ve kaynak gösterilemedi kendi görünümüyle gösterilir. Model kapalı, yoğun ya da bağlantı yok gibi hatalar da ayrı ve açık bir metinle gelir; `Retry-After` varsa "Tekrar dene" geri sayar.
+  - **Takip:** cevabın altında şüpheci takip soruları durur ("Bu hangi belgeye dayanıyor?", "Aksi bir madde var mı?", "Bunu daha kısa anlat"). Her biri yeni bir soru olarak sorulur. Cevapta ya da alıntıda seçilen metin "Bunu sor" ile soru kutusuna alınır.
+  - **Dışa aktarma:** "Kopyala" cevabı atıfları dipnot olarak Markdown'da kopyalar. ".md indir" aynısını soruyla birlikte dosya olarak indirir.
+  - **Klavye:** PageUp/PageDown ya da Alt+↑/↓ sorular arasında gezer; Esc açık önizlemeyi ya da kartı kapatır.
+  - **Bekleme:** geçen süre ve gerçekçi bir beklenti görünür. "Durdur"dan sonra odak soru kutusuna döner.
 - **Bilgi kaynakları:** sayfanın her yerine sürükle-bırak; dosya başına ilerleme ve "tekrar dene"; Türkçe harf duyarsız arama, durum filtresi ve sıralanabilir tablo; ayrıntı paneli; dosya adıyla silme onayı. Altında planlanan bağlantılar (SharePoint ve dosya paylaşımları, talep yönetimi, ERP) "Planlandı" olarak görünür.
 - **Kurulum durumu:** kurulumu yapan ekibin aşamaları (Keşif, Pilot, Yaygınlaştırma, Entegrasyonlar) ve sistemden okunan kontrol listesi. Aşama, pilot grubu ve kurum adı marka dosyasından gelir.
 - **Sistem ve güvenlik:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
@@ -108,7 +111,7 @@ Panelin özellikleri:
 - Rol matrisi tek dosyadadır (`panel/js/roles.js`).
 - Varsayılan portlarla çalışır (8080, 8180, 3000). Port değişirse `panel/js/config.js`, realm'deki `verso-panel` istemcisi ve `deploy/edge/nginx.conf`'taki CSP birlikte değişir.
 
-Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md), [ADR-0021](docs/adr/0021-kurulum-marka-dosyasi.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
+Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md), [ADR-0021](docs/adr/0021-kurulum-marka-dosyasi.md), [ADR-0024](docs/adr/0024-cevap-ekrani.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
 
 Daha önce kurulmuş bir yığında panelin IdP istemcisi, `admin` kullanıcısı ya da Verso giriş teması yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz). Sonra Keycloak'ı tema bağlantısıyla yeniden oluşturun; bu, sıkıştırılmış kaynak önbelleğini de siler (tema dosyaları her değiştiğinde de gerekir):
 

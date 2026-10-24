@@ -9,7 +9,7 @@ import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor } from '../panel/js/roles.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, randomString,
   signIn, signOut } from '../panel/js/auth.js';
-import { answerParts, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
+import { answerParts, answerSegments, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
   sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 import { SIGN_MS, SIGNATURE, timeline } from '../panel/js/signature-data.js';
@@ -18,6 +18,13 @@ import { isDark } from '../panel/js/store.js';
 import { ACCENT_TOKENS, applyAccent, contrast, LIMITS, loadBranding, LOGO_PATTERN, MAX_BYTES, MAX_SUGGESTIONS, THEME_COLOURS,
   validateBranding } from '../panel/js/branding.js';
 import { CONFIG, DEPLOYMENT_DEFAULTS, useDeployment } from '../panel/js/config.js';
+import { ABBREVIATIONS, citingSpans, citingText, excerptParts, fold, key, matchRanges, sentences, STEM, STOP_WORDS, terms } from '../panel/js/excerpt.js';
+import { answerMarkdown, chipLabel, CHIP_NAME_MAX, clip, errorState, escapeMarkdown, fitQuestion, FOLLOW_UPS, followUps, markdownFileName, MAX_QUESTION, SELECTION_MAX,
+  selectionQuestion } from '../panel/js/answer.js';
+import { ApiError } from '../panel/js/api.js';
+// ask.js touches no DOM at module load (only inside its functions), so node can import it for its constants.
+import { FLASH_MS } from '../panel/js/screens/ask.js';
+import { CITED as CITED_HIGHLIGHT, MATCH, prune, tintSentences, writeMarked } from '../panel/js/highlight.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
@@ -398,7 +405,10 @@ test('palette: the token pairs the screens use keep their contrast in both theme
     ['fg-subtle', 'bg-surface', 4.5], ['fg-accent', 'bg-canvas', 4.5], ['fg-on-emphasis', 'accent-emphasis', 4.5],
     ['border-control', 'bg-surface', 3], ['ink-muted', 'ink-1', 4.5], ['ink-gold-solid', 'ink-1', 4.5], ['signature-ink', 'bg-canvas', 3],
     ['fg-default', 'bg-sidebar', 4.5], ['fg-muted', 'bg-sidebar', 4.5], ['fg-subtle', 'bg-sidebar', 4.5], ['fg-accent', 'accent-bg-subtle', 4.5],
-    ['success-text', 'success-bg', 4.5], ['warning-text', 'warning-bg', 4.5], ['danger-text', 'danger-bg', 4.5], ['info-text', 'info-bg', 4.5]];
+    ['success-text', 'success-bg', 4.5], ['warning-text', 'warning-bg', 4.5], ['danger-text', 'danger-bg', 4.5], ['info-text', 'info-bg', 4.5],
+    // the answer screen (ADR-0024): marked excerpt words, the tinted citing sentence, the excerpt text, quiet actions
+    ['fg-default', 'accent-bg-hover', 4.5], ['fg-default', 'accent-bg-subtle', 4.5], ['fg-muted', 'bg-subtle', 4.5], ['fg-subtle', 'bg-subtle', 4.5],
+    ['fg-subtle', 'bg-canvas', 4.5], ['fg-accent', 'bg-surface', 4.5], ['fg-accent-strong', 'accent-bg-subtle', 4.5]];
   for (const [name, tokens] of [['light', light], ['dark', dark]]) {
     for (const [fg, bg, min] of pairs) {
       const value = ratio(resolve(tokens, `var(--${fg})`), resolve(tokens, `var(--${bg})`));
@@ -660,4 +670,310 @@ test('branding: loaded before the first screen, read at render time, served read
   const ignored = readFileSync('.gitignore', 'utf8');
   assert.match(ignored, /^\/deploy\/branding\/\*$/m);
   assert.match(ignored, /^!\/deploy\/branding\/branding\.example\.json$/m);
+});
+
+// ---------- the answer screen (ADR-0024) ----------
+// The excerpt highlight uses the server's matching rules (qa-core ExcerptSelector, SentenceSplitter; ADR-0020). The
+// expected values below are what the Java code returns for the same input (compared once against it; see the evidence).
+test('excerpt match: words fold the Turkish way the server does (İ/ı, marks, NFKC)', () => {
+  assert.equal(fold('İZİN'), 'izin');
+  assert.equal(fold('ızın'), 'izin');
+  assert.equal(fold('IŞIK'), 'isik');
+  assert.equal(fold('Çalışanlara'), 'calisanlara');
+  assert.equal(fold('Öğrenci Ücreti'), 'ogrenci ucreti');
+  assert.equal(fold('ﬁnans'), 'finans', 'NFKC first: the ligature is two letters');
+  assert.equal(fold('ＡＢＣ'), 'abc', 'full-width letters');
+  assert.equal(STEM, 5);
+  assert.equal(key('çalışanlara'), key('Çalışanın'));
+  assert.equal(key('İzinlerin'), key('izinleri'));
+  assert.notEqual(key('izin'), key('izni'), 'shorter words must be equal');
+  for (const stop of ['ve', 'x', 'belgeye', 'Göre', 'BU']) assert.equal(key(stop), null, stop);
+});
+
+test('excerpt match: numbers compare by their digits, in any script', () => {
+  assert.equal(key('25.000'), '#25000');
+  assert.equal(key('25000'), '#25000');
+  assert.equal(key('3.2'), key('3,2'));
+  assert.equal(key('١٢٣'), '#123', 'Arabic-Indic digits (Character.digit)');
+  assert.equal(key('𝟏𝟐'), '#12', 'mathematical bold digits');
+  assert.equal(key('𝟙𝟚'), '#12', 'double-struck digits: a later run of ten in the same block');
+  assert.deepEqual([...terms('Avans 25.000 TL\'dir ve bu')].sort(), ['#25000', 'avans', 'dir', 'tl']);
+});
+
+test('excerpt match: sentence boundaries follow the server (abbreviations, initials, ordinals, numbers, list lines)', () => {
+  const split = (text, lines = false) => sentences(text, lines).map((s) => text.slice(s.start, s.end));
+  assert.deepEqual(split('Yıllık izin on dört gündür. İzin bölünebilir. Çalışan önceden bildirir.'),
+    ['Yıllık izin on dört gündür.', 'İzin bölünebilir.', 'Çalışan önceden bildirir.']);
+  assert.deepEqual(split('Avans 25.000 TL\'dir. Prim oranı 3.2 puandır.'), ['Avans 25.000 TL\'dir.', 'Prim oranı 3.2 puandır.']);
+  assert.deepEqual(split('Kural değişti. 2. Dünya Savaşı sonrası 3. Madde yürürlüğe girdi.'),
+    ['Kural değişti.', '2. Dünya Savaşı sonrası 3. Madde yürürlüğe girdi.']);
+  assert.deepEqual(split('Dr. Ayşe Kaya onayladı. Bkz. Madde 4 ve Prof. Demir\'in notu. Örn. İzin formu.'),
+    ['Dr. Ayşe Kaya onayladı.', 'Bkz. Madde 4 ve Prof. Demir\'in notu.', 'Örn. İzin formu.']);
+  assert.deepEqual(split('Verso A.Ş. Genel Müdürü M. Kaya imzaladı. T.C. Kimlik No. 12 ile başvurulur.'),
+    ['Verso A.Ş. Genel Müdürü M. Kaya imzaladı.', 'T.C. Kimlik No. 12 ile başvurulur.']);
+  assert.deepEqual(split('Ne dedi? "Evet!" Sonra gitti… Bekledi... Bitti'), ['Ne dedi?', '"Evet!"', 'Sonra gitti…', 'Bekledi...', 'Bitti']);
+  assert.deepEqual(split('- Yıllık izin 14 gündür [1]\n- Avans 25.000 TL\'dir [2]', true), ['- Yıllık izin 14 gündür [1]', '- Avans 25.000 TL\'dir [2]']);
+  assert.equal(sentences(' \n\t ').length, 0);
+});
+
+test('excerpt match: a marker belongs to its sentence, or to the one before when it opens a sentence', () => {
+  const answer = 'Yıllık izin on dört gündür [1]. Avans 25.000 TL\'dir [2]. Ek ödeme yoktur. [2] Ayrıca izin bölünebilir [1].';
+  assert.deepEqual(citingSpans(answer, 1).map((s) => answer.slice(s.start, s.end)),
+    ['Yıllık izin on dört gündür [1].', '[2] Ayrıca izin bölünebilir [1].']);
+  assert.deepEqual(citingSpans(answer, 2).map((s) => answer.slice(s.start, s.end)), ['Avans 25.000 TL\'dir [2].', 'Ek ödeme yoktur.']);
+  assert.doesNotMatch(citingText(answer, 1), /\[\d\]/, 'markers are not evidence');
+  assert.equal(citingText(answer, 9), '', 'a number the answer does not carry');
+  assert.deepEqual(citingSpans('[1] Baştaki işaret.', 1).map((s) => [s.start, s.end]), [[0, 19]], 'a marker at the very start');
+  assert.deepEqual(citingSpans('A [10]. B [1].', 1).map((s) => [s.start, s.end]), [[8, 14]], '[10] is not [1]');
+  assert.equal(citingText('[1][2]', 1).trim(), '', 'markers only: no evidence');
+  assert.equal(citingText('', 1), '');
+});
+
+test('excerpt match: every word of the excerpt that shares a key with the citing sentence is marked', () => {
+  const excerpt = 'Çalışanlara yılda on dört iş günü ücretli YILLIK İZİN verilir; izni bölmek mümkündür.';
+  const marked = (evidence) => matchRanges(excerpt, evidence).map((r) => excerpt.slice(r.start, r.end));
+  // "günü" (four letters, exact) and "günüdür" (stem "gunud") are different keys, as on the server.
+  assert.deepEqual(marked('Yıllık izin on dört iş günüdür.'), ['on', 'dört', 'iş', 'YILLIK', 'İZİN']);
+  assert.deepEqual(marked('iş günü'), ['iş', 'günü']);
+  assert.deepEqual(marked('Yillik izin'), ['YILLIK', 'İZİN'], 'an answer typed without Turkish letters');
+  assert.deepEqual(marked('çalışanın hakkı'), ['Çalışanlara'], 'the five-letter stem');
+  assert.deepEqual(marked('ve bu da'), [], 'stop words are no evidence');
+  assert.deepEqual(marked(''), []);
+  assert.equal(matchRanges('Avans tutarı en çok 25000 TL\'dir.', 'Avans 25.000 TL.').length, 3);
+});
+
+test('excerpt: the server\'s leading and trailing "…" are cut marks, three dots of the document are text', () => {
+  assert.deepEqual(excerptParts('…başı kesik, sonu da…'), { text: 'başı kesik, sonu da', before: true, after: true });
+  assert.deepEqual(excerptParts('Tam cümle.'), { text: 'Tam cümle.', before: false, after: false });
+  assert.deepEqual(excerptParts('Bekledi...'), { text: 'Bekledi...', before: false, after: false });
+  assert.deepEqual(excerptParts(undefined), { text: '', before: false, after: false });
+});
+
+const CITED = Object.freeze({
+  answer: 'Stok toplama bitince düşer [1]. Rezerve kalemler ayrılamaz [1][2]. Bkz. [7].',
+  found: true, outcome: 'ANSWERED', mode: 'local', model: 'gemma4:e2b',
+  citations: [
+    { number: 1, documentId: 'a', fileName: 'depo-kilavuzu.pdf', page: 3, unit: 'PAGE', excerpt: 'Stok, koli kapatıldığında düşer.' },
+    { number: 2, documentId: 'b', fileName: 'notlar‮.docx', page: 2, unit: 'SECTION', excerpt: '…rezerve\ngörünür…' },
+  ],
+});
+
+test('markdown: markers become footnotes with the source and the excerpt; unknown markers stay text', () => {
+  assert.equal(answerMarkdown(CITED), [
+    'Stok toplama bitince düşer[^1]. Rezerve kalemler ayrılamaz[^1][^2]. Bkz. \\[7\\].',
+    '',
+    '[^1]: depo-kilavuzu.pdf, sayfa 3 — “Stok, koli kapatıldığında düşer.”',
+    '[^2]: notlar.docx, bölüm 2 — “…rezerve görünür…”',
+    '',
+  ].join('\n'));
+  assert.equal(answerMarkdown({ answer: 'Belgelerde yok.', citations: [] }), 'Belgelerde yok.\n');
+  const file = answerMarkdown(CITED, { question: 'Stok ne zaman\ndüşer?', productName: 'Verso', mode: 'local', model: 'gemma4:e2b', at: '2026-10-24T09:00:00Z' });
+  assert.ok(file.startsWith('# Stok ne zaman düşer?\n\nStok toplama'), 'the question is one heading line');
+  assert.ok(file.endsWith('---\nVerso · Yerel · gemma4:e2b · 2026-10-24\n'));
+  const noExcerpt = answerMarkdown({ answer: 'A [1].', citations: [{ number: 1, fileName: 'a.pdf', page: 1 }] });
+  assert.match(noExcerpt, /^\[\^1\]: a\.pdf, sayfa 1$/m, 'an older answer without excerpt still lists the source');
+});
+
+test('markdown: links, images, HTML, fake footnotes and bidi controls from the answer, an excerpt or a file name stay inert', () => {
+  const planted = {
+    answer: 'Bkz. ![x](https://dis.example/?d=1) <img src=x onerror=alert(1)> `kod` [tıkla](javascript:alert(1)) [1]\n[^1]: sahte‮',
+    citations: [{ number: 1, fileName: 'a](http://evil).pdf', page: 1, unit: 'PAGE', excerpt: '<script>x</script> ![](https://h/?q=1)' }],
+  };
+  const md = answerMarkdown(planted, { question: '<b>soru</b> [a](b)' });
+  assert.doesNotMatch(md.replace(/\\[\\`[\]<>]/g, ''), /[<>`]|!\[|\]\(/, md);
+  assert.equal(md.match(/^\[\^1\]:/gm).length, 1, 'one footnote definition: the planted one is escaped');
+  assert.doesNotMatch(md, /‮/);
+  assert.equal(escapeMarkdown('a\\b'), 'a\\\\b', 'a backslash cannot undo an escape');
+  assert.equal(escapeMarkdown('100.000 TL (KDV hariç) *önemli*'), '100.000 TL (KDV hariç) *önemli*', 'ordinary text stays readable');
+});
+
+test('answer segments: every text part knows its offset, around known and unknown markers', () => {
+  const answer = '[1]Baş [2] orta [7] ve [10] son [1]';
+  const citations = [{ number: 1 }, { number: 2 }, { number: 10 }];
+  const segments = answerSegments(answer, citations);
+  for (const part of segments.filter((p) => !p.citation)) assert.equal(answer.slice(part.start, part.start + part.text.length), part.text);
+  assert.deepEqual(segments.filter((p) => !p.citation).map((p) => [p.text, p.start]), [['Baş ', 3], [' orta [7] ve ', 10], [' son ', 27]]);
+  assert.equal(segments.filter((p) => p.citation).length, 4);
+});
+
+test('excerpt match: the stop words and abbreviations are the server\'s own lists', () => {
+  const javaSet = (file, name) => {
+    const source = readFileSync(`services/qa/qa-core/src/main/java/com/verso/qa/service/${file}`, 'utf8');
+    const start = source.indexOf(`${name} = Set.of(`);
+    assert.ok(start > 0, `${file}: ${name}`);
+    return new Set([...source.slice(start, source.indexOf(');', start)).matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+  };
+  assert.deepEqual(new Set(STOP_WORDS), javaSet('ExcerptSelector.java', 'STOP_WORDS'));
+  assert.deepEqual(new Set(ABBREVIATIONS), javaSet('SentenceSplitter.java', 'ABBREVIATIONS'));
+  const selector = readFileSync('services/qa/qa-core/src/main/java/com/verso/qa/service/ExcerptSelector.java', 'utf8');
+  assert.match(selector, /static final int STEM = 5;/, 'the stem length the panel uses');
+});
+
+/** Minimal DOM stand-ins for highlight.js: text nodes, elements with replaceChildren, Range and the highlight registry. */
+function fakeDom({ highlights }) {
+  const text = (data) => ({ nodeType: 3, data, isConnected: true });
+  globalThis.document = { createTextNode: text, createElement: (tag) => ({ tag, className: '', textContent: '' }) };
+  if (highlights) {
+    globalThis.CSS = { highlights: new Map() };
+    globalThis.Highlight = class extends Set {};
+    globalThis.Range = class {
+      setStart(node, offset) { this.startContainer = node; this.start = offset; }
+      setEnd(node, offset) { this.end = offset; }
+    };
+  } else {
+    delete globalThis.CSS;
+    delete globalThis.Highlight;
+  }
+  return { text, node: () => ({ children: [], replaceChildren(...c) { this.children = c; } }) };
+}
+
+test('highlight: matches become CSS highlight ranges over one text node, or <mark> elements without the API', () => {
+  try {
+    let dom = fakeDom({ highlights: true });
+    let box = dom.node();
+    writeMarked(box, 'izin on dört gün', [{ start: 0, end: 4 }, { start: 8, end: 12 }]);
+    assert.equal(box.children.length, 1, 'one text node: the text is untouched');
+    assert.deepEqual([...CSS.highlights.get(MATCH)].map((r) => [r.start, r.end]), [[0, 4], [8, 12]]);
+    // The citing sentence over two drawn segments is clipped to each; an empty list clears the tint.
+    const a = dom.text('Yıllık izin ');
+    const b = dom.text('on dört gündür.');
+    tintSentences([{ node: a, start: 0 }, { node: b, start: 12 }], [{ start: 7, end: 20 }]);
+    assert.deepEqual([...CSS.highlights.get(CITED_HIGHLIGHT)].map((r) => [r.startContainer.data, r.start, r.end]),
+      [['Yıllık izin ', 7, 12], ['on dört gündür.', 0, 8]]);
+    tintSentences([{ node: a, start: 0 }], []);
+    assert.equal(CSS.highlights.get(CITED_HIGHLIGHT).size, 0);
+    a.isConnected = false;
+    tintSentences([{ node: a, start: 0 }], [{ start: 0, end: 3 }]);
+    box.children[0].isConnected = false;
+    prune();
+    assert.equal(CSS.highlights.get(MATCH).size + CSS.highlights.get(CITED_HIGHLIGHT).size, 0, 'ranges of removed text are dropped');
+
+    dom = fakeDom({ highlights: false });
+    box = dom.node();
+    writeMarked(box, 'izin on dört gün', [{ start: 0, end: 4 }, { start: 8, end: 12 }]);
+    assert.deepEqual(box.children.map((c) => (c.tag ? `<${c.textContent}>` : c.data)), ['<izin>', ' on ', '<dört>', ' gün']);
+    assert.ok(box.children.filter((c) => c.tag).every((c) => c.tag === 'mark' && c.className === 'match'));
+    box = dom.node();
+    writeMarked(box, 'düz metin', []);
+    assert.deepEqual(box.children.map((c) => c.data), ['düz metin']);
+    tintSentences([], [{ start: 0, end: 1 }]); // no API: nothing to do, nothing thrown
+  } finally {
+    delete globalThis.document;
+    delete globalThis.CSS;
+    delete globalThis.Highlight;
+    delete globalThis.Range;
+  }
+});
+
+test('markdown: the download name is plain ASCII from the question, never empty', () => {
+  assert.equal(markdownFileName('Satın alma onay matrisi nasıl işliyor?'), 'soru-satin-alma-onay-matrisi-nasil-isliyor.md');
+  assert.equal(markdownFileName('İZİN ŞARTLARI'), 'soru-izin-sartlari.md');
+  assert.equal(markdownFileName('../../etc/passwd'), 'soru-etc-passwd.md');
+  assert.equal(markdownFileName('???'), 'cevap.md');
+  assert.ok(markdownFileName('a'.repeat(300)).length <= 'soru-.md'.length + 48);
+});
+
+test('chips: the wide-screen marker says the document and the page or section, cut to a short name', () => {
+  assert.equal(chipLabel({ fileName: 'izin-yonetmeligi.pdf', page: 3, unit: 'PAGE' }), 'izin-yonetmeligi · s. 3');
+  assert.equal(chipLabel({ fileName: 'notlar.docx', page: 2, unit: 'SECTION' }), 'notlar · böl. 2');
+  assert.equal(chipLabel({ fileName: 'eski.pdf', page: 1 }), 'eski · s. 1', 'no unit is a page');
+  const long = chipLabel({ fileName: 'erp-satin-alma-kilavuzu-2026-revizyon.pdf', page: 4, unit: 'PAGE' });
+  assert.ok(long.endsWith('… · s. 4') && [...long.split(' · ')[0]].length <= CHIP_NAME_MAX, long);
+  assert.equal(chipLabel({ fileName: 'fatura‮fdp.exe', page: 1 }), 'faturafdp · s. 1', 'no bidi override reaches the chip');
+  assert.equal(chipLabel({ fileName: '.pdf', page: 1 }), '.pdf · s. 1');
+  assert.equal(clip('kısa', 10), 'kısa');
+});
+
+test('follow-ups: three skeptical questions after an answer, none after "not found"; each fits the API limit', () => {
+  assert.deepEqual(FOLLOW_UPS.map((f) => f.label), ['Bu hangi belgeye dayanıyor?', 'Aksi bir madde var mı?', 'Bunu daha kısa anlat']);
+  const cited = followUps(CITED);
+  assert.deepEqual(cited.map((f) => [f.id, f.local]), [['sources', true], ['contrary', false], ['shorter', false]],
+    'the sources of a cited answer are shown, not asked again');
+  const uncited = followUps({ ...CITED, outcome: 'UNCITED', found: false, citations: [] })[0];
+  assert.deepEqual([uncited.local, uncited.label], [false, 'Kaynaklı olarak yeniden sor'], 'no sources: a sourced answer is asked for');
+  assert.deepEqual(followUps({ answer: 'x', outcome: 'NOT_FOUND', found: false, citations: [] }), []);
+  assert.deepEqual(followUps({ answer: 'x', found: false, citations: [] }), [], 'an older answer without outcome');
+  assert.equal(cited[1].question('İzin kaç gün?'), '“İzin kaç gün?” konusunda istisna ya da sınırlama getiren bir madde var mı?');
+  for (const f of cited) {
+    const question = f.question(`${'ç'.repeat(999)}\n`);
+    assert.ok([...question].length <= MAX_QUESTION, `${f.id}: ${[...question].length}`);
+    assert.ok(question.includes('…'), `${f.id}: the long question is cut, not the template`);
+  }
+  // At the limit exactly: a question that just fits is not cut, one more character is.
+  const template = FOLLOW_UPS[2].template;
+  const room = MAX_QUESTION - [...template('')].length;
+  assert.equal([...fitQuestion(template, 'a'.repeat(room))].length, MAX_QUESTION);
+  assert.doesNotMatch(fitQuestion(template, 'a'.repeat(room)), /…/);
+  assert.match(fitQuestion(template, 'a'.repeat(room + 1)), /…/);
+});
+
+test('selection: "Bunu sor" quotes the selection on one line, capped, without control characters', () => {
+  assert.equal(selectionQuestion('  yılda on dört\n iş günü '), '“yılda on dört iş günü” ');
+  assert.equal(selectionQuestion('“alıntı”‮'), '“"alıntı"” ');
+  assert.equal(selectionQuestion(' \n '), '');
+  const long = selectionQuestion('kelime '.repeat(100));
+  assert.ok([...long].length <= SELECTION_MAX + 3 && long.endsWith('…” '), long.length);
+});
+
+test('errors: each failure of the question API has an honest state and the right next step', () => {
+  const of = (status, code, retryAfter) => errorState(new ApiError(status, code, retryAfter));
+  assert.deepEqual(of(503, 11001, 5), { kind: 'down', title: 'Dil modeli yanıt vermiyor', text: MESSAGES[11001], retry: true, retryAfter: 5 });
+  assert.equal(of(503, 10030, 10).title, 'Arama modeli yanıt vermiyor');
+  assert.equal(of(503, 99997, 5).kind, 'down');
+  assert.equal(of(502).kind, 'down', 'the edge proxy without the application');
+  assert.deepEqual([of(503, 11002, 3).kind, of(503, 11002, 3).retryAfter], ['busy', 3]);
+  assert.equal(of(429, 90102).kind, 'busy');
+  assert.deepEqual([of(409, 10031).kind, of(409, 10031).retry], ['reindex', false]);
+  assert.deepEqual([of(400, 90000).kind, of(400, 90000).retry], ['invalid', false]);
+  assert.equal(of(401, 90100).kind, 'auth');
+  assert.deepEqual([of(413, 11010).kind, of(411, 11011).kind], ['invalid', 'invalid']);
+  assert.deepEqual([of(503, 90103).kind, of(502, 99998).kind], ['down', 'down']);
+  assert.deepEqual([of(404, 12345).kind, of(404, 12345).title, of(404, 12345).retry], ['other', 'Cevap alınamadı', true]);
+  assert.match(of(409, 10031).text, /yöneticinize bildirin\. Bu sırada soru sorulamaz\.$/);
+  assert.deepEqual(errorState(new TypeError('Failed to fetch')), { kind: 'offline', title: 'Sunucuya ulaşılamadı',
+    text: 'Bağlantınızı kontrol edip tekrar deneyin. Sorunuz gönderilmemiş olabilir.', retry: true });
+  assert.doesNotMatch(of(503, 11001, 5).text, /sn sonra/, 'the retry button counts the wait down; the text does not repeat it');
+});
+
+test('answer screen: product name from the branding, highlights and motion rules, no new CSP directive', () => {
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.doesNotMatch(ask, /['`"][^'`"\n]*\bVerso\b[^'`"\n]*['`"]/, 'no "Verso" in a screen text (ADR-0021)');
+  assert.match(ask, /\$\{productName\} cevap verdi/);
+  assert.match(ask, /\$\{productName\} hata yapabilir/);
+  assert.equal(FLASH_MS, 600);
+  assert.match(readFileSync('panel/js/motion.js', 'utf8'), /duration: 600,/, 'the pulse lasts as long as the flash');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /::highlight\(verso-match\) \{ background-color: var\(--accent-bg-hover\); color: var\(--fg-default\); \}/);
+  assert.match(css, /::highlight\(verso-cited\) \{ background-color: var\(--accent-bg-subtle\); color: var\(--fg-default\); \}/);
+  assert.match(css, /\.quote mark\.match \{ background: var\(--accent-bg-hover\); color: var\(--fg-default\);/, 'the fallback looks the same');
+  const wide = css.slice(css.indexOf('@media (min-width: 1200px)'));
+  assert.match(wide, /position: sticky;/, 'the source column sticks');
+  assert.match(wide, /\.cite \.cite-n \{ display: none; \}/, 'the chip replaces the number');
+  const touch = css.slice(css.indexOf('@media (pointer: coarse)'));
+  assert.match(touch, /min-height: 44px;/);
+  assert.match(touch, /width: 44px; height: 44px;/);
+  assert.match(css, /:root\.keyboard-open \.composer \{ bottom: calc\(var\(--kb, 0px\) \+ 8px\); \}/);
+  assert.match(css, /\.cite\.dismissed \.cite-pop \{ display: none !important; \}/, 'Esc hides the preview (WCAG 1.4.13)');
+  const highlight = readFileSync('panel/js/highlight.js', 'utf8');
+  assert.match(highlight, /CSS\.highlights/);
+  assert.match(highlight, /document\.createElement\('mark'\)/, 'the fallback builds elements, not HTML');
+  // The .md download is a Blob URL on an <a download> in this document: no fetch, no frame, no new CSP source.
+  assert.match(ask, /URL\.createObjectURL\(new Blob\(\[text\], \{ type: 'text\/markdown;charset=utf-8' \}\)\)/);
+  assert.match(ask, /URL\.revokeObjectURL/);
+  const nginx = readFileSync('deploy/edge/nginx.conf', 'utf8');
+  assert.ok(nginx.includes('add_header Content-Security-Policy "default-src \'none\'; script-src \'self\'; style-src \'self\'; img-src \'self\' data:; '
+    + 'font-src \'self\'; connect-src \'self\' http://localhost:8180; form-action \'none\'; frame-ancestors \'none\'; base-uri \'none\'; '
+    + 'require-trusted-types-for \'script\'; trusted-types \'none\'" always;'), 'the panel CSP is unchanged');
+  assert.doesNotMatch(nginx, /blob:/);
+});
+
+test('answer screen: keyboard and focus (turn keys, Esc, focus back to the box after "Durdur")', () => {
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /el\('article', \{ class: 'turn', tabindex: -1, 'aria-labelledby': id \}/, 'turns focusable, not tab stops');
+  assert.match(ask, /event\.altKey && vertical/);
+  assert.match(ask, /event\.key === 'PageUp' \|\| event\.key === 'PageDown'/);
+  assert.match(ask, /busy\.abort\(\);\n\s+field\.focus\(\);/);
+  assert.match(ask, /event\.key === 'Escape'/);
+  assert.match(ask, /visualViewport/);
+  assert.match(ask, /'aria-label': `Kaynak \$\{citation\.number\}: \$\{name\}, \$\{where\}`/, 'the chip keeps the full accessible name');
 });
