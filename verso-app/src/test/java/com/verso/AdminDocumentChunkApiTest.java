@@ -176,7 +176,7 @@ class AdminDocumentChunkApiTest {
 
     @Test
     void chunks_whenPaged_returnsTheAskedSliceAndRejectsOutOfRangeParameters() throws Exception {
-        UUID id = ready(adminSub, "rapor.pdf", DocumentFormat.PDF, TestPdfs.pages("Bir.", "İki.", "Üç."));
+        UUID id = ready(adminSub, "rapor.pdf", DocumentFormat.PDF, TestPdfs.pages("Bir.", "Iki.", "Üç."));
         int total = JsonPath.read(get(admin, id, "").body(), "$.page.totalElements");
 
         HttpResponse<String> second = get(admin, id, "?page=1&size=1");
