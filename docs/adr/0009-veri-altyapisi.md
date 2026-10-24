@@ -174,3 +174,7 @@ Altı review'ın bulgularıyla değişen kararlar. Bulgu ve kanıt eşlemesi `do
 - Prova süresinin RTO'ya (1 saat) yaklaşması.
 - İkinci bir modül şeması (her şemanın kendi Flyway yapılandırması gerekir).
 - Image build süresinin CI'da 10 dakikayı geçmesi: Jib yeniden değerlendirilir.
+
+## Ek (2026-10-24): `document` modülünün açık havuzu (ADR-0039)
+
+"Tüm uygulama tek bir DataSource ile `svc_document` olarak bağlanır" artık örtük değil: `document-core` havuzunu (`verso-document-db`, `verso.document.datasource.*`) ve Flyway'ini (`verso.document.flyway.*`) `qa` ve `audit` gibi kendisi kurar; Boot'un `DataSourceAutoConfiguration` ve `FlywayAutoConfiguration`'ı `application.yml`'de dışlanır. Uygulamanın tek `DataSource` bean'i bu havuzdur (Spring JDBC desteği ve `db` sağlık katkısı için). `spring.flyway.enabled` tüm modül migration'larının ortak anahtarı olarak kalır. Ayrıntı: [ADR-0039](0039-denetim-outbox-ve-modul-havuzlari.md).

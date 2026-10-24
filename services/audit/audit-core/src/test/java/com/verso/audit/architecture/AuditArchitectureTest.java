@@ -78,11 +78,17 @@ class AuditArchitectureTest {
                 .check(classes);
     }
 
-    /** Append-only in code as well as in the grants: the only removal is the retention function. */
+    /**
+     * Append-only in code as well as in the grants: the only removal is the retention function. The one ON CONFLICT
+     * allowed is the relay's duplicate guard, "ON CONFLICT (event_id) DO NOTHING" (ADR-0039): it never changes a row.
+     */
     @Test
     void sources_whenScanned_holdNoStatementThatChangesOrRemovesAnAuditRow() throws IOException {
         Pattern change = Pattern.compile("(?i)\\b(update\\s+audit\\.|delete\\s+from\\s+audit\\.|truncate\\s+(table\\s+)?audit\\.|"
-                + "drop\\s+table|alter\\s+table|merge\\s+into|on\\s+conflict)");
+                + "drop\\s+table|alter\\s+table|merge\\s+into|on\\s+conflict(?!\\s*\\(event_id\\)\\s+do\\s+nothing\\b))");
+        assertThat(change.matcher("ON CONFLICT (event_id) DO NOTHING").find()).isFalse();
+        assertThat(change.matcher("ON CONFLICT (event_id) DO UPDATE SET actor_sub = 'x'").find()).isTrue();
+        assertThat(change.matcher("on conflict do nothing").find()).as("no target: any constraint").isTrue();
         List<Path> sources;
         try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
             sources = files.filter(p -> p.toString().endsWith(".java")).toList();

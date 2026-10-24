@@ -50,6 +50,10 @@ public @interface VersoTestEnvironment {
                     "verso.qa.history.purge-enabled=false",
                     // ... and the audit retention (AuditRetentionTest).
                     "verso.audit.purge-enabled=false",
+                    // ... and the outbox poll (AuditOutboxTest, ADR-0039): several cached contexts share one database,
+                    // and a background relay of one would deliver another test's rows. The eager delivery after each
+                    // commit stays on, so audit rows exist when a response arrives, as in production.
+                    "verso.outbox.enabled=false",
                     // Short circuit-breaker pauses, so tests can wait them out.
                     "verso.document.ingestion.model-unavailable-pause=1s",
                     "verso.document.ingestion.model-misconfigured-pause=1s",

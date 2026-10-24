@@ -20,6 +20,8 @@ docker compose --profile obs up -d --wait
 | `QaSlow` | ticket | [qa-slow.md](qa-slow.md) |
 | `HistoryNotStored` | ticket | [history-not-stored.md](history-not-stored.md) |
 | `AuditEventNotStored` | page | [audit-write-failed.md](audit-write-failed.md) |
+| `OutboxOldestPendingTooOld` (ADR-0039) | page | [outbox-stuck.md](outbox-stuck.md) |
+| `OutboxDeadRows` (ADR-0039) | page | [outbox-stuck.md](outbox-stuck.md) |
 
 - **page:** kullanıcıyı etkiler, hemen bakılır.
 - **ticket:** bir sonraki iş günü bakılır.

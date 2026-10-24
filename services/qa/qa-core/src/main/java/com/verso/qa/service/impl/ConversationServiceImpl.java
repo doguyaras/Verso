@@ -32,6 +32,7 @@ import com.verso.qa.repository.UsageRepository;
 import com.verso.qa.service.ConversationHistory;
 import com.verso.qa.service.ConversationService;
 import com.verso.qa.service.LatencyBuckets;
+import com.verso.qa.service.QaAudit;
 import com.verso.qa.service.QaMetrics;
 import com.verso.qa.service.QuestionNormalizer;
 import java.time.Clock;
@@ -80,12 +81,14 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
     private final QaMetrics metrics;
     private final Clock clock;
     private final CallerGroups groups;
+    private final QaAudit audit;
 
     public ConversationServiceImpl(QaDatabase db, ConversationRepository conversations, TurnRepository turns,
                                    UsageRepository usage, DocumentCatalog catalog, QaHistoryProperties properties,
                                    UsageMetricsProperties metricsProperties, QaMetrics metrics, Clock clock,
-                                   CallerGroups groups) {
+                                   CallerGroups groups, QaAudit audit) {
         this.groups = groups;
+        this.audit = audit;
         this.db = db;
         this.conversations = conversations;
         this.turns = turns;
@@ -162,6 +165,8 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         Map<UUID, Long> perDocument = answer.citations().stream()
                 .collect(Collectors.groupingBy(Citation::documentId, LinkedHashMap::new, Collectors.counting()));
         perDocument.forEach((document, count) -> usage.addCitation(day, document, count.intValue()));
+        // The audit record commits with the turn (ADR-0039).
+        audit.questionStoredInTransaction(conversationId, turnId, answer);
         return new StoredTurn(conversationId, turnId);
     }
 
@@ -214,7 +219,11 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
 
     @Override
     public void delete(AccountId account, UUID conversationId) {
-        Boolean deleted = db.inTransaction(status -> conversations.delete(account.value(), conversationId));
+        Boolean deleted = db.inTransaction(status -> {
+            boolean gone = conversations.delete(account.value(), conversationId);
+            if (gone) audit.conversationDeletedInTransaction(conversationId);
+            return gone;
+        });
         if (!Boolean.TRUE.equals(deleted)) {
             throw new QaServiceException(QaErrorCode.CONVERSATION_NOT_FOUND, "CONVERSATION_NOT_FOUND");
         }
@@ -229,7 +238,11 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
             total += deleted;
             if (deleted < DELETE_BATCH) break;
         }
-        db.inTransaction(status -> usage.forgetAccount(account.value()));
+        db.inTransaction(status -> {
+            usage.forgetAccount(account.value());
+            audit.allConversationsDeletedInTransaction();
+            return null;
+        });
         log.info("Conversations deleted: count={} operation=delete_all outcome=deleted", total);
         return total;
     }

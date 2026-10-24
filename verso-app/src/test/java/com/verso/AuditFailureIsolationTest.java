@@ -39,14 +39,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Failure isolation (ADR-0026): when the audit database is down, the audited requests still succeed, the lost rows are
- * counted (verso.audit.events.not.stored, which the alert AuditEventNotStored watches) and logged with the exception
- * type only; once the database is back, rows are written again. A real outage of the svc_audit login, not a mock: its
- * sessions are terminated and new logins refused.
+ * Failure isolation (ADR-0026, ADR-0039): when the audit database is down, the audited requests still succeed and
+ * nothing is lost: each record waits in its module's outbox (the age gauge shows it), the relay logs exception types
+ * only, and once the database is back every record is delivered exactly once. A real outage of the svc_audit login,
+ * not a mock: its sessions are terminated and new logins refused.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"management.server.port=0", "verso.audit.datasource.connection-timeout=1s",
-                "verso.audit.breaker-open=2s"})
+                "verso.audit.breaker-open=2s", "verso.outbox.backoff=1s", "verso.outbox.max-backoff=2s"})
 @VersoTestEnvironment
 class AuditFailureIsolationTest {
 
@@ -68,6 +68,12 @@ class AuditFailureIsolationTest {
     @Autowired
     MeterRegistry meters;
 
+    @Autowired
+    com.verso.document.outbox.DocumentOutbox documentOutbox;
+
+    @Autowired
+    com.verso.qa.outbox.QaOutbox qaOutbox;
+
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final String account = "acct-audit-down-" + UUID.randomUUID();
     private final String admin = "Bearer " + TestIdp.IDP.token().subject("acct-audit-down-admin").realmRoles("verso-admin").build();
@@ -79,6 +85,8 @@ class AuditFailureIsolationTest {
         jdbc.update("DELETE FROM document.document");
         QaTables.reset();
         AuditTables.reset();
+        AuditTables.update("DELETE FROM document.outbox_event");
+        AuditTables.update("DELETE FROM qa.outbox_event");
         TestEmbeddingModel.INSTANCE.reset();
         TestChatModel.INSTANCE.reset();
         circuit.reset();
@@ -97,7 +105,7 @@ class AuditFailureIsolationTest {
     }
 
     @Test
-    void requests_whenTheAuditDatabaseIsDown_stillSucceedAndTheLossIsCountedAndLoggedByTypeOnly() throws Exception {
+    void requests_whenTheAuditDatabaseIsDown_stillSucceedAndTheRowsWaitInTheOutboxUntilItIsBack() throws Exception {
         DocumentRow row = documents.insert(account, "izin.pdf", DocumentFormat.PDF, 10, null, Instant.now());
         documents.insertFile(row.id(), TestPdfs.pages("topic-leave Annual leave is twenty working days."));
         worker.runOnce();
@@ -122,30 +130,39 @@ class AuditFailureIsolationTest {
         assertThat((String) JsonPath.read(answer.body(), "$.outcome")).isEqualTo("ANSWERED");
         assertThat(deleted.statusCode()).as("delete").isEqualTo(204);
         assertThat(metrics.statusCode()).as("admin metrics").isEqualTo(200);
-        // One 1 s connection wait, then the breaker skips the database: an outage does not cost a wait per request.
+        // One 1 s connection wait in the first eager delivery, then the eager pause: an outage does not cost a wait
+        // per request.
         assertThat(elapsed).isLessThan(Duration.ofSeconds(15));
 
-        assertThat(notStored("failed") - failedBefore).as("the first write failed").isGreaterThanOrEqualTo(1);
-        assertThat(notStored("failed") + notStored("circuit_open") - failedBefore - openBefore)
-                .as("every audited operation is counted as lost").isEqualTo(4);
-        assertThat(appender.list).filteredOn(e -> e.getFormattedMessage().startsWith("Audit event not stored"))
+        // ADR-0039: nothing is lost any more. The four records wait in the modules' own outboxes.
+        assertThat(AuditTables.count("select count(*) from audit.event")).isZero();
+        assertThat(AuditTables.count("select count(*) from document.outbox_event")).as("upload, delete").isEqualTo(2);
+        assertThat(AuditTables.count("select count(*) from qa.outbox_event")).as("question, metrics").isEqualTo(2);
+        assertThat(notStored("failed") + notStored("circuit_open") - failedBefore - openBefore).as("no loss").isZero();
+        assertThat(appender.list).filteredOn(e -> e.getLoggerName().endsWith("OutboxRelay"))
                 .isNotEmpty().allSatisfy(e -> {
-                    assertThat(e.getLevel()).isEqualTo(Level.ERROR);
-                    assertThat(e.getFormattedMessage()).contains("code=AUDIT_WRITE_FAILED", "exceptionType=")
+                    assertThat(e.getFormattedMessage()).contains("exceptionType=")
                             .doesNotContain("svc_audit").doesNotContain("password").doesNotContain("FATAL")
-                            .doesNotContain("jdbc:");
+                            .doesNotContain("jdbc:").doesNotContain("izin");
                     assertThat(e.getThrowableProxy()).as("no stack trace, no exception message").isNull();
                 });
-        assertThat(AuditTables.count("select count(*) from audit.event")).isZero();
+        documentOutbox.relay().refreshGauges();
+        assertThat(meters.get("outbox.oldest.pending.age").tag("outbox", "document").gauge().value()).isPositive();
 
-        // Back: the pool reconnects on its own (Hikari retries in the background) and rows are written again.
+        // Back: the relays deliver every waiting record exactly once.
         AuditTables.update("ALTER ROLE svc_audit LOGIN");
         long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
-        while (AuditTables.rows(account, "DOCUMENT_UPLOADED") == 0 && System.nanoTime() < deadline) {
+        while (AuditTables.count("select count(*) from audit.event") < 4 && System.nanoTime() < deadline) {
             Thread.sleep(500);
-            assertThat(upload().statusCode()).isEqualTo(201);
+            documentOutbox.relay().runOnce();
+            qaOutbox.relay().runOnce();
         }
-        assertThat(AuditTables.rows(account, "DOCUMENT_UPLOADED")).as("recovers").isGreaterThanOrEqualTo(1);
+        assertThat(AuditTables.rows(account, "DOCUMENT_UPLOADED")).isOne();
+        assertThat(AuditTables.rows(account, "QUESTION_ASKED")).isOne();
+        assertThat(AuditTables.rows(account, "DOCUMENT_DELETED")).isOne();
+        assertThat(AuditTables.rows("acct-audit-down-admin", "ADMIN_METRICS_VIEWED")).isOne();
+        assertThat(AuditTables.count("select count(*) from document.outbox_event")).isZero();
+        assertThat(AuditTables.count("select count(*) from qa.outbox_event")).isZero();
     }
 
     private double notStored(String reason) {

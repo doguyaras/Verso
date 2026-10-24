@@ -2,37 +2,14 @@
 # environment placeholders declared in deploy/prod.env.example; secrets from /run/secrets. Keys mirrored in
 # application-local.yml are checked by ConfigDriftTest (which also scans comments, so no placeholder syntax here).
 
-# PostgreSQL 18 + pgvector (ADR-0002, ADR-0009). Two roles per module schema (reference 10.1): the application runs
-# as svc_document (DML only, no DDL); Flyway runs as svc_document_migrate, the owner of the "document" schema.
-# Passwords come from compose secrets through the config tree; no fallback, a missing secret stops the start.
+# PostgreSQL 18 + pgvector (ADR-0002, ADR-0009). Two roles per module schema (reference 10.1), one pool and one Flyway per
+# module (verso.document, verso.qa, verso.audit below; ADR-0039 for document). Boot's own DataSource and Flyway
+# auto-configuration is off (application.yml): the only DataSource bean is the document pool. spring.flyway.enabled stays
+# the one switch of every module migration: on here, off in the long-running application (compose SPRING_FLYWAY_ENABLED),
+# so only the one-shot migrate container migrates and holds the migration passwords.
 spring:
-  datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
-    username: svc_document
-    password: ${SECRET_DB_DOCUMENT_PASSWORD}
-    # A connection is taken at the first SQL statement, not when a transaction opens (Boot 4.1, reference 10.5).
-    connection-fetch: lazy
-    hikari:
-      pool-name: verso-db
-      # (cores x 2) + disks, small on purpose: fewer connections are faster (HikariCP pool sizing, reference 10.5).
-      maximum-pool-size: 10
-      # Middleboxes drop long idle connections; keepalive renews them before that (reference 10.5).
-      keepalive-time: 120000
-      connection-timeout: 5000
   flyway:
     enabled: true
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
-    user: svc_document_migrate
-    password: ${SECRET_DB_DOCUMENT_MIGRATE_PASSWORD}
-    # One folder per module schema: a second schema later gets its own Flyway configuration and folder.
-    locations: classpath:db/migration/document
-    schemas: document
-    default-schema: document
-    # The schema is infrastructure (deploy/postgres/initdb/20-database.sh), never created by a migration.
-    create-schemas: false
-    clean-disabled: true
-    # Off on purpose: it removes the check that stops migrations on a wrong, non-empty database (reference 10.2).
-    baseline-on-migrate: false
   # PDF uploads (ADR-0011). Held in memory: the container is read-only and has no disk for spooling. The request limit
   # leaves room for the multipart envelope; verso.document.max-file-size may not exceed max-file-size (checked).
   servlet:
@@ -275,8 +252,48 @@ verso:
     time-zone: Europe/Istanbul
     # After a failed write the audit database is not tried again for this long (an outage costs one wait, not one each).
     breaker-open: 10s
+  # The process role (ADR-0039): false runs this image API-only (uploads are queued, the ingestion worker, its
+  # extractors and the docling client are not created); a separate process with true drains the queue (ADR-0001's
+  # future verso-ingest split). Default true: one process does both. VERSO_INGESTION_ENABLED.
+  ingestion:
+    enabled: ${VERSO_INGESTION_ENABLED:true}
+  # The transactional outbox of the document and qa schemas (ADR-0039, reference 11.2): audit records commit with the
+  # business change and a relay on every instance copies them to the audit log. Starting values of reference 11.2.
+  outbox:
+    enabled: true
+    poll-interval: 1s
+    batch-size: 50
+    lease: 120s
+    lease-margin: 30s
+    backoff: 30s
+    max-backoff: 600s
+    # Only failures that will not pass (a payload the audit log refuses) give up; an outage is retried for ever.
+    max-attempts: 20
+    stuck-every: 10
+    # Failure retention: DEAD rows are deleted after this; the alert OutboxDeadRows fires on the first one.
+    dead-retention: 30d
+    purge-interval: 1h
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
+    # The document module's own pool (ADR-0039), as svc_document (DML only), and its own Flyway as
+    # svc_document_migrate (owner, DDL), like qa and audit. Passwords from /run/secrets (SECRET_DB_DOCUMENT_PASSWORD,
+    # SECRET_DB_DOCUMENT_MIGRATE_PASSWORD), no fallback.
+    datasource:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      username: svc_document
+      password: ${SECRET_DB_DOCUMENT_PASSWORD}
+      # (cores x 2) + disks, small on purpose: fewer connections are faster (HikariCP pool sizing, reference 10.5).
+      maximum-pool-size: 10
+      minimum-idle: 10
+      connection-timeout: 5s
+      # Middleboxes drop long idle connections; keepalive renews them before that (reference 10.5).
+      keepalive-time: 2m
+    flyway:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      user: svc_document_migrate
+      password: ${SECRET_DB_DOCUMENT_MIGRATE_PASSWORD}
+      locations: classpath:db/migration/document
+      schema: document
     max-file-size: 20MB
     max-pages: 500
     max-text-chars: 2000000

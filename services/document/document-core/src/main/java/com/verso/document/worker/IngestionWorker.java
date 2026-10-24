@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,6 +36,7 @@ import org.springframework.stereotype.Component;
 @Component
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class IngestionWorker implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(IngestionWorker.class);

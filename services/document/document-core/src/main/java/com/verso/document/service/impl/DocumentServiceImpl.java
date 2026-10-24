@@ -32,7 +32,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
+import com.verso.document.outbox.DocumentAuditOutbox;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -62,18 +62,18 @@ public class DocumentServiceImpl implements DocumentService {
     private final CollectionProperties collectionProperties;
     private final TransactionTemplate transaction;
     private final Clock clock;
-    private final ApplicationEventPublisher events;
+    private final DocumentAuditOutbox audit;
 
     public DocumentServiceImpl(DocumentRepository repository, CollectionRepository collections,
                                DocumentProperties properties, CollectionProperties collectionProperties,
-                               TransactionTemplate transaction, Clock clock, ApplicationEventPublisher events) {
+                               TransactionTemplate transaction, Clock clock, DocumentAuditOutbox audit) {
         this.repository = repository;
         this.collections = collections;
         this.properties = properties;
         this.collectionProperties = collectionProperties;
         this.transaction = transaction;
         this.clock = clock;
-        this.events = events;
+        this.audit = audit;
     }
 
     @Override
@@ -118,6 +118,8 @@ public class DocumentServiceImpl implements DocumentService {
                 DocumentRow row = repository.insert(account, collectionId, name, format, content.length, idempotencyKey,
                         clock.instant());
                 repository.insertFile(row.id(), content);
+                // Same transaction (ADR-0039): never for a replay, never lost after the commit.
+                audit.append(AuditEvent.success(AuditAction.DOCUMENT_UPLOADED, AuditTargetType.DOCUMENT, row.id()));
                 return row;
             });
         } catch (DuplicateKeyException e) {
@@ -129,8 +131,6 @@ public class DocumentServiceImpl implements DocumentService {
         }
         log.info("Document upload accepted: documentId={} format={} sizeBytes={} space={} operation=upload outcome=accepted",
                 created.id(), created.format(), created.sizeBytes(), created.personal() ? "personal" : "collection");
-        // After the commit, never for a replay; the audit module never makes the upload fail (ADR-0026).
-        events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_UPLOADED, AuditTargetType.DOCUMENT, created.id()));
         return DocumentMapper.toResponse(created);
     }
 
@@ -167,7 +167,9 @@ public class DocumentServiceImpl implements DocumentService {
         String account = caller.account().value();
         Boolean deleted = transaction.execute(status -> {
             repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
-            return repository.delete(account, documentId);
+            boolean gone = repository.delete(account, documentId);
+            if (gone) audit.append(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
+            return gone;
         });
         if (!Boolean.TRUE.equals(deleted)) {
             // Not a personal document of the caller: a collection document is verso-admin's to delete (ADR-0028).
@@ -179,12 +181,15 @@ public class DocumentServiceImpl implements DocumentService {
                 // A grant change in this collection waits: it would otherwise add a principal to a vanishing row.
                 if (!collections.lock(collectionId, LockMode.SHARE)) return false;
                 repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
-                return repository.deleteFromCollection(collectionId, documentId);
+                boolean gone = repository.deleteFromCollection(collectionId, documentId);
+                if (gone) {
+                    audit.append(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
+                }
+                return gone;
             });
             if (!Boolean.TRUE.equals(removed)) throw rejected(DocumentErrorCode.DOCUMENT_NOT_FOUND);
         }
         log.info("Document deleted: documentId={} operation=delete outcome=deleted", documentId);
-        events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
     }
 
     @Override
@@ -219,12 +224,12 @@ public class DocumentServiceImpl implements DocumentService {
                 throw new ServiceException(CommonErrorCode.REQUEST_CONFLICT, "DOCUMENT_MOVED_CONCURRENTLY");
             }
             repository.move(documentId, collectionId, clock.instant());
+            audit.append(AuditEvent.success(AuditAction.DOCUMENT_MOVED, AuditTargetType.DOCUMENT, documentId)
+                    .withDetail(collectionId == null ? "TO_PERSONAL" : "TO_COLLECTION"));
             return repository.find(locked.accountId(), documentId).orElseThrow();
         });
         log.info("Document moved: documentId={} to={} operation=move outcome=moved", documentId,
                 collectionId == null ? "personal" : "collection");
-        events.publishEvent(AuditEvent.success(AuditAction.DOCUMENT_MOVED, AuditTargetType.DOCUMENT, documentId)
-                .withDetail(collectionId == null ? "TO_PERSONAL" : "TO_COLLECTION"));
         return DocumentMapper.toResponse(moved);
     }
 

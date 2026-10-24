@@ -14,6 +14,7 @@ import com.verso.qa.repository.TurnRepository;
 import com.verso.qa.repository.TurnRepository.OwnedTurn;
 import com.verso.qa.repository.UsageRepository;
 import com.verso.qa.service.FeedbackService;
+import com.verso.qa.service.QaAudit;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,9 +40,11 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final FeedbackRepository feedback;
     private final UsageRepository usage;
     private final Clock clock;
+    private final QaAudit audit;
 
     public FeedbackServiceImpl(QaDatabase db, TurnRepository turns, FeedbackRepository feedback, UsageRepository usage,
-                               Clock clock) {
+                               Clock clock, QaAudit audit) {
+        this.audit = audit;
         this.db = db;
         this.turns = turns;
         this.feedback = feedback;
@@ -69,6 +72,8 @@ public class FeedbackServiceImpl implements FeedbackService {
                 throw new QaServiceException(QaErrorCode.TURN_NOT_FOUND, "TURN_DELETED");
             }
             moveCount(turn.day(), earlier.orElse(null), rating, reason);
+            // The audit record commits with the rating (ADR-0039).
+            audit.feedbackGivenInTransaction(conversationId, turnId, request);
             return row;
         });
         log.info("Answer rated: turnId={} rating={} reason={} operation=feedback outcome=stored", turnId, rating,

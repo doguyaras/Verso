@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class IngestionMetrics {
 
     /** What happened to a claimed document. */

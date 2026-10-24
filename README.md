@@ -334,8 +334,8 @@ API `http://127.0.0.1:8080` adresindedir; PostgreSQL ve actuator portu dışarı
 | Secret dosyası / CI secret adı | Kullanan | Property / rol |
 |---|---|---|
 | `SECRET_POSTGRES_SUPERUSER_PASSWORD` | postgres | superuser; uygulama görmez |
-| `SECRET_DB_DOCUMENT_MIGRATE_PASSWORD` | migrate (Flyway, tek seferlik) | `spring.flyway.password` → `svc_document_migrate` |
-| `SECRET_DB_DOCUMENT_PASSWORD` | verso-app | `spring.datasource.password` → `svc_document` |
+| `SECRET_DB_DOCUMENT_MIGRATE_PASSWORD` | migrate (Flyway, tek seferlik) | `verso.document.flyway.password` → `svc_document_migrate` (ADR-0039) |
+| `SECRET_DB_DOCUMENT_PASSWORD` | verso-app | `verso.document.datasource.password` → `svc_document` (ADR-0039) |
 | `SECRET_DB_BACKUP_PASSWORD` | backup | `verso_backup` (`pg_read_all_data`) |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup, restore provası | yedeklerin gpg parolası |
 | `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü ve veritabanı |
@@ -447,6 +447,8 @@ Yükseltmeden önce alınmış yedekte `qa` şeması yoktur; restore provası on
 
 **Denetim kaydı olan bir sürüme yükseltme (ADR-0026).** `audit` şeması ve rolleri (`svc_audit`, `svc_audit_migrate`) var olan bir volume'de yoktur; uygulama açılmaz. Konuşma geçmişi yükseltmesiyle aynı yol: `bash scripts/dev-secrets.sh` (yalnız eksik `SECRET_DB_AUDIT_*` dosyalarını üretir), `docker compose up -d --wait postgres`, `40-modules.sh` (idempotent: var olan `document` ve `qa` rollerinin parolasına dokunmaz), sonra `docker compose up -d --build --wait` (`migrate` container'ı `audit` tablosunu kurar). Yükseltmeden önce alınmış yedekte `audit` şeması yoktur; restore provası onu reddeder, yükseltmeden sonra yeni yedek al. Üretimde `secrets/` dosyalarını kendi gizli yönetiminden ver (`secrets/README.md`) ve `deploy/prod.env.example`'a `VERSO_AUDIT_RETENTION_DAYS` ekle.
 
+**Outbox'lı denetim kaydına yükseltme (ADR-0039).** Yeni rol, secret ya da şema yok; `document.outbox_event`, `qa.outbox_event` ve `audit.event.event_id` migration'larla gelir. Sıra her zamanki: `docker compose up -d --build --wait` (`migrate` önce çalışır; yeni imaj `event_id` sütunu olmadan açılmaz, eski imaj yeni sütunu yok sayar). Kendi config dosyasını tutan kurulumlar: `spring.datasource.*` ve `spring.flyway.url/user/password` anahtarları `verso.document.datasource.*` ve `verso.document.flyway.*` oldu (Boot'un kendi DataSource ve Flyway'i kapalı); `deploy/prod.env.example`'a `VERSO_INGESTION_ENABLED=true` ekle. Denetim kayıtları artık iş değişikliğiyle aynı transaction'da modülün outbox'ına yazılır ve commit'ten hemen sonra teslim edilir; denetim veritabanı yokken kaybolmaz, bekler (`outbox_oldest_pending_age_seconds`, [runbook](docs/runbooks/outbox-stuck.md)). `VERSO_INGESTION_ENABLED=false` aynı imajı yalnız API olarak çalıştırır (ingestion worker'ı yok; yüklenen belgeler `PENDING` kalır), bugün tek süreç kullanıldığı için `true` kalır.
+
 **Bilgi alanları olan bir sürüme yükseltme (ADR-0028).** Yeni şema, secret ya da ortam değişkeni yok. Adımlar:
 
 1. Önce yedek al: `docker compose run --rm backup once`.
@@ -491,7 +493,7 @@ bash scripts/restore-drill.sh
 
 - **RPO:** yedek aralığı (varsayılan 24 saat, `BACKUP_INTERVAL_SECONDS`).
 - **RTO hedefi:** 1 saat.
-- **Bağlantı bütçesi:** uygulama havuzu 10 + `qa` havuzu 4 + `audit` havuzu 4 + Flyway 2 (yalnız migrate anında) + yedek 2 = 22; `max_connections` 100 (ADR-0023, ADR-0026).
+- **Bağlantı bütçesi:** `document` havuzu 10 (ADR-0039: modülün kendi havuzu, eski uygulama havuzu) + `qa` havuzu 4 + `audit` havuzu 4 + Flyway 2 (yalnız migrate anında) + yedek 2 = 22; `max_connections` 100 (ADR-0023, ADR-0026).
 - **Kapsam:** yalnız Verso veritabanı. Demo Keycloak'un `keycloak` veritabanı yedeklenmez; realm dosyadan yeniden kurulur (ADR-0010).
 - **Bilinen sınır:** yedek aynı host'taki volume'dedir. Host dışına kopyalama üretim kurulumunun işidir (ADR-0009).
 - **`docker compose down -v`** veritabanıyla birlikte `backups` volume'ünü de siler; önce yedekleri kopyala.

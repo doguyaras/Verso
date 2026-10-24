@@ -182,3 +182,37 @@ tests:
       - eval_time: 20m
         alertname: HistoryNotStored
         exp_alerts: []
+
+  # A relay stuck for minutes (ADR-0039): the oldest audit record waits longer than the lease.
+  - interval: 15s
+    input_series:
+      - series: 'outbox_oldest_pending_age_seconds{job="verso", outbox="document"}'
+        values: '0+15x80'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OutboxOldestPendingTooOld
+        exp_alerts:
+          - exp_labels: {severity: page, outbox: document}
+            exp_annotations: {summary: "Outbox rows are waiting longer than the relay lease.", runbook: docs/runbooks/outbox-stuck.md}
+
+  # A relay that keeps up (rows a second old at most): no alert.
+  - interval: 15s
+    input_series:
+      - series: 'outbox_oldest_pending_age_seconds{job="verso", outbox="qa"}'
+        values: '1x80'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OutboxOldestPendingTooOld
+        exp_alerts: []
+
+  # One DEAD row pages.
+  - interval: 15s
+    input_series:
+      - series: 'outbox_dead_rows{job="verso", outbox="qa"}'
+        values: '0x4 1x20'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: OutboxDeadRows
+        exp_alerts:
+          - exp_labels: {severity: page, outbox: qa}
+            exp_annotations: {summary: "Outbox rows gave up and wait for the failure retention.", runbook: docs/runbooks/outbox-stuck.md}

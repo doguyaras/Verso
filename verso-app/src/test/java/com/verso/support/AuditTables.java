@@ -20,6 +20,8 @@ public final class AuditTables {
     public static void reset() {
         try (Connection admin = admin(); Statement st = admin.createStatement()) {
             st.execute("TRUNCATE audit.event");
+            // Records still waiting for delivery (ADR-0039) belong to the log being reset.
+            st.execute("TRUNCATE document.outbox_event, qa.outbox_event");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the audit schema", e);
         }
@@ -45,6 +47,25 @@ public final class AuditTables {
             try (ResultSet rs = st.executeQuery()) {
                 List<String> out = new ArrayList<>();
                 while (rs.next()) out.add(rs.getString(1));
+                return out;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("query failed: " + sql, e);
+        }
+    }
+
+    /** Every row as column name to value, in query order. */
+    public static List<java.util.Map<String, Object>> rowsOf(String sql, Object... params) {
+        try (Connection admin = admin(); PreparedStatement st = admin.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) st.setObject(i + 1, params[i]);
+            try (ResultSet rs = st.executeQuery()) {
+                List<java.util.Map<String, Object>> out = new ArrayList<>();
+                int columns = rs.getMetaData().getColumnCount();
+                while (rs.next()) {
+                    java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                    for (int c = 1; c <= columns; c++) row.put(rs.getMetaData().getColumnLabel(c), rs.getObject(c));
+                    out.add(row);
+                }
                 return out;
             }
         } catch (SQLException e) {

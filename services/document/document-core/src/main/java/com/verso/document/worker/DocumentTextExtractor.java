@@ -6,6 +6,7 @@ import com.verso.document.worker.DoclingParser.Failure;
 import com.verso.document.worker.DoclingParser.Result;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
 @Component
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class DocumentTextExtractor {
 
     /** Which parser produced the stored text. */

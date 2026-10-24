@@ -68,6 +68,8 @@ x-db-env: &db-env
   VERSO_MCP_ENABLED: ${VERSO_MCP_ENABLED:-false}
   VERSO_MCP_RESOURCE: ${VERSO_MCP_RESOURCE:-http://localhost:8080/mcp}
   VERSO_MCP_SHOW_DOCUMENT_NAMES: ${VERSO_MCP_SHOW_DOCUMENT_NAMES:-true}
+  # The process role (ADR-0039): true runs the ingestion worker in this process (the only process today).
+  VERSO_INGESTION_ENABLED: ${VERSO_INGESTION_ENABLED:-true}
 
 x-ollama-image: &ollama-image ollama/ollama:0.40.10@sha256:4c5b27871a3239a717048f9b93057680a51b60c8119a7016aebb57f938e25e35
 
@@ -121,7 +123,8 @@ services:
     mem_limit: 512m
     command:
       - --spring.main.web-application-type=none
-      - --spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      # Boot's DataSource and Flyway auto-configuration are excluded for every run (application.yml, ADR-0039); the
+      # module pools are web-only, so this run opens no application connection.
       # No DataSource, so no "db" health contributor for the readiness group; there is no web server to ask anyway.
       - --management.endpoint.health.validate-group-membership=false
       # No model client either (ADR-0011): the document and qa modules are not loaded without a web server.

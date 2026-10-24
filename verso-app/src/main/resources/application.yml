@@ -14,6 +14,13 @@ spring:
       # Each file under /run/secrets becomes a property (compose secrets, reference 15.3); absent locally.
       - "optional:configtree:/run/secrets/"
       - "classpath:config/verso.yml"
+  autoconfigure:
+    # No application-wide default connection (ADR-0039): each module declares its own pool and Flyway (document,
+    # qa, audit). The document pool is the one DataSource bean Spring's JDBC support and the "db" health contributor
+    # use; nothing else would create one. Boot's Flyway would migrate "document" with the wrong role, so it is off too.
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
   lifecycle:
     timeout-per-shutdown-phase: 25s
   threads:

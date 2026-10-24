@@ -32,10 +32,14 @@ public class AuditEventRepository {
             detail_code, model_id, citation_document_ids, trace_id, mode""";
     private static final String RANGE = " FROM audit.event WHERE occurred_at >= :from AND occurred_at < :to";
 
-    /** A row to append. Everything is an id, a fixed word or the opaque token subject. */
+    /**
+     * A row to append. Everything is an id, a fixed word or the opaque token subject. {@code eventId} is the delivery
+     * key (ADR-0039): unique, so a relay that delivers the same outbox row twice writes one row.
+     */
     public record NewEntry(String actorSub, List<String> actorRoles, AuditAction action, AuditOutcome outcome,
                            AuditTargetType targetType, UUID targetId, UUID conversationId, String detailCode,
-                           String modelId, List<UUID> citationDocumentIds, String traceId, String mode) {
+                           String modelId, List<UUID> citationDocumentIds, String traceId, String mode,
+                           UUID eventId) {
     }
 
     /** Position of the last exported row; the next batch starts after it. */
@@ -49,19 +53,31 @@ public class AuditEventRepository {
     }
 
     public void insert(NewEntry e) {
-        db.jdbc().sql("""
+        insertIfAbsent(e);
+    }
+
+    /**
+     * Appends the row unless one with the same event id exists (ADR-0039). the duplicate guard needs only the INSERT
+     * and SELECT the role has; no UPDATE, so a duplicate can never change a stored row.
+     *
+     * @return true when this call wrote the row
+     */
+    public boolean insertIfAbsent(NewEntry e) {
+        return db.jdbc().sql("""
                         INSERT INTO audit.event (actor_sub, actor_roles, action, outcome, target_type, target_id,
                                                  conversation_id, detail_code, model_id, citation_document_ids,
-                                                 trace_id, mode)
+                                                 trace_id, mode, event_id)
                         VALUES (:actor, CAST(:roles AS text[]), :action, :outcome, :targetType, :targetId,
-                                :conversationId, :detailCode, :modelId, CAST(:cited AS uuid[]), :traceId, :mode)""")
+                                :conversationId, :detailCode, :modelId, CAST(:cited AS uuid[]), :traceId, :mode,
+                                :eventId)
+                        ON CONFLICT (event_id) DO NOTHING""")
                 .param("actor", e.actorSub()).param("roles", e.actorRoles().toArray(String[]::new))
                 .param("action", e.action().name()).param("outcome", e.outcome().name())
                 .param("targetType", e.targetType().name()).param("targetId", e.targetId())
                 .param("conversationId", e.conversationId()).param("detailCode", e.detailCode())
                 .param("modelId", e.modelId()).param("cited", e.citationDocumentIds().toArray(UUID[]::new))
-                .param("traceId", e.traceId()).param("mode", e.mode())
-                .update();
+                .param("traceId", e.traceId()).param("mode", e.mode()).param("eventId", e.eventId())
+                .update() == 1;
     }
 
     /** Newest first; {@code to} is exclusive. */

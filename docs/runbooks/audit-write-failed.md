@@ -1,6 +1,6 @@
 # AuditEventNotStored
 
-**Anlamı:** Son 10 dakikada en az bir denetim olayı yazılamadı (ADR-0026). İstekler başarılı döndü (belge yüklendi, soru cevaplandı), ama "kim neyi yaptı" satırı eksik. **Kaybolan satırlar geri gelmez**; bu yüzden alarm `page`'dir ve her dakika kalıcı bir denetim boşluğudur. `verso_audit_events_not_stored_total` üç neden taşır: `failed` (yazma hata verdi), `circuit_open` (bir hatadan sonra 10 sn veritabanı denenmedi; o sürede gelen olaylar da sayılır), `invalid` (aktör yok: kimliksiz bir yoldan olay yayınlandı, kod hatasıdır).
+**Anlamı:** Son 10 dakikada en az bir denetim olayı yazılamadı (ADR-0026). İstekler başarılı döndü (belge yüklendi, soru cevaplandı), ama "kim neyi yaptı" satırı eksik. **Kaybolan satırlar geri gelmez**; bu yüzden alarm `page`'dir ve her dakika kalıcı bir denetim boşluğudur. `verso_audit_events_not_stored_total` üç neden taşır: `failed` (yazma hata verdi), `circuit_open` (bir hatadan sonra 10 sn veritabanı denenmedi; o sürede gelen olaylar da sayılır), `invalid` (aktör yok: kimliksiz bir yoldan olay yayınlandı, kod hatasıdır), `capture_failed` (ADR-0039: `document`/`qa` outbox yazıcısı kimliği yakalayamadı, kod hatasıdır; log `code=AUDIT_CAPTURE_FAILED`). ADR-0039 ile `document` ve `qa` kayıtları denetim veritabanı yokken kaybolmaz, outbox'ta bekler: onlar için [outbox-stuck.md](outbox-stuck.md).
 
 **Kontrol:**
 

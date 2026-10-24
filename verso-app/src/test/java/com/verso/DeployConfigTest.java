@@ -14,8 +14,8 @@ import org.springframework.test.context.ContextConfiguration;
 
 /**
  * config/verso.yml's own datasource and Flyway lines, fed the way compose feeds them: DB_HOST, DB_PORT and DB_NAME as
- * environment values (OIDC_* included), SECRET_* as config-tree properties. @VersoTestEnvironment overrides spring.datasource.* and
- * spring.flyway.*, so before this test a wrong URL or a swapped password in verso.yml passed every test (phase 2 test
+ * environment values (OIDC_* included), SECRET_* as config-tree properties. @VersoTestEnvironment overrides verso.document.datasource.* and
+ * verso.document.flyway.*, so before this test a wrong URL or a swapped password in verso.yml passed every test (phase 2 test
  * review T6).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = "management.server.port=0")
@@ -42,7 +42,7 @@ class DeployConfigTest {
                     "verso.audit.datasource.maximum-pool-size=2",
                     // Compose gives every model setting too (x-db-env); the provider is read by auto-configuration conditions.
                     "VERSO_AI_MODE=local", "VERSO_CHAT_PROVIDER=ollama",
-                    "spring.datasource.hikari.maximum-pool-size=2")
+                    "verso.document.datasource.maximum-pool-size=2")
                     .applyTo(context);
         }
     }

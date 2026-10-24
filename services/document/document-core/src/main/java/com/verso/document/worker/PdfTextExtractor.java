@@ -28,6 +28,7 @@ import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
@@ -53,6 +54,7 @@ import org.springframework.stereotype.Component;
 @Component
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class PdfTextExtractor {
 
     /** Form XObjects may nest; deeper nesting than this is not a real document. */

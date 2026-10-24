@@ -31,9 +31,9 @@ class MigrateModeTest {
     void migrateMode_whenStartedWithTheComposeArguments_runsFlywayWithoutApplicationDataSource() throws Exception {
         VersoPostgres.POSTGRES.start();
         List<String> args = new ArrayList<>(composeArguments("migrate"));
-        args.add("--spring.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
-        args.add("--spring.flyway.user=svc_document_migrate");
-        args.add("--spring.flyway.password=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"));
+        args.add("--verso.document.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
+        args.add("--verso.document.flyway.user=svc_document_migrate");
+        args.add("--verso.document.flyway.password=" + VersoPostgres.secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"));
         // The qa schema's Flyway (ADR-0023) runs in the same one-shot container, as its own migration role.
         args.add("--verso.qa.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
         args.add("--verso.qa.flyway.user=svc_qa_migrate");
@@ -48,7 +48,11 @@ class MigrateModeTest {
 
         try (ConfigurableApplicationContext context = SpringApplication.run(VersoApp.class, args.toArray(String[]::new))) {
             assertThat(context.getBeanNamesForType(DataSource.class)).as("application DataSource").isEmpty();
-            assertThat(context.getBeanNamesForType(org.flywaydb.core.Flyway.class)).hasSize(1);
+            // ADR-0039: no Flyway bean at all (Boot's is off); each module runs its own migration, document included.
+            assertThat(context.getBeanNamesForType(org.flywaydb.core.Flyway.class)).isEmpty();
+            assertThat(context.getBeanNamesForType(com.verso.document.config.DocumentSchemaMigration.class)).hasSize(1);
+            assertThat(context.getBeanNamesForType(
+                    com.verso.document.config.DocumentPersistenceConfiguration.DocumentDataSource.class)).isEmpty();
             // Phase 4: no ingestion worker may run in the one-shot migrate container, and no model client is built.
             assertThat(context.getBeanNamesForType(com.verso.document.worker.IngestionWorker.class)).isEmpty();
             assertThat(context.getBeanNamesForType(org.springframework.ai.embedding.EmbeddingModel.class)).isEmpty();

@@ -60,12 +60,12 @@ public final class VersoPostgres {
         public void initialize(ConfigurableApplicationContext context) {
             POSTGRES.start();
             TestPropertyValues.of(
-                    "spring.datasource.url=" + POSTGRES.getJdbcUrl(),
-                    "spring.datasource.username=svc_document",
-                    "spring.datasource.password=" + secret("SECRET_DB_DOCUMENT_PASSWORD"),
-                    "spring.flyway.url=" + POSTGRES.getJdbcUrl(),
-                    "spring.flyway.user=svc_document_migrate",
-                    "spring.flyway.password=" + secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
+                    "verso.document.datasource.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.document.datasource.username=svc_document",
+                    "verso.document.datasource.password=" + secret("SECRET_DB_DOCUMENT_PASSWORD"),
+                    "verso.document.flyway.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.document.flyway.user=svc_document_migrate",
+                    "verso.document.flyway.password=" + secret("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD"),
                     // The qa schema's own roles (ADR-0023), exactly as compose gives them.
                     "verso.qa.datasource.url=" + POSTGRES.getJdbcUrl(),
                     "verso.qa.datasource.username=svc_qa",
@@ -82,8 +82,8 @@ public final class VersoPostgres {
                     "verso.audit.flyway.password=" + secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"),
                     // Several cached test contexts share one container: small pools keep them far below
                     // max_connections (phase 2 spring review C4).
-                    "spring.datasource.hikari.maximum-pool-size=3",
-                    "spring.datasource.hikari.minimum-idle=0",
+                    "verso.document.datasource.maximum-pool-size=3",
+                    "verso.document.datasource.minimum-idle=0",
                     "verso.qa.datasource.maximum-pool-size=2",
                     "verso.qa.datasource.minimum-idle=0",
                     "verso.audit.datasource.maximum-pool-size=2",

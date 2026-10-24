@@ -28,7 +28,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.context.ApplicationEventPublisher;
+import com.verso.document.outbox.DocumentAuditOutbox;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -37,7 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * {@link CollectionService} (ADR-0028). Every grant change runs in one transaction with the collection row locked FOR
  * UPDATE and rewrites the principal of each of the collection's documents (document_principal) in the same
  * transaction: the next retrieval after the commit already uses it. Logs carry ids and fixed words only: never a
- * collection name, a group or a sub (security-rules 4, llm-rules 2.1). Audit events after the commit (ADR-0026).
+ * collection name, a group or a sub (security-rules 4, llm-rules 2.1). Audit records in the same transaction, through the module outbox (ADR-0039).
  */
 @Service
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
@@ -50,15 +50,15 @@ public class CollectionServiceImpl implements CollectionService {
     private final CollectionProperties properties;
     private final TransactionTemplate transaction;
     private final Clock clock;
-    private final ApplicationEventPublisher events;
+    private final DocumentAuditOutbox audit;
 
     public CollectionServiceImpl(CollectionRepository repository, CollectionProperties properties,
-                                 TransactionTemplate transaction, Clock clock, ApplicationEventPublisher events) {
+                                 TransactionTemplate transaction, Clock clock, DocumentAuditOutbox audit) {
         this.repository = repository;
         this.properties = properties;
         this.transaction = transaction;
         this.clock = clock;
-        this.events = events;
+        this.audit = audit;
     }
 
     @Override
@@ -88,14 +88,15 @@ public class CollectionServiceImpl implements CollectionService {
                 if (repository.countAll() >= properties.maxCollections()) {
                     throw rejected(DocumentErrorCode.COLLECTION_LIMIT_REACHED);
                 }
-                return repository.insert(request.name().strip(), description(request), caller.account().value(),
-                        clock.instant());
+                CollectionRow row = repository.insert(request.name().strip(), description(request),
+                        caller.account().value(), clock.instant());
+                audit.append(AuditEvent.success(AuditAction.COLLECTION_CREATED, AuditTargetType.COLLECTION, row.id()));
+                return row;
             });
         } catch (DuplicateKeyException e) {
             throw rejected(DocumentErrorCode.COLLECTION_NAME_TAKEN);
         }
         log.info("Collection created: collectionId={} operation=create outcome=created", created.id());
-        events.publishEvent(AuditEvent.success(AuditAction.COLLECTION_CREATED, AuditTargetType.COLLECTION, created.id()));
         return response(created, caller);
     }
 
@@ -104,14 +105,20 @@ public class CollectionServiceImpl implements CollectionService {
         requireAdmin(caller);
         boolean updated;
         try {
-            updated = Boolean.TRUE.equals(transaction.execute(status ->
-                    repository.update(collectionId, request.name().strip(), description(request), clock.instant())));
+            updated = Boolean.TRUE.equals(transaction.execute(status -> {
+                boolean changed = repository.update(collectionId, request.name().strip(), description(request),
+                        clock.instant());
+                if (changed) {
+                    audit.append(AuditEvent.success(AuditAction.COLLECTION_UPDATED, AuditTargetType.COLLECTION,
+                            collectionId));
+                }
+                return changed;
+            }));
         } catch (DuplicateKeyException e) {
             throw rejected(DocumentErrorCode.COLLECTION_NAME_TAKEN);
         }
         if (!updated) throw rejected(DocumentErrorCode.COLLECTION_NOT_FOUND);
         log.info("Collection updated: collectionId={} operation=update outcome=updated", collectionId);
-        events.publishEvent(AuditEvent.success(AuditAction.COLLECTION_UPDATED, AuditTargetType.COLLECTION, collectionId));
         return get(caller, collectionId);
     }
 
@@ -122,9 +129,9 @@ public class CollectionServiceImpl implements CollectionService {
             // FOR UPDATE: an upload or move into the collection holds it shared, so the emptiness check is exact.
             if (!repository.lock(collectionId, LockMode.UPDATE)) throw rejected(DocumentErrorCode.COLLECTION_NOT_FOUND);
             if (!repository.deleteIfEmpty(collectionId)) throw rejected(DocumentErrorCode.COLLECTION_NOT_EMPTY);
+            audit.append(AuditEvent.success(AuditAction.COLLECTION_DELETED, AuditTargetType.COLLECTION, collectionId));
         });
         log.info("Collection deleted: collectionId={} operation=delete outcome=deleted", collectionId);
-        events.publishEvent(AuditEvent.success(AuditAction.COLLECTION_DELETED, AuditTargetType.COLLECTION, collectionId));
     }
 
     @Override
@@ -145,14 +152,15 @@ public class CollectionServiceImpl implements CollectionService {
             if (repository.countGrants(collectionId) >= properties.maxGrantsPerCollection()) {
                 throw rejected(DocumentErrorCode.COLLECTION_GRANT_LIMIT_REACHED);
             }
-            return new GrantResult(grantResponse(repository.grant(collectionId, principal, caller.account().value(),
-                    clock.instant())), true);
+            GrantResult added = new GrantResult(grantResponse(repository.grant(collectionId, principal,
+                    caller.account().value(), clock.instant())), true);
+            audit.append(AuditEvent.success(AuditAction.COLLECTION_GRANT_ADDED, AuditTargetType.COLLECTION, collectionId)
+                    .withDetail(request.principalType().name()));
+            return added;
         });
         if (result.created()) {
             log.info("Collection granted: collectionId={} grantId={} principalType={} operation=grant outcome=granted",
                     collectionId, result.grant().id(), request.principalType());
-            events.publishEvent(AuditEvent.success(AuditAction.COLLECTION_GRANT_ADDED, AuditTargetType.COLLECTION,
-                    collectionId).withDetail(request.principalType().name()));
         }
         return result;
     }
@@ -162,14 +170,15 @@ public class CollectionServiceImpl implements CollectionService {
         requireAdmin(caller);
         String principal = transaction.execute(status -> {
             if (!repository.lock(collectionId, LockMode.UPDATE)) throw rejected(DocumentErrorCode.COLLECTION_NOT_FOUND);
-            return repository.revoke(collectionId, grantId)
+            String revoked = repository.revoke(collectionId, grantId)
                     .orElseThrow(() -> rejected(DocumentErrorCode.COLLECTION_GRANT_NOT_FOUND));
+            audit.append(AuditEvent.success(AuditAction.COLLECTION_GRANT_REMOVED, AuditTargetType.COLLECTION, collectionId)
+                    .withDetail(typeOf(revoked).name()));
+            return revoked;
         });
         PrincipalType type = typeOf(principal);
         log.info("Collection grant revoked: collectionId={} grantId={} principalType={} operation=revoke outcome=revoked",
                 collectionId, grantId, type);
-        events.publishEvent(AuditEvent.success(AuditAction.COLLECTION_GRANT_REMOVED, AuditTargetType.COLLECTION,
-                collectionId).withDetail(type.name()));
     }
 
     /** A collection the caller reads, or any collection for verso-admin; otherwise it does not exist (IDOR). */

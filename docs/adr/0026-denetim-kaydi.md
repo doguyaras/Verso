@@ -174,3 +174,7 @@
 - Alıcı değiştirilemezliğin kanıtını isterse: hash zinciri, imzalı dışa aktarım ya da yalnız-ekleme (WORM) bir hedefe kopya; syslog/JSON log sink'i.
 - Yeniden indeksleme ya da koleksiyon izin değişikliği uçları eklenirse: yeni `AuditAction` değerleri ve bu ADR'nin tablosu.
 - Panel denetim ekranı: ayrı ADR (arayüz bu işin kapsamında değildi).
+
+## Ek (2026-10-24): outbox ile dayanıklı yol (ADR-0039)
+
+"Commit ile satır arasında süreç ölürse satır kaybolur" riski `document` ve `qa` için kapandı: kayıt iş transaction'ında modülün kendi şemasındaki `outbox_event`'e yazılır, relay `audit.event`'e taşır; `audit.event.event_id` (tekil, `V3__event_delivery_key.sql`) tekrar teslimi tek satıra indirir. Modulith registry ayrı havuzlarla çakıştığı için (yukarıdaki seçenek B gerekçesi) açık bir outbox seçildi. Denetim veritabanı kesintisi bu yayıncılar için kayıp değil gecikmedir (`outbox_oldest_pending_age_seconds`). Doğrudan yol (bu ADR'deki `AuditRecorder`) yalnız erişim reddi, `privacy` başvuruları ve geçmişe yazılamamış soru için kalır. Ayrıntı ve sonuçlar: [ADR-0039](0039-denetim-outbox-ve-modul-havuzlari.md).

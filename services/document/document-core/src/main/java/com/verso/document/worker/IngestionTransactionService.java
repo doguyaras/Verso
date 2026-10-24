@@ -1,5 +1,6 @@
 package com.verso.document.worker;
 
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import com.verso.document.api.enums.DocumentFailureReason;
 import com.verso.document.repository.IngestionRepository;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class IngestionTransactionService {
 
     /** The lease expired and another worker took the document, or the owner deleted it meanwhile. */

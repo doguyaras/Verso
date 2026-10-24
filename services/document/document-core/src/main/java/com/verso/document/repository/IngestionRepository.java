@@ -1,5 +1,6 @@
 package com.verso.document.repository;
 
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import com.verso.document.api.enums.DocumentFailureReason;
 import com.verso.document.api.enums.DocumentFormat;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class IngestionRepository {
 
     /** A claimed document: what the worker needs, nothing more. */

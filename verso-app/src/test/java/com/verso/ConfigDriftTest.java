@@ -46,10 +46,11 @@ class ConfigDriftTest {
             "rate-limit.rules",
             "spring.http.serviceclient",
             "services.",
-            "spring.datasource.url",
-            "spring.datasource.username",
-            "spring.flyway.url",
-            "spring.flyway.user",
+            // The document schema's own connection and Flyway (ADR-0039): same database, its own roles.
+            "verso.document.datasource.url",
+            "verso.document.datasource.username",
+            "verso.document.flyway.url",
+            "verso.document.flyway.user",
             // The qa schema's own connection and Flyway (ADR-0023): same database, its own roles.
             "verso.qa.datasource.url",
             "verso.qa.datasource.username",

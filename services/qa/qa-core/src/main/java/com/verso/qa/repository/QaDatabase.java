@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public final class QaDatabase implements AutoCloseable {
 
     private final DataSource pool;
+    private final LazyConnectionDataSourceProxy lazy;
     private final JdbcClient jdbc;
     private final TransactionTemplate transaction;
 
@@ -27,6 +29,7 @@ public final class QaDatabase implements AutoCloseable {
         // A connection is taken at the first statement, not when a transaction opens (as Boot 4.1 does for the
         // application DataSource, reference 10.5).
         LazyConnectionDataSourceProxy lazy = new LazyConnectionDataSourceProxy(pool);
+        this.lazy = lazy;
         // Known defaults, so that opening a transaction never fetches a connection just to read them: an unreachable
         // database then fails at the first statement as a DataAccessException (503 SERVICE_UNAVAILABLE), not as a
         // CannotCreateTransactionException (500) after a doubled connection timeout. These are PostgreSQL's and
@@ -39,6 +42,11 @@ public final class QaDatabase implements AutoCloseable {
 
     public JdbcClient jdbc() {
         return jdbc;
+    }
+
+    /** True while {@link #inTransaction} runs on this thread (the outbox writer is MANDATORY, ADR-0039). */
+    public boolean inTransactionNow() {
+        return TransactionSynchronizationManager.hasResource(lazy);
     }
 
     /** Runs {@code work} in one transaction of the qa schema. */

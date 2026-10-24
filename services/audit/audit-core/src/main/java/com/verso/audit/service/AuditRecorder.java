@@ -7,6 +7,7 @@ import com.verso.audit.repository.AuditEventRepository.NewEntry;
 import com.verso.platform.observability.tracing.TraceIds;
 import com.verso.platform.security.authority.CallerRoles;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * Writes the {@link AuditEvent}s other modules publish (ADR-0026), and adds who, when and where: the token subject and
  * Verso roles of the current request, the request's trace id and the installation's AI mode. The time is the
  * database's, not ours.
+ *
+ * <p><b>The direct path (ADR-0039).</b> The document and qa modules no longer publish here: they write an outbox row
+ * in their business transaction and their relay stores it through {@link com.verso.audit.service.impl.AuditTrailServiceImpl}. What still arrives here
+ * has no business transaction of its own module to join: access denials and the privacy module's subject requests.
  *
  * <p><b>Synchronous and after the commit.</b> Publishers raise the event after their own transaction committed, and
  * this listener runs in the request thread, so the row exists when the response is sent and the request's identity and
@@ -84,7 +89,7 @@ public class AuditRecorder {
                 repository.insert(new NewEntry(jwt.getToken().getSubject(), roles.of(authentication), event.action(),
                         event.outcome(), event.targetType(), event.targetId(), event.conversationId(),
                         event.detailCode(), event.modelId(), event.citationDocumentIds(), traceId(),
-                        event.mode() != null ? event.mode() : installationMode));
+                        event.mode() != null ? event.mode() : installationMode, UUID.randomUUID()));
                 metrics.recorded(event.action());
             } catch (RuntimeException e) {
                 skipUntil.set(System.nanoTime() + properties.breakerOpen().toNanos());

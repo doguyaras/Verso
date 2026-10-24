@@ -10,7 +10,6 @@ import com.verso.qa.api.dto.RenameConversationRequest;
 import com.verso.qa.api.dto.TurnFeedback;
 import com.verso.qa.service.ConversationService;
 import com.verso.qa.service.FeedbackService;
-import com.verso.qa.service.QaAudit;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -42,12 +41,10 @@ public class ConversationController {
 
     private final ConversationService conversations;
     private final FeedbackService feedback;
-    private final QaAudit audit;
 
-    public ConversationController(ConversationService conversations, FeedbackService feedback, QaAudit audit) {
+    public ConversationController(ConversationService conversations, FeedbackService feedback) {
         this.conversations = conversations;
         this.feedback = feedback;
-        this.audit = audit;
     }
 
     /** Last activity first; at most 50 per page. */
@@ -77,8 +74,8 @@ public class ConversationController {
     @DeleteMapping("/{conversationId}")
     public ResponseEntity<Void> delete(@CurrentAccount AccountId account,
                                        @PathVariable("conversationId") UUID conversationId) {
+        // The audit record is written with the deletion, in its transaction (ADR-0039).
         conversations.delete(account, conversationId);
-        audit.conversationDeleted(conversationId);
         return ResponseEntity.noContent().build();
     }
 
@@ -86,7 +83,6 @@ public class ConversationController {
     @DeleteMapping
     public ResponseEntity<Void> deleteAll(@CurrentAccount AccountId account) {
         conversations.deleteAll(account);
-        audit.allConversationsDeleted();
         return ResponseEntity.noContent().build();
     }
 
@@ -97,7 +93,6 @@ public class ConversationController {
                                              @PathVariable("turnId") UUID turnId,
                                              @Valid @RequestBody FeedbackRequest request) {
         TurnFeedback rated = feedback.rate(account, conversationId, turnId, request);
-        audit.feedbackGiven(conversationId, turnId, request);
         return ResponseEntity.ok().cacheControl(PRIVATE).body(rated);
     }
 }

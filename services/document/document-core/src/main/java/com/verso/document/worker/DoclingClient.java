@@ -9,6 +9,7 @@ import java.net.http.HttpTimeoutException;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.ObjectProvider;
+import com.verso.document.config.ConditionalOnIngestion;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
@@ -37,6 +38,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnIngestion
 public class DoclingClient {
 
     /** Why a conversion produced nothing usable; none of them is the document's fault on its own. */

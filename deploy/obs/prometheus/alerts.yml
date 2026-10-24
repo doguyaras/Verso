@@ -108,7 +108,8 @@ groups:
           runbook: docs/runbooks/history-not-stored.md
       # Audit rows are lost (ADR-0026): the audit pool cannot write (wrong svc_audit password, missing "audit" schema,
       # database). The audited requests still succeed, so users notice nothing and the gap in the trail is permanent:
-      # page, not ticket. Every reason counts (failed, circuit_open, invalid).
+      # page, not ticket. Every reason counts (failed, circuit_open, invalid, capture_failed). Since ADR-0039 the document
+      # and qa records go through their outbox and are delayed, not lost, by an audit outage (OutboxOldestPendingTooOld).
       - alert: AuditEventNotStored
         expr: sum(increase(verso_audit_events_not_stored_total{job="verso"}[10m])) > 0
         for: 2m
@@ -117,3 +118,24 @@ groups:
         annotations:
           summary: Audit events are not being stored.
           runbook: docs/runbooks/audit-write-failed.md
+      # The outbox relay is stuck (ADR-0039, reference 14.3): an audit record has waited longer than the relay lease
+      # (120 s). Nothing is lost yet (the record is in the module's own schema), but the audit log is behind; the age
+      # keeps growing while the relay or the audit database is away.
+      - alert: OutboxOldestPendingTooOld
+        expr: max by (outbox) (outbox_oldest_pending_age_seconds{job="verso"}) > 120
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: Outbox rows are waiting longer than the relay lease.
+          runbook: docs/runbooks/outbox-stuck.md
+      # A record gave up (ADR-0039): a payload the audit log refused max-attempts times. It is kept for the failure
+      # retention (verso.outbox.dead-retention, 30 days) and then deleted: the trail has a hole unless someone acts.
+      - alert: OutboxDeadRows
+        expr: max by (outbox) (outbox_dead_rows{job="verso"}) > 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: Outbox rows gave up and wait for the failure retention.
+          runbook: docs/runbooks/outbox-stuck.md
