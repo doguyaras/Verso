@@ -197,6 +197,17 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 - **Log'lar** belge içeriği, soru, cevap ya da dosya adı taşımaz; yalnız id, süre ve sayı taşır. Bu, test edilir ve gözlem yığınında uçtan uca kontrol edilir.
 - Bu bölüm tasarım kararlarını anlatır; hukuki tavsiye değildir.
 
+## Uyum paketi
+
+Kurulum ekibinin her müşteriye teslim ettiği Türkçe KVKK şablonları [`docs/uyum/`](docs/uyum/README.md) altındadır ([ADR-0027](docs/adr/0027-yapay-zeka-bildirimi-ve-uyum-paketi.md)):
+
+- VKED, çalışan aydınlatma metni, Kurumsal Üretken YZ Kullanım Politikası ve Veri İşleyen Sözleşmesi iskeleti.
+- Egress kanıtı: `local` modun dışarı veri göndermediği, var olan kontrol ve betiklerle nasıl gösterilir.
+- Sektör notları (banka, ödeme kuruluşu, SPK: yalnız `local`; kamu; 7545 olay bildirimi) ve Almanya eki (BetrVG § 87).
+- Olgusal bölümler (neyin ne kadar saklandığı, silme yolları, k-anonimlik) kod ve ADR'lerle eşleşir; kuruma özgü alanlar `{{YER_TUTUCU}}` ile işaretlidir. Belgeler hukuki tavsiye değildir.
+
+Panelde yapay zekâ ile yazışıldığı her zaman söylenir: soru kutusunun altındaki satır, ilk kullanımda kapatılabilir bir kart; üretilmiş cevap `data-ai-generated="true"` taşır ve Markdown dışa aktarımı "Yapay zekâ ile üretildi · <ürün adı>" satırıyla biter.
+
 ## Ölçümler
 
 | Ölçüm | Sonuç | Kaynak |

@@ -51,6 +51,7 @@ jobs:
           node --test scripts/ollama-pull.test.js
           node --test scripts/ollama-serve.test.js
           node --test scripts/panel.test.mjs
+          node --test scripts/uyum-paketi.test.js
       - name: migration degismezligi (PR base'ine ya da develop'a karsi)
         # A pushed feature/fix branch is checked against develop, where it goes without a pull request.
         if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/fix/')

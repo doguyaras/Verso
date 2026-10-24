@@ -36,7 +36,7 @@ export function restoreConversation(id, title, entries) {
 const KEYS = Object.freeze({
   theme: 'verso.panel.theme', // 'light' | 'dark' | 'system'; absent = light, the product's look (ADR-0018)
   rail: 'verso.panel.rail', // '0' = the user widened the menu; absent = the icon rail (ADR-0018)
-  onboarding: 'verso.panel.onboarding', // JSON { asked, sawMode, dismissed }
+  onboarding: 'verso.panel.onboarding', // JSON { asked, sawMode, dismissed, aiNoticeSeen }
   lang: 'verso.panel.lang', // 'en' | absent = Turkish; the intro screen and the IdP's sign-in page follow it
 });
 
@@ -76,9 +76,9 @@ export const prefs = {
   setRail: (on) => write(KEYS.rail, on ? null : '0'),
   onboarding() {
     try {
-      return { asked: false, sawMode: false, dismissed: false, ...JSON.parse(read(KEYS.onboarding) ?? '{}') };
+      return { asked: false, sawMode: false, dismissed: false, aiNoticeSeen: false, ...JSON.parse(read(KEYS.onboarding) ?? '{}') };
     } catch {
-      return { asked: false, sawMode: false, dismissed: false };
+      return { asked: false, sawMode: false, dismissed: false, aiNoticeSeen: false };
     }
   },
   markOnboarding(patch) {

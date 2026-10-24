@@ -4,6 +4,7 @@
 // become plain strings, escaped where they go into Markdown (no link, image or HTML can come from them), and nothing
 // here is logged (llm-rules 2.1, 3.2).
 import { ApiError, messageOf } from './api.js';
+import { generatedFooter } from './disclosure.js';
 import { plainName, sourceLabel } from './render.js';
 
 /** The API's limit for a question (docs/api-questions-integration-v1.md); prefills and follow-ups stay under it. */
@@ -40,7 +41,7 @@ export function escapeMarkdown(text) {
  * the file, the page or section and the excerpt. Everything else of the answer, the excerpts, the file names and the
  * question is escaped (escapeMarkdown), markers the server did not map included. With a question, the export starts
  * with it as a heading and ends with a line saying where it came from (the .md download); without, it is the answer and
- * its footnotes only (the clipboard).
+ * its footnotes only (the clipboard). Both end with the machine-readable AI footer (EU AI Act Art. 50, ADR-0027).
  */
 export function answerMarkdown(result, { question, productName, mode, model, at } = {}) {
   const numbers = new Set((result.citations ?? []).map((c) => c.number));
@@ -68,6 +69,7 @@ export function answerMarkdown(result, { question, productName, mode, model, at 
       at ? new Date(at).toISOString().slice(0, 10) : null].filter(Boolean).map((v) => escapeMarkdown(oneLine(v))).join(' · ');
     if (origin) parts.push(`---\n${origin}`);
   }
+  parts.push(generatedFooter(productName ? escapeMarkdown(oneLine(productName)) : null));
   return `${parts.join('\n\n')}\n`;
 }
 

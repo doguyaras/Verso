@@ -6,6 +6,7 @@
 // answer can be rated 👍/👎, and a conversation opened from "Geçmiş" comes back here read-only and goes on (ADR-0025).
 // In the browser the open conversation lives in this tab's memory only (store.js); a reload starts a new one.
 import { api, lastMode } from '../api.js';
+import { disclosureLine, disclosureNotice } from '../disclosure.js';
 import { answerMarkdown, chipLabel, errorState, followUps, markdownFileName, selectionQuestion } from '../answer.js';
 import { CONFIG } from '../config.js';
 import { continueWith, startOverNote, startsOver } from '../conversations.js';
@@ -296,7 +297,8 @@ function answerView(entry, actions) {
   if (text) segments.push(...text.segments);
   const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored) : null;
   const chips = restored ? [] : followUps(result);
-  const view = el('div', { class: `answer${sources ? ' has-sources' : ''}` },
+  // EU AI Act Art. 50 (ADR-0027): a generated answer is machine-readable as such. The fixed "not found" text is not generated.
+  const view = el('div', { class: `answer${sources ? ' has-sources' : ''}`, 'data-ai-generated': notFound ? null : 'true' },
     // ADR-0021: the installation's product name, never followed by a Turkish case suffix.
     el('h3', { class: 'sr-only' }, `${productName} cevap verdi`),
     el('div', { class: 'answer-head' }, outcomeBadge(result),
@@ -324,7 +326,7 @@ function answerView(entry, actions) {
       el('div', { class: 'answer-actions', role: 'group', 'aria-label': 'Cevap eylemleri' },
         notFound ? null : el('button', { class: 'button ghost sm', type: 'button', title: 'Markdown olarak, kaynaklar dipnotta', onclick: async () => {
           try {
-            await navigator.clipboard.writeText(answerMarkdown(result));
+            await navigator.clipboard.writeText(answerMarkdown(result, { productName }));
             toast('Cevap kaynaklarıyla kopyalandı (Markdown).', 'ok');
           } catch {
             toast('Kopyalanamadı.');
@@ -387,7 +389,7 @@ export function renderAsk(ctx) {
       field.focus(); // the stop button turns back into "send": the focus goes where the next question is typed
     } else ask(field.value.trim());
   } }, field, send,
-  el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), `${productName} hata yapabilir; cevabı kaynağından doğrulayın.`), counter));
+  el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), disclosureLine(productName)), counter));
 
   const prefill = (value) => {
     field.value = value;
@@ -553,13 +555,29 @@ export function renderAsk(ctx) {
         lastMode === 'cloud' ? 'Bulut modu açık: soru ve ilgili pasajlar sağlayıcıya gider.' : 'Yerel mod: soru, belge ve cevap bu sunucudan çıkmaz.'));
   }
 
+  // The first-use AI notice (EU AI Act Art. 50, ADR-0027): an in-page card, not a dialog; the flag is a preference, so it
+  // lives in sessionStorage with the others and returns with a new browser session.
+  function aiNotice() {
+    if (prefs.onboarding().aiNoticeSeen) return null;
+    const text = disclosureNotice(productName);
+    const card = el('div', { class: 'notice info ai-notice', role: 'note' }, icon('info', 'sm'), el('div', { class: 'grow' },
+      el('strong', {}, text.title), el('div', {}, text.body),
+      el('div', { class: 'actions' }, el('button', { class: 'button secondary sm', type: 'button', onclick: () => {
+        prefs.markOnboarding({ aiNoticeSeen: true });
+        card.remove();
+        field.focus();
+      } }, text.dismiss))));
+    return card;
+  }
+
   function drawThread() {
     prune();
+    const notice = aiNotice();
     if (!conversation.length) {
-      thread.replaceChildren(welcome());
+      thread.replaceChildren(...(notice ? [notice] : []), welcome());
       return;
     }
-    thread.replaceChildren(...conversation.map((entry) => turn(entry.question, answerView(entry, actions))));
+    thread.replaceChildren(...(notice ? [notice] : []), ...conversation.map((entry) => turn(entry.question, answerView(entry, actions))));
   }
 
   function setBusy(controller) {

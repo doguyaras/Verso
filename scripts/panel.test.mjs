@@ -23,7 +23,8 @@ import { answerParts, answerSegments, answerWithSources, FAILURES, fill, foldTr,
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 import { SIGN_MS, SIGNATURE, timeline } from '../panel/js/signature-data.js';
 import { CONNECTORS, PHASES, setupSteps } from '../panel/js/screens/setup.js';
-import { isDark } from '../panel/js/store.js';
+import { isDark, prefs } from '../panel/js/store.js';
+import { disclosureLine, disclosureNotice, generatedFooter } from '../panel/js/disclosure.js';
 import { ACCENT_TOKENS, applyAccent, contrast, LIMITS, loadBranding, LOGO_PATTERN, MAX_BYTES, MAX_SUGGESTIONS, THEME_COLOURS,
   validateBranding } from '../panel/js/branding.js';
 import { CONFIG, DEPLOYMENT_DEFAULTS, useDeployment } from '../panel/js/config.js';
@@ -778,11 +779,13 @@ test('markdown: markers become footnotes with the source and the excerpt; unknow
     '[^1]: depo-kilavuzu.pdf, sayfa 3 — “Stok, koli kapatıldığında düşer.”',
     '[^2]: notlar.docx, bölüm 2 — “…rezerve görünür…”',
     '',
+    'Yapay zekâ ile üretildi',
+    '',
   ].join('\n'));
-  assert.equal(answerMarkdown({ answer: 'Belgelerde yok.', citations: [] }), 'Belgelerde yok.\n');
+  assert.equal(answerMarkdown({ answer: 'Belgelerde yok.', citations: [] }), 'Belgelerde yok.\n\nYapay zekâ ile üretildi\n');
   const file = answerMarkdown(CITED, { question: 'Stok ne zaman\ndüşer?', productName: 'Verso', mode: 'local', model: 'gemma4:e2b', at: '2026-10-24T09:00:00Z' });
   assert.ok(file.startsWith('# Stok ne zaman düşer?\n\nStok toplama'), 'the question is one heading line');
-  assert.ok(file.endsWith('---\nVerso · Yerel · gemma4:e2b · 2026-10-24\n'));
+  assert.ok(file.endsWith('---\nVerso · Yerel · gemma4:e2b · 2026-10-24\n\nYapay zekâ ile üretildi · Verso\n'));
   const noExcerpt = answerMarkdown({ answer: 'A [1].', citations: [{ number: 1, fileName: 'a.pdf', page: 1 }] });
   assert.match(noExcerpt, /^\[\^1\]: a\.pdf, sayfa 1$/m, 'an older answer without excerpt still lists the source');
 });
@@ -952,7 +955,7 @@ test('answer screen: product name from the branding, highlights and motion rules
   const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
   assert.doesNotMatch(ask, /['`"][^'`"\n]*\bVerso\b[^'`"\n]*['`"]/, 'no "Verso" in a screen text (ADR-0021)');
   assert.match(ask, /\$\{productName\} cevap verdi/);
-  assert.match(ask, /\$\{productName\} hata yapabilir/);
+  assert.match(ask, /disclosureLine\(productName\)/, 'the always-visible AI line uses the product name');
   assert.equal(FLASH_MS, 600);
   assert.match(readFileSync('panel/js/motion.js', 'utf8'), /duration: 600,/, 'the pulse lasts as long as the flash');
   const css = readFileSync('panel/css/panel.css', 'utf8');
@@ -1323,4 +1326,63 @@ test('privacy: history and dashboard text stays in memory; nothing personal goes
   assert.match(app, /class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog'/, '"Geçmiş" in the menu');
   assert.match(app, /\{ label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory \}/, 'phones reach the history from the account menu');
   assert.match(readFileSync('panel/js/screens/ask.js', 'utf8'), /onclick: \(\) => openHistory\(ctx\) \}, icon\('history', 'sm'\), 'Geçmiş'\)/);
+});
+
+// ---------- AI-interaction disclosure (EU AI Act Art. 50, ADR-0027) ----------
+test('disclosure: the always-visible line and the first-use notice say it is an AI, with the product name and no case suffix', () => {
+  const line = disclosureLine('Bilgi Asistanı');
+  assert.equal(line, 'Yapay zekâ ile yazışıyorsunuz (Bilgi Asistanı); cevaplar hatalı olabilir, kaynağını kontrol edin.');
+  const notice = disclosureNotice('Bilgi Asistanı');
+  assert.equal(notice.title, 'Yapay zekâ ile yazışıyorsunuz');
+  assert.match(notice.body, /^Bilgi Asistanı bir yapay zekâ asistanıdır, bir kişi değildir\./);
+  assert.match(notice.body, /kaynağından kontrol edin/);
+  assert.equal(notice.dismiss, 'Anladım');
+  assert.doesNotMatch(`${line}${notice.body}`, /Bilgi Asistanı(?:nın|nin|'|’|ı |yı |ya )/, 'no Turkish suffix after the name (ADR-0021)');
+});
+
+test('disclosure: the ask screen shows the line next to the input and the notice in the page, not in a dialog', () => {
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /el\('div', \{ class: 'meta' \}, el\('span', \{\}, icon\('info', 'sm'\), disclosureLine\(productName\)\), counter\)\)/,
+    'the line sits in the composer meta row, under the question box');
+  assert.match(ask, /disclosureNotice\(productName\)/);
+  assert.match(ask, /role: 'note'/);
+  assert.doesNotMatch(ask, /\balert\(|\bconfirm\(|\bprompt\(|showModal|<dialog/, 'no native or modal dialog for the notice');
+  assert.doesNotMatch(readFileSync('panel/js/disclosure.js', 'utf8'), /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'/);
+});
+
+test('disclosure: a generated answer carries data-ai-generated, the fixed "not found" text does not', () => {
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /'data-ai-generated': notFound \? null : 'true'/);
+  assert.equal(ask.match(/data-ai-generated/g).length, 1, 'set on the answer element only');
+});
+
+test('disclosure: the notice flag is a preference in the existing onboarding key, shown until dismissed, per browser session', () => {
+  const { store } = browser();
+  assert.equal(prefs.onboarding().aiNoticeSeen, false, 'a new session shows the notice');
+  prefs.markOnboarding({ aiNoticeSeen: true });
+  assert.equal(prefs.onboarding().aiNoticeSeen, true);
+  assert.deepEqual([...store.keys()], ['verso.panel.onboarding'], 'no new sessionStorage key');
+  assert.deepEqual(JSON.parse(store.get('verso.panel.onboarding')), { asked: false, sawMode: false, dismissed: false, aiNoticeSeen: true },
+    'booleans only: nothing the user wrote');
+  assert.equal(prefs.onboarding().dismissed, false, 'dismissing the overview checklist is separate');
+  store.clear();
+  assert.equal(prefs.onboarding().aiNoticeSeen, false, 'a new session (empty sessionStorage) shows it again');
+  globalThis.sessionStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() {} };
+  assert.equal(prefs.onboarding().aiNoticeSeen, false, 'blocked storage: shown, never throws');
+  assert.doesNotThrow(() => prefs.markOnboarding({ aiNoticeSeen: true }));
+  delete globalThis.sessionStorage;
+});
+
+test('disclosure: the Markdown export ends with the AI footer, with the product name escaped; the CSP is unchanged', () => {
+  assert.equal(generatedFooter('Verso'), 'Yapay zekâ ile üretildi · Verso');
+  assert.equal(generatedFooter(null), 'Yapay zekâ ile üretildi');
+  const copied = answerMarkdown(CITED, { productName: 'Bilgi Asistanı' });
+  assert.ok(copied.endsWith('\n\nYapay zekâ ile üretildi · Bilgi Asistanı\n'), 'the clipboard copy carries it too');
+  const planted = answerMarkdown(CITED, { productName: '[x](http://dis.example) <b>' });
+  assert.doesNotMatch(planted.split('\n').at(-2).replace(/\\[\\`[\]<>]/g, ''), /[<>[\]]/, 'a branding name cannot inject a link or HTML into the footer');
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /answerMarkdown\(result, \{ productName \}\)/, 'the copy button passes the product name');
+  const nginx = readFileSync('deploy/edge/nginx.conf', 'utf8');
+  assert.ok(nginx.includes('require-trusted-types-for \'script\'; trusted-types \'none\''), 'Trusted Types stay on');
+  assert.doesNotMatch(readFileSync('panel/css/panel.css', 'utf8'), /\.ai-notice/, 'the notice reuses the .notice styles; no new rule, no inline style');
 });
