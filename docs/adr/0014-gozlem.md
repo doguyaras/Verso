@@ -54,6 +54,7 @@ ADR-0007 #28 actuator'ın `prometheus` ucunu bu faza bıraktı. Faz 6 sonunda uy
 | `ModelUnavailable` | Sonuçlara bakar, 2 dk. Son 10 dk'da model hatası/açık devre var ama hiç cevap yok, ya da geri bırakılan belge var ama biten yok, ya da worker zamanın yarısından fazlasında duraklamış. Yavaş bir kesinti (90 sn timeout'lar) ve düşük trafik de yakalanır (faz 7 review R1) | page |
 | `IngestionBacklog` | en eski bekleyen > 10 dk (kira süresi), 5 dk | ticket |
 | `QaSlow` | chat p95 > 60 sn (ADR-0008), 15 dk | ticket |
+| `QaP99OverBudget` | soru isteği p99 > 15 sn (local-GPU bütçesi, ADR-0008), son 24 saat penceresi 3 gün üst üste (ADR-0001 bölme tetiği) | ticket |
 
 - Her alarmın `docs/runbooks/` altında bir runbook'u vardır.
 - `VersoDown`, ondan doğan alarmları susturur.

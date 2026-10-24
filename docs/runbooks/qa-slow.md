@@ -1,5 +1,7 @@
 # QaSlow
 
+**QaP99OverBudget:** son 24 saatte soru isteklerinin %99'u 15 sn'yi (local-GPU bütçesi) aştı ve 2 gün daha aşmaya devam etti: ADR-0001 bölme tetiği. Önce aşağıdaki kontrolleri yapın; ingestion ve model durumunu `docs/evidence/yuk-olcumu.md` ile karşılaştırın (ölçüm: p99 ≤ 11 sn). CPU/cloud kurulumunda eşik `alerts.yml` içinde bütçeye göre değiştirilmelidir.
+
 **Anlamı:** Son 15 dakikada chat çağrılarının %95'i 60 saniyeden uzun sürdü. Bu, ADR-0008'deki local-CPU bütçesinin üstüdür. Kullanıcılar uzun bekliyor ve 11002 (meşgul) alabilir.
 
 **Kontrol:**

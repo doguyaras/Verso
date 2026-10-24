@@ -95,6 +95,21 @@ groups:
           summary: The 95th percentile of chat model calls is above 60 seconds.
           runbook: docs/runbooks/qa-slow.md
 
+      # ADR-0001 split trigger: the p99 of whole question requests (retrieval + model, stream included) over the last
+      # day is above the local-GPU budget (ADR-0008: 15 s) and stays so for two more days, i.e. three days in a row.
+      # Needs at least 100 answered questions a day for a p99 to mean anything. Local-CPU installs (budget 60 s) and
+      # cloud (20 s) change the number: docs/evidence/yuk-olcumu.md.
+      - alert: QaP99OverBudget
+        expr: |
+          histogram_quantile(0.99, sum by (le) (increase(http_server_requests_seconds_bucket{job="verso", uri=~"/v1/questions(/stream)?", outcome="SUCCESS"}[1d]))) > 15
+          and sum(increase(http_server_requests_seconds_count{job="verso", uri=~"/v1/questions(/stream)?", outcome="SUCCESS"}[1d])) >= 100
+        for: 2d
+        labels:
+          severity: ticket
+        annotations:
+          summary: The 99th percentile of answered questions is above the 15 second budget for three days in a row (ADR-0001 split trigger).
+          runbook: docs/runbooks/qa-slow.md
+
       # Answers are returned but not stored in the conversation history (ADR-0023): the qa pool cannot write (wrong
       # svc_qa password, missing "qa" schema, database). History and usage metrics then miss questions. A full
       # conversation (reason="conversation_full") is the client's case, not an outage.

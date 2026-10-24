@@ -242,3 +242,45 @@ tests:
       - eval_time: 35m
         alertname: ConnectorSyncStale
         exp_alerts: []
+
+  # Half of the questions take 15-30 s for days (ADR-0001 split trigger): quiet while the condition only just began
+  # (pending for two days), firing after three days in a row.
+  - interval: 1h
+    input_series:
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="5"}'
+        values: '0+50x120'
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="15"}'
+        values: '0+50x120'
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="30"}'
+        values: '0+100x120'
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="+Inf"}'
+        values: '0+100x120'
+      - series: 'http_server_requests_seconds_count{job="verso", uri="/v1/questions", outcome="SUCCESS"}'
+        values: '0+100x120'
+    alert_rule_test:
+      - eval_time: 40h
+        alertname: QaP99OverBudget
+        exp_alerts: []
+      - eval_time: 100h
+        alertname: QaP99OverBudget
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations: {summary: "The 99th percentile of answered questions is above the 15 second budget for three days in a row (ADR-0001 split trigger).", runbook: docs/runbooks/qa-slow.md}
+
+  # Answers within the budget (all under 5 s): no alert.
+  - interval: 1h
+    input_series:
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="5"}'
+        values: '0+100x120'
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="15"}'
+        values: '0+100x120'
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="30"}'
+        values: '0+100x120'
+      - series: 'http_server_requests_seconds_bucket{job="verso", uri="/v1/questions", outcome="SUCCESS", le="+Inf"}'
+        values: '0+100x120'
+      - series: 'http_server_requests_seconds_count{job="verso", uri="/v1/questions", outcome="SUCCESS"}'
+        values: '0+100x120'
+    alert_rule_test:
+      - eval_time: 100h
+        alertname: QaP99OverBudget
+        exp_alerts: []

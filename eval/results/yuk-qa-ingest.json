@@ -1,0 +1,414 @@
+{
+  "measuredAt": "2026-10-24T19:25:29.529Z",
+  "host": {
+    "cpus": 8
+  },
+  "settings": {
+    "CONCURRENCY": 20,
+    "DURATION": 30,
+    "UPLOADS": 12,
+    "CHAT_QUESTIONS": 6,
+    "CHAT_CONCURRENCY": 3,
+    "SCENARIOS": [
+      "qa"
+    ],
+    "qa": {
+      "QA_CLIENTS": [
+        1,
+        2,
+        4
+      ],
+      "QA_INGEST": [
+        30
+      ],
+      "QA_SECONDS": 120,
+      "QA_MAX_SECONDS": 480,
+      "QA_STREAM": false
+    },
+    "ollamaCpus": "2 (compose default)",
+    "ollamaGpu": "none (deploy/compose.gpu.yaml not used)",
+    "commit": "d5315fa5ef35",
+    "serverChatConcurrency": "1 (config/verso.yml)",
+    "serverMinSimilarity": "0.50 (config/verso.yml)"
+  },
+  "qa": {
+    "corpusDocuments": 11,
+    "corpusReady": 11,
+    "runs": [
+      {
+        "clients": 1,
+        "ingestDocuments": 30,
+        "stream": false,
+        "seconds": 121,
+        "requests": 87,
+        "perSecond": 0.7,
+        "byStatus": {
+          "200": 87
+        },
+        "okLatencyMs": {
+          "p50": 1417,
+          "p95": 2121,
+          "p99": 2802,
+          "max": 2802
+        },
+        "answered": 87,
+        "answeredLatencyMs": {
+          "p50": 1417,
+          "p95": 2121,
+          "p99": 2802,
+          "max": 2802
+        },
+        "rejected503": 0,
+        "rejected429": 0,
+        "errors": 0,
+        "ingestion": {
+          "documents": 30,
+          "ready": 30,
+          "upload503Retries": 15,
+          "secondsUntilReady": 33,
+          "documentsPerMinute": 54.7
+        },
+        "duringIngestion": {
+          "requests": 24,
+          "byStatus": {
+            "200": 24
+          },
+          "okLatencyMs": {
+            "p50": 1288,
+            "p95": 2015,
+            "p99": 2802,
+            "max": 2802
+          },
+          "answered": 24,
+          "answeredLatencyMs": {
+            "p50": 1288,
+            "p95": 2015,
+            "p99": 2802,
+            "max": 2802
+          },
+          "rejected503": 0,
+          "rejected429": 0,
+          "errors": 0
+        },
+        "afterIngestion": {
+          "requests": 63,
+          "byStatus": {
+            "200": 63
+          },
+          "okLatencyMs": {
+            "p50": 1469,
+            "p95": 2121,
+            "p99": 2420,
+            "max": 2420
+          },
+          "answered": 63,
+          "answeredLatencyMs": {
+            "p50": 1469,
+            "p95": 2121,
+            "p99": 2420,
+            "max": 2420
+          },
+          "rejected503": 0,
+          "rejected429": 0,
+          "errors": 0
+        },
+        "metrics": {
+          "retrieval": {
+            "calls": 87,
+            "meanMs": 187.1
+          },
+          "chat": {
+            "calls": 82,
+            "meanMs": 1254.7
+          },
+          "pools": {
+            "verso-audit-db": {
+              "acquire": {
+                "calls": 117,
+                "meanMs": 0.4
+              },
+              "usage": {
+                "calls": 117,
+                "meanMs": 1.2
+              },
+              "timeouts": 0
+            },
+            "verso-db": {
+              "acquire": {
+                "calls": 793,
+                "meanMs": 3.1
+              },
+              "usage": {
+                "calls": 793,
+                "meanMs": 4.7
+              },
+              "timeouts": 0
+            },
+            "verso-qa-db": {
+              "acquire": {
+                "calls": 95,
+                "meanMs": 0.8
+              },
+              "usage": {
+                "calls": 95,
+                "meanMs": 4.4
+              },
+              "timeouts": 0
+            }
+          }
+        }
+      },
+      {
+        "clients": 2,
+        "ingestDocuments": 30,
+        "stream": false,
+        "seconds": 121,
+        "requests": 79,
+        "perSecond": 0.7,
+        "byStatus": {
+          "200": 78,
+          "503/11002": 1
+        },
+        "okLatencyMs": {
+          "p50": 2796,
+          "p95": 5797,
+          "p99": 10690,
+          "max": 10690
+        },
+        "answered": 78,
+        "answeredLatencyMs": {
+          "p50": 2796,
+          "p95": 5797,
+          "p99": 10690,
+          "max": 10690
+        },
+        "rejected503": 1,
+        "rejected429": 0,
+        "errors": 0,
+        "ingestion": {
+          "documents": 30,
+          "ready": 30,
+          "upload503Retries": 14,
+          "secondsUntilReady": 35,
+          "documentsPerMinute": 51.7
+        },
+        "duringIngestion": {
+          "requests": 25,
+          "byStatus": {
+            "200": 25
+          },
+          "okLatencyMs": {
+            "p50": 2907,
+            "p95": 4294,
+            "p99": 4571,
+            "max": 4571
+          },
+          "answered": 25,
+          "answeredLatencyMs": {
+            "p50": 2907,
+            "p95": 4294,
+            "p99": 4571,
+            "max": 4571
+          },
+          "rejected503": 0,
+          "rejected429": 0,
+          "errors": 0
+        },
+        "afterIngestion": {
+          "requests": 54,
+          "byStatus": {
+            "200": 53,
+            "503/11002": 1
+          },
+          "okLatencyMs": {
+            "p50": 2790,
+            "p95": 6502,
+            "p99": 10690,
+            "max": 10690
+          },
+          "answered": 53,
+          "answeredLatencyMs": {
+            "p50": 2790,
+            "p95": 6502,
+            "p99": 10690,
+            "max": 10690
+          },
+          "rejected503": 1,
+          "rejected429": 0,
+          "errors": 0
+        },
+        "metrics": {
+          "retrieval": {
+            "calls": 79,
+            "meanMs": 310.9
+          },
+          "chat": {
+            "calls": 73,
+            "meanMs": 2810.3
+          },
+          "pools": {
+            "verso-audit-db": {
+              "acquire": {
+                "calls": 108,
+                "meanMs": 0.3
+              },
+              "usage": {
+                "calls": 108,
+                "meanMs": 1.5
+              },
+              "timeouts": 0
+            },
+            "verso-db": {
+              "acquire": {
+                "calls": 806,
+                "meanMs": 2.6
+              },
+              "usage": {
+                "calls": 806,
+                "meanMs": 4.5
+              },
+              "timeouts": 0
+            },
+            "verso-qa-db": {
+              "acquire": {
+                "calls": 86,
+                "meanMs": 1.1
+              },
+              "usage": {
+                "calls": 86,
+                "meanMs": 4.8
+              },
+              "timeouts": 0
+            }
+          }
+        }
+      },
+      {
+        "clients": 4,
+        "ingestDocuments": 30,
+        "stream": false,
+        "seconds": 124,
+        "requests": 100,
+        "perSecond": 0.8,
+        "byStatus": {
+          "200": 93,
+          "503/11002": 7
+        },
+        "okLatencyMs": {
+          "p50": 4638,
+          "p95": 6890,
+          "p99": 7984,
+          "max": 7984
+        },
+        "answered": 93,
+        "answeredLatencyMs": {
+          "p50": 4638,
+          "p95": 6890,
+          "p99": 7984,
+          "max": 7984
+        },
+        "rejected503": 7,
+        "rejected429": 0,
+        "errors": 0,
+        "ingestion": {
+          "documents": 30,
+          "ready": 30,
+          "upload503Retries": 15,
+          "secondsUntilReady": 35,
+          "documentsPerMinute": 51.8
+        },
+        "duringIngestion": {
+          "requests": 27,
+          "byStatus": {
+            "200": 24,
+            "503/11002": 3
+          },
+          "okLatencyMs": {
+            "p50": 5529,
+            "p95": 7166,
+            "p99": 7984,
+            "max": 7984
+          },
+          "answered": 24,
+          "answeredLatencyMs": {
+            "p50": 5529,
+            "p95": 7166,
+            "p99": 7984,
+            "max": 7984
+          },
+          "rejected503": 3,
+          "rejected429": 0,
+          "errors": 0
+        },
+        "afterIngestion": {
+          "requests": 73,
+          "byStatus": {
+            "200": 69,
+            "503/11002": 4
+          },
+          "okLatencyMs": {
+            "p50": 4516,
+            "p95": 6525,
+            "p99": 7466,
+            "max": 7466
+          },
+          "answered": 69,
+          "answeredLatencyMs": {
+            "p50": 4516,
+            "p95": 6525,
+            "p99": 7466,
+            "max": 7466
+          },
+          "rejected503": 4,
+          "rejected429": 0,
+          "errors": 0
+        },
+        "metrics": {
+          "retrieval": {
+            "calls": 100,
+            "meanMs": 209.3
+          },
+          "chat": {
+            "calls": 86,
+            "meanMs": 4604.8
+          },
+          "pools": {
+            "verso-audit-db": {
+              "acquire": {
+                "calls": 123,
+                "meanMs": 0.2
+              },
+              "usage": {
+                "calls": 123,
+                "meanMs": 1.5
+              },
+              "timeouts": 0
+            },
+            "verso-db": {
+              "acquire": {
+                "calls": 849,
+                "meanMs": 2.2
+              },
+              "usage": {
+                "calls": 849,
+                "meanMs": 5.3
+              },
+              "timeouts": 0
+            },
+            "verso-qa-db": {
+              "acquire": {
+                "calls": 101,
+                "meanMs": 0.6
+              },
+              "usage": {
+                "calls": 101,
+                "meanMs": 5.3
+              },
+              "timeouts": 0
+            }
+          }
+        }
+      }
+    ]
+  }
+}

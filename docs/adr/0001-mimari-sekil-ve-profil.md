@@ -51,3 +51,5 @@ Aşağıdakilerden biri gerçekleşince karar yeniden açılır:
 - Ingestion için birden fazla bağımsız worker (ör. ayrı GPU host) gerekmesi.
 - Soru-cevap p99 gecikmesinin ingestion yükü altında bütçeyi 3 gün üst üste aşması.
 - İkinci bir ekip.
+
+Ölçüm (2026-10-24, `docs/evidence/yuk-olcumu.md`): 30 belgelik ingestion sürerken 1–4 eşzamanlı istemcide soru-cevap p99'u 2,8–10,7 sn; local-GPU bütçesi 15 sn. İkinci koşul şu an karşılanmıyor. Üretimde `QaP99OverBudget` alarmı izler.

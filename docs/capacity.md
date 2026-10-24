@@ -96,6 +96,25 @@ Soru başına sözcüksel bir liste ve terim sayımı eklendi. İkisi de veritab
 - **Büyük hesapta:** `verso.document.retrieval.lexical-candidates: 0` sözcüksel listeyi ve terim sayımını kapatır (yalnız vektör).
 - **Migration V3:** `document_chunk`'ı ve HNSW index'ini yeniden kurar. 20 bin chunk'ta 14 sn, 100 bin chunk'ta 3,5 dk sürdü; uygulama başlamadan önceki migrate adımında koşar.
 
+## Soru-cevap yük ölçümü, ingestion eşzamanlı (2026-10-24)
+
+Tam kayıt, yöntem ve ham sayılar: `docs/evidence/yuk-olcumu.md`. Donanım: AMD Ryzen 7 9800X3D (8 çekirdek), 31 GB RAM, NVIDIA GeForce RTX 4070 Ti SUPER 16 GB; GPU'lu yığın (`deploy/compose.gpu.yaml`), `chat-concurrency` 1, ayarlar değişmedi. Soru karışımı eval v2'den (her beşinci soru cevaplanamaz), 11 PDF'lik külliyat, 2 dk'lık kapalı döngü koşular.
+
+| Eşzamanlı istemci | Yalnız soru: p50 / p95 / p99 | 30 belge ingestion sürerken (koşu geneli): p50 / p95 / p99 | 503 11002 (yalnız soru / ingestion'lı) |
+|---|---|---|---|
+| 1 | 1,2 / 2,7 / 3,0 sn | 1,4 / 2,1 / 2,8 sn | 0 / 0 |
+| 2 | 1,9 / 3,5 / 5,8 sn | 2,8 / 5,8 / 10,7 sn | 1 / 1 |
+| 4 | 3,3 / 5,7 / 6,4 sn | 4,6 / 6,9 / 8,0 sn | 0 / 7 (100 istekte) |
+
+- **Bütçe (local-GPU p99 15 sn) her koşuda tutuyor;** ADR-0001'in bölme tetiği karşılanmıyor. Hata ve 429 yok; reddedilenler tasarım gereği chat slotu (11002).
+- **Ingestion soru gecikmesini artırıyor** (aynı Ollama): 4 istemcide p50 3,3 → 5,5 sn (ingestion sürerken), ama bütçe altında. 30 belge 33–35 sn'de READY (≈52–55 belge/dk).
+- **Akışlı uç:** ilk olay (`stage`) 12 ms, ilk metin (TTFT) p50 1,2 sn (1 istemci), 3,0–4,5 sn (4 istemci). Yük altında TTFT, sohbet slotu beklemesidir.
+- **Süre kimde:** bir sorunun ortalama retrieval süresi (embedding + DB) 135–311 ms, chat 1,2–4,6 sn; DB bağlantısı soru başına ≈5 ms tutulur, havuz zaman aşımı 0. Darboğaz tek chat slotu ve modeldir, veritabanı değil.
+- **Kapasite (bu donanım):** ≈1,1 cevap/sn (≈65 cevap/dk) 4 istemcide, ingestion'sız; ingestion'lı ≈0,8–0,9 cevap/sn. Daha fazla eşzamanlı kullanıcı için `chat-concurrency` ve `OLLAMA_NUM_PARALLEL` birlikte artırılıp yeniden ölçülmeli (ölçülmedi).
+- **Alarm:** `QaP99OverBudget` (soru isteği p99, son 24 saat penceresi, 3 gün üst üste 15 sn üstü) tetiği üretimde izler.
+
+Yeniden ölçüm: `SCENARIOS=qa node scripts/load-test.mjs` (`QA_CLIENTS`, `QA_INGEST`, `QA_STREAM`, `QA_SECONDS`; başlıktaki açıklamaya bakın). Yığın GPU'lu ve çalışır durumda olmalı; makinede boş RAM düşükse (< 5 GB) çalıştırmayın.
+
 ## Ölçümün sınırları
 
 - Yük kapalı döngüdür: her istemci cevabını bekleyip sonraki isteği gönderir. Aşırı yükte gecikmeler, açık bir geliş hızının göstereceğinden iyi görünür.
@@ -114,6 +133,8 @@ Soru başına sözcüksel bir liste ve terim sayımı eklendi. İkisi de veritab
 Bu kurulum bir demo ve küçük bir ekip için yeterlidir. Aynı anda soru soran birkaç kullanıcıyı kaldırmaz.
 
 GPU'lu aynı makinede (`deploy/compose.gpu.yaml`, yukarıdaki bölüm): cevap başına ~1–5 sn, dakikada ~50 cevap; 3 eşzamanlı kullanıcı reddedilmeden cevap alır, 6'da bulkhead'ler reddetmeye başlar.
+
+RTX 4070 Ti SUPER'lı makinede ingestion sürerken bile 4 eşzamanlı istemci p99 8 sn altında cevap alır (yukarıdaki "Soru-cevap yük ölçümü" bölümü): ~65 cevap/dk.
 
 ## Ölçeklemek için
 
