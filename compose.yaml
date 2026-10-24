@@ -40,6 +40,10 @@ x-db-env: &db-env
   # Plain HTTP to a non-loopback host is refused unless allowed explicitly; here the hop never leaves the compose
   # network. A production IdP is fetched over https and keeps the default (false).
   OIDC_JWKS_ALLOW_HTTP: "true"
+  # Where the bundled Keycloak puts roles and groups in the access token (ADR-0019).
+  OIDC_ROLES_CLAIM: realm_access.roles
+  OIDC_CLIENT_ROLES_CLAIM: ""
+  OIDC_GROUPS_CLAIM: groups
   # Embeddings from the local Ollama (ADR-0006, ADR-0011); the model name is the one ollama-pull fetched.
   OLLAMA_BASE_URL: http://ollama:11434
   OLLAMA_EMBEDDING_MODEL: &embedding-model bge-m3:567m

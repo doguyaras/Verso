@@ -128,7 +128,7 @@ class AnthropicCloudModeTest extends CloudModeTestSupport {
                 .header("Authorization", TestIdp.bearer(account)).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertThat(info.statusCode()).isEqualTo(200);
         assertThat(info.body()).isEqualTo(
-                "{\"mode\":\"cloud\",\"chatModel\":\"claude-test\",\"embeddingModel\":\"test-embedding\"}");
+                "{\"mode\":\"cloud\",\"chatModel\":\"claude-test\",\"embeddingModel\":\"test-embedding\",\"roles\":[\"verso-user\"]}");
     }
 
     private static String message(String text) {

@@ -118,6 +118,7 @@ public final class TestIdentityProvider {
         private String typ = ACCESS_TOKEN_TYPE;
         private Signature signature = Signature.ES256;
         private String keyId;
+        private final Map<String, Object> extra = new java.util.LinkedHashMap<>();
 
         public Builder subject(String subject) { this.subject = subject; return this; }
         public Builder issuer(String issuer) { this.issuer = issuer; return this; }
@@ -128,10 +129,16 @@ public final class TestIdentityProvider {
         public Builder signature(Signature signature) { this.signature = signature; return this; }
         /** Overrides the kid of ES256_UNKNOWN_KEY tokens: made-up key ids that each look new to the decoder. */
         public Builder keyId(String keyId) { this.keyId = keyId; return this; }
+        /** Any further claim, e.g. Keycloak's {@code realm_access} object or Entra's {@code roles} list (ADR-0019). */
+        public Builder claim(String name, Object value) { this.extra.put(name, value); return this; }
+
+        /** Keycloak's shape: realm roles in {@code realm_access.roles}. */
+        public Builder realmRoles(String... roles) { return claim("realm_access", Map.of("roles", List.of(roles))); }
 
         public String build() {
             JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
                     .issuer(issuer).audience(audience).issueTime(new Date());
+            extra.forEach(claims::claim);
             if (subject != null) claims.subject(subject);
             if (expiresAt != null) claims.expirationTime(Date.from(expiresAt));
             if (notBefore != null) claims.notBeforeTime(Date.from(notBefore));

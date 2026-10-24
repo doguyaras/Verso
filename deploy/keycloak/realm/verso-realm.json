@@ -72,6 +72,33 @@
             "id.token.claim": "false",
             "introspection.token.claim": "true"
           }
+        },
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
         }
       ],
       "defaultClientScopes": [
@@ -170,6 +197,19 @@
           }
         },
         {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
           "name": "username (ID token only)",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
@@ -207,7 +247,8 @@
         }
       ],
       "realmRoles": [
-        "verso-operator"
+        "verso-operator",
+        "verso-user"
       ]
     },
     {
@@ -225,7 +266,8 @@
         }
       ],
       "realmRoles": [
-        "verso-operator"
+        "verso-operator",
+        "verso-admin"
       ]
     }
   ],
@@ -234,6 +276,14 @@
       {
         "name": "verso-operator",
         "description": "Verso panel: the system screen (ADR-0015)"
+      },
+      {
+        "name": "verso-admin",
+        "description": "Verso API: administration (documents of every account, dashboards; ADR-0019)"
+      },
+      {
+        "name": "verso-user",
+        "description": "Verso API: regular user; also every user without a Verso role (ADR-0019)"
       }
     ]
   }

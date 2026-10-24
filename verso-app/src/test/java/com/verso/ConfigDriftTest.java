@@ -53,7 +53,11 @@ class ConfigDriftTest {
             "spring.ai.ollama.base-url",
             "spring.security.oauth2.resourceserver.jwt.",
             "verso.security.jwt.issuer",
-            "verso.security.jwt.jwk-set-uri");
+            "verso.security.jwt.jwk-set-uri",
+            // The token shape of the IdP (ADR-0019); the authority prefixes are the same everywhere.
+            "verso.security.authorities.roles-claim",
+            "verso.security.authorities.client-roles-claim",
+            "verso.security.authorities.groups-claim");
 
     /** Security prefixes whose keys AND values must match (allowlist paths and actors). */
     private static final Set<String> MIRRORED_VALUE_PREFIXES = Set.of("service-jwt.internal-access");

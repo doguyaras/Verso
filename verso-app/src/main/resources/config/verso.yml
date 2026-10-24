@@ -131,6 +131,17 @@ verso:
       # Connect and read timeout of the key fetch; keys are cached, so this is paid only on a cache miss (ADR-0010).
       jwks-timeout: 2s
       allow-http: ${OIDC_JWKS_ALLOW_HTTP:false}
+    # Roles and groups of the access token as authorities (ADR-0019). The claim paths depend on the IdP; the defaults
+    # are Keycloak's (realm roles in realm_access.roles, a "groups" mapper), Entra ID uses "roles" and "groups". A
+    # caller without a Verso role is a verso-user; verso-admin only when the token names it.
+    authorities:
+      roles-claim: ${OIDC_ROLES_CLAIM:realm_access.roles}
+      # Optional second role list, e.g. Keycloak client roles: resource_access.verso-api.roles.
+      client-roles-claim: ${OIDC_CLIENT_ROLES_CLAIM:}
+      groups-claim: ${OIDC_GROUPS_CLAIM:groups}
+      # hasRole(...) uses the same prefix; groups get their own, so a group named like a role never becomes it.
+      role-prefix: ROLE_
+      group-prefix: GROUP_
   # AI mode and model names (ADR-0006): reported with every answer, in X-Rag-Mode and on /actuator/info.
   ai:
     mode: ${VERSO_AI_MODE}

@@ -6,7 +6,7 @@
 
 - **Şekil:** **modüler monolit (A).** Tek deploy birimi `verso-app`; domain modülleri Spring Modulith modülleridir ve `*-api`/`*-core` Maven çiftleri olarak tutulur. Profil: **P0**.
 - **Modüller:**
-  - `platform-observability`, `platform-core`, `platform-security` (OIDC resource server, `@CurrentAccount`; faz 3): kodda var.
+  - `platform-observability`, `platform-core`, `platform-security` (OIDC resource server, `@CurrentAccount`; faz 3; token rolleri ve grupları yetki olarak, `verso-user` / `verso-admin`, ADR-0019): kodda var.
   - `document`: kodda var (faz 4, ADR-0011). Yükleme, PDF / DOCX / TXT / MD ayrıştırma (ADR-0016), chunk, embedding, ingestion worker; retrieval faz 5.
   - `qa`: kodda var (faz 5, ADR-0012). Retrieval `document-api` üzerinden, prompt, chat modeli, sunucuda atıf; kendi tablosu yok.
 - **Yeniden değerlendirme eşiği:** ADR-0001.
@@ -57,7 +57,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Migration'lar ve kuralları | `services/document/document-core/src/main/resources/db/migration/document/` (+ `afterMigrate.sql`), `MigrationConventionsTest` |
 | Compose, image, Postgres init | `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `deploy/postgres/initdb/`, `deploy/compose.local.yaml`, `deploy/compose.gpu.yaml` (Ollama NVIDIA GPU'da; yalnız cihaz ayrımı) |
 | Secret dosyaları | `secrets/` (git dışı; `scripts/dev-secrets.sh`; eşleme `secrets/README.md`) |
-| Kimlik (resource server, demo IdP) | `platform/platform-security/` (`JwtValidation`, `PlatformSecurityAutoConfiguration`, test-jar `TestIdentityProvider`), `deploy/keycloak/`, `deploy/postgres/initdb/30-keycloak.sh`, `scripts/{auth-smoke,demo-token}.sh` |
+| Kimlik (resource server, demo IdP) | `platform/platform-security/` (`JwtValidation`, `PlatformSecurityAutoConfiguration`, `authority/{ClaimAuthoritiesConverter,VersoAuthorityProperties,VersoRoles,CallerRoles}` (ADR-0019), test-jar `TestIdentityProvider`), `deploy/keycloak/`, `deploy/postgres/initdb/30-keycloak.sh`, `scripts/{auth-smoke,demo-token}.sh` |
 | Panel (faz 10, ADR-0015; tasarım v3 ADR-0017) | `panel/` (bağımlılıksız ES modülleri; `index.html`, `js/{app,auth,api,config,render,roles,store,palette,ui,icons,motion,signature,signature-data}.js`, `js/screens/` (Kurulum durumu dahil, ADR-0018), `img/favicon.svg`, `fonts/` (Fraunces, OFL), `js/screens/`, `css/panel.css` token'lı tasarım sistemi), Verso giriş teması `deploy/keycloak/themes/verso/` (keycloak.v2 alt teması, salt okunur bağlanır), `scripts/panel.test.mjs`, imza üreticisi `scripts/signature-theme.mjs` (`--check` panel testinde), kenar proxy'de `/panel/` ve CSP (`deploy/edge/nginx.conf`), realm'de `verso-panel` istemcisi ve `verso-operator` rolü, `GET /v1/info` (`qa-core` `InfoController`; uzak çağrı yok), `scripts/keycloak-reimport.sh` |
 | Yedek ve restore provası | `deploy/backup/{backup,restore-check}.sh`, `scripts/restore-drill.sh`, `scripts/restore-drill-selftest.sh`, `.github/workflows/restore-drill.yml` |
 

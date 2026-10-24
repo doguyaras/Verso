@@ -144,8 +144,48 @@ class KeycloakRealmTest {
         Map<String, Object> admin = list(realm().get("users")).stream().filter(u -> "admin".equals(u.get("username")))
                 .findFirst().orElseThrow();
         assertThat(admin.get("realmRoles")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
-                .containsExactly("verso-operator");
+                .containsExactlyInAnyOrder("verso-operator", "verso-admin");
         assertThat(list(admin.get("credentials")).getFirst().get("value")).isEqualTo("${VERSO_PANEL_ADMIN_PASSWORD}");
+    }
+
+    /**
+     * ADR-0019: the API reads roles from realm_access.roles and groups from "groups" (the defaults of
+     * verso.security.authorities). Every client a person signs in with puts both into the access token only, so the
+     * panel and the command line get the same rights; the demo admin is the only verso-admin, the demo user a
+     * verso-user.
+     */
+    @Test
+    void userClients_whenImported_carryRolesAndGroupsInTheAccessTokenOnly() throws IOException {
+        for (String id : List.of("verso-panel", "verso-cli")) {
+            List<Map<String, Object>> mappers = list(client(id).get("protocolMappers"));
+            assertThat(mappers).as(id + " realm roles").anySatisfy(m -> {
+                assertThat(m.get("protocolMapper")).isEqualTo("oidc-usermodel-realm-role-mapper");
+                assertThat(map(m.get("config")).get("claim.name")).isEqualTo("realm_access.roles");
+                assertThat(map(m.get("config")).get("access.token.claim")).isEqualTo("true");
+                assertThat(map(m.get("config")).get("id.token.claim")).isEqualTo("false");
+            });
+            assertThat(mappers).as(id + " groups").anySatisfy(m -> {
+                assertThat(m.get("protocolMapper")).isEqualTo("oidc-group-membership-mapper");
+                assertThat(map(m.get("config")).get("claim.name")).isEqualTo("groups");
+                // Full paths: two subgroups with the same name under different parents stay distinct.
+                assertThat(map(m.get("config")).get("full.path")).isEqualTo("true");
+                assertThat(map(m.get("config")).get("access.token.claim")).isEqualTo("true");
+                assertThat(map(m.get("config")).get("id.token.claim")).isEqualTo("false");
+                assertThat(map(m.get("config")).get("userinfo.token.claim")).isEqualTo("false");
+            });
+        }
+        assertThat(list(map(realm().get("roles")).get("realm"))).extracting(r -> r.get("name"))
+                .contains("verso-admin", "verso-user");
+        Map<String, List<String>> rolesByUser = new java.util.HashMap<>();
+        for (Map<String, Object> user : list(realm().get("users"))) {
+            @SuppressWarnings("unchecked")
+            List<String> roles = (List<String>) user.get("realmRoles");
+            rolesByUser.put((String) user.get("username"), roles);
+        }
+        assertThat(rolesByUser.get("admin")).contains("verso-admin");
+        assertThat(rolesByUser.get("demo")).contains("verso-user").doesNotContain("verso-admin");
+        assertThat(rolesByUser).as("only the admin account is a verso-admin")
+                .allSatisfy((name, roles) -> assertThat(roles.contains("verso-admin")).isEqualTo("admin".equals(name)));
     }
 
     /** The repository is public: every secret in the realm is a placeholder that start.sh fills from /run/secrets. */

@@ -35,7 +35,7 @@ Kullanıcı yeni bağımlılıktan kaçınılmasını istedi. React/TS bir derle
 | Soru sor | ✓ | ✓ | Soru, atıf rozetleriyle cevap, kaynak listesi, "bulunamadı" ve "kaynak gösterilemedi" görünümleri, mod ve model |
 | Sistem | – | ✓ | Mod, modeller (`GET /v1/info`), oturum ve token süresi, Grafana ve runbook bağlantıları |
 
-- Rol, access token'ın `realm_access.roles` claim'inden gelir. Rolü olmayan her oturum `verso-user` sayılır.
+- Rol, access token'ın `realm_access.roles` claim'inden gelir. Rolü olmayan her oturum `verso-user` sayılır. Sunucu aynı claim'i okur ve çağıranın Verso rollerini `GET /v1/info` yanıtının `roles` alanında verir (ADR-0019).
 - Panel yalnız menüyü gizler. Asıl kural API'dedir: her istek token taşır ve sahiplik sunucuda kontrol edilir (ADR-0005).
 - Demo kullanıcısı `demo` ve panel yöneticisi `admin` `verso-operator` rolündedir; parolaları `/run/secrets` dosyalarından gelir (`SECRET_KEYCLOAK_DEMO_USER_PASSWORD`, `SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD`).
 

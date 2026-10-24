@@ -25,6 +25,7 @@
 - Refresh token: opak, `sha256(plain:salt)` ile saklanır, aile rotasyonu, reuse → aile iptali. Mutlak süre uzamaz.
 - Admin 2FA: passkey/WebAuthn veya TOTP. SMS yalnız kurtarma. Admin OTP'si de tuzlu hash + sabit zamanlı karşılaştırma.
 - Roller token'da taşınıyorsa değişimde `sv` artar; panel ve sunucu aynı rol kaynağını okur.
+- Verso (ADR-0019): roller ve gruplar token claim'lerinden, yolları `verso.security.authorities.*` ile; rolü olmayan çağıran `verso-user`, `verso-admin` yalnız token taşırsa. Yalnız-admin uç `@PreAuthorize(VersoRoles.HAS_ADMIN)` taşır. Grup hiçbir zaman rol olamaz (ayrı önek); claim değerleri loglanmaz ve yanıtta geri verilmez. `sv` yok: rol değişimi token ömrü kadar gecikir (ADR-0007 #50).
 
 ## 3. OTP, Şifre, Abuse
 

@@ -77,7 +77,7 @@ Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. 
 
 ## Panel
 
-Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikisi de operatör rolünde; parolaları `scripts/dev-secrets.sh`'ın ürettiği dosyalarda:
+Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikisi de panelde operatör rolünde. API'de `admin` `verso-admin`, `demo` `verso-user` rolündedir (ADR-0019). Parolaları `scripts/dev-secrets.sh`'ın ürettiği dosyalarda:
 
 | Kullanıcı | Parola dosyası |
 |---|---|
@@ -248,7 +248,7 @@ API `http://127.0.0.1:8080` adresindedir; PostgreSQL ve actuator portu dışarı
 | `SECRET_KEYCLOAK_CI_CLIENT_SECRET` | keycloak, CI smoke | `verso-ci` istemcisi (client credentials) |
 | `SECRET_KEYCLOAK_DEMO_USER_PASSWORD` | keycloak | `verso` realm'indeki `demo` kullanıcısı |
 
-**Kimlik doğrulama** (ADR-0005, ADR-0010). API her istekte `Authorization: Bearer <access token>` ister; health uçları dışında token'sız istek `401` döner. Token'ı OIDC IdP verir: compose'ta demo Keycloak `http://127.0.0.1:8180` (realm `verso`), üretimde kurumun kendi IdP'si (`OIDC_ISSUER`, `OIDC_JWK_SET_URI`). Kabul edilen token: ES256 imzalı, `typ: at+jwt`, `iss` birebir, `aud` içinde `verso-api`, süreli. Hesap kimliği token'ın `sub`'ıdır.
+**Kimlik doğrulama** (ADR-0005, ADR-0010). API her istekte `Authorization: Bearer <access token>` ister; health uçları dışında token'sız istek `401` döner. Token'ı OIDC IdP verir: compose'ta demo Keycloak `http://127.0.0.1:8180` (realm `verso`), üretimde kurumun kendi IdP'si (`OIDC_ISSUER`, `OIDC_JWK_SET_URI`). Kabul edilen token: ES256 imzalı, `typ: at+jwt`, `iss` birebir, `aud` içinde `verso-api`, süreli. Hesap kimliği token'ın `sub`'ıdır. Roller ve gruplar da token'dan okunur (ADR-0019): rolü olmayan kullanıcı `verso-user` sayılır, `verso-admin` yalnız IdP bu rolü verirse. Claim yolları `OIDC_ROLES_CLAIM`, `OIDC_CLIENT_ROLES_CLAIM` ve `OIDC_GROUPS_CLAIM` ile ayarlanır; varsayılanlar Keycloak'ındır, Entra ID için `roles` ve `groups`.
 
 Demo kullanıcıyla token (device flow): betik bir bağlantı yazar, tarayıcıda `demo` kullanıcısıyla (parola `secrets/SECRET_KEYCLOAK_DEMO_USER_PASSWORD`) giriş yapınca token'ı verir.
 

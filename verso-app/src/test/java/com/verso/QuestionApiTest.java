@@ -358,8 +358,24 @@ class QuestionApiTest {
         HttpResponse<String> info = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
                 .header("Authorization", TestIdp.bearer(account)).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertThat(info.statusCode()).isEqualTo(200);
-        assertThat(info.body()).isEqualTo("{\"mode\":\"local\",\"chatModel\":\"test-chat\",\"embeddingModel\":\"test-embedding\"}");
+        assertThat(info.body()).isEqualTo("{\"mode\":\"local\",\"chatModel\":\"test-chat\",\"embeddingModel\":\"test-embedding\","
+                + "\"roles\":[\"verso-user\"]}");
         assertThat(info.headers().firstValue("Cache-Control")).hasValue("no-store, private");
+    }
+
+    /**
+     * ADR-0019: /v1/info names the caller's own Verso roles for the panel, read from the token with the deployment's
+     * claim paths (config/verso.yml: Keycloak's realm_access.roles). The IdP's other roles and the groups stay out.
+     */
+    @Test
+    void info_whenCallerIsAnAdmin_namesTheVersoRolesOnly() throws Exception {
+        String admin = TestIdp.IDP.token().subject("acct-info-admin").realmRoles("verso-admin", "offline_access")
+                .claim("groups", List.of("/hukuk")).build();
+        HttpResponse<String> info = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
+                .header("Authorization", "Bearer " + admin).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(info.statusCode()).isEqualTo(200);
+        assertThat(info.body()).endsWith("\"roles\":[\"verso-admin\",\"verso-user\"]}")
+                .doesNotContain("offline_access").doesNotContain("/hukuk");
     }
 
     @Test

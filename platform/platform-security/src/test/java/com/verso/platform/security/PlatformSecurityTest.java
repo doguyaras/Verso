@@ -7,6 +7,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.verso.platform.observability.tracing.TraceIds;
+import com.verso.platform.security.authority.CallerRoles;
+import com.verso.platform.security.authority.VersoRoles;
 import com.verso.platform.security.testing.TestIdentityProvider;
 import com.verso.platform.security.testing.TestIdentityProvider.Signature;
 import com.verso.platform.security.web.AccountId;
@@ -44,6 +46,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -71,13 +74,19 @@ class PlatformSecurityTest {
     @EnableAutoConfiguration
     static class App {
         @Bean
-        Probe probe() {
-            return new Probe();
+        Probe probe(CallerRoles callerRoles) {
+            return new Probe(callerRoles);
         }
     }
 
     @RestController
     static class Probe {
+        private final CallerRoles callerRoles;
+
+        Probe(CallerRoles callerRoles) {
+            this.callerRoles = callerRoles;
+        }
+
         @GetMapping("/v1/probe/me")
         String me(@CurrentAccount AccountId account) {
             return account.value();
@@ -99,6 +108,18 @@ class PlatformSecurityTest {
         @GetMapping("/v1/probe/denied")
         String denied() {
             throw new AccessDeniedException("probe denies");
+        }
+
+        /** An admin-only endpoint as ADR-0019 declares one. */
+        @GetMapping("/v1/probe/admin")
+        @PreAuthorize(VersoRoles.HAS_ADMIN)
+        String admin() {
+            return "admin reached";
+        }
+
+        @GetMapping("/v1/probe/roles")
+        String roles() {
+            return String.join(",", callerRoles.current());
         }
     }
 
@@ -214,6 +235,77 @@ class PlatformSecurityTest {
         HttpResponse<String> response = get("/v1/probe/denied-by-rule", "Bearer " + IDP.tokenFor("acct-rule"));
         assertThat(response.statusCode()).isEqualTo(403);
         assertThat(response.body()).contains("\"code\":90101");
+    }
+
+    /** ADR-0019: an admin-only endpoint answers 403 in the envelope to every caller whose token does not name the role. */
+    @Test
+    void adminEndpoint_whenTokenDoesNotNameVersoAdmin_isDenied() throws Exception {
+        Map<String, String> denied = Map.of(
+                "no role claim", IDP.tokenFor("acct-plain"),
+                "verso-user only", IDP.token().subject("acct-user").realmRoles("verso-user", "offline_access").build(),
+                "a group named like the role", IDP.token().subject("acct-group")
+                        .claim("groups", List.of("verso-admin", "ROLE_verso-admin")).build(),
+                "Entra's claim while Keycloak's path is configured", IDP.token().subject("acct-entra")
+                        .claim("roles", List.of("verso-admin")).build(),
+                "a client role while no client-roles path is configured", IDP.token().subject("acct-client")
+                        .claim("resource_access", Map.of("verso-api", Map.of("roles", List.of("verso-admin")))).build(),
+                "a malformed role claim", IDP.token().subject("acct-bad").claim("realm_access", "verso-admin").build());
+        for (Map.Entry<String, String> entry : denied.entrySet()) {
+            HttpResponse<String> response = get("/v1/probe/admin", "Bearer " + entry.getValue());
+            assertThat(response.statusCode()).as(entry.getKey()).isEqualTo(403);
+            assertThat(response.body()).as(entry.getKey()).contains("\"code\":90101").doesNotContain("admin reached");
+            assertThat(response.headers().firstValue("WWW-Authenticate")).as(entry.getKey())
+                    .hasValue("Bearer error=\"insufficient_scope\"");
+            // Denied the admin endpoint, still signed in: the rest of the API is unchanged for them.
+            assertThat(get("/v1/probe/roles", "Bearer " + entry.getValue()).body()).as(entry.getKey()).isEqualTo("verso-user");
+        }
+        assertUnauthenticated(get("/v1/probe/admin", null));
+        assertThat(appender.list).noneMatch(e -> e.getLevel().toString().equals("ERROR"));
+        // Neither the tokens nor the role and group values they carry reach a log line.
+        assertLogsFreeOf(new ArrayList<>(denied.values()));
+        assertThat(appender.list).noneMatch(e -> e.getFormattedMessage().contains("verso-admin"));
+    }
+
+    @Test
+    void adminEndpoint_whenKeycloakTokenNamesVersoAdmin_isAllowed() throws Exception {
+        String token = IDP.token().subject("acct-admin").realmRoles("verso-admin", "offline_access").build();
+        HttpResponse<String> response = get("/v1/probe/admin", "Bearer " + token);
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).isEqualTo("admin reached");
+        assertThat(get("/v1/probe/roles", "Bearer " + token).body()).isEqualTo("verso-admin,verso-user");
+        assertThat(get("/v1/probe/me", "Bearer " + token).body()).as("the account is still sub").isEqualTo("acct-admin");
+    }
+
+    /** The claim paths are configuration: with Entra ID's ("roles", "groups") the same endpoint follows Entra's shape. */
+    @Test
+    void adminEndpoint_whenConfiguredForEntraClaims_followsTheEntraShape() throws Exception {
+        try (ConfigurableApplicationContext entra = start(new Class<?>[]{App.class},
+                "verso.security.authorities.roles-claim=roles", "verso.security.authorities.groups-claim=groups")) {
+            String admin = IDP.token().subject("acct-entra-admin").claim("roles", List.of("verso-admin"))
+                    .claim("groups", List.of("8c1b7e7e-1d4b-4f3a-9a77-2f0c5f3b6d10")).build();
+            String keycloakShaped = IDP.token().subject("acct-kc").realmRoles("verso-admin").build();
+            assertThat(get(port(entra), "/v1/probe/admin", "Bearer " + admin).statusCode()).isEqualTo(200);
+            assertThat(get(port(entra), "/v1/probe/admin", "Bearer " + keycloakShaped).statusCode())
+                    .as("realm_access is not read under Entra's paths").isEqualTo(403);
+            assertThat(get(port(entra), "/v1/probe/admin", "Bearer " + IDP.tokenFor("acct-none")).statusCode()).isEqualTo(403);
+        }
+    }
+
+    @Test
+    void adminEndpoint_whenKeycloakClientRolesPathIsConfigured_acceptsTheClientRole() throws Exception {
+        try (ConfigurableApplicationContext clientRoles = start(new Class<?>[]{App.class},
+                "verso.security.authorities.client-roles-claim=resource_access.verso-api.roles")) {
+            String token = IDP.token().subject("acct-client-admin")
+                    .claim("resource_access", Map.of("verso-api", Map.of("roles", List.of("verso-admin")))).build();
+            assertThat(get(port(clientRoles), "/v1/probe/admin", "Bearer " + token).statusCode()).isEqualTo(200);
+        }
+    }
+
+    /** Overlapping prefixes would let a group mint a role: the application does not start (fail fast). */
+    @Test
+    void startup_whenAuthorityPrefixesOverlap_fails() {
+        assertThatThrownBy(() -> start(new Class<?>[]{App.class}, "verso.security.authorities.group-prefix=ROLE_").close())
+                .hasStackTraceContaining("must not overlap");
     }
 
     /** Stateless: neither an accepted nor a rejected request creates a session (T4). */

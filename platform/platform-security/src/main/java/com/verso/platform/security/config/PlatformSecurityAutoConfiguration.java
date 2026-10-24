@@ -1,5 +1,8 @@
 package com.verso.platform.security.config;
 
+import com.verso.platform.security.authority.CallerRoles;
+import com.verso.platform.security.authority.ClaimAuthoritiesConverter;
+import com.verso.platform.security.authority.VersoAuthorityProperties;
 import com.verso.platform.security.jwt.JwtValidation;
 import com.verso.platform.security.jwt.VersoJwtProperties;
 import com.verso.platform.security.web.CurrentAccountArgumentResolver;
@@ -18,13 +21,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.ObjectPostProcessor;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.core.GrantedAuthorityDefaults;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationEntryPointFailureHandler;
@@ -54,7 +61,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerAutoConfiguration",
         "org.springframework.boot.security.oauth2.server.resource.autoconfigure.web.OAuth2ResourceServerWebSecurityAutoConfiguration"})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@EnableConfigurationProperties(VersoJwtProperties.class)
+@EnableConfigurationProperties({VersoJwtProperties.class, VersoAuthorityProperties.class})
 public class PlatformSecurityAutoConfiguration {
 
     /** Order of the API chain: last, behind any more specific chain an application adds. */
@@ -73,6 +80,41 @@ public class PlatformSecurityAutoConfiguration {
     JwtDecoder jwtDecoder(VersoJwtProperties properties, Clock clock) {
         return JwtValidation.decoder(properties, clock);
     }
+
+    /**
+     * Roles and groups of the token as authorities (ADR-0019); the claim paths are configuration, not Keycloak's
+     * shape. The principal name stays {@code sub}, the account (ADR-0005).
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    JwtAuthenticationConverter jwtAuthenticationConverter(VersoAuthorityProperties properties) {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(new ClaimAuthoritiesConverter(properties));
+        return converter;
+    }
+
+    /**
+     * {@code hasRole(...)}, in the filter chain and in {@code @PreAuthorize}, checks the configured role prefix rather
+     * than a built-in one. Static: method security reads it while its own infrastructure is being created.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    static GrantedAuthorityDefaults grantedAuthorityDefaults(VersoAuthorityProperties properties) {
+        return new GrantedAuthorityDefaults(properties.rolePrefix());
+    }
+
+    @Bean
+    CallerRoles callerRoles(VersoAuthorityProperties properties) {
+        return new CallerRoles(properties);
+    }
+
+    /**
+     * {@code @PreAuthorize} on controllers and services (reference 9.8): an admin-only endpoint declares
+     * {@code VersoRoles.HAS_ADMIN}. A denial is an AuthorizationDeniedException, answered 403 in the envelope.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @EnableMethodSecurity
+    static class MethodSecurity {}
 
     @Bean
     EnvelopeAuthenticationEntryPoint envelopeAuthenticationEntryPoint(
@@ -95,6 +137,7 @@ public class PlatformSecurityAutoConfiguration {
     @Order(API_CHAIN_ORDER)
     @ConditionalOnMissingBean(name = "versoApiSecurity")
     SecurityFilterChain versoApiSecurity(HttpSecurity http, JwtDecoder decoder,
+                                         JwtAuthenticationConverter authenticationConverter,
                                          EnvelopeAuthenticationEntryPoint entryPoint,
                                          EnvelopeAccessDeniedHandler deniedHandler,
                                          ManagementServerPort managementPort) throws Exception {
@@ -110,10 +153,12 @@ public class PlatformSecurityAutoConfiguration {
                         requests.requestMatchers(new AndRequestMatcher(EndpointRequest.to("prometheus"),
                                 managementPort::matches)).permitAll();
                     }
+                    // Every authenticated caller is a verso-user (ADR-0019), so the catch-all needs no role; an
+                    // admin-only endpoint says so itself with @PreAuthorize(VersoRoles.HAS_ADMIN).
                     requests.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resource -> resource
-                        .jwt(jwt -> jwt.decoder(decoder))
+                        .jwt(jwt -> jwt.decoder(decoder).jwtAuthenticationConverter(authenticationConverter))
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(deniedHandler)
                         // The filter's default handler rethrows AuthenticationServiceException (keys unreachable),

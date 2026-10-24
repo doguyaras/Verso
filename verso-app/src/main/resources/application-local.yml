@@ -40,6 +40,11 @@ verso:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).
       issuer: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso
       jwk-set-uri: http://localhost:${VERSO_KEYCLOAK_PORT:8180}/realms/verso/protocol/openid-connect/certs
+    # The compose Keycloak's token shape (ADR-0019): realm roles and the panel's "groups" mapper.
+    authorities:
+      roles-claim: realm_access.roles
+      client-roles-claim: ""
+      groups-claim: groups
 management:
   endpoint:
     health:
