@@ -57,6 +57,6 @@ public class DocumentAuditOutbox {
         outbox.store().append(record.eventId(), AuditTrail.OUTBOX_AGGREGATE_TYPE,
                 event.targetId() != null ? event.targetId() : record.eventId(), AuditTrail.OUTBOX_EVENT_TYPE, payload);
         // Delivered right after the commit when it can be (the poll is the safety net).
-        outbox.relay().deliverAfterCommit(record.eventId());
+        outbox.relay().deliverAfterCommit(record.eventId(), AuditTrail.OUTBOX_EVENT_TYPE, payload);
     }
 }

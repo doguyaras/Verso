@@ -45,3 +45,9 @@ Yerelde koşmayanlar (Docker gerektirir, CI kapısı): `AuditOutboxTest`, `Docum
 ## Restore ve migrate betikleri
 
 `scripts/restore-drill.sh`, `scripts/restore-drill-selftest.sh`, `deploy/backup/restore-check.sh` ve compose `restore-flyway*` servisleri okundu: Spring DataSource/Flyway anahtarlarına değil rollere, secret dosyalarına ve migration klasörlerine dayanırlar; değişiklik gerekmedi. Yeni `outbox_event` tabloları varsayılan haklarla uygulama rolünce okunur, `restore-check.sh` döngüsünden geçer. Compose `migrate` komutundaki `--spring.autoconfigure.exclude` satırı kaldırıldı (dışlama artık `application.yml`'de, her profil için).
+
+## CI düzeltmesi (2026-10-24)
+
+- **33 context hatası:** web dışı test context'lerinde (`WebEnvironment.NONE`: rol testleri, `DeployConfigTest`) document havuzu yalnız web'de kurulduğu için `DataSource` ve Boot'un `db` katkısı yoktu; hazırlık grubu doğrulaması düştü. Havuz artık her uygulama tipinde (`verso.document.datasource.enabled`, `migrate` kapatır) ve `db` modülün kendi `dbHealthIndicator`'ı (`DocumentHealthConfiguration`, havuz yoksa UP). `minimum-idle`, Boot/Hikari gibi havuz boyutuna indirgenir (hata yerine).
+- **`ConversationApiTest#feedback_whenRatedConcurrently_countsOnce` 503:** commit sonrası teslim, isteğin bitmiş transaction bağlantısı hâlâ bağlıyken aynı qa havuzundan ikinci bağlantı istiyordu (claim + delete); testte havuz 2, 8 eşzamanlı istek: her biri bir bağlantı tutup ikincisini bekledi, 2 sn bağlantı zaman aşımı → 503. Teslim artık yükü bellekten alıcıya verir (modül bağlantısı yok), satırı istek bağlantısını bıraktıktan sonra siler. `OutboxRelayTest#storeEagerly_whenDelivered_usesNoModuleConnectionUntilTheRowIsRemoved` gerilemeyi korur.
+- Yerel Testcontainers koşusu (yalnız bu sınıflar): `QaSchemaRolesTest` 5, `AuditSchemaRolesTest` 6, `DatabaseRolesTest` 19, `DeployConfigTest` 3, `ConversationApiTest` 19, `MigrateModeTest` 1, `ComposeConfigTest` 16: hepsi yeşil.

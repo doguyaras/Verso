@@ -95,18 +95,13 @@ public final class OutboxStore {
     }
 
     /**
-     * Claims one PENDING row by id for the eager delivery right after its commit; empty when another worker holds it
-     * (SKIP LOCKED: never waits for the poller) or it is gone already.
+     * Deletes a row the eager delivery handed over, unless a poller holds it (SKIP LOCKED: never waits for one; a
+     * claimed row is the poller's to finish). False when it was not deleted.
      */
-    public Optional<OutboxRow> claimById(UUID id, Duration lease, UUID claimToken) {
-        return jdbc.sql("UPDATE " + table + " o SET status = 'PUBLISHING', claim_token = :token,"
-                        + " locked_until = now() + make_interval(secs => :leaseSeconds)"
-                        + " WHERE o.id = (SELECT id FROM " + table + " WHERE id = :id AND status = 'PENDING'"
-                        + " FOR UPDATE SKIP LOCKED)"
-                        + " RETURNING o.id, o.event_type, o.payload::text AS payload, o.retry_count, o.created_at,"
-                        + " o.claim_token")
-                .param("id", id).param("token", claimToken).param("leaseSeconds", (double) lease.toSeconds())
-                .query(OutboxStore::row).optional();
+    public boolean deletePending(UUID id) {
+        return jdbc.sql("DELETE FROM " + table + " WHERE id = (SELECT id FROM " + table
+                        + " WHERE id = :id AND status = 'PENDING' FOR UPDATE SKIP LOCKED)")
+                .param("id", id).update() == 1;
     }
 
     /** Delivered: the row goes (reference 11.2: outbox rows are deleted, not archived). False if the lease was lost. */

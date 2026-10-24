@@ -123,8 +123,9 @@ services:
     mem_limit: 512m
     command:
       - --spring.main.web-application-type=none
-      # Boot's DataSource and Flyway auto-configuration are excluded for every run (application.yml, ADR-0039); the
-      # module pools are web-only, so this run opens no application connection.
+      # Boot's DataSource and Flyway auto-configuration are excluded for every run (application.yml, ADR-0039). No
+      # application connection here: the document pool is switched off, the qa and audit pools are web-only.
+      - --verso.document.datasource.enabled=false
       # No DataSource, so no "db" health contributor for the readiness group; there is no web server to ask anyway.
       - --management.endpoint.health.validate-group-membership=false
       # No model client either (ADR-0011): the document and qa modules are not loaded without a web server.

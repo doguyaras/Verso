@@ -39,9 +39,9 @@ public record DocumentDatabaseProperties(
         if (maximumPoolSize < 1 || maximumPoolSize > 50) {
             throw new IllegalStateException("verso.document.datasource.maximum-pool-size must be 1..50");
         }
-        if (minimumIdle < 0 || minimumIdle > maximumPoolSize) {
-            throw new IllegalStateException("verso.document.datasource.minimum-idle must be 0..maximum-pool-size");
-        }
+        if (minimumIdle < 0) throw new IllegalStateException("verso.document.datasource.minimum-idle must be >= 0");
+        // Hikari's own rule, as under Boot's spring.datasource.hikari: a smaller pool lowers the idle count with it.
+        minimumIdle = Math.min(minimumIdle, maximumPoolSize);
         if (!connectionTimeout.isPositive() || connectionTimeout.compareTo(Duration.ofSeconds(30)) > 0) {
             throw new IllegalStateException("verso.document.datasource.connection-timeout must be 1ms..30s");
         }

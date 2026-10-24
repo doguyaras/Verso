@@ -147,23 +147,31 @@ class OutboxRelayTest {
     }
 
     @Test
-    void deliverNow_whenTheTargetFails_pausesEagerDeliveryForEveryone() {
+    void storeEagerly_whenTheTargetFails_pausesEagerDeliveryForEveryoneAndLeavesTheRow() {
         AtomicInteger calls = new AtomicInteger();
-        when(store.claimById(any(), any(), any())).thenAnswer(i -> Optional.of(row(0)));
         OutboxRelay relay = relay(r -> {
             calls.incrementAndGet();
             throw new CannotGetJdbcConnectionException("down");
         }, properties("eager-pause", "1m"));
-        assertThat(relay.deliverNow(UUID.randomUUID())).isFalse();
-        assertThat(relay.deliverNow(UUID.randomUUID())).isFalse();
+        assertThat(relay.storeEagerly(UUID.randomUUID(), TYPE, "{}")).isFalse();
+        assertThat(relay.storeEagerly(UUID.randomUUID(), TYPE, "{}")).isFalse();
         assertThat(calls).as("one wait per outage, not one per request").hasValue(1);
+        verify(store, never()).markFailed(any(), any(), anyString(), any());
     }
 
     @Test
-    void deliverNow_whenTakenByThePoller_doesNothing() {
-        when(store.claimById(any(), any(), any())).thenReturn(Optional.empty());
-        assertThat(relay(r -> { throw new AssertionError("not called"); }, properties()).deliverNow(UUID.randomUUID()))
-                .isFalse();
+    void storeEagerly_whenDelivered_usesNoModuleConnectionUntilTheRowIsRemoved() {
+        AtomicReference<OutboxRow> handled = new AtomicReference<>();
+        OutboxRelay relay = relay(handled::set, properties());
+        UUID id = UUID.randomUUID();
+        assertThat(relay.storeEagerly(id, TYPE, "{\"a\":1}")).isTrue();
+        assertThat(handled.get().payload()).isEqualTo("{\"a\":1}");
+        // The pool-starvation regression (ConversationApiTest#feedback_whenRatedConcurrently_countsOnce): the store
+        // runs before any statement on the module's own connection.
+        org.mockito.Mockito.verifyNoInteractions(store);
+        relay.removeDelivered(id);
+        verify(store).deletePending(id);
+        assertThat(relay.storeEagerly(UUID.randomUUID(), "other.type", "{}")).as("unknown type: the poll decides").isFalse();
     }
 
     @Test

@@ -6,7 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.sql.Connection;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +14,10 @@ import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 
 /**
  * The document module's own pool on the schema "document" (ADR-0039), connected as svc_document, declared here like
- * qa's (ADR-0023) and audit's (ADR-0026) instead of Boot's auto-configured spring.datasource. Web application only:
- * the one-shot migrate run has no application connections (and no svc_document password).
+ * qa's (ADR-0023) and audit's (ADR-0026) instead of Boot's auto-configured spring.datasource. In every application
+ * type, as Boot's pool was (non-web contexts such as the role tests use it); the one-shot migrate run switches it off
+ * with verso.document.datasource.enabled=false (compose "migrate": no application connections, no svc_document
+ * password), as it used to exclude Boot's DataSourceAutoConfiguration.
  *
  * <p><b>Why this one is a bean and qa's and audit's are not.</b> Spring's JDBC support (JdbcClient, JdbcTemplate, the
  * transaction manager behind TransactionTemplate and {@code @Transactional}) and the readiness contributor "db" each
@@ -25,7 +27,7 @@ import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
  * theirs out of the context so they can never be injected by type.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnBooleanProperty(name = "verso.document.datasource.enabled", matchIfMissing = true)
 @EnableConfigurationProperties(DocumentDatabaseProperties.class)
 public class DocumentPersistenceConfiguration {
 

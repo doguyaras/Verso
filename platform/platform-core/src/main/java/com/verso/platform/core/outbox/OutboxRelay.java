@@ -10,7 +10,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -119,19 +120,32 @@ public final class OutboxRelay {
      * committed, the row is delivered before this thread goes on, so the receiver has it when the response is sent.
      * Never throws and never delays a rollback; anything it misses stays PENDING for {@link #runOnce()}.
      *
-     * <p>The delivery runs on a short-lived virtual thread that the request waits for (at most eager-timeout): inside
-     * afterCompletion the finished transaction's connection is still bound to the request thread, and statements
-     * there would join it instead of committing on their own.
+     * <p>The writer hands in the payload it just wrote, so the delivery needs no connection of the module's pool while
+     * the request still holds its own: inside afterCompletion the finished transaction's connection is not yet given
+     * back, and asking the same pool for a second one would double the demand and, with a small pool and concurrent
+     * requests, starve it (every request holding one connection and waiting for another). The request waits (at most
+     * eager-timeout) only for the receiver's store, on a short-lived virtual thread; that thread then deletes the
+     * outbox row on its own once the request has returned its connection. A row it does not delete is delivered again
+     * by the poll, which the receiver's idempotency turns into a no-op.
      */
-    public void deliverAfterCommit(UUID id) {
+    public void deliverAfterCommit(UUID id, String eventType, String payload) {
         if (!properties.eagerDelivery() || !TransactionSynchronizationManager.isSynchronizationActive()) return;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCompletion(int status) {
                 if (status != STATUS_COMMITTED || System.nanoTime() - eagerPausedUntil.get() < 0) return;
-                Thread worker = Thread.ofVirtual().name("outbox-eager-" + name).start(() -> deliverNow(id));
+                CountDownLatch stored = new CountDownLatch(1);
+                Thread.ofVirtual().name("outbox-eager-" + name).start(() -> {
+                    boolean delivered;
+                    try {
+                        delivered = storeEagerly(id, eventType, payload);
+                    } finally {
+                        stored.countDown();
+                    }
+                    if (delivered) removeDelivered(id);
+                });
                 try {
-                    worker.join(properties.eagerTimeout());
+                    stored.await(properties.eagerTimeout().toNanos(), TimeUnit.NANOSECONDS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -139,19 +153,35 @@ public final class OutboxRelay {
         });
     }
 
-    /** Claims and delivers one row by id; false when it was not delivered now (taken, gone, failed or paused). */
-    public boolean deliverNow(UUID id) {
+    /**
+     * Hands a just-committed row to its handler without claiming it (no module connection); false when it was not
+     * delivered now (paused, unknown type, failed). A failure pauses eager delivery for everyone for eager-pause and
+     * leaves the row to the poll, untouched.
+     */
+    boolean storeEagerly(UUID id, String eventType, String payload) {
+        if (System.nanoTime() - eagerPausedUntil.get() < 0) return false;
+        OutboxHandler handler = handlers.get(eventType);
+        if (handler == null) return false;
         try {
-            if (System.nanoTime() - eagerPausedUntil.get() < 0) return false;
-            Optional<OutboxRow> row = store.claimById(id, properties.lease(), UUID.randomUUID());
-            if (row.isEmpty()) return false;
-            if (deliver(row.get()) == Outcome.DELIVERED) return true;
-        } catch (RuntimeException e) {
+            handler.handle(new OutboxRow(id, eventType, payload, 0, clock.instant(), null));
+            delivered.increment();
+            return true;
+        } catch (Exception e) {
+            eagerPausedUntil.set(System.nanoTime() + properties.eagerPause().toNanos());
             log.warn("Outbox eager delivery failed: outbox={} eventId={} exceptionType={}", name, id,
                     e.getClass().getSimpleName());
+            return false;
         }
-        eagerPausedUntil.set(System.nanoTime() + properties.eagerPause().toNanos());
-        return false;
+    }
+
+    /** Deletes an eagerly delivered row unless the poll holds it (then the poll deletes it after its no-op store). */
+    void removeDelivered(UUID id) {
+        try {
+            store.deletePending(id);
+        } catch (RuntimeException e) {
+            log.warn("Outbox row not removed after eager delivery: outbox={} eventId={} exceptionType={}", name, id,
+                    e.getClass().getSimpleName());
+        }
     }
 
     /** The failure retention: DEAD rows older than {@code dead-retention}, in short batches. */
