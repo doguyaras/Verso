@@ -5,8 +5,10 @@
 # Fields: id (CVE, GHSA or Go advisory; "*" needs scope and package) · scope (part of the SBOM name) · package (name,
 # or a prefix with one trailing "*") · reason (at least 20 characters, no hash sign) · expires (YYYY-MM-DD).
 #
-# Snapshot of the first scan, 2026-10-24: 9 of 11 images failed the gate. The remedy for all of them is a newer upstream
-# image; the follow-up bumps are listed in docs/versions.md. The entries below only bridge until then.
+# State after the image bump of 2026-10-24: Prometheus v3.15.1, Loki 3.7.9 and Alloy v1.21.2 pass the gate without any
+# entry. Everything below is id-specific (no package-wide waiver is left) and only covers what the newest upstream build
+# still carries; the per-image counts are in docs/versions.md. Entries were generated from the Grype reports of the pinned
+# digests, one per advisory and package; a new advisory therefore turns the gate red instead of being hidden.
 entries:
   # --- Known and accepted by design --------------------------------------------------------------------------------
   - id: CVE-2025-63389
@@ -18,29 +20,7 @@ entries:
     reason: "Advisory alias of CVE-2025-63389 (missing authentication, no fix); same mitigation: internal-only models network, no host port."
     expires: 2027-01-31
 
-  # --- Ollama 0.35.1: stale Go toolchain and Go modules inside the upstream binary (newer upstream: 0.40.10) -----------
-  - id: "*"
-    scope: ollama
-    package: stdlib
-    reason: "Go standard library of the upstream Ollama build. Fix needs a newer Ollama release (0.40.x exists, not yet qualified against the pinned model digests). Reachable only from verso-app over the internal models network, which has no route out."
-    expires: 2026-12-15
-  - id: "*"
-    scope: ollama
-    package: "golang.org/x/*"
-    reason: "Go x/ modules of the upstream Ollama build (crypto, net, image, text, mod). Same remedy and same exposure as the Ollama stdlib entry: a newer release, internal-only network."
-    expires: 2026-12-15
-  - id: "*"
-    scope: ollama
-    package: "github.com/*"
-    reason: "Go modules of the upstream Ollama build (jsonparser, klauspost/compress). Same remedy and same exposure as the Ollama stdlib entry."
-    expires: 2026-12-15
-
-  # --- pgvector 0.8.7-pg18-trixie: the pinned digest is still the newest build of this tag (Docker Hub, 2026-10-24) ---
-  - id: "*"
-    scope: pgvector
-    package: stdlib
-    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. Newest pgvector build of this tag is already pinned."
-    expires: 2026-12-15
+  # --- pgvector 0.8.7-pg18-trixie: Debian packages (the Go stdlib of gosu follows further down) ---------------------
   - id: CVE-2026-6653
     scope: pgvector
     package: libxml2
@@ -66,37 +46,777 @@ entries:
     reason: "zlib in the Alpine base of the edge proxy. No gzip directive is configured under deploy/ (nginx does not run zlib on traffic unless compression is switched on), and the proxy only forwards to verso-app. A fixed zlib arrives with the next Alpine rebuild; the digest refresh picks it up."
     expires: 2026-12-15
 
-  # --- Observability profile (obs): Prometheus, Alertmanager, Loki, Alloy, Grafana -----------------------------------
-  # None of them is published except Grafana through the loopback-only edge proxy (compose.yaml, obs profile).
-  - id: "*"
-    scope: prom-prometheus
-    package: "*"
-    reason: "Stale Go toolchain and x/ modules in the upstream Prometheus build (v3.15.1 exists). Internal obs network only, no published port, obs profile is optional. Remedy is the upstream bump."
-    expires: 2026-12-15
-  - id: "*"
-    scope: prom-alertmanager
-    package: "*"
-    reason: "Stale Go toolchain, x/ modules and grpc in the upstream Alertmanager v0.34.1 build (no newer release at scan time). Internal obs network only, no published port, obs profile is optional."
-    expires: 2026-12-15
-  - id: "*"
-    scope: grafana-loki
-    package: "*"
-    reason: "Stale Go toolchain and x/ modules in the upstream Loki build (3.7.9 exists). Internal obs network only, no published port, obs profile is optional. Remedy is the upstream bump."
-    expires: 2026-12-15
-  - id: "*"
-    scope: grafana-alloy
-    package: "*"
-    reason: "Stale Go toolchain, x/ modules and OpenSSL in the upstream Alloy build (v1.21.2 exists). Its server listens on 127.0.0.1 inside its own container only; obs profile is optional. Remedy is the upstream bump."
-    expires: 2026-12-15
-  - id: "*"
-    scope: grafana-grafana
-    package: "*"
-    reason: "Stale Go toolchain and Go modules in the upstream Grafana 13.2.3 build (13.2.4 exists). Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls. Remedy is the upstream bump."
-    expires: 2026-12-15
+  # --- Ollama 0.35.1: Go toolchain and Go modules inside the upstream binary (0.40.x needs a writable model store, so it is not adopted) ---
+  - id: GHSA-6g7g-w4f8-9c9x
+    scope: ollama
+    package: github.com/buger/jsonparser
+    reason: "Go component (github.com/buger/jsonparser) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-259r-337f-4rfw
+    scope: ollama
+    package: github.com/klauspost/compress
+    reason: "Go component (github.com/klauspost/compress) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-5cgq-3rg8-m6cv
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-89gr-r52h-f8rx
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-f5wc-c3c7-36mc
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-jppx-rxg9-jmrx
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-q4h4-gmj2-qvw2
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-rm3j-f69w-wqmq
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-vgwf-h737-ff37
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-w879-237q-wc7r
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-x527-x647-q7gg
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6303
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6354
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6355
+    scope: ollama
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GHSA-q675-qj96-32m9
+    scope: ollama
+    package: golang.org/x/image
+    reason: "Go component (golang.org/x/image) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4961
+    scope: ollama
+    package: golang.org/x/image
+    reason: "Go component (golang.org/x/image) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5061
+    scope: ollama
+    package: golang.org/x/image
+    reason: "Go component (golang.org/x/image) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5062
+    scope: ollama
+    package: golang.org/x/image
+    reason: "Go component (golang.org/x/image) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5066
+    scope: ollama
+    package: golang.org/x/image
+    reason: "Go component (golang.org/x/image) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6222
+    scope: ollama
+    package: golang.org/x/image
+    reason: "Go component (golang.org/x/image) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6179
+    scope: ollama
+    package: golang.org/x/mod
+    reason: "Go component (golang.org/x/mod) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6180
+    scope: ollama
+    package: golang.org/x/mod
+    reason: "Go component (golang.org/x/mod) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4918
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5026
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5942
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: ollama
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5970
+    scope: ollama
+    package: golang.org/x/text
+    reason: "Go component (golang.org/x/text) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6629
+    scope: ollama
+    package: golang.org/x/text
+    reason: "Go component (golang.org/x/text) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4599
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4601
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4866
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4870
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4918
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4946
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4947
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4970
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4971
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4977
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4981
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-4986
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5026
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5037
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5038
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5942
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-5972
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6088
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6089
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6090
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6604
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6605
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6607
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6608
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6609
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6613
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: ollama
+    package: stdlib
+    reason: "Go component (stdlib) inside the upstream Ollama 0.35.1 binary. The newest release (0.40.10) moves the model store to manifests-v2 and cannot start on the read-only model volume (docs/versions.md), so this build stays. Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2027-01-31
 
-  # --- Flyway CLI 12.4.0 (restore drill only) -----------------------------------------------------------------------
-  - id: "*"
+  # --- pgvector 0.8.7-pg18-trixie: gosu (the pinned digest is still the newest build of this tag, Docker Hub 2026-10-24) ---
+  - id: GO-2025-4006
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2025-4007
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2025-4009
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2025-4013
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2025-4155
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4337
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4341
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4601
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4870
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4918
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4946
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4947
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4970
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4971
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4977
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4981
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-4986
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-5026
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-5037
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-5038
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-5972
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6088
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6089
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6090
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6604
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6605
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6607
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6608
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6609
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6613
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. The newest pgvector build of this tag is already pinned."
+    expires: 2027-01-31
+
+  # --- Alertmanager v0.34.1 (newest release at 2026-10-24; only the main branch image is newer) ---
+  - id: GO-2026-6354
+    scope: prom-alertmanager
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6355
+    scope: prom-alertmanager
+    package: golang.org/x/crypto
+    reason: "Go component (golang.org/x/crypto) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: prom-alertmanager
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: prom-alertmanager
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: prom-alertmanager
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: prom-alertmanager
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: prom-alertmanager
+    package: golang.org/x/net
+    reason: "Go component (golang.org/x/net) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GHSA-2v4p-qf9q-27wj
+    scope: prom-alertmanager
+    package: google.golang.org/grpc
+    reason: "Go component (google.golang.org/grpc) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6604
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6605
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6607
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6608
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6609
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6613
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: prom-alertmanager
+    package: stdlib
+    reason: "Go component (stdlib) of the upstream Alertmanager v0.34.1 build; no newer release exists. Internal obs network only, no published port, obs profile is optional."
+    expires: 2027-01-31
+
+  # --- Grafana 13.2.4 (newest release at 2026-10-24) ---
+  - id: GHSA-23vg-4cjm-66q5
+    scope: grafana-grafana
+    package: github.com/getkin/kin-openapi
+    reason: "Component (github.com/getkin/kin-openapi) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-74vm-87hj-r66f
+    scope: grafana-grafana
+    package: github.com/getkin/kin-openapi
+    reason: "Component (github.com/getkin/kin-openapi) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-g8cf-rcjf-c8cf
+    scope: grafana-grafana
+    package: github.com/getkin/kin-openapi
+    reason: "Component (github.com/getkin/kin-openapi) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-rj39-cv6w-8wv7
+    scope: grafana-grafana
+    package: github.com/getkin/kin-openapi
+    reason: "Component (github.com/getkin/kin-openapi) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-vrcc-3ch7-hppw
+    scope: grafana-grafana
+    package: github.com/getkin/kin-openapi
+    reason: "Component (github.com/getkin/kin-openapi) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-ffqx-q65f-36jf
+    scope: grafana-grafana
+    package: github.com/grafana/tempo
+    reason: "Component (github.com/grafana/tempo) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-p4r4-xvrq-gvmc
+    scope: grafana-grafana
+    package: github.com/grafana/tempo
+    reason: "Component (github.com/grafana/tempo) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6354
+    scope: grafana-grafana
+    package: golang.org/x/crypto
+    reason: "Component (golang.org/x/crypto) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6355
+    scope: grafana-grafana
+    package: golang.org/x/crypto
+    reason: "Component (golang.org/x/crypto) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: grafana-grafana
+    package: golang.org/x/net
+    reason: "Component (golang.org/x/net) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: grafana-grafana
+    package: golang.org/x/net
+    reason: "Component (golang.org/x/net) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: grafana-grafana
+    package: golang.org/x/net
+    reason: "Component (golang.org/x/net) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: grafana-grafana
+    package: golang.org/x/net
+    reason: "Component (golang.org/x/net) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: grafana-grafana
+    package: golang.org/x/net
+    reason: "Component (golang.org/x/net) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-2v4p-qf9q-27wj
+    scope: grafana-grafana
+    package: google.golang.org/grpc
+    reason: "Component (google.golang.org/grpc) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GHSA-vp52-pcj8-j9qc
+    scope: grafana-grafana
+    package: google.golang.org/grpc
+    reason: "Component (google.golang.org/grpc) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6603
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6604
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6605
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6607
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6608
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6609
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6610
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6611
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6612
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6613
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: GO-2026-6617
+    scope: grafana-grafana
+    package: stdlib
+    reason: "Component (stdlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+  - id: CVE-2026-85091
+    scope: grafana-grafana
+    package: zlib
+    reason: "Component (zlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
+    expires: 2027-01-31
+
+  # --- Flyway CLI 13.11.1 (restore drill only; newest release at 2026-10-24) ---
+  - id: GHSA-hf6x-8p5f-cgmf
     scope: flyway
-    package: "*"
-    reason: "Bundled Java libraries of the Flyway CLI image (netty, jackson, httpcore, openjdk, openssl). It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL. Flyway 13.x exists; the major bump needs its own qualification."
-    expires: 2026-12-15
+    package: httpcore5
+    reason: "Bundled Java library (httpcore5) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-v3jc-474w-2wm6
+    scope: flyway
+    package: httpcore5-h2
+    reason: "Bundled Java library (httpcore5-h2) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-7hhh-6rmp-j9qf
+    scope: flyway
+    package: jackson-core
+    reason: "Bundled Java library (jackson-core) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-p6pp-m3f8-5c89
+    scope: flyway
+    package: jackson-core
+    reason: "Bundled Java library (jackson-core) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-cxp5-3px4-pw24
+    scope: flyway
+    package: jackson-databind
+    reason: "Bundled Java library (jackson-databind) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-q4xh-88c3-wmh7
+    scope: flyway
+    package: jackson-databind
+    reason: "Bundled Java library (jackson-databind) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-wv8q-qhhj-9h54
+    scope: flyway
+    package: jackson-databind
+    reason: "Bundled Java library (jackson-databind) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31
+  - id: GHSA-mcr4-qmvw-px4g
+    scope: flyway
+    package: lz4-java
+    reason: "Bundled Java library (lz4-java) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
+    expires: 2027-01-31

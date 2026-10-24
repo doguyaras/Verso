@@ -63,11 +63,11 @@ ADR-0007 #28 actuator'ın `prometheus` ucunu bu faza bıraktı. Faz 6 sonunda uy
 
 | Servis | Image | Bellek | Not |
 |---|---|---|---|
-| prometheus | `prom/prometheus:v3.15.0` | 512 MB | Ayrıca `backend` ağında (uygulamayı scrape eder). 15 gün ya da 2 GB saklar |
+| prometheus | `prom/prometheus:v3.15.1` | 512 MB | Ayrıca `backend` ağında (uygulamayı scrape eder). 15 gün ya da 2 GB saklar |
 | alertmanager | `prom/alertmanager:v0.34.1` | 64 MB | Kanal yok (aşağıda) |
-| loki | `grafana/loki:3.7.8` | 512 MB | Dosya sistemi, schema v13, 7 gün |
-| alloy | `grafana/alloy:v1.20.1` | 256 MB | Docker soketi salt okunur. Yalnız `verso-app`, `migrate`, `edge` ve `backup` log'larını toplar: Keycloak başarısız girişlerde kullanıcı adı ve adres yazar, PostgreSQL hata satırları değer içerebilir (faz 7 review B2). Etiketler yalnız `service` ve `level`; trace id structured metadata'dır |
-| grafana | `grafana/grafana:13.2.3` | 256 MB | Yalnız `obs` iç ağında: dış snapshot, public dashboard, eklenti kataloğu, haber ve güncelleme kontrolü host'tan çıkamaz (faz 7 review B1). Bu ayarlar ayrıca kapalıdır. Datasource uid'leri sabit, "Verso — genel bakış" panosu |
+| loki | `grafana/loki:3.7.9` | 512 MB | Dosya sistemi, schema v13, 7 gün |
+| alloy | `grafana/alloy:v1.21.2` | 256 MB | Docker soketi salt okunur. Yalnız `verso-app`, `migrate`, `edge` ve `backup` log'larını toplar: Keycloak başarısız girişlerde kullanıcı adı ve adres yazar, PostgreSQL hata satırları değer içerebilir (faz 7 review B2). Etiketler yalnız `service` ve `level`; trace id structured metadata'dır |
+| grafana | `grafana/grafana:13.2.4` | 256 MB | Yalnız `obs` iç ağında: dış snapshot, public dashboard, eklenti kataloğu, haber ve güncelleme kontrolü host'tan çıkamaz (faz 7 review B1). Bu ayarlar ayrıca kapalıdır. Datasource uid'leri sabit, "Verso — genel bakış" panosu |
 | obs-edge | `nginx-unprivileged:1.30.6` (edge ile aynı image) | 32 MB | Grafana'yı `127.0.0.1:3000`'de yayınlar; `default` ve `obs` ağlarında |
 
 **Kanıt:**

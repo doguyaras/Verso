@@ -75,7 +75,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Java / Spring Boot / Spring Modulith | 25 / 4.1.2 / 2.1.1 | `docs/versions.md`; event publication registry kullanılmıyor (ADR-0026) |
 | Spring AI | 2.0.1 (`spring-ai-bom`) | Boot 4 hattı; 1.x yalnız Boot 3; Ollama, Anthropic ve OpenAI starter'ları (ADR-0012, ADR-0013) |
 | PostgreSQL + pgvector | 18.6 + 0.8.7 (digest ile pinli) | tek instance; şema + iki rol/modül; `extensions` şeması; ADR-0009 |
-| Flyway | 12.4.0 | migration rolüyle; `baseline-on-migrate` kapalı |
+| Flyway | 13.11.1 | migration rolüyle; `baseline-on-migrate` kapalı |
 | Ollama | 0.35.1 (digest ile pinli) | bge-m3 (embedding), gemma4:e2b (chat); local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla |
 | Keycloak (demo IdP) | 26.8.1 (digest ile pinli) | prod modu, kendi `keycloak` veritabanı ve rolü; realm `verso` ES256; yalnız 127.0.0.1:8180 (ADR-0005, ADR-0010) |
 | Gözlem (faz 7, `obs` profili, ADR-0014) | Alloy → Loki (yalnız verso-app, migrate, edge, backup log'ları), Prometheus + Alertmanager (8 alarm, runbook'lar), Grafana (iç ağda; `obs-edge` ile 127.0.0.1:3000) | Prometheus scrape'i token'sız yalnız ayrı management portunda |

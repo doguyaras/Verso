@@ -33,6 +33,7 @@ entries:
 
 - `package` sonuna tek `*` konarak ön ek kalıbı olur (`golang.org/x/*`); `*` tek başına imajdaki her paket demektir.
 - `id: "*"` (paket geneli istisna) yalnız `scope` ve `package` ile yazılır ve en fazla ~2 ay sürer: yukarı akış imajındaki bayat bir araç zinciri onlarca kimlik üretiyorsa kullanılır, ama sonradan çıkan yeni bulguları da gizler. Gerekçesi çaresini (hangi yükseltme) söylemelidir.
+- **Tercih: id'ye özel kayıt.** Paket geneli (`id: "*"`) son çaredir ve 2026-10-24 yükseltme turundan beri kullanılmıyor. Bir imajı yükselttikten sonra yeni digest'i tara (Syft/Grype, tek konteyner), `node scripts/vuln-gate.js ... --allowlist <boş dosya>` ile engelleyen bulguları listele, kalanlar için paket başına id'ye özel kayıt yaz; düzeltilmiş olanların kaydını sil. Yükseltmeyi canlı yığında dene (`docker compose up -d --wait <servis>`): salt okunur volume, healthcheck ve ağ yalıtımı yeni sürümde de çalışmalı; bozarsa imajı geri al ve kaydı tut (Ollama 0.40.x örneği, `docs/versions.md`).
 - Süresi dolan kayıt hiçbir şeyi susturmaz; kapı kırmızı olur ve `node --test scripts/vuln-gate.test.js` düşer.
 - Kayıt eklemek bir güvenlik kararıdır: PR'da `verso-security-review` çalıştırılır ve gerekçe `docs/versions.md` ya da `security-rules.md` ile tutarlı olmalıdır.
 - Gerekçede `#` karakteri kullanma (satır sonu yorumu sayılır).

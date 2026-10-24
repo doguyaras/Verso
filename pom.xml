@@ -41,6 +41,9 @@
     <spring-ai.version>2.0.1</spring-ai.version>
     <!-- PDF text extraction, page by page (ADR-0011; approved by the user 2026-10-02). -->
     <pdfbox.version>3.0.8</pdfbox.version>
+    <!-- Flyway library and CLI image move together (ADR-0009 #4). Boot 4.1.2 manages 12.4.0; 13.x is pinned here so the
+         CLI used by the restore drill validates with the same major (docs/versions.md). -->
+    <flyway.version>13.11.1</flyway.version>
 
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
@@ -81,6 +84,16 @@
         <groupId>org.apache.pdfbox</groupId>
         <artifactId>pdfbox</artifactId>
         <version>${pdfbox.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-database-postgresql</artifactId>
+        <version>${flyway.version}</version>
       </dependency>
       <dependency>
         <groupId>com.tngtech.archunit</groupId>

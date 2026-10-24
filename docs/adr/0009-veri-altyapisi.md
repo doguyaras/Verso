@@ -86,7 +86,7 @@ Kullanıcıya sorulan iki karar (2026-10-02):
 1. Yalnız rollerle kurulmuş geçici bir Postgres açılır.
 2. Yedeğin checksum'ı doğrulanır, şifresi çözülür ve geri yüklenir; satır sayıları manifest ile karşılaştırılır.
 3. Uygulama rolünün okuyabildiği ama DDL yapamadığı denenir.
-4. Flyway CLI (12.4.0, uygulamadaki kütüphaneyle aynı sürüm) bu checkout'un migration'larına karşı `validate` çalıştırır.
+4. Flyway CLI (13.11.1, uygulamadaki kütüphaneyle aynı sürüm) bu checkout'un migration'larına karşı `validate` çalıştırır.
 5. Geçici veritabanı her durumda silinir.
 
 `scripts/restore-drill-selftest.sh`, provanın gerçek veride geçtiğini ve değiştirilmiş manifest, bozulmuş dosya ve eksik checksum durumlarının her birinde kırmızı verdiğini gösterir. CI bunu haftalık çalıştırır, ayrıca ilgili dosyalara dokunan her PR'da (`.github/workflows/restore-drill.yml`).

@@ -49,6 +49,20 @@ class ImageVersionsTest {
         assertThat(VersoPostgres.IMAGE).isEqualTo(anchor.group(1));
     }
 
+    @Test
+    void flywayCli_whenUsedByRestoreDrill_hasTheLibraryVersion() throws IOException {
+        // The drill validates the history the library wrote; both move together (ADR-0009, docs/versions.md).
+        Matcher library = Pattern.compile("<flyway.version>([^<]+)</flyway.version>").matcher(read("pom.xml"));
+        assertThat(library.find()).as("flyway.version in pom.xml").isTrue();
+        Matcher cli = Pattern.compile("image:\\s*flyway/flyway:([^@\\s]+)@sha256:[0-9a-f]{64}").matcher(read("compose.yaml"));
+        int found = 0;
+        while (cli.find()) {
+            assertThat(cli.group(1)).as("Flyway CLI image tag").isEqualTo(library.group(1));
+            found++;
+        }
+        assertThat(found).as("Flyway CLI images in compose.yaml").isGreaterThanOrEqualTo(1);
+    }
+
     private static String read(String file) throws IOException {
         return Files.readString(ROOT.resolve(file), StandardCharsets.UTF_8);
     }
