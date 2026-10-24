@@ -9,7 +9,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-4-belge-alimi` branch
 ## Değişikliklerin özeti
 - Yeni uçlar: `POST /v1/documents`, `GET /v1/documents`, `GET /v1/documents/{documentId}`, `DELETE /v1/documents/{documentId}`.
 - Yükleme asenkrondur: 201 yanıtındaki belge `PENDING`'dir; istemci durumu sorgular.
-- Yeni hata kodları: 10001, 10010, 10011, 10013, 10014, 10015. Ortak koda eklenen: 99997 (geçici olarak kullanılamıyor).
+- Yeni hata kodları: 10001, 10010, 10011, 10013, 10014, 10015, 10016. Ortak koda eklenen: 99997 (geçici olarak kullanılamıyor).
 - `API-Version` header'ı artık değerlendirilir: isteğe bağlı, varsayılan `1.0`; bilinmeyen sürüm 400 `90020`.
 - `X-Idempotency-Key` ile tekrar edilen yükleme ikinci belge oluşturmaz.
 
@@ -50,6 +50,7 @@ Tüm yanıtlar `Cache-Control: private, no-store` ve `X-Trace-Id` taşır. Deste
   "createdAt": "2026-10-03T09:00:00Z", "updatedAt": "2026-10-03T09:00:00Z" }
 ```
 Aynı `X-Idempotency-Key` ile tekrar: yine `201` ve **ilk** belgenin güncel hali; ikinci dosya yok sayılır (ilk istek kazanır).
+İlk belge sonradan okuyamayacağınız bir alana taşınmışsa (ADR-0028) tekrar `409` `10016` döner; belge anlatılmaz, yeni anahtarla yüklenir.
 
 #### Senaryo: desteklenmeyen tür
 `HTTP 415`, zarflı:
@@ -113,6 +114,7 @@ const label = STATUS[doc.status] ?? 'İşleniyor';           // bilinmeyen enum 
 | 10013 | 409 | Hesabın belge sınırı (200) | "Belge sınırına ulaştınız, eski belgeleri silin" | hayır |
 | 10014 | 503 | Aynı anda çok yükleme | Sessizce `Retry-After` kadar bekle, tekrar dene | evet |
 | 10015 | 429 | Kuyrukta çok belge (20) | "Önceki belgeleriniz işleniyor, sonra deneyin" | evet, birkaç dakika sonra |
+| 10016 | 409 | `X-Idempotency-Key` daha önce kullanıldı ve ilk belgeyi artık okuyamıyorsunuz (başka alana taşındı) | "Yüklemeyi yeni anahtarla tekrarlayın" | evet, yeni anahtarla |
 | 90002 | 400 | Geçersiz id ya da `X-Idempotency-Key` | istemci hatası; logla | hayır |
 | 90003 | 400 | `file` parçası yok | istemci hatası | hayır |
 | 90014 | 413 | Dosya 20 MB'tan büyük | "Dosya en fazla 20 MB olabilir" | hayır |

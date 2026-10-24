@@ -117,7 +117,7 @@ class CollectionAccessTest {
     private ListAppender<ILoggingEvent> appender;
 
     @BeforeEach
-    void setUp() throws InterruptedException {
+    void setUp() {
         jdbc.update("DELETE FROM document.document");
         jdbc.update("DELETE FROM document.collection");
         QaTables.reset();
@@ -125,7 +125,7 @@ class CollectionAccessTest {
         TestEmbeddingModel.INSTANCE.reset();
         TestChatModel.INSTANCE.reset();
         circuit.reset();
-        while (worker.isPaused()) Thread.sleep(50);
+        awaitWorkerResumed();
         root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         appender = new ListAppender<>();
         appender.start();
@@ -504,7 +504,140 @@ class CollectionAccessTest {
                 Integer.class)).as("a revoked grant left nothing behind").isZero();
     }
 
+    // --- defence in depth (independent review of ADR-0028) -------------------------------------------------------------
+
+    /**
+     * An upload replay never describes a document the caller can no longer read: a demoted uploader (same sub, no
+     * verso-admin) whose earlier upload moved into a collection gets a safe 409, not the name of the file or collection.
+     * The still-admin uploader keeps its replay (it manages that document).
+     */
+    @Test
+    void uploadReplay_afterTheDocumentMovedOutOfReach_isAConflictAndLeaksNothing() throws Exception {
+        UUID hukuk = collection("Gizli-Alan " + suffix);
+        grant(hukuk, "GROUP", "/hukuk");
+        UUID key = UUID.randomUUID();
+        HttpResponse<String> first = uploadKeyed(admin, "gizli-memo.pdf", "topic-contract Memo.", key);
+        assertThat(first.statusCode()).isEqualTo(201);
+        UUID memo = UUID.fromString(JsonPath.read(first.body(), "$.id"));
+        assertThat(send(admin, "PUT", "/v1/documents/" + memo + "/collection", "{\"collectionId\":\"" + hukuk + "\"}")
+                .statusCode()).isEqualTo(200);
+        String demoted = TestIdp.IDP.token().subject(adminSub).build();
+
+        HttpResponse<String> replay = uploadKeyed(demoted, "baska.pdf", "topic-contract Baska.", key);
+        assertThat(replay.statusCode()).as(replay.body()).isEqualTo(409);
+        assertThat(replay.body()).contains("\"code\":10016").doesNotContain("gizli-memo.pdf").doesNotContain("Gizli-Alan")
+                .doesNotContain(memo.toString());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document", Integer.class)).isOne();
+
+        HttpResponse<String> adminReplay = uploadKeyed(admin, "baska.pdf", "topic-contract Baska.", key);
+        assertThat(adminReplay.statusCode()).as(adminReplay.body()).isEqualTo(201);
+        assertThat(JsonPath.<String>read(adminReplay.body(), "$.id")).isEqualTo(memo.toString());
+
+        // Back in the personal space the demoted uploader reads it again, so the replay works for them.
+        assertThat(send(admin, "PUT", "/v1/documents/" + memo + "/collection", "{\"collectionId\":null}").statusCode())
+                .isEqualTo(200);
+        HttpResponse<String> readable = uploadKeyed(demoted, "baska.pdf", "topic-contract Baska.", key);
+        assertThat(readable.statusCode()).as(readable.body()).isEqualTo(201);
+        assertThat(JsonPath.<String>read(readable.body(), "$.id")).isEqualTo(memo.toString());
+    }
+
+    /**
+     * The listing of one collection filters the documents by the reader's principals as well as checking the
+     * collection: a document of a readable collection without the reader's principal (drift) is not listed or counted.
+     */
+    @Test
+    void listByCollection_reappliesTheReadablePredicate_forNonAdminsOnly() throws Exception {
+        UUID hukuk = collection("Hukuk " + suffix);
+        grant(hukuk, "GROUP", "/hukuk");
+        UUID shown = uploadInto(hukuk, "a.pdf", "topic-contract A.");
+        UUID drifted = uploadInto(hukuk, "b.pdf", "topic-contract B.");
+        jdbc.update("DELETE FROM document.document_principal WHERE document_id = ? AND principal = 'group:/hukuk'", drifted);
+
+        HttpResponse<String> aliceList = get(alice, "/v1/documents?collectionId=" + hukuk);
+        assertThat(ids(aliceList)).containsExactly(shown.toString());
+        assertThat(JsonPath.<Number>read(aliceList.body(), "$.totalElements").intValue()).isEqualTo(1);
+        assertThat(ids(get(admin, "/v1/documents?collectionId=" + hukuk))).containsExactlyInAnyOrder(shown.toString(),
+                drifted.toString());
+        // A collection the caller does not read stays a 404 (the first layer).
+        assertNotFound(get(bob, "/v1/documents?collectionId=" + hukuk), 10002);
+    }
+
+    /**
+     * Principals are typed: a group literally named "user:&lt;sub&gt;" is the principal "group:user:&lt;sub&gt;" and never
+     * reaches the personal documents or direct user grants of that sub.
+     */
+    @Test
+    void groupNamedLikeAUserPrincipal_neverMatchesTheUser() throws Exception {
+        UUID personal = uploadPersonal(bob, "bob.pdf", "topic-remote Bob personal.");
+        UUID direct = collection("Dogrudan " + suffix);
+        grant(direct, "USER", bobSub);
+        UUID shared = uploadInto(direct, "ortak.pdf", "topic-remote Ortak.");
+        process();
+        String mallory = token("acct-coll-mallory-" + suffix, "user:" + bobSub);
+
+        assertThat(ids(get(mallory, "/v1/documents"))).isEmpty();
+        assertThat(ids(get(mallory, "/v1/collections"))).isEmpty();
+        assertNotFound(get(mallory, "/v1/documents/" + personal), 10001);
+        assertNotFound(get(mallory, "/v1/documents/" + shared), 10001);
+        assertNotFound(get(mallory, "/v1/documents?collectionId=" + direct), 10002);
+        Reader confused = reader("acct-coll-mallory-" + suffix, "user:" + bobSub);
+        assertThat(confused.principals()).containsExactly("user:acct-coll-mallory-" + suffix, "group:user:" + bobSub);
+        assertThat(documentsOf(confused, "topic-remote")).isEmpty();
+        // Bob himself still reads both.
+        assertThat(ids(get(bob, "/v1/documents"))).containsExactlyInAnyOrder(personal.toString(), shared.toString());
+        // And the other way round: a group grant named "user:<sub>" is not a direct grant to that sub.
+        UUID byGroup = collection("Gruplu " + suffix);
+        grant(byGroup, "GROUP", "user:" + carolSub);
+        UUID carols = uploadInto(byGroup, "gruplu.pdf", "topic-remote Gruplu.");
+        process();
+        assertNotFound(get(carol, "/v1/documents/" + carols), 10001);
+        assertThat(documentsOf(reader(carolSub), "topic-remote Gruplu")).isEmpty();
+        assertThat(ids(get(token("acct-coll-carol2-" + suffix, "user:" + carolSub), "/v1/documents")))
+                .containsExactly(carols.toString());
+    }
+
+    /** ADR-0028: a group value is compared exactly, case and whitespace included (a typo closes, never opens). */
+    @Test
+    void groupValue_isComparedExactly_caseAndWhitespace() throws Exception {
+        UUID hukuk = collection("Hukuk " + suffix);
+        grant(hukuk, "GROUP", "/Hukuk");
+        UUID contract = uploadInto(hukuk, "sozlesme.pdf", "topic-contract Sozlesme.");
+        process();
+
+        for (String wrong : List.of("/hukuk", "/HUKUK", "/Hukuk ", " /Hukuk", "Hukuk")) {
+            String token = token("acct-coll-case-" + suffix, wrong);
+            assertThat(ids(get(token, "/v1/documents"))).as("[" + wrong + "]").isEmpty();
+            assertNotFound(get(token, "/v1/documents/" + contract), 10001);
+            assertNotFound(get(token, "/v1/documents?collectionId=" + hukuk), 10002);
+        }
+        assertThat(documentsOf(reader("acct-coll-case-" + suffix, "/hukuk"), "topic-contract")).isEmpty();
+        String exact = token("acct-coll-case-" + suffix, "/Hukuk");
+        assertThat(ids(get(exact, "/v1/documents"))).containsExactly(contract.toString());
+        assertThat(documentsOf(reader("acct-coll-case-" + suffix, "/Hukuk"), "topic-contract")).containsOnly(contract);
+    }
+
     // --- helpers -----------------------------------------------------------------------------------------------------
+
+    /** A personal upload carrying X-Idempotency-Key. */
+    private HttpResponse<String> uploadKeyed(String token, String fileName, String text, UUID key) throws Exception {
+        Multipart body = Multipart.pdf(fileName, TestPdfs.pages(text));
+        return http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/documents"))
+                .header("Authorization", "Bearer " + token).header("Content-Type", body.contentType())
+                .header("X-Idempotency-Key", key.toString()).timeout(Duration.ofSeconds(30)).POST(body.body()).build(),
+                HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Waits (bounded) until a model pause left over from an earlier test has expired. The pause is clock-based and
+     * has no reset, so the wait is a deadline check with a timeout failure, not an unbounded spin.
+     */
+    private void awaitWorkerResumed() {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+        while (worker.isPaused()) {
+            assertThat(System.nanoTime()).as("ingestion worker stays paused").isLessThan(deadline);
+            java.util.concurrent.locks.LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(50));
+        }
+    }
 
     private static String token(String subject, String... groups) {
         var builder = TestIdp.IDP.token().subject(subject);

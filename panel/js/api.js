@@ -21,6 +21,7 @@ export const MESSAGES = Object.freeze({
   10013: 'Belge kotası dolu (200). Önce eski belgeleri silin.',
   10014: 'Şu an çok fazla yükleme var; birkaç saniye sonra tekrar deneyin.',
   10015: 'İşlenmeyi bekleyen belge sayısı sınırda (20). Biraz bekleyin.',
+  10016: 'Bu yükleme anahtarı daha önce kullanıldı; yüklemeyi yeni bir anahtarla tekrarlayın.',
   10030: 'Arama modeli şu an yanıt vermiyor; birazdan tekrar deneyin.',
   10031: 'Belgeleriniz yeni modelle yeniden indekslenmeli; yöneticinize bildirin.',
   11001: 'Asistan şu an yanıt veremiyor; birazdan tekrar deneyin.',

@@ -159,6 +159,7 @@
   - Grup yolu yeniden adlandırma erişimi düşürür (yukarıda). IdP üyelik değişikliği 300 sn gecikir.
   - Grup değeri büyük-küçük harf ve boşluk dahil birebir karşılaştırılır. Yönetici yanlış yazarsa kimse okuyamaz (kapalı kalma). Panel değeri olduğu gibi gönderir.
   - Silinen paylaşımlı belgeden alıntı yapan cevap metni, saklama süresi dolana kadar o okuyucunun geçmişinde kalır (ADR-0023 L3 ile aynı).
+  - Grant geri alınınca, okuyucunun geçmişinde saklı cevap metni silinmez: atıflar "erişiminiz yok" görünür, ama cevabın kendisi saklama süresi dolana kadar kalır (silinen belge notuyla aynı, ADR-0023 L3).
 - **Etkilenen dosyalar ve yüzeyler:**
   - `platform-security`: `CallerGroups` ve bean'i.
   - `document-api`: `Reader`, `DocumentAccess`, `Collection*` DTO'ları, `MoveDocumentRequest`, `PrincipalType`. `DocumentResponse` ve `RetrievedPassage` sona alan aldı. `DocumentRetrieval.search(Reader, …)`, `DocumentCatalog.access`. Eski imzalar varsayılan metot olarak kaldı; grupsuz okuyucu demektir.
@@ -177,6 +178,10 @@
     - belge ve atıf rozetleri;
     - geçmişte "Erişiminiz yok".
   - `docs/uyum/` (VKED, aydınlatma metni, kullanım politikası).
+- **Yükseltme notu:**
+  - V4'ün migrate adımı **eski uygulama durdurulmuşken** çalıştırılır. Aşamalı (rolling) yayında eski örnek, `document_principal` yazmayan eski kodla belge ekleyebilir; principal'sız belge kimse için okunabilir değildir (kapalı kalma).
+  - Yükleme tekrarı (`X-Idempotency-Key`) ilk belgeyi yalnız onu hâlâ okuyabilen yükleyene döner. Belge okuyamayacağı bir alana taşınmışsa 409 `IDEMPOTENCY_KEY_REUSED` (10016) döner; ad ve alan adı sızmaz. Yönetici, yüklediği paylaşımlı belgenin tekrarını grant'ı olmasa da alır (yönetim yetkisi).
+  - `GET /v1/documents?collectionId=` yönetici dışında belge satırlarını da okuyucunun principal'larıyla süzer (alan kontrolüne ek ikinci katman).
 - **Geri alma yolu:**
   - Kodla: commit geri alınır.
   - V4'ün tabloları ve kolonu eski kodla zararsızdır. Eski kod `document_principal`'ı okumaz ve paylaşımlı belgeleri **yükleyenin** belgesi olarak görür. Bu yüzden geri almadan önce paylaşımlı belgeler silinmeli ya da kişisel alana taşınmalıdır.

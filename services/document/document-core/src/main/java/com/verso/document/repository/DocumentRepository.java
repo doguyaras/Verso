@@ -95,10 +95,18 @@ public class DocumentRepository {
                 .param("id", documentId).param("content", content).update();
     }
 
-    /** The uploader's earlier document with this key (reference 6.4), wherever it lives now. */
-    public Optional<DocumentRow> findByIdempotencyKey(String accountId, UUID idempotencyKey) {
-        return jdbc.sql(SELECT + " WHERE d.account_id = :account AND d.idempotency_key = :key")
-                .param("account", accountId).param("key", idempotencyKey).query(ROW).optional();
+    /**
+     * The uploader's earlier document with this key (reference 6.4), only while one of the caller's principals still
+     * reaches it: an upload that moved to a collection the caller cannot read is not replayed (its name and the
+     * collection's name would leak to a demoted uploader; ADR-0028). verso-admin also replays a collection document it
+     * uploaded without holding a grant: it manages those (the same rule as the service's {@code visible}).
+     */
+    public Optional<DocumentRow> findByIdempotencyKey(String accountId, UUID idempotencyKey, String[] principals,
+                                                      boolean admin) {
+        return jdbc.sql(SELECT + " WHERE d.account_id = :account AND d.idempotency_key = :key AND ("
+                        + READABLE + " OR (:admin AND d.collection_id IS NOT NULL))")
+                .param("account", accountId).param("key", idempotencyKey).param("principals", principals)
+                .param("admin", admin).query(ROW).optional();
     }
 
     /** A document the account uploaded, wherever it lives (worker and tests; not a reader check). */
@@ -131,7 +139,26 @@ public class DocumentRepository {
                 .param("principals", principals).query(Long.class).single();
     }
 
-    /** One collection's documents, newest first; the service has checked that the caller may see the collection. */
+    /**
+     * One collection's documents the reader's principals reach, newest first: the second layer behind the service's
+     * collection check for every caller but verso-admin (ADR-0028).
+     */
+    public List<DocumentRow> listReadableInCollection(String[] principals, UUID collectionId, int page, int size) {
+        return jdbc.sql(SELECT + " WHERE d.collection_id = :collection AND " + READABLE
+                        + " ORDER BY d.created_at DESC, d.id DESC LIMIT :size OFFSET :offset")
+                .param("principals", principals).param("collection", collectionId).param("size", size)
+                .param("offset", (long) page * size).query(ROW).list();
+    }
+
+    public long countReadableInCollection(String[] principals, UUID collectionId) {
+        return jdbc.sql("SELECT count(*) FROM document.document d WHERE d.collection_id = :collection AND " + READABLE)
+                .param("principals", principals).param("collection", collectionId).query(Long.class).single();
+    }
+
+    /**
+     * One collection's documents, newest first, for verso-admin's management view; the service has checked that the
+     * caller may see the collection.
+     */
     public List<DocumentRow> listInCollection(UUID collectionId, int page, int size) {
         return jdbc.sql(SELECT + " WHERE d.collection_id = :collection "
                         + "ORDER BY d.created_at DESC, d.id DESC LIMIT :size OFFSET :offset")

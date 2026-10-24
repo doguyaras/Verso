@@ -26,6 +26,12 @@ public enum DocumentErrorCode implements ErrorCode {
     /** The account already has verso.document.max-queued-per-account documents waiting (security review S3). */
     DOCUMENT_QUEUE_FULL(10015, "Too many documents are waiting to be processed, try again later.",
             HttpStatus.TOO_MANY_REQUESTS),
+    /**
+     * The X-Idempotency-Key belongs to an earlier upload of this account that the caller can no longer read (it was
+     * moved to a collection the caller has no grant for): it is neither replayed nor described (ADR-0028).
+     */
+    IDEMPOTENCY_KEY_REUSED(10016, "The idempotency key was already used; send the upload again with a new key.",
+            HttpStatus.CONFLICT),
     // --- retrieval (10030-10039)
     /** The question could not be embedded: the local embedding model is down (llm-rules 2.3). */
     EMBEDDING_MODEL_UNAVAILABLE(10030, "The embedding model is unavailable, try again later.", HttpStatus.SERVICE_UNAVAILABLE),

@@ -84,7 +84,8 @@ public class DocumentServiceImpl implements DocumentService {
         }
         String account = caller.account().value();
         if (idempotencyKey != null) {
-            Optional<DocumentRow> earlier = repository.findByIdempotencyKey(account, idempotencyKey);
+            Optional<DocumentRow> earlier = repository.findByIdempotencyKey(account, idempotencyKey, caller.principals(),
+                    caller.admin());
             if (earlier.isPresent()) return replayed(earlier.get());
         }
         if (content.length == 0) throw rejected(DocumentErrorCode.DOCUMENT_EMPTY);
@@ -121,7 +122,10 @@ public class DocumentServiceImpl implements DocumentService {
             });
         } catch (DuplicateKeyException e) {
             // Two uploads with the same key at once: the first one won (reference 6.4).
-            return replayed(repository.findByIdempotencyKey(account, idempotencyKey).orElseThrow(() -> e));
+            // The earlier document may have moved out of the caller's reach: then the key is spent, nothing is described.
+            return replayed(repository.findByIdempotencyKey(account, idempotencyKey, caller.principals(),
+                    caller.admin())
+                    .orElseThrow(() -> idempotencyKey == null ? e : rejected(DocumentErrorCode.IDEMPOTENCY_KEY_REUSED)));
         }
         log.info("Document upload accepted: documentId={} format={} sizeBytes={} space={} operation=upload outcome=accepted",
                 created.id(), created.format(), created.sizeBytes(), created.personal() ? "personal" : "collection");
@@ -139,9 +143,17 @@ public class DocumentServiceImpl implements DocumentService {
             return PageResponse.of(rows, page, size, repository.countReadable(principals));
         }
         visibleCollection(caller, collectionId);
-        List<DocumentResponse> rows = repository.listInCollection(collectionId, page, size).stream()
+        if (caller.admin()) {
+            // verso-admin manages every collection, readable or not (ADR-0028).
+            List<DocumentResponse> rows = repository.listInCollection(collectionId, page, size).stream()
+                    .map(DocumentMapper::toResponse).toList();
+            return PageResponse.of(rows, page, size, repository.countInCollection(collectionId));
+        }
+        // Second layer behind visibleCollection: the documents themselves are filtered by the reader's principals.
+        String[] principals = caller.principals();
+        List<DocumentResponse> rows = repository.listReadableInCollection(principals, collectionId, page, size).stream()
                 .map(DocumentMapper::toResponse).toList();
-        return PageResponse.of(rows, page, size, repository.countInCollection(collectionId));
+        return PageResponse.of(rows, page, size, repository.countReadableInCollection(principals, collectionId));
     }
 
     @Override
