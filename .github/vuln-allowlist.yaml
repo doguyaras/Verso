@@ -38,12 +38,22 @@ entries:
     package: ca-certificates
     reason: "Red Hat rates it CVSS 6.8 (grype shows Critical): weak intermediate CAs under eMudhra roots need a man-in-the-middle on an outbound TLS connection. The realm under deploy/keycloak/realm configures no identity-provider brokering and no SMTP server, so Keycloak starts no outbound TLS connection to the internet. No fixed ca-certificates package yet."
     expires: 2027-01-31
+  - id: CVE-2026-91403
+    scope: keycloak
+    package: java-21-openjdk-headless
+    reason: "Same eMudhra weak-intermediate-CA advisory as CVE-2026-114406, now filed against the OpenJDK CA store of the Keycloak base (Red Hat: not fixed, Grype shows Critical). Exploitation needs a man-in-the-middle on an outbound TLS connection; the realm under deploy/keycloak/realm configures no identity-provider brokering and no SMTP server, so Keycloak makes no outbound TLS connection to the internet. 26.8.1 is the newest Keycloak release and its digest is unchanged (quay.io 2026-10-24)."
+    expires: 2026-12-15
 
   # --- nginx 1.30.6-alpine -------------------------------------------------------------------------------------------
   - id: CVE-2026-85091
     scope: nginxinc-nginx
     package: zlib
     reason: "zlib in the Alpine base of the edge proxy. No gzip directive is configured under deploy/ (nginx does not run zlib on traffic unless compression is switched on), and the proxy only forwards to verso-app. A fixed zlib arrives with the next Alpine rebuild; the digest refresh picks it up."
+    expires: 2026-12-15
+  - id: CVE-2026-111497
+    scope: nginxinc-nginx
+    package: brotli-libs
+    reason: "brotli-libs in the Alpine base of the edge proxy; the fix (1.2.1-r0) was first observed in Alpine on 2026-10-24 and is not yet in any nginx-unprivileged 1.30.6 build (digest unchanged, Docker Hub). No brotli module is loaded or configured under deploy/, so nginx never runs brotli on traffic; the proxy only forwards to verso-app and Grafana. The next digest refresh picks up the fix."
     expires: 2026-12-15
 
   # --- pgvector 0.8.7-pg18-trixie: gosu (the pinned digest is still the newest build of this tag, Docker Hub 2026-10-24) ---
@@ -461,6 +471,11 @@ entries:
     package: zlib
     reason: "Component (zlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
     expires: 2027-01-31
+  - id: CVE-2026-111497
+    scope: grafana-grafana
+    package: brotli-libs
+    reason: "brotli-libs in the Alpine base of the upstream Grafana 13.2.4 image; the fix (1.2.1-r0) was first observed in Alpine on 2026-10-24 and 13.2.4 is still the newest 13.2 build (digest unchanged, Docker Hub). The Grafana binary is Go and does not link the library; the image is reachable only through obs-edge on 127.0.0.1 behind the Grafana login on the internal-only obs network. The next upstream rebuild picks up the fix."
+    expires: 2026-12-15
 
   # --- Flyway CLI 13.11.1 (restore drill only; newest release at 2026-10-24) ---
   - id: GHSA-hf6x-8p5f-cgmf

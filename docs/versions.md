@@ -80,6 +80,8 @@ Her ayın 1'inde `supply-chain-scan` iş akışı kendiliğinden koşar (elle: A
 | pgvector | 0.8.7-pg18-trixie (yeni digest yok) | 4 / 118 / 370 (değişmedi) | gosu'nun `stdlib` kaydı 35 id'ye özel kayıt; libxml2 ve libpcre2 aynen |
 | nginx, Keycloak | değişmedi (aynı etiketin yeni digest'i yok; nginx 1.31.x anadalı bilerek alınmadı, stable hattı kalır) | – | aynen |
 
+**Aylık tarama sonrası (2026-10-24, yeni danışma notları; sürüm değişmedi):** Üç imajın da en yeni sürümü/digest'i zaten sabitli (Keycloak 26.8.1, Grafana 13.2.4, nginx 1.30.6-alpine; quay.io ve Docker Hub'da daha yeni yama etiketi ya da yeniden derlenmiş digest yok), bu yüzden yükseltme yerine id'ye özel, 2026-12-15'te biten kayıt eklendi: Keycloak `java-21-openjdk-headless` CVE-2026-91403 (CRITICAL, Red Hat düzeltmesi yok; eMudhra zayıf ara CA, realm'de dış IdP/SMTP yok), nginx ve Grafana `brotli-libs` CVE-2026-111497 (CRITICAL; Alpine 1.2.1-r0 düzeltmesi 2026-10-24'te çıktı, imajlar henüz yeniden derlenmedi, brotli modülü yüklü değil). Sonraki taramada yeni digest varsa bu kayıtlar silinir.
+
 Hiçbir paket geneli (`id: "*"`) kayıt kalmadı: yeni çıkan bir danışma notu kapıyı kırar. Id'ye özel kayıtlar Grype raporlarından üretildi (paket başına bir kayıt), 2027-01-31'e kadar sürer; yukarı akışta düzeltme çıktıkça silinir.
 
 **Sonraki yükseltme adayları:** Grafana ve Alertmanager (yukarı akışta yeni sürüm çıkınca), pgvector ve nginx (aynı etiketin yeni digest'i ya da nginx 1.31.x anadalı).
