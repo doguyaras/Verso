@@ -38,7 +38,7 @@ CREATE TABLE document.collection_grant (
     CONSTRAINT fk_collection_grant_collection FOREIGN KEY (collection_id)
         REFERENCES document.collection (id) ON DELETE CASCADE,
     CONSTRAINT uq_collection_grant_principal UNIQUE (collection_id, principal),
-    CONSTRAINT ck_collection_grant_principal CHECK (principal ~ '^(user|group):[^[:cntrl:]]{1,256}$')
+    CONSTRAINT ck_collection_grant_principal CHECK (principal ~ '^(user|group):[^[:cntrl:]]+$' AND char_length(principal) <= 262)
 );
 -- GET /v1/collections for a reader: the collections granted to any of the caller's principals.
 CREATE INDEX idx_collection_grant_principal ON document.collection_grant (principal, collection_id);
@@ -61,7 +61,7 @@ CREATE TABLE document.document_principal (
     CONSTRAINT pk_document_principal PRIMARY KEY (document_id, principal),
     CONSTRAINT fk_document_principal_document FOREIGN KEY (document_id)
         REFERENCES document.document (id) ON DELETE CASCADE,
-    CONSTRAINT ck_document_principal CHECK (principal ~ '^(user|group):[^[:cntrl:]]{1,256}$')
+    CONSTRAINT ck_document_principal CHECK (principal ~ '^(user|group):[^[:cntrl:]]+$' AND char_length(principal) <= 262)
 );
 -- The caller's documents (list, count, term-share denominator): principal = ANY(:principals) first.
 CREATE INDEX idx_document_principal_principal ON document.document_principal (principal, document_id);

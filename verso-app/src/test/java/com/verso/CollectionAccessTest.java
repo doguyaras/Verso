@@ -551,7 +551,10 @@ class CollectionAccessTest {
     }
 
     private HttpResponse<String> uploadRaw(String token, UUID collection, String fileName, String text) throws Exception {
-        Multipart body = Multipart.pdf(fileName, TestPdfs.pages(text));
+        // The test PDF font (Helvetica, WinAnsi) has no ı, ş, ğ, İ: the texts are folded to ASCII for the file.
+        String ascii = text.replace('ı', 'i').replace('ş', 's').replace('ğ', 'g').replace('İ', 'I').replace('Ş', 'S')
+                .replace('Ğ', 'G');
+        Multipart body = Multipart.pdf(fileName, TestPdfs.pages(ascii));
         String path = collection == null ? "/v1/documents" : "/v1/documents?collectionId=" + collection;
         return http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Authorization", "Bearer " + token).header("Content-Type", body.contentType())

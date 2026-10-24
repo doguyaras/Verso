@@ -121,7 +121,8 @@ class ConversationApiTest {
         assertThat((String) JsonPath.read(read.body(), "$.turns[0].model")).isEqualTo("test-chat");
         assertThat((Integer) JsonPath.read(read.body(), "$.turns[0].durationMs")).isGreaterThanOrEqualTo(0);
         assertThat(read.body()).contains("\"citations\":[{\"number\":1,\"documentId\":\"" + document
-                + "\",\"fileName\":\"izin.pdf\",\"page\":1,\"unit\":\"PAGE\",\"documentDeleted\":false}]")
+                + "\",\"fileName\":\"izin.pdf\",\"page\":1,\"unit\":\"PAGE\",\"documentDeleted\":false,"
+                + "\"documentAccessible\":true,\"collectionId\":null,\"collectionName\":null}]")
                 .contains("\"feedback\":null").doesNotContain("excerpt");
         // Citation references only: no passage text in the history (ADR-0023).
         assertThat(QaTables.count("select count(*) from qa.turn_citation c join qa.turn t on t.id = c.turn_id "
@@ -254,7 +255,8 @@ class ConversationApiTest {
         HttpResponse<String> read = get(owner, "/v1/conversations/" + conversation);
         assertThat(read.statusCode()).isEqualTo(200);
         assertThat(read.body()).contains("\"citations\":[{\"number\":1,\"documentId\":\"" + document
-                + "\",\"fileName\":null,\"page\":1,\"unit\":\"PAGE\",\"documentDeleted\":true}]");
+                + "\",\"fileName\":null,\"page\":1,\"unit\":\"PAGE\",\"documentDeleted\":true,"
+                + "\"documentAccessible\":false,\"collectionId\":null,\"collectionName\":null}]");
     }
 
     @Test

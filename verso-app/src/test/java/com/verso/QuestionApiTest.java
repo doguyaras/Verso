@@ -115,7 +115,8 @@ class QuestionApiTest {
         assertThat(response.body())
                 .contains("\"found\":true", "\"outcome\":\"ANSWERED\"", "\"mode\":\"local\"", "\"model\":\"test-chat\"")
                 .contains("\"citations\":[{\"number\":1,\"documentId\":\"" + id + "\",\"fileName\":\"izin.pdf\",\"page\":1,"
-                        + "\"unit\":\"PAGE\",\"excerpt\":\"topic-leave Annual leave is twenty working days.\"}]")
+                        + "\"unit\":\"PAGE\",\"excerpt\":\"topic-leave Annual leave is twenty working days.\","
+                        + "\"collectionId\":null,\"collectionName\":null}]")
                 .contains("yirmi iş günüdür [1].").doesNotContain("[7]");
         assertThat(TestChatModel.INSTANCE.calls()).isOne();
     }
