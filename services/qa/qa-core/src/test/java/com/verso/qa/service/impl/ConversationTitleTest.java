@@ -22,6 +22,15 @@ class ConversationTitleTest {
         assertThat(emoji).as("no surrogate pair cut in half").isEqualTo("😀".repeat(79) + "…");
     }
 
+    /** PostgreSQL text refuses U+0000: it is replaced, never dropped, so the length (and the CHECKs) stay the same. */
+    @Test
+    void storable_whenTheTextHoldsNul_replacesItKeepingTheLength() {
+        assertThat(ConversationServiceImpl.storable("izin\0?\0")).isEqualTo("izin�?�");
+        assertThat(ConversationServiceImpl.storable("\0")).isEqualTo("�");
+        String clean = "Yıllık izin?";
+        assertThat(ConversationServiceImpl.storable(clean)).isSameAs(clean);
+    }
+
     @Test
     void title_whenTheQuestionCarriesBidiOverrides_dropsThem() {
         assertThat(ConversationServiceImpl.title("abc‮def⁦")).isEqualTo("abc def");

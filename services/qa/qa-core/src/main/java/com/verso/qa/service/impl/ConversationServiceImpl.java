@@ -124,8 +124,9 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
     }
 
     /** One transaction: conversation (locked or new), turn, citations and every rollup of the day. */
-    private StoredTurn store(String account, UUID requested, String question, AnswerResponse answer, Timings timings) {
+    private StoredTurn store(String account, UUID requested, String asked, AnswerResponse answer, Timings timings) {
         Instant now = clock.instant();
+        String question = storable(asked);
         UUID conversationId = null;
         if (requested != null) {
             Optional<ConversationRow> locked = conversations.lock(account, requested);
@@ -144,7 +145,7 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         LocalDate day = LocalDate.ofInstant(now, metricsProperties.zone());
         String outcome = answer.outcome().name();
         UUID turnId = turns.insert(new NewTurn(conversationId, account, question, QuestionNormalizer.hash(question),
-                bounded(answer.answer()), outcome, answer.mode(), answer.model(), millis(timings.retrievalMs()),
+                bounded(storable(answer.answer())), outcome, answer.mode(), answer.model(), millis(timings.retrievalMs()),
                 millis(timings.chatMs()), millis(timings.totalMs()), day, now));
         for (Citation citation : answer.citations()) {
             turns.insertCitation(turnId, citation.number(), citation.documentId(), citation.page(), citation.unit().name());
@@ -226,6 +227,15 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         if (line.isEmpty()) line = "?";
         if (line.codePointCount(0, line.length()) <= TITLE_CHARS) return line;
         return line.substring(0, line.offsetByCodePoints(0, TITLE_CHARS - 1)).strip() + "…";
+    }
+
+    /**
+     * PostgreSQL text cannot hold U+0000. A question (valid JSON with an escaped U+0000) or an answer carrying one made the whole
+     * write fail: the turn was lost and the failure counted as an outage (HistoryNotStored), at any user's will. It is
+     * kept visible as U+FFFD; the length (and so every CHECK) stays the same.
+     */
+    static String storable(String text) {
+        return text.indexOf('\0') < 0 ? text : text.replace('\0', '�');
     }
 
     private static String bounded(String answer) {

@@ -476,6 +476,65 @@ class ConversationApiTest {
         assertThat(QaTables.count("select count(*) from qa.turn where conversation_id = ?", conversation)).isOne();
     }
 
+    /**
+     * Regression (re-review of ADR-0023): PostgreSQL text refuses U+0000, so a question carrying one (valid JSON) used to
+     * fail the history write: the turn was lost, an ERROR was logged and reason="failed" raised the HistoryNotStored
+     * outage alarm, at the will of any user. The turn is stored now, with U+FFFD in its place.
+     */
+    @Test
+    void ask_whenTheQuestionHoldsANulCharacter_storesTheTurnAndRaisesNoFailure() throws Exception {
+        ready(owner, "topic-leave Annual leave is twenty working days.");
+        double failedBefore = notStored("failed");
+
+        HttpResponse<String> answer = send(owner, "POST", "/v1/questions", "{\"question\":\"topic-leave izin\\u0000?\"}");
+
+        assertThat(answer.statusCode()).isEqualTo(200);
+        String turn = JsonPath.read(answer.body(), "$.turnId");
+        assertThat(turn).isNotNull();
+        assertThat(QaTables.count("select count(*) from qa.turn where id = ?::uuid and question = ?", turn,
+                "topic-leave izin�?")).isOne();
+        assertThat(notStored("failed")).as("no outage counted").isEqualTo(failedBefore);
+        assertThat(appender.list).noneMatch(e -> e.getFormattedMessage().contains("HISTORY_WRITE_FAILED"));
+    }
+
+    /**
+     * Check-then-act between the ownership read and the rating write (FeedbackServiceImpl): the turn is deleted (its
+     * conversation, or the retention) while it is being rated. The rating waits on the deleting transaction, then hits
+     * the foreign key: 404 TURN_NOT_FOUND, no rating row and no count, never a 500. Deterministic: the delete commits
+     * only once the rating is seen waiting for its lock.
+     */
+    @Test
+    void feedback_whenTheTurnIsDeletedWhileRated_answers404AndCountsNothing() throws Exception {
+        ready(owner, "topic-leave Annual leave is twenty working days.");
+        HttpResponse<String> answer = ask(owner, "topic-leave Yıllık izin?", null);
+        String conversation = JsonPath.read(answer.body(), "$.conversationId");
+        String turn = JsonPath.read(answer.body(), "$.turnId");
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try (java.sql.Connection deleting = QaTables.admin();
+             java.sql.Statement st = deleting.createStatement()) {
+            deleting.setAutoCommit(false);
+            st.executeUpdate("delete from qa.turn where id = '" + UUID.fromString(turn) + "'");
+
+            Future<HttpResponse<String>> rating = pool.submit(() -> rate(owner, conversation, turn, "{\"rating\":\"UP\"}"));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (QaTables.count("select count(*) from pg_stat_activity where usename = 'svc_qa' "
+                    + "and wait_event_type = 'Lock'") == 0) {
+                assertThat(rating.isDone()).as("the rating must wait for the deleting transaction").isFalse();
+                assertThat(System.nanoTime()).as("rating never waited for the lock").isLessThan(deadline);
+                Thread.onSpinWait();
+            }
+            deleting.commit();
+
+            HttpResponse<String> response = rating.get(30, TimeUnit.SECONDS);
+            assertNotFound(response, 11021);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(QaTables.count("select count(*) from qa.turn_feedback")).isZero();
+        assertThat(QaTables.count("select coalesce(sum(feedback), 0) from qa.usage_daily_feedback")).isZero();
+        assertThat(appender.list).noneMatch(e -> e.getLevel() == ch.qos.logback.classic.Level.ERROR);
+    }
+
     private double notStored(String reason) {
         io.micrometer.core.instrument.Counter counter = meters.find("verso.qa.history.not.stored").tag("reason", reason)
                 .counter();
