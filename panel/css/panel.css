@@ -1127,6 +1127,9 @@ dialog.palette::backdrop { background: var(--scrim); }
   /* the "Yönetim" screens (ADR-0036): fields, buttons and the account menu's rows */
   .main[data-group="admin"] :is(.input, .button, .icon-button), .menu button { min-height: 44px; }
   .main[data-group="admin"] .icon-button { min-width: 44px; }
+  /* "Bağlayıcılar" (ADR-0042): the glob boxes and the whole "Zamanlama açık" row are touch targets too */
+  .main[data-group="admin"] :is(.textarea, .connector-check) { min-height: 44px; }
+  .main[data-group="admin"] .connector-check input { width: 24px; height: 24px; }
 }
 
 /* ---------- the "Yönetim" group and its screens (ADR-0036) ---------- */
@@ -1142,6 +1145,14 @@ dialog.palette::backdrop { background: var(--scrim); }
 .chunk-heading { margin: 0; font-weight: 600; color: var(--fg-default); }
 .chunk-text { margin: 0; color: var(--fg-muted); overflow-wrap: anywhere; }
 .chunk-status { margin: 0; }
+.connector-slot:empty { display: none; }
+.connector-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px 18px; }
+.connector-field { display: grid; gap: 4px; align-content: start; }
+.connector-field .muted { margin: 0; font-size: var(--text-sm); }
+.connector-check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+.connector-path { overflow-wrap: anywhere; min-width: 16ch; }
+.connector-table td { height: auto; padding-top: 10px; padding-bottom: 10px; }
+.connector-table tbody tr { cursor: default; }
 /* screens cross-fade (motion.js transition: the View Transitions API where the browser has it) */
 .main { view-transition-name: main; }
 ::view-transition-old(main) { animation: vt-out .16s var(--ease-in) both; }

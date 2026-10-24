@@ -11,7 +11,7 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 - Yeni hata kodları: 14001–14011 (`connector` bloğu).
 - Yeni denetim eylemleri: `CONNECTOR_CREATED`, `CONNECTOR_UPDATED`, `CONNECTOR_DELETED`, `CONNECTOR_SYNC_REQUESTED`, `CONNECTOR_SYNC_STARTED`, `CONNECTOR_SYNC_FINISHED`, `CONNECTOR_DOCUMENT_ADDED`, `CONNECTOR_DOCUMENT_DELETED`; yeni hedef türü `CONNECTOR`. `GET /v1/admin/audit` istemcisi bilinmeyen eylemi ham göstermelidir (zaten kural). Eşitleme satırlarının aktörü `system:connector-sync`'tir ve rolü yoktur.
 - Mevcut uçların sözleşmesi **değişmedi**. Bağlayıcı belgeleri `/v1/documents?collectionId=` listesinde sıradan bilgi alanı belgesi olarak görünür.
-- Mobil için etki yok. Panelde bu sürümde bağlayıcı ekranı yoktur; ekran eklenirse bu dokümana dayanır.
+- Mobil için etki yok. Panelde "Yönetim → Bağlayıcılar" ekranı bu dokümana dayanır ([ADR-0042](adr/0042-baglayici-ekrani.md)); sözleşme ekran için değişmedi.
 
 ## Kurallar
 - **Kritik:** Bütün uçlar yalnız `verso-admin` rolündedir (ADR-0019). Başka her kimlikli çağıran `403` (`90101 ACCESS_DENIED`; denetim kaydına `ACCESS_DENIED` / `ADMIN_CONNECTOR` olarak yazılır), kimliksiz `401` alır.

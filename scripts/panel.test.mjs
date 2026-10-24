@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1679,10 +1679,10 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
-    for (const id of ['subjects', 'chunks']) assert.equal(canOpen(id, roles), false, id);
+    for (const id of ['subjects', 'chunks', 'connectors']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects']);
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
   for (const id of adminScreens(admin)) {
     assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
@@ -1693,7 +1693,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
   assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  for (const id of ['chunks', 'subjects', 'connectors']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -1878,5 +1878,267 @@ test('admin screens: 403 is a calm admin-only state, touch targets and reduced m
   const block = css.slice(css.indexOf('/* ---------- the "Yönetim" group'), css.indexOf('/* screens cross-fade'));
   assert.ok(block.length > 200, 'the admin block');
   assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, 'only design tokens: the contrast pairs stay the tested ones');
+  assert.doesNotMatch(block, /animation|transition/, 'no new motion');
+});
+
+// ---------- "Bağlayıcılar": the SMB connector screen (ADR-0038, ADR-0042) ----------
+test('connectors: only verso-admin (from /v1/info) opens the screen; it sits in the "Yönetim" group, never in the tab bar', async () => {
+  const { adminScreens } = await import('../panel/js/roles.js');
+  for (const roles of [rolesOf({ realm_access: { roles: [] } }), rolesOf({ realm_access: { roles: ['verso-operator'] } }),
+    rolesOf({ realm_access: { roles: ['verso-admin'] } }), rolesOf({ roles: ['verso-admin'] })]) {
+    assert.equal(canOpen('connectors', roles), false, 'the token alone does not open it');
+    assert.ok(!screensFor(roles).includes('connectors'));
+  }
+  const admin = withServerRoles(rolesOf({ realm_access: { roles: [] } }), { roles: ['verso-admin'] });
+  assert.equal(canOpen('connectors', admin), true);
+  assert.ok(adminScreens(admin).includes('connectors'));
+  assert.deepEqual(SCREENS.connectors.roles, [ROLES.ADMIN]);
+  assert.equal(SCREENS.connectors.group, 'admin');
+  assert.equal(SCREENS.connectors.tab, false);
+  assert.equal(SCREENS.connectors.title, 'Bağlayıcılar');
+  assert.match(readFileSync('panel/js/app.js', 'utf8'), /connectors: renderConnectors/);
+});
+
+test('connectors: every code of the integration document has a Turkish message, and form codes land under their field', async () => {
+  const { errorField, ERROR_FIELDS } = await import('../panel/js/connectors.js');
+  const documented = [...readFileSync('docs/api-connectors-integration-v1.md', 'utf8').matchAll(/^\| (14\d{3}) \|/gm)].map((m) => Number(m[1]));
+  assert.deepEqual(documented, [14001, 14002, 14003, 14004, 14005, 14006, 14007, 14008, 14009, 14010, 14011]);
+  for (const code of documented) {
+    assert.ok(MESSAGES[code], `no message for ${code}`);
+    assert.doesNotMatch(MESSAGES[code], /CONNECTOR_/, `${code}: words, not the constant`);
+    assert.equal(new ApiError(400, code).message, MESSAGES[code]);
+  }
+  assert.equal(errorField(14002), 'name');
+  assert.equal(errorField(14003), 'pathPrefix');
+  assert.equal(errorField(14004), 'host');
+  assert.equal(errorField(14005), 'collectionId');
+  assert.equal(errorField(14006), 'collectionId');
+  assert.equal(errorField(14009), 'includeGlobs');
+  assert.equal(errorField(14010), 'maxFileMb');
+  for (const code of [14001, 14007, 14008, 14011, 90002, undefined]) assert.equal(errorField(code), null, String(code));
+  const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  for (const field of Object.values(ERROR_FIELDS)) assert.match(screen, new RegExp(`\\b${field}: field\\(`), `${field} is a form field`);
+});
+
+test('connectors: health is a badge with words and a tone; STALE is not "OK"; unknown values are shown raw', async () => {
+  const { healthBadge, HEALTH } = await import('../panel/js/connectors.js');
+  assert.deepEqual(Object.keys(HEALTH), ['OK', 'STALE', 'FAILING', 'NEVER_SYNCED', 'DISABLED', 'DELETING'], 'the documented enum');
+  assert.equal(healthBadge('OK').tone, 'ok');
+  assert.equal(healthBadge('STALE').tone, 'wait');
+  assert.equal(healthBadge('FAILING').tone, 'bad');
+  assert.notEqual(healthBadge('STALE').label, healthBadge('OK').label);
+  assert.match(healthBadge('STALE').help, /üç eşitleme aralığından eski/);
+  for (const value of Object.keys(HEALTH)) {
+    const badge = healthBadge(value);
+    assert.ok(badge.label && badge.help, value);
+    assert.ok(['ok', 'wait', 'bad', 'info', 'neutral'].includes(badge.tone), `${value}: a pill tone of panel.css`);
+  }
+  assert.deepEqual(healthBadge('NEW_STATE'), { label: 'NEW_STATE', tone: 'neutral', help: '' });
+  assert.equal(healthBadge(null).label, 'Bilinmiyor');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  for (const tone of ['ok', 'wait', 'bad', 'neutral']) assert.match(css, new RegExp(`\\.pill\\.${tone} \\{`));
+});
+
+test('connectors: the form mirrors the server rules and builds the documented request body', async () => {
+  const { connectorRequest, connectorForm, hostProblem, globProblem, normalizePrefix, parseGlobs } = await import('../panel/js/connectors.js');
+  const id = '0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b';
+  const good = { ...connectorForm(null), name: ' İK politikaları ', host: '10.20.30.40', share: 'Kurumsal', pathPrefix: '\\IK\\Politikalar\\',
+    domain: 'CORP', username: 'svc-verso', collectionId: id, includeGlobs: '*.pdf\n\n {a,b}.docx ', excludeGlobs: 'arsiv/**', maxFileMb: '10',
+    scheduleMinutes: '60', enabled: true };
+  const { problems, body } = connectorRequest(good);
+  assert.deepEqual(problems, {});
+  assert.deepEqual(body, { name: 'İK politikaları', host: '10.20.30.40', port: 445, share: 'Kurumsal', pathPrefix: 'IK/Politikalar', domain: 'CORP',
+    username: 'svc-verso', credentialRef: 'SECRET_CONNECTOR_SMB_PASSWORD', collectionId: id, includeGlobs: ['*.pdf', '{a,b}.docx'],
+    excludeGlobs: ['arsiv/**'], maxFileBytes: 10485760, scheduleMinutes: 60, enabled: true });
+  assert.ok(!Object.keys(body).some((key) => /password|secret/i.test(key)), 'no password field, ever');
+  assert.equal(connectorRequest({ ...good, maxFileMb: '' }).body.maxFileBytes, null, 'empty: the server default (20 MB)');
+  assert.equal(connectorRequest({ ...good, domain: '' }).body.domain, null);
+  assert.equal(connectorRequest({ ...good, enabled: false }).body.enabled, false);
+
+  const bad = (patch, field) => {
+    const result = connectorRequest({ ...good, ...patch });
+    assert.equal(result.body, null, JSON.stringify(patch));
+    assert.ok(result.problems[field], `${JSON.stringify(patch)} → ${field}`);
+  };
+  bad({ name: '  ' }, 'name');
+  bad({ name: 'x'.repeat(101) }, 'name');
+  bad({ name: 'a\u202Eb' }, 'name');
+  for (const host of ['', 'smb://dosya01', '\\\\dosya01', '8.8.8.8', '127.0.0.1', '169.254.169.254', 'localhost', '::1', '999.1.1.1']) bad({ host }, 'host');
+  bad({ port: '0' }, 'port');
+  bad({ port: '70000' }, 'port');
+  bad({ share: 'Kurumsal/IK' }, 'share');
+  bad({ share: '' }, 'share');
+  for (const prefix of ['IK/../Muhasebe', 'C:/IK', 'IK//x', '//sunucu/pay', 'IK/a.', 'IK/*']) bad({ pathPrefix: prefix }, 'pathPrefix');
+  bad({ domain: 'CORP\\x' }, 'domain');
+  bad({ username: '' }, 'username');
+  bad({ username: 'CORP\\svc' }, 'username');
+  for (const ref of ['', 'hunter2', 'SECRET_DB_APP_PASSWORD', 'SECRET_CONNECTOR_', 'secret_connector_smb', `SECRET_CONNECTOR_${'A'.repeat(61)}`]) {
+    bad({ credentialRef: ref }, 'credentialRef');
+  }
+  bad({ collectionId: '' }, 'collectionId');
+  bad({ includeGlobs: Array.from({ length: 21 }, (_, i) => `*.${i}`).join('\n') }, 'includeGlobs');
+  bad({ excludeGlobs: '../x' }, 'excludeGlobs');
+  for (const mb of ['21', '0', 'çok']) bad({ maxFileMb: mb }, 'maxFileMb');
+  for (const minutes of ['4', '10081', '7.5', '']) bad({ scheduleMinutes: minutes }, 'scheduleMinutes');
+
+  for (const host of ['10.0.0.1', '172.16.0.1', '172.31.255.254', '192.168.1.10', 'dosya01.kurum.local', 'fd12:3456::1', '::ffff:10.1.2.3']) {
+    assert.equal(hostProblem(host), null, host);
+  }
+  for (const host of ['172.32.0.1', '11.0.0.1', '::ffff:8.8.8.8', '2001:db8::1']) assert.ok(hostProblem(host), host);
+  assert.equal(globProblem('*.pdf'), null);
+  assert.equal(globProblem('raporlar/**/*.{pdf,docx}'), null);
+  for (const glob of ['{a,b', 'a}', '{a,{b}}', '..', '*'.repeat(7), 'x'.repeat(201), '/']) assert.ok(globProblem(glob), glob);
+  assert.deepEqual(normalizePrefix('/IK/Politikalar/'), { value: 'IK/Politikalar', problem: null });
+  assert.deepEqual(normalizePrefix('  '), { value: '', problem: null });
+  assert.deepEqual(parseGlobs('a\r\n\n b \n'), ['a', 'b']);
+
+  // Editing keeps the target collection: the server refuses a change (409 14006), so the body carries the original.
+  const original = { id: 'c1', ...body };
+  const edited = connectorRequest({ ...connectorForm(original), collectionId: '0192a3b4-c5d6-7e8f-9a0b-000000000000', name: 'Yeni ad' }, original);
+  assert.equal(edited.body.collectionId, id);
+  assert.equal(edited.body.name, 'Yeni ad');
+  assert.equal(connectorForm(original).maxFileMb, '10');
+  assert.equal(connectorForm(original).includeGlobs, '*.pdf\n{a,b}.docx');
+});
+
+test('connectors: the panel rules are the server\'s (ConnectorRequest, ConnectorProperties): a contract read from the Java sources', async () => {
+  const { CREDENTIAL_REF, DELETION_SAFETY, MAX_GLOBS, MAX_GLOB_LENGTH, SCHEDULE_MAX, SCHEDULE_MIN } = await import('../panel/js/connectors.js');
+  const root = 'services/connector/connector-api/src/main/java/com/verso/connector/api/dto/ConnectorRequest.java';
+  const request = readFileSync(root, 'utf8');
+  assert.equal(`^${request.match(/regexp = "(SECRET_CONNECTOR_[^"]+)"/)[1]}$`, CREDENTIAL_REF.source, 'credentialRef pattern');
+  assert.match(request, new RegExp(`@NotNull @Min\\(${SCHEDULE_MIN}\\) @Max\\(${SCHEDULE_MAX}\\) Integer scheduleMinutes`));
+  assert.match(request, new RegExp(`@Size\\(max = ${MAX_GLOBS}\\) List<@NotBlank @Size\\(max = ${MAX_GLOB_LENGTH}\\) String> includeGlobs`));
+  const properties = readFileSync('services/connector/connector-core/src/main/java/com/verso/connector/config/ConnectorProperties.java', 'utf8');
+  assert.match(properties, new RegExp(`@DefaultValue\\("${DELETION_SAFETY.percent}"\\) int deletionSafetyPercent`));
+  assert.match(properties, new RegExp(`@DefaultValue\\("${DELETION_SAFETY.minimum}"\\) int deletionSafetyMinimum`));
+  const health = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/enums/ConnectorHealth.java', 'utf8');
+  const { HEALTH } = await import('../panel/js/connectors.js');
+  for (const value of Object.keys(HEALTH)) assert.match(health, new RegExp(`\\b${value}\\b`), `${value} is a server health value`);
+});
+
+test('connectors: the deletion-safety approval shows count and share and needs the count typed', async () => {
+  const { approvalConfirmed, deleteConfirmed, deletionNeedsApproval, pendingApproval } = await import('../panel/js/connectors.js');
+  // The server's rule (SyncPlanner.deletionAllowed): more than 20% and more than 20 files.
+  assert.equal(deletionNeedsApproval(20, 50), false, '20 files never need approval');
+  assert.equal(deletionNeedsApproval(21, 100), true);
+  assert.equal(deletionNeedsApproval(21, 105), false, 'exactly 20% is allowed');
+  assert.equal(deletionNeedsApproval(30, 1000), false);
+  const connector = { id: 'c1', health: 'OK', items: { synced: 90, failed: 6, skipped: 4 } };
+  const held = { id: 'r1', status: 'PARTIAL', errorCode: 'DELETION_SAFETY', deferred: 40 };
+  assert.deepEqual(pendingApproval(connector, held), { count: 40, tracked: 100, percent: 40, runId: 'r1' });
+  assert.equal(pendingApproval(connector, { ...held, errorCode: 'FILES_FAILED' }), null);
+  assert.equal(pendingApproval(connector, { ...held, status: 'SUCCEEDED' }), null);
+  assert.equal(pendingApproval(connector, null), null);
+  assert.equal(pendingApproval({ ...connector, health: 'DELETING' }, held), null);
+  assert.equal(pendingApproval(connector, { ...held, deferred: 0 }), null);
+  assert.equal(pendingApproval({ ...connector, items: {} }, held).percent, 100, 'never above 100%');
+  const pending = pendingApproval(connector, held);
+  assert.equal(approvalConfirmed(pending, '40'), true);
+  assert.equal(approvalConfirmed(pending, ' 40 '), true);
+  for (const typed of ['', '4', '400', 'evet', null]) assert.equal(approvalConfirmed(pending, typed), false, String(typed));
+  assert.equal(approvalConfirmed(null, '0'), false);
+  assert.equal(deleteConfirmed({ name: 'İK politikaları' }, 'İK politikaları'), true);
+  for (const typed of ['ik politikaları', 'İK politikaları ', '']) assert.equal(deleteConfirmed({ name: 'İK politikaları' }, typed), false, typed);
+  assert.equal(deleteConfirmed({ name: '' }, ''), false);
+  const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  assert.match(screen, /api\.syncConnector\(connector\.id, true\)/, 'the approval is the documented confirmMassDeletion');
+  assert.match(screen, /if \(!approvalConfirmed\(pending, typed\.value\)\) return;/);
+  assert.match(screen, /if \(!deleteConfirmed\(connector, typed\.value\)\) return;/);
+  assert.match(screen, /api\.syncConnector\(connector\.id, false\)/, '"Şimdi eşitle" never approves deletions');
+  assert.equal([...screen.matchAll(/api\.syncConnector\(connector\.id, true\)/g)].length, 1, 'only the approval form sends true');
+});
+
+test('connectors: run codes, file codes, summaries and paging texts', async () => {
+  const { codeText, ITEM_FAILURES, pageState, runSummary, RUN_CODES, scheduleText } = await import('../panel/js/connectors.js');
+  const doc = readFileSync('docs/api-connectors-integration-v1.md', 'utf8');
+  const runSection = doc.slice(doc.indexOf('### `SyncRunResponse`'), doc.indexOf('### `ConnectorItemResponse`'));
+  for (const m of runSection.matchAll(/`([A-Z][A-Z_]{3,})`/g)) {
+    if (['RUNNING', 'SUCCEEDED', 'PARTIAL', 'FAILED', 'ABANDONED'].includes(m[1])) continue;
+    assert.ok(RUN_CODES[m[1]], `no text for run code ${m[1]}`);
+  }
+  const itemSection = doc.slice(doc.indexOf('### `ConnectorItemResponse`'), doc.indexOf('## Hata kodları'));
+  for (const m of itemSection.match(/`failureCode` \(([^)]*)\)/)[1].matchAll(/`([A-Z_]+)`/g)) assert.ok(ITEM_FAILURES[m[1]], m[1]);
+  assert.equal(codeText('NEW_CODE'), 'NEW_CODE', 'unknown codes are shown raw');
+  assert.equal(codeText(null), '');
+  assert.equal(runSummary(null), 'Henüz koşu yok');
+  assert.equal(runSummary({ status: 'SUCCEEDED', added: 42, updated: 1, deleted: 0, failed: 0, deferred: 0 }), 'Başarılı · 42 yeni, 1 değişen, 0 silinen');
+  assert.equal(runSummary({ status: 'PARTIAL', added: 0, updated: 0, deleted: 0, failed: 2, deferred: 40 }),
+    'Kısmen · 0 yeni, 0 değişen, 0 silinen, 2 başarısız, 40 bekleyen');
+  assert.deepEqual(pageState({ number: 0, totalPages: 3 }), { number: 0, total: 3, prev: false, next: true, label: 'Sayfa 1 / 3' });
+  assert.deepEqual(pageState({ number: 2, totalPages: 3 }), { number: 2, total: 3, prev: true, next: false, label: 'Sayfa 3 / 3' });
+  assert.equal(pageState(undefined).label, 'Kayıt yok');
+  assert.equal(scheduleText(60), '1 saatte bir');
+  assert.equal(scheduleText(1440), 'günde bir');
+  assert.equal(scheduleText(10080), '7 günde bir');
+  assert.equal(scheduleText(45), '45 dakikada bir');
+});
+
+test('api: connector calls go to the documented paths; ids are encoded, the body is JSON, the state filter is fixed', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push([init.method ?? 'GET', url, init.body ?? null]);
+    return { ok: true, status: 202, headers: { get: () => null }, json: async () => ({}) };
+  };
+  const body = { name: 'A', credentialRef: 'SECRET_CONNECTOR_SMB_PASSWORD' };
+  await api.listConnectors(1, 50);
+  await api.getConnector('a/b');
+  await api.createConnector(body);
+  await api.updateConnector('a/b', body);
+  await api.deleteConnector('a/b');
+  await api.syncConnector('a/b');
+  await api.syncConnector('a/b', true);
+  await api.listConnectorRuns('a/b', 2, 20);
+  await api.listConnectorItems('a/b', 'FAILED', 0, 50);
+  await api.listConnectorItems('a/b', '', 1, 50);
+  await api.listConnectorItems('a/b', 'x&state=SYNCED', 0, 50);
+  const json = JSON.stringify(body);
+  assert.deepEqual(sent, [
+    ['GET', '/v1/admin/connectors?page=1&size=50', null],
+    ['GET', '/v1/admin/connectors/a%2Fb', null],
+    ['POST', '/v1/admin/connectors', json],
+    ['PUT', '/v1/admin/connectors/a%2Fb', json],
+    ['DELETE', '/v1/admin/connectors/a%2Fb', null],
+    ['POST', '/v1/admin/connectors/a%2Fb/sync', '{"confirmMassDeletion":false}'],
+    ['POST', '/v1/admin/connectors/a%2Fb/sync', '{"confirmMassDeletion":true}'],
+    ['GET', '/v1/admin/connectors/a%2Fb/runs?page=2&size=20', null],
+    ['GET', '/v1/admin/connectors/a%2Fb/items?state=FAILED&page=0&size=50', null],
+    ['GET', '/v1/admin/connectors/a%2Fb/items?page=1&size=50', null],
+    ['GET', '/v1/admin/connectors/a%2Fb/items?page=0&size=50', null]]);
+  globalThis.fetch = async () => ({ ok: false, status: 409, headers: { get: () => null }, json: async () => ({ error: { code: 14002 } }) });
+  await assert.rejects(api.createConnector(body), (error) => error instanceof ApiError && error.code === 14002 && error.message === MESSAGES[14002]);
+  signOut();
+});
+
+test('connectors screen: no markup, inline style, storage, URL state or password field; 403, touch targets, no motion', () => {
+  for (const file of ['connectors.js', 'screens/connectors.js']) {
+    const source = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'|style:\s*'|window\.(alert|confirm|prompt)/, file);
+    assert.doesNotMatch(source, /sessionStorage|localStorage|indexedDB|document\.cookie/, `${file}: no browser storage`);
+    assert.doesNotMatch(source, /location\.(hash|search|href)\s*=(?!=)|history\.(push|replace)State|URLSearchParams/, `${file}: nothing in the URL`);
+    assert.doesNotMatch(source, /console\./, file);
+    assert.doesNotMatch(source, /type: 'password'|-password'/, `${file}: no password input`);
+    assert.doesNotMatch(source, /animate\(|requestAnimationFrame|transition:/, `${file}: no motion of its own`);
+  }
+  const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  assert.match(screen, /error\.status === 403/);
+  assert.match(screen, /'Bu ekran yöneticiler içindir'/);
+  assert.doesNotMatch(screen, /Verso['’]|productName/, 'the product name is not hard-coded');
+  assert.match(screen, /Parola bu ekrana yazılmaz/, 'the form says where the password lives');
+  assert.match(screen, /NTFS izinleri aktarılmaz/, 'the risk is named next to the collection picker (integration document)');
+  const logic = readFileSync('panel/js/connectors.js', 'utf8');
+  for (const name of ['README.md', 'deploy/compose.smb.yaml', 'docs/api-connectors-integration-v1.md', 'docs/adr/0038-smb-baglayicisi.md']) {
+    assert.ok(logic.includes(name), `the help names ${name}`);
+  }
+  assert.match(screen, /VERSO_CONNECTOR_ALLOWED_NETWORKS/);
+  assert.match(screen, /DOCKER-USER/);
+  assert.match(screen, /return \(\) => \{\n\s+state = \{/, 'leaving the screen drops what it loaded');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.main\[data-group="admin"\] :is\(\.textarea, \.connector-check\) \{ min-height: 44px; \}/);
+  const block = css.slice(css.indexOf('/* ---------- the "Yönetim" group'), css.indexOf('/* screens cross-fade'));
+  assert.ok(block.includes('.connector-form'), 'the connector rules sit in the admin block');
+  assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, 'only design tokens: the tested contrast pairs');
   assert.doesNotMatch(block, /animation|transition/, 'no new motion');
 });

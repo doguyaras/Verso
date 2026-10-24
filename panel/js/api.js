@@ -39,6 +39,17 @@ export const MESSAGES = Object.freeze({
   13002: 'Onay, hesap kimliğiyle birebir aynı değil; hiçbir şey silinmedi.',
   13020: 'Onay, belge kimliğiyle birebir aynı değil; hiçbir cevap değişmedi.',
   13021: 'Bu belge hâlâ duruyor; cevaplar yalnız belge silindikten sonra karartılır.',
+  14001: 'Bağlayıcı bulunamadı; silinmiş olabilir.',
+  14002: 'Bu adla bir bağlayıcı zaten var.',
+  14003: 'Klasör yolu geçersiz: paylaşımın içinde göreli bir klasör yazın (boş parça, ".." ve ":" olamaz).',
+  14004: 'Sunucu adresi kurulumun izinli iç ağlarının dışında (ya da loopback, link-local veya metadata adresi).',
+  14005: 'Hedef bilgi alanı bulunamadı.',
+  14006: 'Hedef bilgi alanı sonradan değiştirilemez; yeni bir bağlayıcı oluşturun.',
+  14007: 'Bağlayıcı siliniyor; değiştirilemez ve eşitlenemez.',
+  14008: 'Bağlayıcı sınırı dolu (kurulumda en çok 50).',
+  14009: 'Dosya deseni kullanılamaz (kapanmamış "{", ".." ya da çok fazla "*").',
+  14010: 'En büyük dosya boyu belge sınırını (20 MB) aşıyor.',
+  14011: 'Sayfa numarası ya da sayfa boyutu aralık dışında.',
   90000: 'Soru boş ya da 1000 karakterden uzun.',
   90001: 'İstek okunamadı.',
   90002: 'İstekteki bir değer geçersiz.',
@@ -269,4 +280,20 @@ export const api = {
   /** verso-admin: one page of the chunks of a document the admin reads (ADR-0036). */
   listChunks: (documentId, page = 0, size = 50) =>
     request(`/v1/admin/documents/${encodeURIComponent(documentId)}/chunks?page=${page}&size=${size}`),
+  // SMB connectors (ADR-0038, ADR-0042), verso-admin only. No call carries a password: credentialRef is the name of a
+  // secret file on the server, and the API never returns a password. Only ids, page numbers and the state filter go
+  // into a URL; everything else travels in the JSON body.
+  listConnectors: (page = 0, size = 50) => request(`/v1/admin/connectors?page=${page}&size=${size}`),
+  getConnector: (id) => request(`/v1/admin/connectors/${encodeURIComponent(id)}`),
+  createConnector: (body) => request('/v1/admin/connectors', json('POST', body)),
+  updateConnector: (id, body) => request(`/v1/admin/connectors/${encodeURIComponent(id)}`, json('PUT', body)),
+  deleteConnector: (id) => request(`/v1/admin/connectors/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** Makes the connector due now; confirmMassDeletion lets that one run delete what the deletion safety held back. */
+  syncConnector: (id, confirmMassDeletion = false) => request(`/v1/admin/connectors/${encodeURIComponent(id)}/sync`,
+    json('POST', { confirmMassDeletion: confirmMassDeletion === true })),
+  listConnectorRuns: (id, page = 0, size = 20) =>
+    request(`/v1/admin/connectors/${encodeURIComponent(id)}/runs?page=${page}&size=${size}`),
+  /** state: SYNCED, FAILED, SKIPPED, or anything else for every file. */
+  listConnectorItems: (id, state = '', page = 0, size = 50) => request(`/v1/admin/connectors/${encodeURIComponent(id)}/items?${
+    ['SYNCED', 'FAILED', 'SKIPPED'].includes(state) ? `state=${state}&` : ''}page=${page}&size=${size}`),
 };

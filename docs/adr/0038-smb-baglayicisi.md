@@ -126,6 +126,7 @@ Eşitleme sıcak yol değildir (asenkron worker). Soru-cevap yolu değişmedi (u
   - Testler: birim `SyncPlannerTest`, `SourcePathsTest`, `GlobSetTest`, `NetworkAllowlistTest`, `HealthRuleTest`, `EgressAndCredentialsTest`, `SyncRunnerTest`, `ConnectorArchitectureTest`, `ConnectorApiContractTest`; gerçek veritabanı `ConnectorApiTest`; Samba konteyneriyle `ConnectorSyncTest`; güncellenen `ComposeConfigTest`, `ConfigDriftTest`, `DeployConfigTest`, `MigrateModeTest`, `DatabaseRolesTest`, `ModuleConsistencyTest`, `ModuleStructureTest`, `ErrorCodeUniquenessTest`.
   - Dokümanlar: `docs/api-connectors-integration-v1.md`, `README.md`, `docs/decisions.md`, `docs/ai/repo-context.md`, `docs/versions.md`, `docs/uyum/01-vked-sablonu.md`, `docs/runbooks/connector-sync-stale.md`, `docs/evidence/adr-0038-dogrulama.md`.
 - **Geri alma yolu:** bağlayıcıları API ile sil (belgeleri de gider) ya da `enabled: false`; overlay'i kapat. Şema ve rollerin kaldırılması elle yapılan DBA işidir (`DROP SCHEMA connector CASCADE`, `DROP ROLE`). `DocumentIngestion` ve yeni denetim eylemleri geriye uyumludur.
+- **Panel (sonradan):** yönetim ekranı artık var: "Yönetim → Bağlayıcılar" ([ADR-0042](0042-baglayici-ekrani.md)). API sözleşmesi ekran için değişmedi; ekran `health`'i, koşuları, dosyaları ve silme emniyeti onayını bu ADR'nin kurallarıyla gösterir.
 
 ## Yeniden değerlendirme koşulu
 
