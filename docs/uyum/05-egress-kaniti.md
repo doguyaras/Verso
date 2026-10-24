@@ -35,6 +35,7 @@ Kurulum ekibi sırayla; her satır için çıktı/ekran görüntüsü `{{KANIT_K
 | 6 | Test paketi | CI'da `ComposeConfigTest`, `OllamaChatClientTest`, `AiModeCheckTest`, `AiModeStartupTest` yeşil | Sürümün CI çıktısı / `./mvnw -B -ntp verify` sonucu | {{SONUC_6}} |
 | 7 | Bağımsız ağ gözlemi | Verso sunucusunun/ağ segmentinin dışa giden trafiği kurum güvenlik duvarında incelenir; soru sorulurken dışarıya (model/Verso adı altında) trafik yok | Kurumun güvenlik duvarı / akış kayıtları: {{GUVENLIK_DUVARI_KANITI}} | {{SONUC_7}} |
 | 8 | Hata yanıtı | Model kapalıyken 503 `MODEL_UNAVAILABLE`; sağlayıcı metni yanıtta ve log'da yok | Betik dışı; `docs/runbooks/model-unavailable.md` | {{SONUC_8}} |
+| 9 | Bağlayıcı dış bağlantısı kapalı | `/actuator/info` `connectors.externalEgress: false`; `VERSO_CONNECTOR_EXTERNAL_EGRESS` tanımsız ya da `false` (local modda açıksa uygulama zaten açılmaz, ADR-0044); Confluence Data Center bağlayıcısı varsa adresi `VERSO_CONNECTOR_ALLOWED_NETWORKS` içinde ve `deploy/compose.confluence.yaml` ağı için güvenlik duvarı kuralı yalnız o sunucunun 443 portuna izin veriyor | Yönetim portuna istek; `.env` incelemesi; `ConnectorEgressConfigurationTest`, `ConfluenceSyncTest` (CI) | {{SONUC_9}} |
 
 Madde 7 Verso'nun kendi kanıtı değil, **kurumun bağımsız gözlemidir**; en ikna edici kanıt budur ve kurum güvenlik ekibi yürütür.
 
@@ -45,6 +46,7 @@ Madde 7 Verso'nun kendi kanıtı değil, **kurumun bağımsız gözlemidir**; en
 - Ana makine (host) düzeyi ayarlar (güvenlik duvarı, proxy, yapılandırma yönetimi, uzaktan erişim yazılımları) bu kanıtın dışındadır.
 - `docker compose` yığınına yapılan sonradan değişiklikler (ağın `internal` olmaktan çıkarılması, port eklenmesi) kanıtı geçersiz kılar. Her yapılandırma değişikliğinden sonra madde 1, 4 ve 5 yeniden yapılır.
 - Gözlem yığını (Prometheus, Loki, Grafana, Alloy) iç ağdadır; Grafana'nın dış paylaşım yolları kapalıdır, metriklerde id ve içerik yoktur (llm-rules 1.5, 2.1).
+- Bağlayıcılar (ADR-0038, ADR-0044): SMB ve Confluence Data Center overlay'leri uygulamaya iç olmayan birer ağ ekler; internete kapalılıkları host güvenlik duvarı kuralına bağlıdır ve betiğin 1. adımı bu ağları raporlar (beklenen). Confluence Cloud bağlayıcısı internet ister ve `local` modda kullanılamaz.
 - Kayıtlar: kenar proxy erişim logu kapalıdır; hata logu yalnız `crit` seviyesindedir (ADR-0013).
 
 ## 4. VKED'e nasıl konur

@@ -21,7 +21,11 @@ Etiket: `connector=<bağlayıcı id'si>`. Ad, sunucu, paylaşım ve yol hiçbir 
 
 | Kod | Anlamı | Çözüm |
 |---|---|---|
-| `EGRESS_DENIED` | Sunucu adı izinli ağların dışına çözülüyor, ya da `VERSO_CONNECTOR_ALLOWED_NETWORKS` boş | Dosya sunucusunun adresini `.env`'deki listeye ekle (yalnız özel aralıklar), `verso-app`'i yeniden başlat. Adın dışarıya çözülmesi beklenmiyorsa DNS'i incele |
+| `RATE_LIMITED`, `SOURCE_UNAVAILABLE` | Confluence 429/503 döndü; denemeler bitti ya da istenen bekleme 60 sn'den uzun | Bağlayıcı kendisi geri çekilir. Sürüyorsa bağlayıcının `pageSize`'ını küçült, aralığı uzat; Cloud'da kuruluşun istek sınırlarına bak (ADR-0044) |
+| `REDIRECT_REFUSED` | Confluence başka bir host'a yönlendirdi (adres değişmiş, ters vekil, SSO sayfası); belirteç gönderilmedi | `baseUrl`'i yönlendirmenin gittiği doğru siteyle güncelle; yönlendirme bir giriş sayfasınaysa belirteç geçersizdir |
+| `RESTRICTION_CHECK_FAILED` | Bir sayfanın kısıtları okunamadı; o sayfa alınmadı, liste eksik sayıldı ve hiçbir şey silinmedi | Hesabın sayfayı görme izni var mı bak; sürüyorsa Confluence günlüğünde `restriction/byOperation/read` 403/404'ü ara |
+| `SITE_NOT_FOUND` | Confluence arama ucu 403/404 döndü | `baseUrl`'in bağlam yolunu (Cloud'da `/wiki`) ve hesabın arama iznini doğrula |
+| `EGRESS_DENIED` | Sunucu adı izinli ağların dışına çözülüyor, ya da `VERSO_CONNECTOR_ALLOWED_NETWORKS` boş; Confluence Cloud'da dış bağlantı kapalı, host `VERSO_CONNECTOR_EXTERNAL_HOSTS`'ta yok ya da uygulama sıkı local modda | Dosya sunucusunun adresini `.env`'deki listeye ekle (yalnız özel aralıklar), `verso-app`'i yeniden başlat. Adın dışarıya çözülmesi beklenmiyorsa DNS'i incele |
 | `SOURCE_UNREACHABLE` | TCP bağlantısı ya da ad çözümü yok | `deploy/compose.smb.yaml` açık mı; host güvenlik duvarında `verso-smb` arayüzünden dosya sunucusunun 445'ine izin var mı (README "SMB bağlayıcısı") |
 | `SOURCE_AUTH_FAILED` | Servis hesabı reddedildi ya da paylaşıma erişemiyor | Hesabın parolası değişmiş olabilir: `secrets/SECRET_CONNECTOR_SMB_PASSWORD` dosyasını yeni değerle yaz (`printf`, satır sonu olmadan), `verso-app`'i yeniden başlat; hesabın paylaşımda okuma izni var mı |
 | `CREDENTIAL_MISSING` | `credentialRef`'in adını taşıyan secret dosyası uygulamada yok | Dosyayı oluştur ve overlay'in `secrets:` listesine ekle; yeniden başlat |

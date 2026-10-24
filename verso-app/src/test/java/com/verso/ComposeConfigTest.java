@@ -68,7 +68,7 @@ class ComposeConfigTest {
     void composeSettings_whenReferenced_areDocumentedInEnvExample() throws IOException {
         Set<String> used = new TreeSet<>();
         for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml",
-                "deploy/compose.gpu.yaml", "deploy/compose.smb.yaml")) {
+                "deploy/compose.gpu.yaml", "deploy/compose.smb.yaml", "deploy/compose.confluence.yaml")) {
             Matcher m = COMPOSE_VAR.matcher(read(file));
             while (m.find()) used.add(m.group(1));
         }
@@ -340,6 +340,36 @@ class ComposeConfigTest {
         assertThat(String.valueOf(smb.get("ipam"))).contains("subnet=${VERSO_SMB_SUBNET:-172.31.250.0/24}");
         assertThat(read("deploy/compose.smb.yaml")).doesNotContain("ports:").doesNotContain("VERSO_AI_MODE")
                 .contains("iptables -I DOCKER-USER -i verso-smb -j DROP");
+    }
+
+    /**
+     * ADR-0044: the Confluence overlay, like the SMB one, adds only the application's route and the token's secret; it
+     * neither switches the AI mode nor turns internet egress on, and the base stack passes the egress settings off.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void confluenceOverlay_whenComposed_addsOnlyTheApplicationsRouteAndSecret() throws IOException {
+        Map<String, Object> base = new Yaml().load(read("compose.yaml"));
+        assertThat((Map<String, Object>) base.get("networks")).doesNotContainKey("confluence");
+        assertThat((Map<String, Object>) base.get("x-db-env"))
+                .containsEntry("VERSO_CONNECTOR_EXTERNAL_EGRESS", "${VERSO_CONNECTOR_EXTERNAL_EGRESS:-false}")
+                .containsEntry("VERSO_CONNECTOR_EXTERNAL_HOSTS", "${VERSO_CONNECTOR_EXTERNAL_HOSTS:-}");
+        services().forEach((name, definition) -> assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets")))
+                .as(name).doesNotContain("SECRET_CONNECTOR_CONFLUENCE_TOKEN"));
+
+        Map<String, Object> overlay = new Yaml().load(read("deploy/compose.confluence.yaml"));
+        assertThat(overlay.keySet()).containsExactlyInAnyOrder("services", "networks", "secrets");
+        Map<String, Object> services = (Map<String, Object>) overlay.get("services");
+        assertThat(services.keySet()).containsExactly("verso-app");
+        Map<String, Object> app = (Map<String, Object>) services.get("verso-app");
+        assertThat(app.keySet()).containsExactlyInAnyOrder("networks", "secrets");
+        assertThat((List<String>) app.get("networks")).containsExactly("confluence");
+        assertThat((List<String>) app.get("secrets")).containsExactly("SECRET_CONNECTOR_CONFLUENCE_TOKEN");
+        Map<String, Object> network = (Map<String, Object>) ((Map<String, Object>) overlay.get("networks")).get("confluence");
+        assertThat(String.valueOf(network.get("driver_opts"))).contains("com.docker.network.bridge.name=verso-cfl");
+        assertThat(String.valueOf(network.get("ipam"))).contains("subnet=${VERSO_CONFLUENCE_SUBNET:-172.31.251.0/24}");
+        assertThat(read("deploy/compose.confluence.yaml")).doesNotContain("ports:").doesNotContain("VERSO_AI_MODE:")
+                .doesNotContain("environment:").contains("iptables -I DOCKER-USER -i verso-cfl -j DROP");
     }
 
     /**

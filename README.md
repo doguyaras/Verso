@@ -264,6 +264,31 @@ Kurulum ekibi için:
 
 Yalnız PDF, DOCX, TXT ve MD dosyaları alınır (ADR-0016 sınırlarıyla); Office kilit dosyaları (`~$…`), çevrimdışı (HSM) dosyalar ve bağlantılar atlanır. Bir koşu en çok 500 dosya ve 2 GB indirir, kalan iş birkaç dakika sonra devam eder.
 
+## Confluence bağlayıcısı
+
+Confluence alanlarındaki sayfaları (isteğe bağlı olarak PDF ve DOCX eklerini) bir bilgi alanına eşitler ([ADR-0044](docs/adr/0044-confluence-baglayicisi.md), API: [docs/api-connectors-integration-v1.md](docs/api-connectors-integration-v1.md)). SMB bağlayıcısıyla aynı motoru kullanır: aynı koşu geçmişi, sağlık rozeti, `ConnectorSyncStale` alarmı, eksiksiz silme ve %20 silme emniyeti. Sayfalar Markdown'a çevrilir; başlıklar ve tablolar korunur, makro parametreleri ve HTML makroları alınmaz.
+
+- **Okuma yetkisi** hedef bilgi alanının erişimlerinden gelir; Confluence alan ve sayfa izinleri bu sürümde aktarılmaz. **Güvenlik kuralı (varsayılan):** kendisinde ya da bir üst sayfasında okuma kısıtı olan sayfa hiç alınmaz; sonradan kısıtlanan sayfa günde bir yapılan tam listede (kısıt taraması) belgesiyle birlikte silinir. Confluence'ın "son değişiklik" alanı kısıt değişikliğini görmediği için bu tarama zorunludur (CONFCLOUD-41375). Kuralı kapatmak (`skipRestricted: false`) kısıtlı sayfaları alanın bütün okuyucularına açar.
+- **Eşitleme:** aralıkta yalnız değişen sayfalar okunur (CQL `lastmodified`); silinen ve arşivlenen sayfalar günlük tam listede bulunur. Confluence 429 dönerse `Retry-After`'a uyulur, sürerse koşu durur ve bağlayıcı bir süre sonra yeniden dener.
+
+Kurulum ekibi için, ortak adımlar:
+
+1. **Hesap ve belirteç.** Yalnız eşitlenecek alanları **okuyabilen**, bu iş için açılmış bir hesap kullan. Belirteci secret dosyasına yaz (satır sonu olmadan): `printf '%s' '<belirteç>' > secrets/SECRET_CONNECTOR_CONFLUENCE_TOKEN`. Değer veritabanına, log'a ve API yanıtına hiç girmez; değişince dosyayı güncelleyip `verso-app`'i yeniden başlat.
+2. **Overlay.** `docker compose -f compose.yaml -f deploy/compose.confluence.yaml up -d --wait`. Overlay uygulamaya `verso-cfl` arayüzlü, sabit alt ağlı (`VERSO_CONFLUENCE_SUBNET`, varsayılan `172.31.251.0/24`) bir ağ ve belirtecin secret'ını ekler; host güvenlik duvarı komutları dosyanın başındadır.
+3. **Bağlayıcı.** `verso-admin` bilgi alanını oluşturup erişimleri verir, sonra panelde "Yönetim → Bağlayıcılar → Yeni bağlayıcı" ekranında türü **Confluence** seçer: adres, kurulum türü, alan anahtarları, isteğe bağlı etiket ve üst sayfa, belirteç dosyasının adı, hedef alan. İlk koşu tam listedir.
+
+**Data Center / Server (kurum içi):**
+
+- Belirteç bir **kişisel erişim belirteci**dir (Confluence → Profil → Kişisel erişim belirteçleri); istekler `Authorization: Bearer` ile gider, hesap adı alanı boş kalır.
+- `.env`: `VERSO_CONNECTOR_ALLOWED_NETWORKS=<Confluence sunucusunun IP'si>/32` (SMB ile aynı liste, yalnız özel aralıklar). Adın çözüldüğü bütün adresler listede olmalıdır; bağlantı anında adres yeniden denetlenir.
+- Güvenlik duvarı: `verso-cfl` arayüzünden yalnız sunucunun 443 portu. Adres `https://` ile başlamalıdır; kurum içi bir sertifika otoritesi kullanılıyorsa onun kökü uygulamanın Java güven deposuna eklenmelidir (canlı doğrulama listesinde).
+
+**Cloud (`*.atlassian.net`):**
+
+- Belirteç hesabın **API belirtecidir** (id.atlassian.com → Güvenlik → API belirteçleri); istekler hesabın e-postası ile `Authorization: Basic` gider, formda "Hesap e-postası" doldurulur.
+- Cloud internete çıkış ister ve varsayılan olarak **kapalıdır**: `VERSO_CONNECTOR_EXTERNAL_EGRESS=true` ve `VERSO_CONNECTOR_EXTERNAL_HOSTS=kurum.atlassian.net` (en dar hâli kurumun tam site adıdır; `*.atlassian.net` jokeri bir yöneticinin belirteci başka bir Atlassian sitesine göndermesine izin verir). Local mod **sıkıdır**: `VERSO_AI_MODE=local` iken uygulama bu ayarla **açılmaz**, local modun "internete çıkış yok" vaadinin istisnası yoktur. Cloud bağlayıcısı yalnız bulut modunda (`deploy/compose.cloud.yaml`) kullanılır. `/actuator/info` dış bağlantıyı ve izinli host'ları gösterir; VKED'e Atlassian yeni veri kaynağı ve aktarım olarak yazılır ([docs/uyum](docs/uyum/README.md)).
+- Güvenlik duvarı: `verso-cfl` arayüzünden yalnız 443. Uygulama yalnız listedeki host adlarına ve yalnız genel (public) adreslere bağlanır, başka host'a yönlendirmeyi izlemez. Cloud ekleri medya sunucusuna yönlendiği için bu sürümde alınmaz.
+
 ## Ölçümler
 
 | Ölçüm | Sonuç | Kaynak |
@@ -306,7 +331,7 @@ Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0
 
 | Servis | Port | `spring.application.name` | DB şeması / rol | Hata kodu bloğu | Main sınıf |
 |---|---|---|---|---|---|
-| verso-app | 8080 (API, `/v1` audience `verso-api`; MCP `/mcp` audience `verso-mcp`, varsayılan kapalı), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026); `connector` / `svc_connector`, `svc_connector_migrate` (ADR-0038) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999, connector 14000–14999 | `VersoApp` |
+| verso-app | 8080 (API, `/v1` audience `verso-api`; MCP `/mcp` audience `verso-mcp`, varsayılan kapalı), 8081 (actuator, compose ağı içinde) | `verso` | `document` / `svc_document` (DML), `svc_document_migrate` (sahip, DDL); `qa` / `svc_qa`, `svc_qa_migrate` (ADR-0023); `audit` / `svc_audit` (yalnız INSERT ve SELECT), `svc_audit_migrate` (ADR-0026); `connector` / `svc_connector`, `svc_connector_migrate` (ADR-0038, ADR-0044) | document 10000–10999, qa 11000–11999, audit 12000–12999, privacy 13000–13999, connector 14000–14999 | `VersoApp` |
 
 ## Hata kodu blokları
 
@@ -318,7 +343,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 | qa | 11000–11999 | soru-cevap, model çağrısı |
 | audit | 12000–12999 | denetim kaydı sorgusu ve dışa aktarımı |
 | privacy | 13000–13999 | KVKK ilgili kişi başvurusu ve cevap karartma (ADR-0034) |
-| connector | 14000–14999 | dosya paylaşımı bağlayıcısı yönetimi (ADR-0038) |
+| connector | 14000–14999 | dosya paylaşımı bağlayıcısı yönetimi (ADR-0038); Confluence türü, URL ve dış bağlantı (14012–14015; ADR-0044) |
 | validation | 90000–90099 | ortak: bean validation, binding, 404/405/415, API sürümü |
 | security | 90100–90199 | ortak: kimlik ve yetki (faz 3) |
 | system | 99997–99999 | ortak: geçici olarak kullanılamıyor (503), upstream, beklenmeyen |

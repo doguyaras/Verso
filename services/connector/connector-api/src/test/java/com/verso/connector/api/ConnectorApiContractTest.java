@@ -23,7 +23,8 @@ class ConnectorApiContractTest {
 
     private static final List<Class<?>> RECORDS = List.of(ConnectorRequest.class, ConnectorResponse.class,
             ConnectorResponse.ItemCounts.class, SyncRequest.class, SyncRunResponse.class, ConnectorItemResponse.class,
-            ConnectorPageResponse.class, ConnectorPageResponse.PageInfo.class);
+            ConnectorPageResponse.class, ConnectorPageResponse.PageInfo.class,
+            com.verso.connector.api.dto.ConfluenceRequest.class, com.verso.connector.api.dto.ConfluenceResponse.class);
 
     @Test
     void records_whenInspected_haveNoFieldThatCouldHoldAPassword() {

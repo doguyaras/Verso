@@ -19,6 +19,7 @@ import com.verso.audit.api.dto.AuditEvent;
 import com.verso.connector.outbox.ConnectorAudit;
 import com.verso.connector.repository.ConnectorDatabase;
 import com.verso.connector.config.ConnectorProperties;
+import com.verso.connector.confluence.ConfluenceSourceFactory;
 import com.verso.connector.domain.SyncPlanner.ListedFile;
 import com.verso.connector.repository.ConnectorItemRepository;
 import com.verso.connector.repository.ConnectorItemRepository.ItemRow;
@@ -68,6 +69,7 @@ class SyncRunnerTest {
     private final ConnectorItemRepository items = mock(ConnectorItemRepository.class);
     private final SyncRunRepository runs = mock(SyncRunRepository.class);
     private final FileSourceFactory sources = mock(FileSourceFactory.class);
+    private final ConfluenceSourceFactory confluenceSources = mock(ConfluenceSourceFactory.class);
     private final DocumentIngestion documents = mock(DocumentIngestion.class);
     private final ConnectorAudit audit = mock(ConnectorAudit.class);
     private final ConnectorDatabase db = mock(ConnectorDatabase.class);
@@ -82,7 +84,7 @@ class SyncRunnerTest {
     @BeforeEach
     void setUp() {
         when(db.transactionally(any())).thenAnswer(a -> a.<java.util.function.Supplier<?>>getArgument(0).get());
-        when(runs.start(connectorId)).thenReturn(new RunRow(runId, NOW, null, "RUNNING", null, false, 0, 0, 0, 0, 0, 0, 0, 0));
+        when(runs.start(connectorId)).thenReturn(new RunRow(runId, NOW, null, "RUNNING", null, false, 0, 0, 0, 0, 0, 0, 0, 0, "FULL", null));
         when(connectors.finish(any(), any(), any(), any())).thenReturn(true);
         when(connectors.renew(any(), any(), any())).thenReturn(true);
         when(documents.collectionExists(collectionId)).thenReturn(true);
@@ -220,7 +222,10 @@ class SyncRunnerTest {
         run(connector(false));
 
         verify(documents, never()).delete(any(), any(), any());
-        assertThat(finishedRun("PARTIAL", "DELETION_SAFETY").deferred()).isEqualTo(30);
+        Tally held = finishedRun("PARTIAL", "DELETION_SAFETY");
+        assertThat(held.deferred()).isEqualTo(30);
+        assertThat(held.pendingDeletions()).as("the exact number the admin confirms (ADR-0042)").isEqualTo(30);
+        assertThat(held.listingMode()).isEqualTo("FULL");
 
         org.mockito.Mockito.clearInvocations(documents, runs, connectors, items);
         when(documents.delete(any(), any(), any())).thenReturn(true);
@@ -262,7 +267,89 @@ class SyncRunnerTest {
                 .containsOnly("CONNECTOR_SYNC_STARTED", "CONNECTOR_SYNC_FINISHED");
     }
 
+    /** ADR-0044: a restricted page is not read; the version synced before the restriction leaves the collection. */
+    @Test
+    void run_whenAPageBecameRestricted_removesItsDocument_andSkipsItWithoutReading() {
+        UUID document = UUID.randomUUID();
+        source.add("pages/7", "secret page", true);
+        when(items.all(connectorId)).thenReturn(List.of(new ItemRow("pages/7", 1, 4, MODIFIED, sha("secret page"),
+                document, "SYNCED", null, 0, null, NOW)));
+        when(documents.delete(collectionId, document, "SOURCE_RESTRICTED")).thenReturn(true);
+
+        run(confluence(null, null));
+
+        assertThat(source.reads).isEmpty();
+        verify(documents).delete(collectionId, document, "SOURCE_RESTRICTED");
+        verify(items).skipped(eq(connectorId), eq("pages/7"), anyLong(), anyLong(), any(), eq("RESTRICTED"), eq(NOW));
+        verify(documents, never()).submit(any());
+        assertThat(finishedRun("SUCCEEDED", null).skipped()).isEqualTo(1);
+    }
+
+    /**
+     * ADR-0044: an incremental listing deletes nothing it did not list, counts as a success (the changes are applied),
+     * moves the cursor to the newest change and does not record a full listing.
+     */
+    @Test
+    void run_whenTheListingIsIncremental_deletesNothing_andMovesTheCursor() {
+        Instant newest = MODIFIED.plusSeconds(600);
+        source.add("pages/1", "changed", false);
+        source.incremental = true;
+        source.highWater = newest;
+        when(items.all(connectorId)).thenReturn(List.of(item("pages/2", UUID.randomUUID(), "ab")));
+        when(documents.submit(any())).thenReturn(new IngestionResult(Outcome.CREATED, UUID.randomUUID()));
+        when(confluenceSources.open(any())).thenReturn(source);
+
+        run(confluence(MODIFIED.minusSeconds(3600), NOW.minusSeconds(3600)));
+
+        verify(documents, never()).delete(any(), any(), any());
+        Tally tally = finishedRun("SUCCEEDED", null);
+        assertThat(tally.listingMode()).isEqualTo("INCREMENTAL");
+        assertThat(tally.added()).isEqualTo(1);
+        assertThat(finish().result()).isEqualTo(Finish.Result.SUCCESS);
+        verify(connectors).advance(connectorId, token, newest, null);
+        ArgumentCaptor<com.verso.connector.confluence.ConfluenceRunSettings> opened =
+                ArgumentCaptor.forClass(com.verso.connector.confluence.ConfluenceRunSettings.class);
+        verify(confluenceSources).open(opened.capture());
+        assertThat(opened.getValue().full()).as("the full listing ran an hour ago").isFalse();
+        assertThat(opened.getValue().cursor()).isEqualTo(MODIFIED.minusSeconds(3600));
+    }
+
+    /** ADR-0044: a page that failed keeps the cursor behind it, so the next incremental listing returns it again. */
+    @Test
+    void run_whenAPageFails_theCursorStopsAtIt_andAFullListingIsRecordedOnlyWithoutHeldDeletions() {
+        Instant failedAt = MODIFIED.minusSeconds(120);
+        source.addAt("pages/1", null, failedAt);
+        source.addAt("pages/2", "ok", MODIFIED);
+        source.highWater = MODIFIED;
+        when(documents.submit(any())).thenReturn(new IngestionResult(Outcome.CREATED, UUID.randomUUID()));
+
+        run(confluence(null, null));
+
+        ArgumentCaptor<com.verso.connector.confluence.ConfluenceRunSettings> opened =
+                ArgumentCaptor.forClass(com.verso.connector.confluence.ConfluenceRunSettings.class);
+        verify(confluenceSources).open(opened.capture());
+        assertThat(opened.getValue().full()).as("no cursor yet: a full listing").isTrue();
+        verify(connectors).advance(connectorId, token, failedAt, NOW);
+        finishedRun("PARTIAL", "FILES_FAILED");
+    }
+
+    private ConnectorRow confluence(Instant cursor, Instant fullListingAt) {
+        when(confluenceSources.open(any())).thenReturn(source);
+        return new ConnectorRow(connectorId, "Wiki", "wiki.corp.local", 443, null, "", null, null,
+                "SECRET_CONNECTOR_CONFLUENCE_TOKEN", collectionId, List.of(), List.of(), 1_000_000, 60, true, false, false,
+                "admin", NOW.minusSeconds(7200), NOW, NOW, null, null, token, 0, null, null, null, ConnectorRow.CONFLUENCE,
+                new ConnectorRow.Confluence("https://wiki.corp.local", "DATA_CENTER", List.of("HR"), null, null, false,
+                        true, 50), cursor, fullListingAt);
+    }
+
     private void run(ConnectorRow connector) {
+        if (connector.isConfluence()) {
+            SyncRunner runner = new SyncRunner(connectors, items, runs, sources, confluenceSources, documents,
+                    properties(), new ConnectorMetrics(new SimpleMeterRegistry(), Clock.fixed(NOW, ZoneOffset.UTC)),
+                    audit, db, Clock.fixed(NOW, ZoneOffset.UTC));
+            runner.run(connector, token, () -> false);
+            return;
+        }
         run(connector, 1_000_000);
     }
 
@@ -273,7 +360,7 @@ class SyncRunnerTest {
                 maxFileBytes, connector.scheduleMinutes(), true, false, connector.massDeletionConfirmed(),
                 connector.createdBy(), connector.createdAt(), connector.updatedAt(), connector.nextRunAt(), null, null,
                 token, 0, null, null, null);
-        SyncRunner runner = new SyncRunner(connectors, items, runs, sources, documents, properties(),
+        SyncRunner runner = new SyncRunner(connectors, items, runs, sources, confluenceSources, documents, properties(),
                 new ConnectorMetrics(new SimpleMeterRegistry(), Clock.fixed(NOW, ZoneOffset.UTC)), audit, db,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         runner.run(sized, token, () -> false);
@@ -310,7 +397,7 @@ class SyncRunnerTest {
         return new ConnectorProperties(true, Duration.ofSeconds(30), Duration.ofMinutes(10), "10.0.0.0/8", 50, 500,
                 DataSize.ofGigabytes(2), 100_000, 32, Duration.ofMinutes(5), Duration.ofHours(24), Duration.ofMinutes(1),
                 Duration.ofMinutes(2), 20, 20, 3, 100,
-                new ConnectorProperties.Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false));
+                new ConnectorProperties.Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false), null, null);
     }
 
     /** A file server in memory: null content means "cannot be read". */
@@ -319,17 +406,29 @@ class SyncRunnerTest {
         private final java.util.Map<String, String> contents = new java.util.HashMap<>();
         private final List<String> reads = new ArrayList<>();
         boolean complete = true;
+        boolean incremental;
+        Instant highWater;
 
         void add(String path, String content) {
+            add(path, content, false);
+        }
+
+        void add(String path, String content, boolean restricted) {
             long size = content == null ? 4 : content.getBytes(StandardCharsets.UTF_8).length;
-            files.add(new ListedFile(path, files.size() + 1, size, MODIFIED));
+            files.add(new ListedFile(path, files.size() + 1, size, MODIFIED, restricted));
+            contents.put(path, content);
+        }
+
+        void addAt(String path, String content, Instant modified) {
+            files.add(new ListedFile(path, files.size() + 1, 4, modified, false));
             contents.put(path, content);
         }
 
         @Override
         public Listing list(Runnable keepAlive) {
             keepAlive.run();
-            return new Listing(List.copyOf(files), complete, complete ? null : "DIRECTORY_UNREADABLE", 0);
+            return new Listing(List.copyOf(files), complete, complete ? null : "DIRECTORY_UNREADABLE", 0, incremental,
+                    highWater);
         }
 
         @Override

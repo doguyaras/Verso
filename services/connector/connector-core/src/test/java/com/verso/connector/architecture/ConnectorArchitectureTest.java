@@ -44,22 +44,24 @@ class ConnectorArchitectureTest {
                 .layer("Service").definedBy(ROOT + ".service..")
                 .layer("Worker").definedBy(ROOT + ".worker..")
                 .layer("Smb").definedBy(ROOT + ".smb..")
+                .layer("Confluence").definedBy(ROOT + ".confluence..")
                 .layer("Repository").definedBy(ROOT + ".repository..")
                 .whereLayer("Controller").mayOnlyBeAccessedByLayers("Config")
                 .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Config")
                 .whereLayer("Worker").mayOnlyBeAccessedByLayers("Config")
-                .whereLayer("Smb").mayOnlyBeAccessedByLayers("Service", "Worker", "Config")
+                .whereLayer("Smb").mayOnlyBeAccessedByLayers("Service", "Worker", "Config", "Confluence")
+                .whereLayer("Confluence").mayOnlyBeAccessedByLayers("Service", "Worker", "Config")
                 .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service", "Worker", "Config")
                 .check(classes);
         noClasses().that().resideInAPackage(ROOT + ".controller..")
                 .should().dependOnClassesThat().resideInAnyPackage(ROOT + ".repository..", ROOT + ".worker..",
-                        ROOT + ".smb..")
+                        ROOT + ".smb..", ROOT + ".confluence..")
                 .check(classes);
         classes().that().areAnnotatedWith(RestController.class).should().resideInAPackage(ROOT + ".controller..")
                 .check(classes);
         noClasses().that().resideInAPackage(ROOT + ".domain..")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", ROOT + ".repository..",
-                        ROOT + ".smb..", ROOT + ".config..")
+                        ROOT + ".smb..", ROOT + ".confluence..", ROOT + ".config..", "org.jsoup..")
                 .because("the sync rules stay pure functions, tested without a file server or a database")
                 .check(classes);
     }
@@ -85,6 +87,15 @@ class ConnectorArchitectureTest {
                 .check(classes);
         noClasses().that().resideOutsideOfPackage(ROOT + ".smb..")
                 .should().dependOnClassesThat().resideInAnyPackage("com.hierynomus..")
+                .check(classes);
+        // ADR-0044: the HTML parser and the HTTP client stay in the Confluence package.
+        noClasses().that().resideOutsideOfPackage(ROOT + ".confluence..")
+                .should().dependOnClassesThat().resideInAnyPackage("org.jsoup..", "org.springframework.web.client..",
+                        "org.springframework.boot.http.client..")
+                .check(classes);
+        noClasses().that().resideInAPackage(ROOT + ".confluence..")
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework.transaction..",
+                        "org.springframework.jdbc..", ROOT + ".repository..")
                 .check(classes);
     }
 

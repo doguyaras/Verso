@@ -4,6 +4,7 @@ import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -28,7 +30,8 @@ public class ConnectorRepository {
             id, name, host, port, share, path_prefix, domain, username, credential_ref, collection_id, include_globs,
             exclude_globs, max_file_bytes, schedule_minutes, enabled, deleting, mass_deletion_confirmed, created_by,
             created_at, updated_at, next_run_at, sync_requested_at, locked_until, claim_token, consecutive_failures,
-            last_success_at, last_failure_at, last_error_code""";
+            last_success_at, last_failure_at, last_error_code, type, base_url, deployment, space_keys, label, ancestor_id,
+            include_attachments, skip_restricted, page_size, sync_cursor, full_listing_at""";
 
     static final RowMapper<ConnectorRow> ROW = (rs, n) -> new ConnectorRow(
             rs.getObject("id", UUID.class), rs.getString("name"), rs.getString("host"), rs.getInt("port"),
@@ -39,12 +42,14 @@ public class ConnectorRepository {
             rs.getString("created_by"), instant(rs, "created_at"), instant(rs, "updated_at"), instant(rs, "next_run_at"),
             instant(rs, "sync_requested_at"), instant(rs, "locked_until"), rs.getObject("claim_token", UUID.class),
             rs.getInt("consecutive_failures"), instant(rs, "last_success_at"), instant(rs, "last_failure_at"),
-            rs.getString("last_error_code"));
+            rs.getString("last_error_code"), rs.getString("type"), confluence(rs), instant(rs, "sync_cursor"),
+            instant(rs, "full_listing_at"));
 
     /** The settings an admin gives; validated by the service. */
     public record Settings(String name, String host, int port, String share, String pathPrefix, String domain,
                            String username, String credentialRef, List<String> includeGlobs, List<String> excludeGlobs,
-                           long maxFileBytes, int scheduleMinutes, boolean enabled) {
+                           long maxFileBytes, int scheduleMinutes, boolean enabled, String type,
+                           ConnectorRow.Confluence confluence) {
         @Override
         public String toString() {
             return "Settings[scheduleMinutes=" + scheduleMinutes + "]";
@@ -76,33 +81,39 @@ public class ConnectorRepository {
 
     /** A new connector, due at once: its first sync runs at the next poll. */
     public ConnectorRow insert(Settings s, UUID collectionId, String createdBy, Instant now) {
-        return db.jdbc().sql("INSERT INTO connector.connector (name, host, port, share, path_prefix, domain, username, "
+        return confluence(db.jdbc().sql("INSERT INTO connector.connector (name, host, port, share, path_prefix, domain, username, "
                         + "credential_ref, collection_id, include_globs, exclude_globs, max_file_bytes, schedule_minutes, "
-                        + "enabled, created_by, created_at, updated_at, next_run_at) VALUES (:name, :host, :port, :share, "
-                        + ":prefix, :domain, :username, :ref, :collection, :include, :exclude, :max, :schedule, :enabled, "
-                        + ":createdBy, :now, :now, :now) RETURNING " + COLUMNS)
+                        + "enabled, created_by, created_at, updated_at, next_run_at, type, base_url, deployment, space_keys, label, "
+                        + "ancestor_id, include_attachments, skip_restricted, page_size) VALUES (:name, :host, :port, "
+                        + ":share, :prefix, :domain, :username, :ref, :collection, :include, :exclude, :max, :schedule, "
+                        + ":enabled, :createdBy, :now, :now, :now, :type, :baseUrl, :deployment, :spaces, :label, :ancestor, "
+                        + ":attachments, :skipRestricted, :pageSize) RETURNING " + COLUMNS)
                 .param("name", s.name()).param("host", s.host()).param("port", s.port()).param("share", s.share())
                 .param("prefix", s.pathPrefix()).param("domain", s.domain()).param("username", s.username())
                 .param("ref", s.credentialRef()).param("collection", collectionId)
                 .param("include", s.includeGlobs().toArray(String[]::new))
                 .param("exclude", s.excludeGlobs().toArray(String[]::new)).param("max", s.maxFileBytes())
                 .param("schedule", s.scheduleMinutes()).param("enabled", s.enabled()).param("createdBy", createdBy)
-                .param("now", Timestamp.from(now)).query(ROW).single();
+                .param("now", Timestamp.from(now)), s).query(ROW).single();
     }
 
     /** Replaces the settings of a connector that is not being deleted; the next sync runs at once with them. */
     public Optional<ConnectorRow> update(UUID id, Settings s, Instant now) {
-        return db.jdbc().sql("UPDATE connector.connector SET name = :name, host = :host, port = :port, share = :share, "
+        return confluence(db.jdbc().sql("UPDATE connector.connector SET name = :name, host = :host, port = :port, share = :share, "
                         + "path_prefix = :prefix, domain = :domain, username = :username, credential_ref = :ref, "
                         + "include_globs = :include, exclude_globs = :exclude, max_file_bytes = :max, "
-                        + "schedule_minutes = :schedule, enabled = :enabled, updated_at = :now, next_run_at = :now "
-                        + "WHERE id = :id AND NOT deleting RETURNING " + COLUMNS)
+                        + "schedule_minutes = :schedule, enabled = :enabled, updated_at = :now, next_run_at = :now, "
+                        + "base_url = :baseUrl, deployment = :deployment, space_keys = :spaces, label = :label, "
+                        + "ancestor_id = :ancestor, include_attachments = :attachments, skip_restricted = :skipRestricted, "
+                        // New settings may name other spaces or filters: the next run lists everything again.
+                        + "page_size = :pageSize, sync_cursor = NULL, full_listing_at = NULL "
+                        + "WHERE id = :id AND NOT deleting AND type = :type RETURNING " + COLUMNS)
                 .param("id", id).param("name", s.name()).param("host", s.host()).param("port", s.port())
                 .param("share", s.share()).param("prefix", s.pathPrefix()).param("domain", s.domain())
                 .param("username", s.username()).param("ref", s.credentialRef())
                 .param("include", s.includeGlobs().toArray(String[]::new))
                 .param("exclude", s.excludeGlobs().toArray(String[]::new)).param("max", s.maxFileBytes())
-                .param("schedule", s.scheduleMinutes()).param("enabled", s.enabled()).param("now", Timestamp.from(now))
+                .param("schedule", s.scheduleMinutes()).param("enabled", s.enabled()).param("now", Timestamp.from(now)), s)
                 .query(ROW).optional();
     }
 
@@ -180,6 +191,20 @@ public class ConnectorRepository {
                 .param("error", f.errorCode()).param("consumed", f.consumedMassDeletion()).update() == 1;
     }
 
+    /**
+     * Confluence: moves the incremental cursor and records a complete full listing, in the finishing transaction and
+     * only for the claim holder (called before {@link #finish}, which releases the claim). Null keeps a value.
+     */
+    public void advance(UUID id, UUID token, Instant cursor, Instant fullListingAt) {
+        if (cursor == null && fullListingAt == null) return;
+        db.jdbc().sql("UPDATE connector.connector SET sync_cursor = coalesce(:cursor, sync_cursor), "
+                        + "full_listing_at = coalesce(:full, full_listing_at) WHERE id = :id AND claim_token = :token")
+                .param("id", id).param("token", token)
+                .param("cursor", cursor == null ? null : Timestamp.from(cursor), Types.TIMESTAMP)
+                .param("full", fullListingAt == null ? null : Timestamp.from(fullListingAt), Types.TIMESTAMP)
+                .update();
+    }
+
     /** Frees the lease without a result (shutdown): another instance may resume at once. */
     public void release(UUID id, UUID token) {
         db.jdbc().sql("UPDATE connector.connector SET locked_until = NULL, claim_token = NULL "
@@ -191,6 +216,29 @@ public class ConnectorRepository {
     public boolean delete(UUID id, UUID token) {
         return db.jdbc().sql("DELETE FROM connector.connector WHERE id = :id AND claim_token = :token AND deleting")
                 .param("id", id).param("token", token).update() == 1;
+    }
+
+    /** The type and the Confluence columns of an insert or update; SMB rows get the column defaults. */
+    private static JdbcClient.StatementSpec confluence(JdbcClient.StatementSpec spec, Settings s) {
+        ConnectorRow.Confluence c = s.confluence();
+        return spec.param("type", s.type())
+                .param("baseUrl", c == null ? null : c.baseUrl(), Types.VARCHAR)
+                .param("deployment", c == null ? null : c.deployment(), Types.VARCHAR)
+                .param("spaces", c == null ? new String[0] : c.spaceKeys().toArray(String[]::new))
+                .param("label", c == null ? null : c.label(), Types.VARCHAR)
+                .param("ancestor", c == null ? null : c.ancestorId(), Types.BIGINT)
+                .param("attachments", c != null && c.includeAttachments())
+                .param("skipRestricted", c == null || c.skipRestricted())
+                .param("pageSize", c == null ? 50 : c.pageSize());
+    }
+
+    private static ConnectorRow.Confluence confluence(ResultSet rs) throws SQLException {
+        if (!ConnectorRow.CONFLUENCE.equals(rs.getString("type"))) return null;
+        long ancestor = rs.getLong("ancestor_id");
+        Long ancestorId = rs.wasNull() ? null : ancestor;
+        return new ConnectorRow.Confluence(rs.getString("base_url"), rs.getString("deployment"),
+                strings(rs, "space_keys"), rs.getString("label"), ancestorId, rs.getBoolean("include_attachments"),
+                rs.getBoolean("skip_restricted"), rs.getInt("page_size"));
     }
 
     private static List<String> strings(ResultSet rs, String column) throws SQLException {

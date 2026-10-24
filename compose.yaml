@@ -80,6 +80,9 @@ x-db-env: &db-env
   # Internal networks the SMB connector may reach (ADR-0038), CIDR, private ranges only; empty: none. The application
   # has no route to them in this file: deploy/compose.smb.yaml adds the network and the service account secret.
   VERSO_CONNECTOR_ALLOWED_NETWORKS: ${VERSO_CONNECTOR_ALLOWED_NETWORKS:-}
+  # Internet egress of connectors (ADR-0044, Confluence Cloud): off; local mode (strict) refuses it at start-up.
+  VERSO_CONNECTOR_EXTERNAL_EGRESS: ${VERSO_CONNECTOR_EXTERNAL_EGRESS:-false}
+  VERSO_CONNECTOR_EXTERNAL_HOSTS: ${VERSO_CONNECTOR_EXTERNAL_HOSTS:-}
 
 x-ollama-image: &ollama-image ollama/ollama:0.40.10@sha256:4c5b27871a3239a717048f9b93057680a51b60c8119a7016aebb57f938e25e35
 

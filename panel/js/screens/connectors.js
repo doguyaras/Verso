@@ -1,4 +1,5 @@
-// "Bağlayıcılar" (ADR-0038, ADR-0042): verso-admin keeps a folder of an SMB file share in sync with a collection. The
+// "Bağlayıcılar" (ADR-0038, ADR-0042, ADR-0044): verso-admin keeps a folder of an SMB file share or Confluence spaces in
+// sync with a collection (a type selector picks the form's fields). The
 // list shows health (derived from the last successful sync, so an index that silently stopped reads "Gecikmiş"), the
 // form creates and edits a connector, and the actions request a sync, page through runs and files, approve deletions
 // the deletion safety held back and delete a connector with a typed confirmation. The password never passes through
@@ -6,8 +7,8 @@
 // Nothing goes into the URL hash or browser storage. Everything is built with el(): text, never markup (CSP, Trusted
 // Types). The rules of the form live in ../connectors.js.
 import { api, ApiError } from '../api.js';
-import { approvalConfirmed, codeText, CONNECTOR_PAGE_SIZE, connectorForm, connectorRequest, deleteConfirmed, DOCS, errorField,
-  healthBadge, ITEM_FAILURES, ITEM_PAGE_SIZE, ITEM_STATES, MAX_FILE_MB, pageState, pendingApproval, RUN_PAGE_SIZE, RUN_STATUS,
+import { approvalConfirmed, codeText, CONNECTOR_PAGE_SIZE, connectorForm, connectorRequest, deleteConfirmed, DEPLOYMENTS, DOCS,
+  errorField, healthBadge, PAGE_SIZE_MAX, TYPES, ITEM_FAILURES, ITEM_PAGE_SIZE, ITEM_STATES, MAX_FILE_MB, pageState, pendingApproval, RUN_PAGE_SIZE, RUN_STATUS,
   runSummary, SCHEDULE_MAX, SCHEDULE_MIN, scheduleText, trackedCount } from '../connectors.js';
 import { icon } from '../icons.js';
 import { el, fill, formatDate, formatSize, plainName } from '../render.js';
@@ -31,8 +32,8 @@ export function renderConnectors(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Bağlayıcılar'),
-        el('p', {}, 'Kurumun dosya sunucusundaki (SMB) bir klasörü bir bilgi alanıyla eşitleyin: yeni ve değişen dosyalar kendiliğinden alınır, '
-          + 'kaynakta silinen dosya buradan da bütün türevleriyle silinir. Her değişiklik denetim kaydına yazılır.')),
+        el('p', {}, 'Kurumun dosya sunucusundaki (SMB) bir klasörü ya da Confluence alanlarını bir bilgi alanıyla eşitleyin: yeni ve değişen '
+          + 'dosyalar ve sayfalar kendiliğinden alınır, kaynakta silinen buradan da bütün türevleriyle silinir. Her değişiklik denetim kaydına yazılır.')),
       el('div', { class: 'page-actions' }, newButton)),
     blocked,
     el('section', { class: 'card', 'aria-labelledby': 'connectors-list' },
@@ -42,7 +43,7 @@ export function renderConnectors(ctx) {
     helpCard());
 
   /** An API call: 403 shows the admin-only state, 401 starts the sign-in, a connector code lands under its field. */
-  async function call(action, fields = null) {
+  async function call(action, fields = null, type = 'SMB') {
     try {
       return await withAuth(action);
     } catch (error) {
@@ -55,8 +56,8 @@ export function renderConnectors(ctx) {
         newButton.disabled = true;
       } else if (error instanceof ApiError && error.status === 401) {
         // the sign-in flow takes over
-      } else if (error instanceof ApiError && fields && fields[errorField(error.code)]) {
-        fields[errorField(error.code)].show(error.message);
+      } else if (error instanceof ApiError && fields && fields[errorField(error.code, type)]) {
+        fields[errorField(error.code, type)].show(error.message);
         toast(error.message);
       } else {
         toast(error instanceof ApiError ? error.message : 'Bağlantı kurulamadı.');
@@ -117,7 +118,8 @@ export function renderConnectors(ctx) {
         const pending = pendingApproval(connector, latest);
         const items = connector.items ?? {};
         return el('tr', {},
-          el('td', {}, el('strong', {}, plainName(connector.name))),
+          el('td', {}, el('strong', {}, plainName(connector.name)),
+            el('div', { class: 'muted' }, TYPES[connector.type] ?? TYPES.SMB)),
           el('td', {}, collectionName(connector.collectionId)),
           el('td', {}, el('span', { title: health.help }, pill(health)),
             pending ? el('div', {}, el('span', { class: 'pill wait' }, icon('alert', 'sm'), 'Silme onayı bekliyor')) : null),
@@ -166,9 +168,20 @@ export function renderConnectors(ctx) {
     };
   }
 
-  function drawForm(original) {
+  /** A checkbox row of the form (44 px touch target via .connector-check). */
+  function check(id, checked, text) {
+    const box = el('input', { type: 'checkbox', id, checked });
+    return { box, node: el('label', { class: 'connector-check', for: id }, box, el('span', {}, text)) };
+  }
+
+  function drawForm(original, chosenType = 'SMB') {
     fill(detail);
-    const values = connectorForm(original);
+    const type = original?.type === 'CONFLUENCE' ? 'CONFLUENCE' : original ? 'SMB' : chosenType;
+    const values = connectorForm(original, type);
+    // The type is fixed after creation (409 14015); switching it on a new connector redraws the form with its fields.
+    const typePicker = el('select', { class: 'input', id: 'connector-type', disabled: Boolean(original),
+      onchange: (event) => drawForm(null, event.target.value) },
+    Object.entries(TYPES).map(([value, label]) => el('option', { value, selected: value === type }, label)));
     const input = (name, extra = {}) => el('input', { class: 'input', type: 'text', ...PLAIN, value: values[name], ...extra });
     const area = (name) => {
       const node = el('textarea', { class: 'textarea', rows: 3, ...PLAIN });
@@ -182,7 +195,42 @@ export function renderConnectors(ctx) {
       picker.append(el('option', { value: original.collectionId, selected: true }, 'Bilinmeyen alan'));
     }
     const enabled = el('input', { type: 'checkbox', id: 'connector-enabled', checked: values.enabled });
-    const fields = {
+    const attachments = check('connector-attachments', values.includeAttachments,
+      'Ekleri de al: sayfaların PDF ve DOCX ekleri (boyut sınırı aynı; ekler sayfanın kısıtına uyar)');
+    const skipRestricted = check('connector-skip-restricted', values.skipRestricted,
+      'Kısıtlı sayfaları alma (önerilen): okuma kısıtı olan (kendisi ya da üst sayfası) hiçbir sayfa eşitlenmez');
+    const deployment = el('select', { class: 'input' },
+      Object.entries(DEPLOYMENTS).map(([value, label]) => el('option', { value, selected: value === values.deployment }, label)));
+    const confluenceFields = type !== 'CONFLUENCE' ? null : {
+      name: field('connector-name', 'Ad', input('name', { maxlength: 100 }), 'Listede görünen ad; kurulumda tekildir.'),
+      baseUrl: field('connector-base-url', 'Confluence adresi', input('baseUrl', { maxlength: 2048, placeholder: 'Örn. https://wiki.kurum.local ya da https://kurum.atlassian.net/wiki' }),
+        'Yalnız https. Data Center adresi kurulumun izinli iç ağında olmalı; Cloud yalnız kurulum dış bağlantıya izin verdiyse (ör. *.atlassian.net) '
+        + 've sıkı local modda hiç kullanılamaz.'),
+      deployment: field('connector-deployment', 'Kurulum türü', deployment,
+        'Data Center/Server: kişisel erişim belirteci. Cloud: hesabın e-postası ve API belirteci.'),
+      username: field('connector-username', 'Hesap e-postası (yalnız Cloud)', input('username', { maxlength: 104, placeholder: 'Örn. verso-okuyucu@kurum.com' }),
+        'Data Center için boş bırakın. Yalnız eşitlenecek alanları okuyabilen, bu iş için açılmış hesap.'),
+      credentialRef: field('connector-credential', 'Belirteç dosyasının adı', input('credentialRef', { maxlength: 77 }),
+        'Belirteç bu ekrana yazılmaz ve hiçbir yerde gösterilmez. Kurulum ekibi onu sunucudaki secrets klasöründe bu adla bir dosyaya '
+        + 'yazar; burada yalnız dosyanın adını seçersiniz (SECRET_CONNECTOR_ ile başlar, ör. SECRET_CONNECTOR_CONFLUENCE_TOKEN).'),
+      collectionId: field('connector-collection', 'Hedef bilgi alanı', picker, original
+        ? 'Hedef alan sonradan değiştirilemez: taşıma, belgeleri eski erişimlerle geride bırakırdı. Başka alan için yeni bağlayıcı oluşturun.'
+        : 'Bu alana erişimi olan herkes eşitlenen her sayfayı görür; Confluence alan ve sayfa izinleri aktarılmaz. Alanları bilgi alanının okuyucularına göre seçin.'),
+      spaceKeys: field('connector-spaces', 'Alan (space) anahtarları', area('spaceKeys'),
+        'Satır başına ya da virgülle, en çok 20: IK, POLITIKA. Hesabın göremediği alan listelenmez.'),
+      label: field('connector-label', 'Yalnız bu etiket (isteğe bağlı)', input('label', { maxlength: 255, placeholder: 'Örn. yayinda' }),
+        'Boş: alanlardaki bütün sayfalar.'),
+      ancestorId: field('connector-ancestor', 'Yalnız bu sayfanın altı (isteğe bağlı)', input('ancestorId', { inputmode: 'numeric', maxlength: 18, placeholder: 'Sayfa kimliği, örn. 123456' }),
+        'Boş: alanın tamamı.'),
+      maxFileMb: field('connector-max', 'En büyük sayfa ya da ek (MB)', input('maxFileMb', { inputmode: 'decimal', maxlength: 6, placeholder: String(MAX_FILE_MB) }),
+        `Boş bırakılırsa ${MAX_FILE_MB} MB (belge sınırı, aynı zamanda üst sınır). Daha büyükler atlanır.`),
+      pageSize: field('connector-page-size', 'İstek başına sonuç (isteğe bağlı)', input('pageSize', { inputmode: 'numeric', maxlength: 3, placeholder: '50' }),
+        `1 ile ${PAGE_SIZE_MAX} arası; boş: 50. Confluence istek sınırına (429) takılıyorsa küçültün.`),
+      scheduleMinutes: field('connector-schedule', 'Eşitleme aralığı (dakika)', input('scheduleMinutes', { inputmode: 'numeric', maxlength: 5 }),
+        `${SCHEDULE_MIN} dakika ile ${SCHEDULE_MAX} dakika (1 hafta) arası. Aralıkta yalnız değişen sayfalar okunur; günde bir tam liste silinen, `
+        + 'arşivlenen ve sonradan kısıtlanan sayfaları bulur.'),
+    };
+    const fields = confluenceFields ?? {
       name: field('connector-name', 'Ad', input('name', { maxlength: 100 }), 'Listede görünen ad; kurulumda tekildir.'),
       host: field('connector-host', 'Dosya sunucusu', input('host', { maxlength: 253, placeholder: 'Örn. 10.20.30.40 ya da dosya01.kurum.local' }),
         'Yalnız ad ya da IP adresi. Adres kurulumun izinli iç ağlarında olmalı; en güvenlisi IP adresi.'),
@@ -215,7 +263,10 @@ export function renderConnectors(ctx) {
       el('form', { class: 'card-body grid', novalidate: true, onsubmit: async (event) => {
         event.preventDefault();
         const form = Object.fromEntries(Object.entries(fields).map(([key, f]) => [key, f.control.value]));
+        form.type = type;
         form.enabled = enabled.checked;
+        form.includeAttachments = attachments.box.checked;
+        form.skipRestricted = skipRestricted.box.checked;
         const { problems, body } = connectorRequest(form, original);
         for (const [key, f] of Object.entries(fields)) f.show(problems[key]);
         if (!body) {
@@ -223,7 +274,7 @@ export function renderConnectors(ctx) {
           return;
         }
         save.disabled = true;
-        const saved = await call(() => (original ? api.updateConnector(original.id, body) : api.createConnector(body)), fields);
+        const saved = await call(() => (original ? api.updateConnector(original.id, body) : api.createConnector(body)), fields, type);
         save.disabled = false;
         if (!saved || !ctx.isCurrent()) return;
         toast(original ? 'Bağlayıcı kaydedildi; sonraki eşitleme hemen başlar.' : 'Bağlayıcı oluşturuldu; ilk eşitleme birkaç saniye içinde başlar.', 'ok');
@@ -231,7 +282,13 @@ export function renderConnectors(ctx) {
         state.selected = saved;
         await load();
       } },
+      el('div', { class: 'connector-field' }, el('label', { class: 'field-label', for: 'connector-type' }, 'Kaynak türü'),
+        el('p', { class: 'muted' }, original ? 'Tür sonradan değiştirilemez.' : 'Önce türü seçin; form o türün alanlarını gösterir.'), typePicker),
       el('div', { class: 'connector-form' }, Object.values(fields).map((f) => f.node)),
+      type === 'CONFLUENCE' ? attachments.node : null,
+      type === 'CONFLUENCE' ? skipRestricted.node : null,
+      type === 'CONFLUENCE' && !values.skipRestricted ? el('p', { class: 'notice bad' }, icon('alert', 'sm'),
+        'Kısıtlı sayfalar da alınıyor: sayfa kısıtları aktarılmadığı için, kısıtlı bir sayfa bu bilgi alanının bütün okuyucularına açılır.') : null,
       el('label', { class: 'connector-check', for: 'connector-enabled' }, enabled,
         el('span', {}, 'Zamanlama açık (kapalıyken belgeler olduğu gibi kalır, yeni eşitleme olmaz)')),
       el('div', { class: 'page-actions' }, save,
@@ -264,10 +321,12 @@ export function renderConnectors(ctx) {
             el('div', {}, el('strong', {}, 'Son hata'), el('div', {}, codeText(connector.lastErrorCode)))) : null,
           pending ? approvalCard(connector, pending) : null,
           el('dl', { class: 'facts' },
-            fact('Sunucu', `${connector.host}${connector.port && connector.port !== 445 ? `:${connector.port}` : ''}`),
-            fact('Paylaşım ve klasör', `${connector.share}${connector.pathPrefix ? ` / ${connector.pathPrefix}` : ' (bütün paylaşım)'}`),
-            fact('Servis hesabı', `${connector.domain ? `${connector.domain}\\` : ''}${connector.username}`),
-            fact('Parola dosyası', el('span', { class: 'code' }, String(connector.credentialRef ?? ''))),
+            fact('Tür', TYPES[connector.type] ?? TYPES.SMB),
+            ...(connector.type === 'CONFLUENCE' ? confluenceFacts(connector) : [
+              fact('Sunucu', `${connector.host}${connector.port && connector.port !== 445 ? `:${connector.port}` : ''}`),
+              fact('Paylaşım ve klasör', `${connector.share}${connector.pathPrefix ? ` / ${connector.pathPrefix}` : ' (bütün paylaşım)'}`),
+              fact('Servis hesabı', `${connector.domain ? `${connector.domain}\\` : ''}${connector.username}`),
+              fact('Parola dosyası', el('span', { class: 'code' }, String(connector.credentialRef ?? '')))]),
             fact('Hedef bilgi alanı', collectionName(connector.collectionId)),
             fact('Aralık', `${scheduleText(connector.scheduleMinutes)}${connector.enabled === false ? ' (kapalı)' : ''}`),
             fact('Son başarılı eşitleme', connector.lastSuccessAt ? formatDate(connector.lastSuccessAt) : 'Hiç'),
@@ -285,6 +344,21 @@ export function renderConnectors(ctx) {
 
   function fact(label, value) {
     return [el('dt', {}, label), el('dd', {}, value)];
+  }
+
+  /** The Confluence settings of a connector; the token is only named, never shown. */
+  function confluenceFacts(connector) {
+    const c = connector.confluence ?? {};
+    return [
+      fact('Site', `${String(c.baseUrl ?? '')} (${DEPLOYMENTS[c.deployment] ?? String(c.deployment ?? '')})`),
+      fact('Alanlar', (c.spaceKeys ?? []).join(', ')
+        + (c.label ? ` · etiket ${c.label}` : '') + (c.ancestorId ? ` · sayfa ${c.ancestorId} altı` : '')),
+      c.deployment === 'CLOUD' ? fact('Hesap', String(connector.username ?? '')) : null,
+      fact('Belirteç dosyası', el('span', { class: 'code' }, String(connector.credentialRef ?? ''))),
+      fact('Kısıtlı sayfalar', c.skipRestricted === false ? 'Alınıyor (bütün okuyuculara açılır)' : 'Alınmıyor (v1 güvenlik kuralı)'),
+      fact('Ekler', c.includeAttachments ? 'PDF ve DOCX ekleri alınıyor' : 'Alınmıyor'),
+      fact('Son tam liste ve kısıt taraması', c.lastFullListingAt ? formatDate(c.lastFullListingAt) : 'Henüz yok'),
+    ];
   }
 
   /** The deletion safety held deletions back: count and share, and an explicit typed approval for one run. */
@@ -309,7 +383,7 @@ export function renderConnectors(ctx) {
     icon('alert', 'sm'),
     el('div', { class: 'grid' },
       el('strong', {}, 'Silme onayı bekliyor'),
-      el('div', {}, `Son koşu, kaynakta artık görünmeyen en çok ${formatNumber(pending.count)} dosyayı (izlenen ${formatNumber(pending.tracked)} dosyanın `
+      el('div', {}, `Son koşu, kaynakta artık görünmeyen ${pending.exact ? '' : 'en çok '}${formatNumber(pending.count)} dosyayı (izlenen ${formatNumber(pending.tracked)} dosyanın `
         + `yaklaşık %${pending.percent}'i) silecekti. Bir koşu izlenen dosyaların %20'sinden ve 20 dosyadan fazlasını silecekse silme bekletilir: `
         + 'yeniden adlandırılmış bir klasör ya da kaybolan bir izin, bir bilgi alanını tek başına boşaltamaz.'),
       el('div', {}, 'Onaylarsanız bu dosyaların belgeleri sayfaları, parçaları ve vektörleriyle birlikte kalıcı olarak silinir. Önce dosya sunucusunda '
@@ -414,9 +488,15 @@ export function renderConnectors(ctx) {
             + '10.20.30.40/32). Liste boşsa hiçbir bağlayıcı bağlanamaz; yalnız özel iç ağlar kabul edilir.'),
           el('li', {}, 'Güvenlik duvarı: yığını SMB eki (overlay) ile açın ve host güvenlik duvarında (Linux, DOCKER-USER zinciri) yalnız dosya '
             + 'sunucusunun 445 portuna izin verin; komutlar overlay dosyasının başındadır.'),
-          el('li', {}, 'Dosya sunucusunda SMB imzalama açık kalsın; Samba\'da "wide links = no" olsun.')),
+          el('li', {}, 'Dosya sunucusunda SMB imzalama açık kalsın; Samba\'da "wide links = no" olsun.'),
+          el('li', {}, 'Confluence Data Center/Server: yalnız eşitlenecek alanları okuyabilen bir hesabın kişisel erişim belirtecini secrets klasöründe '
+            + 'SECRET_CONNECTOR_CONFLUENCE_TOKEN dosyasına yazın; sunucunun adresini VERSO_CONNECTOR_ALLOWED_NETWORKS ile izin verin; yığını '
+            + 'Confluence eki (overlay) ile açın ve güvenlik duvarında yalnız sunucunun 443 portuna izin verin.'),
+          el('li', {}, 'Confluence Cloud internet bağlantısı ister: VERSO_CONNECTOR_EXTERNAL_EGRESS=true ve VERSO_CONNECTOR_EXTERNAL_HOSTS=*.atlassian.net. '
+            + 'Sıkı local modda (yerel model) uygulama bu ayarla açılmaz; Cloud yalnız bulut modunda kullanılır ve VKED\'de yeni veri kaynağı ve aktarım olarak yazılır.')),
         el('p', { class: 'muted' }, 'Ayrıntılar: ', el('code', {}, DOCS.readme), ', ', el('code', {}, DOCS.overlay), ', ', el('code', {}, DOCS.api),
-          ', ', el('code', {}, DOCS.adr), '; gecikme alarmı için ', el('code', {}, DOCS.runbook), '.')));
+          ', ', el('code', {}, DOCS.adr), '; Confluence için ', el('code', {}, DOCS.confluenceReadme), ', ', el('code', {}, DOCS.confluenceOverlay),
+          ', ', el('code', {}, DOCS.confluenceAdr), '; gecikme alarmı için ', el('code', {}, DOCS.runbook), '.')));
   }
 
   load(0);

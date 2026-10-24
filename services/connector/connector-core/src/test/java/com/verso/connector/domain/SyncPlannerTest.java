@@ -136,6 +136,42 @@ class SyncPlannerTest {
         assertThat(SyncPlanner.backoff(0, base, max)).isEqualTo(base);
     }
 
+    /**
+     * ADR-0044: a restriction changes no version ("last modified" misses it, CONFCLOUD-41375); the planner sees it by
+     * comparing the listing's restricted flag with how the item was left.
+     */
+    @Test
+    void plan_whenOnlyTheRestrictionChanged_fetchesTheFileAgain_otherwiseLeavesItAlone() {
+        KnownItem synced = item("pages/1", 1, State.SYNCED, null);
+        KnownItem restrictedSkip = new KnownItem("pages/2", 2, 10, T1, null, null, State.SKIPPED, null, 0, "RESTRICTED");
+        KnownItem otherSkip = new KnownItem("pages/3", 3, 10, T1, null, null, State.SKIPPED, null, 0, "TOO_LARGE");
+        ListedFile nowRestricted = new ListedFile("pages/1", 1, 10, T1, true);
+        ListedFile nowOpen = new ListedFile("pages/2", 2, 10, T1, false);
+        ListedFile stillSkipped = new ListedFile("pages/3", 3, 10, T1, false);
+
+        Plan plan = SyncPlanner.plan(List.of(nowRestricted, nowOpen, stillSkipped), known(synced, restrictedSkip, otherSkip),
+                Set.of(), true, NOW);
+
+        assertThat(plan.fetch()).extracting(f -> f.file().path(), Fetch::reason).containsExactly(
+                org.assertj.core.groups.Tuple.tuple("pages/1", Reason.RESTRICTION_CHANGED),
+                org.assertj.core.groups.Tuple.tuple("pages/2", Reason.RESTRICTION_CHANGED));
+        assertThat(plan.unchanged()).isEqualTo(1);
+
+        Plan steady = SyncPlanner.plan(List.of(new ListedFile("pages/2", 2, 10, T1, true)), known(restrictedSkip),
+                Set.of(), true, NOW);
+        assertThat(steady.fetch()).as("still restricted, already skipped").isEmpty();
+        Plan fresh = SyncPlanner.plan(List.of(new ListedFile("pages/9", 9, 1, T1, true)), Map.of(), Set.of(), true, NOW);
+        assertThat(fresh.fetch()).singleElement().satisfies(f -> assertThat(f.reason()).isEqualTo(Reason.NEW));
+    }
+
+    /** ADR-0044: an incremental listing is passed as "not complete" for deletions, so nothing unlisted is deleted. */
+    @Test
+    void plan_whenTheListingMayNotDelete_keepsUnlistedItems() {
+        Plan plan = SyncPlanner.plan(List.of(), known(item("pages/1", 1, State.SYNCED, null)), Set.of(), false, NOW);
+
+        assertThat(plan.delete()).isEmpty();
+    }
+
     private static ListedFile file(String path, long id) {
         return new ListedFile(path, id, 10, T1);
     }

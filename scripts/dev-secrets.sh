@@ -21,6 +21,7 @@ NAMES=(
   SECRET_DB_CONNECTOR_MIGRATE_PASSWORD # svc_connector_migrate: owner of the connector schema, Flyway (ADR-0038)
   SECRET_DB_CONNECTOR_PASSWORD         # svc_connector: application, DML only on connector (ADR-0038)
   SECRET_CONNECTOR_SMB_PASSWORD        # SMB connector service account (ADR-0038); a placeholder until you write the real one
+  SECRET_CONNECTOR_CONFLUENCE_TOKEN    # Confluence connector token (ADR-0044); a placeholder until you write the real one
   SECRET_DB_BACKUP_PASSWORD           # verso_backup: pg_read_all_data, pg_dump only
   SECRET_BACKUP_ENCRYPTION_KEY         # gpg passphrase for backup files
   SECRET_DB_KEYCLOAK_PASSWORD          # keycloak: the demo IdP's own database (ADR-0010)

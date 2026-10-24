@@ -4,7 +4,7 @@
 // stubbed; the screens are checked against the running stack or a fixture (docs/evidence/).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor, withServerRoles } from '../panel/js/roles.js';
@@ -1902,7 +1902,8 @@ test('connectors: only verso-admin (from /v1/info) opens the screen; it sits in 
 test('connectors: every code of the integration document has a Turkish message, and form codes land under their field', async () => {
   const { errorField, ERROR_FIELDS } = await import('../panel/js/connectors.js');
   const documented = [...readFileSync('docs/api-connectors-integration-v1.md', 'utf8').matchAll(/^\| (14\d{3}) \|/gm)].map((m) => Number(m[1]));
-  assert.deepEqual(documented, [14001, 14002, 14003, 14004, 14005, 14006, 14007, 14008, 14009, 14010, 14011]);
+  assert.deepEqual(documented, [14001, 14002, 14003, 14004, 14005, 14006, 14007, 14008, 14009, 14010, 14011, 14012, 14013,
+    14014, 14015]);
   for (const code of documented) {
     assert.ok(MESSAGES[code], `no message for ${code}`);
     assert.doesNotMatch(MESSAGES[code], /CONNECTOR_/, `${code}: words, not the constant`);
@@ -1915,7 +1916,9 @@ test('connectors: every code of the integration document has a Turkish message, 
   assert.equal(errorField(14006), 'collectionId');
   assert.equal(errorField(14009), 'includeGlobs');
   assert.equal(errorField(14010), 'maxFileMb');
-  for (const code of [14001, 14007, 14008, 14011, 90002, undefined]) assert.equal(errorField(code), null, String(code));
+  assert.equal(errorField(14013, 'CONFLUENCE'), 'baseUrl');
+  assert.equal(errorField(14014, 'CONFLUENCE'), 'baseUrl');
+  for (const code of [14001, 14007, 14008, 14011, 14012, 14015, 90002, undefined]) assert.equal(errorField(code), null, String(code));
   const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
   for (const field of Object.values(ERROR_FIELDS)) assert.match(screen, new RegExp(`\\b${field}: field\\(`), `${field} is a form field`);
 });
@@ -2025,7 +2028,7 @@ test('connectors: the deletion-safety approval shows count and share and needs t
   assert.equal(deletionNeedsApproval(30, 1000), false);
   const connector = { id: 'c1', health: 'OK', items: { synced: 90, failed: 6, skipped: 4 } };
   const held = { id: 'r1', status: 'PARTIAL', errorCode: 'DELETION_SAFETY', deferred: 40 };
-  assert.deepEqual(pendingApproval(connector, held), { count: 40, tracked: 100, percent: 40, runId: 'r1' });
+  assert.deepEqual(pendingApproval(connector, held), { count: 40, exact: false, tracked: 100, percent: 40, runId: 'r1' });
   assert.equal(pendingApproval(connector, { ...held, errorCode: 'FILES_FAILED' }), null);
   assert.equal(pendingApproval(connector, { ...held, status: 'SUCCEEDED' }), null);
   assert.equal(pendingApproval(connector, null), null);
@@ -2046,6 +2049,107 @@ test('connectors: the deletion-safety approval shows count and share and needs t
   assert.match(screen, /if \(!deleteConfirmed\(connector, typed\.value\)\) return;/);
   assert.match(screen, /api\.syncConnector\(connector\.id, false\)/, '"Şimdi eşitle" never approves deletions');
   assert.equal([...screen.matchAll(/api\.syncConnector\(connector\.id, true\)/g)].length, 1, 'only the approval form sends true');
+});
+
+test('connectors: pendingDeletions (ADR-0044) gives the exact count; old runs fall back to "deferred" as an upper bound', async () => {
+  const { approvalConfirmed, pendingApproval } = await import('../panel/js/connectors.js');
+  const connector = { id: 'c1', health: 'OK', items: { synced: 90, failed: 6, skipped: 4 } };
+  const exact = { id: 'r2', status: 'PARTIAL', errorCode: 'FILES_FAILED', deferred: 45, pendingDeletions: 30 };
+  assert.deepEqual(pendingApproval(connector, exact), { count: 30, exact: true, tracked: 100, percent: 30, runId: 'r2' },
+    'held deletions show even when the first problem was another one (ADR-0042 known limit)');
+  assert.equal(approvalConfirmed(pendingApproval(connector, exact), '30'), true);
+  assert.equal(approvalConfirmed(pendingApproval(connector, exact), '45'), false, 'the exact number, not deferred');
+  assert.equal(pendingApproval(connector, { ...exact, pendingDeletions: 0 }), null, 'nothing held');
+  assert.equal(pendingApproval(connector, { ...exact, status: 'SUCCEEDED' }), null);
+  assert.equal(pendingApproval({ ...connector, health: 'DELETING' }, exact), null);
+  const legacy = { id: 'r1', status: 'PARTIAL', errorCode: 'DELETION_SAFETY', deferred: 40, pendingDeletions: null };
+  assert.equal(pendingApproval(connector, legacy).exact, false);
+  assert.equal(pendingApproval(connector, legacy).count, 40);
+  const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  assert.match(screen, /pending\.exact \? '' : 'en çok '/, 'the screen says "en çok" only for the upper bound');
+  const run = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/dto/SyncRunResponse.java', 'utf8');
+  assert.match(run, /Integer pendingDeletions\)/, 'the field the panel reads exists in the API');
+});
+
+test('connectors: the Confluence form (ADR-0044) has its own fields, mirrors ConfluenceRequest and never asks for a token', async () => {
+  const { baseUrlProblem, connectorForm, connectorRequest, DEFAULT_CREDENTIAL, DEPLOYMENTS, errorField, MAX_SPACES, PAGE_SIZE_MAX,
+    parseSpaceKeys, TYPES } = await import('../panel/js/connectors.js');
+  const id = '0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b';
+  const form = { ...connectorForm(null, 'CONFLUENCE'), name: 'Wiki', baseUrl: 'https://wiki.kurum.local/confluence/', spaceKeys: 'IK, POLITIKA\nIK',
+    label: 'yayinda', ancestorId: '123456', pageSize: '25', collectionId: id, scheduleMinutes: '30', includeAttachments: true };
+  assert.equal(form.type, 'CONFLUENCE');
+  assert.equal(form.credentialRef, DEFAULT_CREDENTIAL.CONFLUENCE);
+  assert.equal(form.skipRestricted, true, 'skipping restricted pages is the default (v1 safety rule)');
+  assert.equal(form.deployment, 'DATA_CENTER');
+  const { problems, body } = connectorRequest(form);
+  assert.deepEqual(problems, {});
+  assert.deepEqual(body, { type: 'CONFLUENCE', name: 'Wiki', username: null, credentialRef: 'SECRET_CONNECTOR_CONFLUENCE_TOKEN', collectionId: id,
+    maxFileBytes: null, scheduleMinutes: 30, enabled: true,
+    confluence: { baseUrl: 'https://wiki.kurum.local/confluence', deployment: 'DATA_CENTER', spaceKeys: ['IK', 'POLITIKA'], label: 'yayinda',
+      ancestorId: 123456, includeAttachments: true, skipRestricted: true, pageSize: 25 } });
+  assert.ok(!JSON.stringify(Object.keys(body)).match(/password|token|secret/i) && !Object.keys(body.confluence).some((k) => /password|token|secret/i.test(k)),
+    'no token field, ever');
+  assert.ok(!('host' in body) && !('share' in body), 'no SMB field in a Confluence body');
+  const cloud = connectorRequest({ ...form, deployment: 'CLOUD', baseUrl: 'https://kurum.atlassian.net/wiki', username: 'okuyucu@kurum.com' });
+  assert.equal(cloud.body.username, 'okuyucu@kurum.com');
+  assert.equal(cloud.body.confluence.deployment, 'CLOUD');
+  assert.equal(connectorRequest({ ...form, skipRestricted: false }).body.confluence.skipRestricted, false);
+
+  const bad = (patch, field) => {
+    const result = connectorRequest({ ...form, ...patch });
+    assert.equal(result.body, null, JSON.stringify(patch));
+    assert.ok(result.problems[field], `${JSON.stringify(patch)} → ${field}`);
+  };
+  for (const url of ['', 'http://wiki.kurum.local', 'https://u:p@wiki.kurum.local', 'https://wiki.kurum.local/?x=1', 'https://wiki.kurum.local/#a',
+    'wiki.kurum.local', 'https://localhost', 'ftp://wiki']) bad({ baseUrl: url }, 'baseUrl');
+  bad({ deployment: 'X' }, 'deployment');
+  bad({ deployment: 'CLOUD', username: '' }, 'username');
+  bad({ deployment: 'CLOUD', username: 'okuyucu' }, 'username');
+  bad({ username: 'svc@kurum.com' }, 'username');
+  bad({ spaceKeys: '' }, 'spaceKeys');
+  bad({ spaceKeys: 'IK") OR space = ("X' }, 'spaceKeys');
+  bad({ spaceKeys: Array.from({ length: MAX_SPACES + 1 }, (_, i) => `S${i}`).join(',') }, 'spaceKeys');
+  bad({ label: 'iki sözcük' }, 'label');
+  for (const ancestor of ['0', '-1', 'abc', '1.5']) bad({ ancestorId: ancestor }, 'ancestorId');
+  for (const size of ['0', String(PAGE_SIZE_MAX + 1), 'x']) bad({ pageSize: size }, 'pageSize');
+  bad({ credentialRef: 'SECRET_DB_APP_PASSWORD' }, 'credentialRef');
+  assert.deepEqual(parseSpaceKeys(' a, b\r\nb\n\n'), ['a', 'b']);
+  assert.equal(baseUrlProblem('https://kurum.atlassian.net/wiki'), null);
+  assert.equal(errorField(14004, 'CONFLUENCE'), 'baseUrl', 'a Confluence connector has no host field');
+  assert.equal(errorField(14004), 'host');
+  assert.equal(errorField(14013, 'CONFLUENCE'), 'baseUrl');
+
+  // Editing: type and collection stay; the form shows the stored Confluence settings back.
+  const original = { id: 'c2', type: 'CONFLUENCE', ...body, confluence: { ...body.confluence, lastFullListingAt: null } };
+  const values = connectorForm(original);
+  assert.equal(values.type, 'CONFLUENCE');
+  assert.equal(values.spaceKeys, 'IK\nPOLITIKA');
+  assert.equal(values.ancestorId, '123456');
+  assert.equal(values.pageSize, '25');
+  const edited = connectorRequest({ ...values, type: 'SMB', collectionId: '0192a3b4-c5d6-7e8f-9a0b-000000000000' }, original);
+  assert.equal(edited.body.type, 'CONFLUENCE', 'the type of an existing connector cannot change (409 14015)');
+  assert.equal(edited.body.collectionId, id);
+
+  // The rules are the server's (ConfluenceRequest, ConnectorType, ConfluenceDeployment).
+  const request = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/dto/ConfluenceRequest.java', 'utf8');
+  assert.match(request, new RegExp(`@NotEmpty @Size\\(max = ${MAX_SPACES}\\)`));
+  assert.match(request, new RegExp(`@Min\\(1\\) @Max\\(${PAGE_SIZE_MAX}\\) Integer pageSize`));
+  assert.match(request, /regexp = "\[A-Za-z0-9_~\.-\]\{1,100\}"/);
+  const types = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/enums/ConnectorType.java', 'utf8');
+  for (const value of Object.keys(TYPES)) assert.match(types, new RegExp(`\\b${value}\\b`));
+  const deployments = readFileSync('services/connector/connector-api/src/main/java/com/verso/connector/api/enums/ConfluenceDeployment.java', 'utf8');
+  for (const value of Object.keys(DEPLOYMENTS)) assert.match(deployments, new RegExp(`\\b${value}\\b`));
+
+  const screen = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  assert.match(screen, /id: 'connector-type', disabled: Boolean\(original\)/, 'the type selector is locked when editing');
+  assert.match(screen, /Belirteç bu ekrana yazılmaz/, 'the form says where the token lives');
+  assert.match(screen, /Confluence alan ve sayfa izinleri aktarılmaz/, 'the risk is named next to the collection picker');
+  assert.match(screen, /VERSO_CONNECTOR_EXTERNAL_EGRESS/, 'the help names the Cloud egress setting');
+  assert.doesNotMatch(screen, /type: 'password'/);
+  for (const name of ['deploy/compose.confluence.yaml', 'docs/adr/0044-confluence-baglayicisi.md']) {
+    assert.ok(readFileSync('panel/js/connectors.js', 'utf8').includes(name), `the help names ${name}`);
+    assert.ok(existsSync(name), `${name} exists`);
+  }
 });
 
 test('connectors: run codes, file codes, summaries and paging texts', async () => {

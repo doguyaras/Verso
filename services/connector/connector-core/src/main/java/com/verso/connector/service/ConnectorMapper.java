@@ -1,9 +1,13 @@
 package com.verso.connector.service;
 
+import com.verso.connector.api.dto.ConfluenceResponse;
 import com.verso.connector.api.dto.ConnectorItemResponse;
 import com.verso.connector.api.dto.ConnectorResponse;
 import com.verso.connector.api.dto.SyncRunResponse;
+import com.verso.connector.api.enums.ConfluenceDeployment;
+import com.verso.connector.api.enums.ConnectorType;
 import com.verso.connector.api.enums.ItemState;
+import com.verso.connector.api.enums.ListingMode;
 import com.verso.connector.api.enums.SyncRunStatus;
 import com.verso.connector.domain.HealthRule;
 import com.verso.connector.repository.ConnectorItemRepository.Counts;
@@ -25,13 +29,21 @@ public final class ConnectorMapper {
                         c.scheduleMinutes(), staleFactor, now),
                 c.lastSuccessAt(), c.lastFailureAt(), c.consecutiveFailures(), c.lastErrorCode(), c.nextRunAt(),
                 new ConnectorResponse.ItemCounts(counts.synced(), counts.failed(), counts.skipped()), c.createdAt(),
-                c.updatedAt());
+                c.updatedAt(), ConnectorType.valueOf(c.type()), confluence(c));
+    }
+
+    private static ConfluenceResponse confluence(ConnectorRow c) {
+        ConnectorRow.Confluence s = c.confluence();
+        if (s == null) return null;
+        return new ConfluenceResponse(s.baseUrl(), ConfluenceDeployment.valueOf(s.deployment()), s.spaceKeys(), s.label(),
+                s.ancestorId(), s.includeAttachments(), s.skipRestricted(), s.pageSize(), c.fullListingAt());
     }
 
     public static SyncRunResponse toResponse(RunRow r) {
         return new SyncRunResponse(r.id(), SyncRunStatus.valueOf(r.status()), r.startedAt(), r.finishedAt(),
                 r.errorCode(), r.listingComplete(), r.listed(), r.added(), r.updated(), r.deleted(), r.unchanged(),
-                r.failed(), r.skipped(), r.deferred());
+                r.failed(), r.skipped(), r.deferred(), ListingMode.valueOf(r.listingMode()),
+                r.pendingDeletions());
     }
 
     public static ConnectorItemResponse toResponse(ItemRow i) {

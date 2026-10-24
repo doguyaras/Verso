@@ -102,6 +102,26 @@ test('pack: the MCP channel (ADR-0031) is off by default and its limits equal th
   assert.match(vked, /`MCP_SEARCH` ya da `MCP_FETCH`/);
 });
 
+test('pack: the Confluence connector (ADR-0044) is a new data source; Cloud egress is off and refused in local mode', () => {
+  const yml = read('verso-app/src/main/resources/config/verso.yml');
+  const vked = texts['01-vked-sablonu.md'];
+  const egress = texts['05-egress-kaniti.md'];
+  assert.match(yml, /external-egress:\n\s+enabled: \$\{VERSO_CONNECTOR_EXTERNAL_EGRESS:false\}/, 'off by default');
+  assert.match(yml, /allowed-hosts: \$\{VERSO_CONNECTOR_EXTERNAL_HOSTS:\}/, 'no host by default');
+  assert.match(read('compose.yaml'), /VERSO_CONNECTOR_EXTERNAL_EGRESS: \$\{VERSO_CONNECTOR_EXTERNAL_EGRESS:-false\}/);
+  const check = read('services/connector/connector-core/src/main/java/com/verso/connector/config/ConnectorEgressConfiguration.java');
+  assert.match(check, /refused in strict local mode/, 'the start-up refusal the pack promises exists');
+  assert.doesNotMatch(yml, /allow-in-local-mode/, 'local mode has no exception (llm-rules 1.1)');
+  assert.match(vked, /### 5\.4 Confluence Cloud bağlayıcısı/, 'the VKED names the new source and transfer');
+  assert.match(vked, /`local` modda \*\*kullanılamaz\*\*/);
+  assert.match(vked, /\| R15 \| Confluence bağlayıcısıyla aşırı paylaşım/);
+  assert.match(vked, /docs\/adr\/0044-confluence-baglayicisi\.md/);
+  assert.match(egress, /\| 9 \| Bağlayıcı dış bağlantısı kapalı/);
+  assert.match(read('docs/adr/0044-confluence-baglayicisi.md'), /skipRestricted: true/, 'the v1 safety rule is written down');
+  assert.match(read('services/connector/connector-api/src/main/java/com/verso/connector/api/dto/ConfluenceRequest.java'),
+    /Boolean skipRestricted/);
+});
+
 test('pack: endpoints named in the pack are mapped by a controller', () => {
   const controllers = [];
   const walk = (dir) => {

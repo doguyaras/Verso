@@ -4,12 +4,15 @@ import com.verso.audit.api.dto.AuditEvent;
 import com.verso.audit.api.enums.AuditAction;
 import com.verso.audit.api.enums.AuditTargetType;
 import com.verso.connector.config.ConnectorProperties;
+import com.verso.connector.confluence.ConfluenceRunSettings;
+import com.verso.connector.confluence.ConfluenceSourceFactory;
 import com.verso.connector.domain.GlobSet;
 import com.verso.connector.domain.SourcePaths;
 import com.verso.connector.domain.SourceSettings;
 import com.verso.connector.domain.SyncPlanner;
 import com.verso.connector.domain.SyncPlanner.Fetch;
 import com.verso.connector.domain.SyncPlanner.KnownItem;
+import com.verso.connector.domain.SyncPlanner.ListedFile;
 import com.verso.connector.domain.SyncPlanner.Plan;
 import com.verso.connector.domain.SyncPlanner.Reason;
 import com.verso.connector.outbox.ConnectorAudit;
@@ -70,11 +73,14 @@ public class SyncRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SyncRunner.class);
     private static final int PURGE_BATCH = 100;
+    /** Per-file codes that will not pass by retrying: the file is skipped until it changes. */
+    private static final Set<String> SKIP_CODES = Set.of("TOO_LARGE", "UNSAFE_LINK", "REDIRECT_REFUSED", "UNSUPPORTED");
 
     private final ConnectorRepository connectors;
     private final ConnectorItemRepository items;
     private final SyncRunRepository runs;
     private final FileSourceFactory sources;
+    private final ConfluenceSourceFactory confluence;
     private final DocumentIngestion documents;
     private final ConnectorProperties properties;
     private final ConnectorMetrics metrics;
@@ -83,12 +89,14 @@ public class SyncRunner {
     private final Clock clock;
 
     public SyncRunner(ConnectorRepository connectors, ConnectorItemRepository items, SyncRunRepository runs,
-                      FileSourceFactory sources, DocumentIngestion documents, ConnectorProperties properties,
-                      ConnectorMetrics metrics, ConnectorAudit audit, ConnectorDatabase db, Clock clock) {
+                      FileSourceFactory sources, ConfluenceSourceFactory confluence, DocumentIngestion documents,
+                      ConnectorProperties properties, ConnectorMetrics metrics, ConnectorAudit audit, ConnectorDatabase db,
+                      Clock clock) {
         this.connectors = connectors;
         this.items = items;
         this.runs = runs;
         this.sources = sources;
+        this.confluence = confluence;
         this.documents = documents;
         this.properties = properties;
         this.metrics = metrics;
@@ -125,17 +133,27 @@ public class SyncRunner {
     /** Mutable counts of one run. */
     private static final class Counter {
         boolean listingComplete;
-        int listed, added, updated, deleted, unchanged, failed, skipped, deferred;
+        boolean incremental;
+        int listed, added, updated, deleted, unchanged, failed, skipped, deferred, pendingDeletions;
         String problem;
         boolean consumedMassDeletion;
         boolean limited;
+        /** The newest modification time the listing returned (Confluence cursor candidate). */
+        Instant highWater;
+        /** The oldest modification time of a file left for later: the cursor may not pass it. */
+        Instant floor;
 
         void problem(String code) {
             if (problem == null) problem = code;
         }
 
+        void hold(Instant modifiedAt) {
+            if (floor == null || modifiedAt.isBefore(floor)) floor = modifiedAt;
+        }
+
         Tally tally() {
-            return new Tally(listingComplete, listed, added, updated, deleted, unchanged, failed, skipped, deferred);
+            return new Tally(listingComplete, listed, added, updated, deleted, unchanged, failed, skipped, deferred,
+                    incremental ? "INCREMENTAL" : "FULL", pendingDeletions);
         }
     }
 
@@ -170,19 +188,28 @@ public class SyncRunner {
         boolean interrupted = false;
         boolean backlog = false;
         try {
-            SourceSettings settings = settings(connector);
+            boolean full = fullListingDue(connector);
             if (!documents.collectionExists(connector.collectionId())) throw SourceException.fatal("COLLECTION_MISSING");
-            try (FileSource source = sources.open(settings)) {
+            try (FileSource source = open(connector, full)) {
                 Listing listing = source.list(lease::keepAlive);
                 count.listingComplete = listing.complete();
+                count.incremental = listing.incremental();
+                count.highWater = listing.highWater();
                 count.listed = listing.files().size();
                 if (!listing.complete()) count.problem(listing.problem());
+                // Only a complete listing of the whole source may delete; an incremental one sees changes only.
+                boolean deletable = listing.complete() && !listing.incremental();
                 Map<String, KnownItem> known = known(connector.id());
                 Set<UUID> missing = missingDocuments(connector.collectionId(), known.values());
                 Instant now = clock.instant();
-                Plan plan = SyncPlanner.plan(listing.files(), known, missing, listing.complete(), now);
+                Plan plan = SyncPlanner.plan(listing.files(), known, missing, deletable, now);
                 count.unchanged = plan.unchanged();
                 count.deferred = plan.waiting();
+                for (ListedFile listed : listing.files()) {
+                    KnownItem item = known.get(listed.path());
+                    // A failed file waiting for its retry keeps the cursor behind it, so the next listing returns it.
+                    if (item != null && item.state() == KnownItem.State.FAILED) count.hold(listed.modifiedAt());
+                }
                 int files = 0;
                 long bytes = 0;
                 for (Fetch fetch : plan.fetch()) {
@@ -193,17 +220,18 @@ public class SyncRunner {
                     }
                     if (backlog || files >= properties.maxFilesPerRun() || bytes >= properties.maxBytesPerRun().toBytes()) {
                         count.deferred++;
+                        count.hold(fetch.file().modifiedAt());
                         count.limited = true;
                         count.problem(backlog ? "BACKLOG" : "RUN_LIMIT");
                         continue;
                     }
                     lease.keepAlive();
                     files++;
-                    Outcome outcome = fetch(source, settings, connector, fetch, count);
+                    Outcome outcome = fetch(source, connector.maxFileBytes(), connector, fetch, count);
                     bytes += outcome.bytes;
                     if (outcome.backlog) backlog = true;
                 }
-                if (listing.complete() && !interrupted) {
+                if (deletable && !interrupted) {
                     deletions(connector, plan.delete(), known.size(), count, lease);
                 }
             }
@@ -231,21 +259,27 @@ public class SyncRunner {
         static final Outcome NONE = new Outcome(0, false);
     }
 
-    private Outcome fetch(FileSource source, SourceSettings settings, ConnectorRow connector, Fetch fetch, Counter count) {
+    private Outcome fetch(FileSource source, long maxFileBytes, ConnectorRow connector, Fetch fetch, Counter count) {
         KnownItem known = fetch.known();
         var file = fetch.file();
         Instant now = clock.instant();
         UUID previous = known == null || fetch.reason() == Reason.RESTORE ? null : known.documentId();
-        if (file.sizeBytes() > settings.maxFileBytes()) {
+        if (file.restricted()) {
+            // ADR-0044 v1 safety rule: page restrictions are not mirrored, so a restricted page is not synced at all and
+            // a version synced before the restriction leaves the collection.
+            skip(connector, file, previous, SyncPlanner.RESTRICTED, "SOURCE_RESTRICTED", count, now);
+            return Outcome.NONE;
+        }
+        if (file.sizeBytes() > maxFileBytes) {
             skip(connector, file, previous, "TOO_LARGE", count, now);
             return Outcome.NONE;
         }
         byte[] content;
         try {
-            content = source.read(file.path(), settings.maxFileBytes());
+            content = source.read(file.path(), maxFileBytes);
         } catch (SourceException e) {
             if (e.isFatal()) throw e;
-            if (e.code().equals("TOO_LARGE") || e.code().equals("UNSAFE_LINK")) {
+            if (SKIP_CODES.contains(e.code())) {
                 skip(connector, file, previous, e.code(), count, now);
             } else {
                 fail(connector, file, known, e.code(), count, now);
@@ -260,7 +294,7 @@ public class SyncRunner {
             return new Outcome(content.length, false);
         }
         IngestionResult result = documents.submit(new IngestionRequest(IngestionRequest.accountOf(connector.id()),
-                connector.collectionId(), SourcePaths.fileName(file.path()), content,
+                connector.collectionId(), source.documentName(file), content,
                 SourceSettings.contentKey(connector.id(), file.path(), sha), previous));
         switch (result.outcome()) {
             case CREATED, REPLAYED -> {
@@ -279,6 +313,7 @@ public class SyncRunner {
             case QUEUE_FULL -> {
                 // Backpressure: the item is left as it was, so the next run sees the same change again.
                 count.deferred++;
+                count.hold(file.modifiedAt());
                 metrics.itemFailed("QUEUE_FULL");
                 return new Outcome(content.length, true);
             }
@@ -294,7 +329,12 @@ public class SyncRunner {
      */
     private void skip(ConnectorRow connector, SyncPlanner.ListedFile file, UUID previous, String code, Counter count,
                       Instant now) {
-        if (previous != null && documents.delete(connector.collectionId(), previous, "SOURCE_UNREADABLE")) {
+        skip(connector, file, previous, code, "SOURCE_UNREADABLE", count, now);
+    }
+
+    private void skip(ConnectorRow connector, SyncPlanner.ListedFile file, UUID previous, String code, String reason,
+                      Counter count, Instant now) {
+        if (previous != null && documents.delete(connector.collectionId(), previous, reason)) {
             metrics.document("deleted");
         }
         items.skipped(connector.id(), file.path(), file.fileId(), file.sizeBytes(), file.modifiedAt(), code, now);
@@ -311,6 +351,7 @@ public class SyncRunner {
                 known == null ? null : known.contentSha256(), known == null ? null : known.documentId(), code, attempts,
                 now.plus(wait), now);
         count.failed++;
+        count.hold(file.modifiedAt());
         count.problem("FILES_FAILED");
         metrics.itemFailed(code);
     }
@@ -321,6 +362,7 @@ public class SyncRunner {
                 properties.deletionSafetyMinimum(), connector.massDeletionConfirmed());
         if (!allowed) {
             count.deferred += gone.size();
+            count.pendingDeletions = gone.size();
             count.problem("DELETION_SAFETY");
             log.warn("Connector deletions held back: connectorId={} code=DELETION_SAFETY deletions={} tracked={}",
                     connector.id(), gone.size(), tracked);
@@ -358,8 +400,20 @@ public class SyncRunner {
         String errorCode = fatal != null ? fatal : "SUCCEEDED".equals(status) ? null : count.problem;
         Duration next = nextRunIn(connector, fatal != null, interrupted, backlog || count.limited);
         // Run row, connector result and audit record commit together (outbox, ADR-0039); only the claim holder writes.
+        Instant cursor = null;
+        Instant fullListingAt = null;
+        if (connector.isConfluence() && fatal == null && !interrupted && count.listingComplete) {
+            // The cursor moves to the newest change listed, but never past a change left for later.
+            cursor = count.floor != null && (count.highWater == null || count.floor.isBefore(count.highWater))
+                    ? count.floor : count.highWater;
+            // Held deletions keep the next run a full listing, so a confirmation can apply them.
+            if (!count.incremental && count.pendingDeletions == 0) fullListingAt = run.startedAt();
+        }
+        Instant newCursor = cursor;
+        Instant fullAt = fullListingAt;
         boolean stored = db.transactionally(() -> {
             runs.finish(run.id(), status, errorCode, count.tally());
+            connectors.advance(connector.id(), token, newCursor, fullAt);
             boolean held = connectors.finish(connector.id(), token, run.startedAt(),
                     new Finish(result, errorCode, next, count.consumedMassDeletion));
             if (held) {
@@ -372,9 +426,11 @@ public class SyncRunner {
         runs.trim(connector.id(), properties.keepRuns());
         metrics.run(status);
         log.info("Connector sync finished: connectorId={} runId={} status={} code={} listed={} added={} updated={} "
-                        + "deleted={} unchanged={} failed={} skipped={} deferred={} listingComplete={}",
+                        + "deleted={} unchanged={} failed={} skipped={} deferred={} pendingDeletions={} listingComplete={} "
+                        + "incremental={}",
                 connector.id(), run.id(), status, errorCode, count.listed, count.added, count.updated, count.deleted,
-                count.unchanged, count.failed, count.skipped, count.deferred, count.listingComplete);
+                count.unchanged, count.failed, count.skipped, count.deferred, count.pendingDeletions,
+                count.listingComplete, count.incremental);
     }
 
     private Duration nextRunIn(ConnectorRow connector, boolean failed, boolean interrupted, boolean moreWork) {
@@ -423,6 +479,27 @@ public class SyncRunner {
         }
     }
 
+    /**
+     * Confluence lists only what changed since the cursor, except every full-listing-interval (and before the first
+     * cursor, and when an admin confirmed held deletions): then every page id with its restrictions, which is how
+     * deletions, archived pages and restriction changes are seen (ADR-0044). SMB always lists everything.
+     */
+    private boolean fullListingDue(ConnectorRow connector) {
+        if (!connector.isConfluence()) return true;
+        if (connector.syncCursor() == null || connector.fullListingAt() == null || connector.massDeletionConfirmed()) {
+            return true;
+        }
+        return !clock.instant().isBefore(connector.fullListingAt().plus(properties.confluence().fullListingInterval()));
+    }
+
+    private FileSource open(ConnectorRow c, boolean full) {
+        if (!c.isConfluence()) return sources.open(settings(c));
+        ConnectorRow.Confluence s = c.confluence();
+        return confluence.open(new ConfluenceRunSettings(c.id(), s.baseUrl(), s.deployment(), s.spaceKeys(), s.label(),
+                s.ancestorId(), s.includeAttachments(), s.skipRestricted(), s.pageSize(), c.username(),
+                c.credentialRef(), full, full ? null : c.syncCursor()));
+    }
+
     /** Settings as stored; rules re-checked (a row written by an older version may not pass today's). */
     static SourceSettings settings(ConnectorRow c) {
         return new SourceSettings(c.id(), c.host(), c.port(), c.share(), SourcePaths.normalizePrefix(c.pathPrefix()),
@@ -435,7 +512,7 @@ public class SyncRunner {
         for (ItemRow row : items.all(connectorId)) {
             known.put(row.path(), new KnownItem(row.path(), row.fileId(), row.sizeBytes(), row.modifiedAt(),
                     row.contentSha256(), row.documentId(), KnownItem.State.valueOf(row.state()), row.nextAttemptAt(),
-                    row.attempts()));
+                    row.attempts(), row.failureCode()));
         }
         return known;
     }

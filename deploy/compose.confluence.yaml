@@ -1,0 +1,44 @@
+# Confluence connector overlay (ADR-0044): gives the application a route to the Confluence site and the token's secret.
+# The overlay does not switch the AI mode and does not enable internet egress by itself.
+#
+#   printf '%s' "<personal access token | API token>" > secrets/SECRET_CONNECTOR_CONFLUENCE_TOKEN   # once; never committed
+#   docker compose -f compose.yaml -f deploy/compose.confluence.yaml up -d --wait
+#
+# Data Center/Server (inside the organisation): .env VERSO_CONNECTOR_ALLOWED_NETWORKS=<the server's IP>/32, like SMB.
+# Every address the site's name resolves to must lie inside; the HTTP client re-checks the address on connect.
+#
+# Cloud (*.atlassian.net, the internet): additionally VERSO_CONNECTOR_EXTERNAL_EGRESS=true and
+# VERSO_CONNECTOR_EXTERNAL_HOSTS=*.atlassian.net, in cloud mode (deploy/compose.cloud.yaml): strict local mode
+# (VERSO_AI_MODE=local) refuses to start with that (README, VKED in docs/uyum).
+#
+# Two layers keep the rest of the internet closed (README "Confluence bağlayıcısı"):
+#  1. the application: Data Center only inside the private allowlist; Cloud only on the allowed host names and only on
+#     public addresses; no redirect to another host;
+#  2. the network: "confluence" is a plain bridge with a fixed subnet and interface name, so the host firewall can allow
+#     it exactly what it needs (Linux, DOCKER-USER chain; inserted in this order they end up established, 443, drop):
+#       iptables -I DOCKER-USER -i verso-cfl -j DROP
+#       iptables -I DOCKER-USER -i verso-cfl -p tcp -d <Data Center IP> --dport 443 -j ACCEPT    # Data Center
+#       iptables -I DOCKER-USER -i verso-cfl -p tcp --dport 443 -j ACCEPT                         # Cloud (instead)
+#       iptables -I DOCKER-USER -i verso-cfl -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# Known limit (ADR-0044): scripts/prove-local-mode.sh step 1 reports "confluence" as a network with a gateway, by
+# design, as with the SMB overlay; the proof is the firewall rule and step 2.
+services:
+  verso-app:
+    # Added to the application's networks (compose merges the lists); nothing else of the stack joins "confluence".
+    networks: [confluence]
+    secrets:
+      # The connector names this file (credentialRef); the config tree reads it at sync time, no placeholder, no fallback.
+      - SECRET_CONNECTOR_CONFLUENCE_TOKEN
+
+networks:
+  confluence:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: verso-cfl
+    ipam:
+      config:
+        - subnet: ${VERSO_CONFLUENCE_SUBNET:-172.31.251.0/24}
+
+secrets:
+  SECRET_CONNECTOR_CONFLUENCE_TOKEN:
+    file: ./secrets/SECRET_CONNECTOR_CONFLUENCE_TOKEN

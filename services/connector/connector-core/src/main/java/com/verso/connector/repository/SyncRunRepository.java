@@ -14,19 +14,32 @@ public class SyncRunRepository {
     /** A run as stored. */
     public record RunRow(UUID id, java.time.Instant startedAt, java.time.Instant finishedAt, String status,
                          String errorCode, boolean listingComplete, int listed, int added, int updated, int deleted,
-                         int unchanged, int failed, int skipped, int deferred) {
+                         int unchanged, int failed, int skipped, int deferred, String listingMode,
+                         Integer pendingDeletions) {
     }
 
-    /** What a run counted. */
+    /**
+     * What a run counted.
+     *
+     * @param listingMode      FULL or INCREMENTAL (ADR-0044)
+     * @param pendingDeletions deletions the deletion safety held back, exactly (ADR-0042's open point)
+     */
     public record Tally(boolean listingComplete, int listed, int added, int updated, int deleted, int unchanged,
-                        int failed, int skipped, int deferred) {
+                        int failed, int skipped, int deferred, String listingMode, int pendingDeletions) {
+
+        /** An SMB run: always a full listing. */
+        public Tally(boolean listingComplete, int listed, int added, int updated, int deleted, int unchanged, int failed,
+                     int skipped, int deferred) {
+            this(listingComplete, listed, added, updated, deleted, unchanged, failed, skipped, deferred, "FULL", 0);
+        }
     }
 
     private static final RowMapper<RunRow> ROW = (rs, n) -> new RunRow(rs.getObject("id", UUID.class),
             ConnectorRepository.instant(rs, "started_at"), ConnectorRepository.instant(rs, "finished_at"),
             rs.getString("status"), rs.getString("error_code"), rs.getBoolean("listing_complete"), rs.getInt("listed"),
             rs.getInt("added"), rs.getInt("updated"), rs.getInt("deleted"), rs.getInt("unchanged"), rs.getInt("failed"),
-            rs.getInt("skipped"), rs.getInt("deferred"));
+            rs.getInt("skipped"), rs.getInt("deferred"), rs.getString("listing_mode"),
+            rs.getObject("pending_deletions", Integer.class));
 
     private final ConnectorDatabase db;
 
@@ -44,7 +57,7 @@ public class SyncRunRepository {
                 .param("id", connectorId).update();
         return db.jdbc().sql("INSERT INTO connector.sync_run (connector_id, status) VALUES (:id, 'RUNNING') "
                         + "RETURNING id, started_at, finished_at, status, error_code, listing_complete, listed, added, "
-                        + "updated, deleted, unchanged, failed, skipped, deferred")
+                        + "updated, deleted, unchanged, failed, skipped, deferred, listing_mode, pending_deletions")
                 .param("id", connectorId).query(ROW).single();
     }
 
@@ -52,11 +65,13 @@ public class SyncRunRepository {
         db.jdbc().sql("UPDATE connector.sync_run SET finished_at = now(), status = :status, error_code = :error, "
                         + "listing_complete = :complete, listed = :listed, added = :added, updated = :updated, "
                         + "deleted = :deleted, unchanged = :unchanged, failed = :failed, skipped = :skipped, "
-                        + "deferred = :deferred WHERE id = :id AND status = 'RUNNING'")
+                        + "deferred = :deferred, listing_mode = :mode, pending_deletions = :pending "
+                        + "WHERE id = :id AND status = 'RUNNING'")
                 .param("id", runId).param("status", status).param("error", errorCode)
                 .param("complete", t.listingComplete()).param("listed", t.listed()).param("added", t.added())
                 .param("updated", t.updated()).param("deleted", t.deleted()).param("unchanged", t.unchanged())
-                .param("failed", t.failed()).param("skipped", t.skipped()).param("deferred", t.deferred()).update();
+                .param("failed", t.failed()).param("skipped", t.skipped()).param("deferred", t.deferred())
+                .param("mode", t.listingMode()).param("pending", t.pendingDeletions()).update();
     }
 
     /** Keeps the newest {@code keep} runs of the connector. */
@@ -68,7 +83,8 @@ public class SyncRunRepository {
 
     public List<RunRow> list(UUID connectorId, int page, int size) {
         return db.jdbc().sql("SELECT id, started_at, finished_at, status, error_code, listing_complete, listed, added, "
-                        + "updated, deleted, unchanged, failed, skipped, deferred FROM connector.sync_run "
+                        + "updated, deleted, unchanged, failed, skipped, deferred, listing_mode, pending_deletions "
+                        + "FROM connector.sync_run "
                         + "WHERE connector_id = :id ORDER BY started_at DESC, id DESC LIMIT :size OFFSET :offset")
                 .param("id", connectorId).param("size", size).param("offset", (long) page * size).query(ROW).list();
     }

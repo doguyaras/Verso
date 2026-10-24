@@ -1,22 +1,32 @@
-# API istemcisi dosya paylaşımı bağlayıcısı entegrasyonu [v1]
+# API istemcisi bağlayıcı entegrasyonu (SMB ve Confluence) [v1]
 
-Verso bir SMB (Windows / Samba) paylaşımındaki klasörü bir bilgi alanına eşitler: yeni ve değişen dosyalar belge olarak alınır, kaynakta silinen dosya Verso'da bütün türevleriyle silinir. `verso-admin` rolündeki yönetici bağlayıcıları oluşturur, değiştirir, siler, eşitlemeyi tetikler ve koşuları izler. Eşitlenen belgeleri, hedef bilgi alanına erişimi olan herkes okur (ADR-0028).
+Verso bir SMB (Windows / Samba) paylaşımındaki klasörü ya da Confluence (Data Center/Server ya da Cloud) alanlarındaki sayfaları bir bilgi alanına eşitler: yeni ve değişen dosyalar belge olarak alınır, kaynakta silinen dosya Verso'da bütün türevleriyle silinir. `verso-admin` rolündeki yönetici bağlayıcıları oluşturur, değiştirir, siler, eşitlemeyi tetikler ve koşuları izler. Eşitlenen belgeleri, hedef bilgi alanına erişimi olan herkes okur (ADR-0028).
 
 > **OpenAPI doğrulanmadı:** uçlar ve alanlar `AdminConnectorController`, `ConnectorAdminServiceImpl` ve `connector-api` DTO'larından çıkarıldı (ADR-0004). Generated client paketi: yok.
 
-Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'indeki koda (taban `develop` `86e73d1`) dayanır. Karar: [ADR-0038](adr/0038-smb-baglayicisi.md).
+Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'indeki koda (taban `develop` `86e73d1`) ve Confluence için `feature/doguyaras-confluence` branch'ine dayanır. Kararlar: [ADR-0038](adr/0038-smb-baglayicisi.md) (SMB), [ADR-0044](adr/0044-confluence-baglayicisi.md) (Confluence, `pendingDeletions`).
 
 ## Değişikliklerin özeti
 - Yeni yönetici uçları: `/v1/admin/connectors` altında oluşturma, liste, okuma, değiştirme, silme, eşitleme isteği, koşu geçmişi ve izlenen dosyalar.
 - Yeni hata kodları: 14001–14011 (`connector` bloğu).
 - Yeni denetim eylemleri: `CONNECTOR_CREATED`, `CONNECTOR_UPDATED`, `CONNECTOR_DELETED`, `CONNECTOR_SYNC_REQUESTED`, `CONNECTOR_SYNC_STARTED`, `CONNECTOR_SYNC_FINISHED`, `CONNECTOR_DOCUMENT_ADDED`, `CONNECTOR_DOCUMENT_DELETED`; yeni hedef türü `CONNECTOR`. `GET /v1/admin/audit` istemcisi bilinmeyen eylemi ham göstermelidir (zaten kural). Eşitleme satırlarının aktörü `system:connector-sync`'tir ve rolü yoktur.
 - Mevcut uçların sözleşmesi **değişmedi**. Bağlayıcı belgeleri `/v1/documents?collectionId=` listesinde sıradan bilgi alanı belgesi olarak görünür.
-- Mobil için etki yok. Panelde "Yönetim → Bağlayıcılar" ekranı bu dokümana dayanır ([ADR-0042](adr/0042-baglayici-ekrani.md)); sözleşme ekran için değişmedi.
+- Mobil için etki yok. Panelde "Yönetim → Bağlayıcılar" ekranı bu dokümana dayanır ([ADR-0042](adr/0042-baglayici-ekrani.md)).
+
+### ADR-0044 ile gelen değişiklikler (ekleyici)
+- `ConnectorRequest`'e `type` (`SMB` varsayılan, `CONFLUENCE`) ve `confluence` nesnesi eklendi. SMB istekleri değişmeden çalışır.
+- `ConnectorResponse`'a `type` ve `confluence` (SMB'de `null`) eklendi; Confluence bağlayıcısında `share`, `domain` `null`, `pathPrefix` boş, `username` yalnız Cloud'da doludur.
+- `SyncRunResponse`'a `listingMode` ve **`pendingDeletions`** eklendi: silme emniyetinin o koşuda beklettiği silmelerin **kesin** sayısı (ADR-0042'nin açık noktası). Bu alanın eklenmesinden önceki koşularda `null`'dır; istemci o zaman `deferred`'ı "en çok" diye göstermeye devam eder.
+- Yeni hata kodları 14012–14015. Bir değişiklik: SMB isteğinde `host`, `share` ya da `username` eksikse yanıt artık genel doğrulama kodu yerine `400 14012`'dir (HTTP durumu aynı).
+- Yeni koşu kodları ve dosya kodları aşağıdaki listelerdedir; bilinmeyen kodu ham gösteren istemci etkilenmez.
+- Yeni denetim eylemi yok; Confluence de aynı eylemleri yazar. Kısıtlandığı için kaldırılan sayfanın `CONNECTOR_DOCUMENT_DELETED` ayrıntısı `SOURCE_RESTRICTED`'tır.
 
 ## Kurallar
 - **Kritik:** Bütün uçlar yalnız `verso-admin` rolündedir (ADR-0019). Başka her kimlikli çağıran `403` (`90101 ACCESS_DENIED`; denetim kaydına `ACCESS_DENIED` / `ADMIN_CONNECTOR` olarak yazılır), kimliksiz `401` alır.
 - **Kritik:** Parola hiçbir istekte ve yanıtta yoktur. `credentialRef` kurulumdaki bir secret dosyasının **adıdır** (`SECRET_CONNECTOR_` ile başlamalıdır), değeri değildir. İstemci parola alanı göstermez ve istemez.
-- **Kritik:** Eşitlenen her dosyayı hedef alanın bütün okuyucuları görür; NTFS izinleri aktarılmaz. Ekran bunu alan seçiminin yanında söylemelidir.
+- **Kritik:** Eşitlenen her dosyayı hedef alanın bütün okuyucuları görür; NTFS izinleri ve Confluence alan/sayfa izinleri aktarılmaz. Ekran bunu alan seçiminin yanında söylemelidir.
+- **Kritik (Confluence v1 güvenlik kuralı):** `skipRestricted` varsayılan `true`'dur: kendisinde ya da bir üst sayfasında okuma kısıtı olan sayfa eşitlenmez, kısıt sonradan konduysa belgesi silinir (günlük tam liste ve kısıt taraması). `false` yapan yönetici kısıtlı sayfaları da bilgi alanının bütün okuyucularına açar; ekran bunu uyarı olarak göstermelidir.
+- **Kritik:** Confluence belirteci de hiçbir istekte ve yanıtta yoktur: `credentialRef` (ör. `SECRET_CONNECTOR_CONFLUENCE_TOKEN`) yalnız dosyanın adıdır.
 - Bütün yanıtlar `Cache-Control: no-store, private`'tır. Başarı yanıtları ham, hatalar zarflıdır (ADR-0004). Bilinmeyen alanlar ve enum değerleri yok sayılır ya da ham gösterilir.
 - `health`, son başarılı eşitlemenin zamanından türetilir; son koşunun durumu tek başına "sağlıklı" demek değildir. Ekran `health`'i göstermelidir.
 
@@ -27,7 +37,7 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 | `POST /v1/admin/connectors` | `ConnectorRequest` | `201` + `Location` + `ConnectorResponse` | ilk eşitleme hemen vadededir |
 | `GET /v1/admin/connectors?page=0&size=50` | – | `200` sayfa | ada göre; `size` 1–200, `page` 0–10 000 |
 | `GET /v1/admin/connectors/{id}` | – | `200` `ConnectorResponse` | |
-| `PUT /v1/admin/connectors/{id}` | `ConnectorRequest` (tam) | `200` | `collectionId` değiştirilemez; sonraki eşitleme hemen |
+| `PUT /v1/admin/connectors/{id}` | `ConnectorRequest` (tam) | `200` | `collectionId` ve `type` değiştirilemez; sonraki eşitleme hemen (Confluence: tam liste) |
 | `DELETE /v1/admin/connectors/{id}` | – | `202` | bağlayıcı durur, belgeleri arka planda silinir, sonra `404`; tekrar güvenli |
 | `POST /v1/admin/connectors/{id}/sync` | isteğe bağlı `{"confirmMassDeletion": false}` | `202` | koşan bir eşitleme varsa o bitince yeniden koşar |
 | `GET /v1/admin/connectors/{id}/runs?page=0&size=20` | – | `200` sayfa `SyncRunResponse` | en yeni önce; bağlayıcı başına son 100 |
@@ -59,21 +69,57 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 - `includeGlobs` / `excludeGlobs` en çok 20'şer, 200 karakter: `*`, `**`, `?`, `{a,b}`; eğik çizgisiz desen her klasördeki dosya adına, eğik çizgili desen önekten göreli yola uyar; büyük-küçük harf duyarsız. Desen ne olursa olsun yalnız PDF, DOCX, TXT ve MD alınır.
 - `maxFileBytes` varsayılan ve üst sınır belge sınırıdır (20 MB). `scheduleMinutes` 5–10080.
 
+### `ConnectorRequest` (Confluence)
+
+```json
+{
+  "type": "CONFLUENCE",
+  "name": "İK wiki",
+  "username": null,
+  "credentialRef": "SECRET_CONNECTOR_CONFLUENCE_TOKEN",
+  "collectionId": "0192...",
+  "maxFileBytes": 10485760,
+  "scheduleMinutes": 30,
+  "enabled": true,
+  "confluence": {
+    "baseUrl": "https://wiki.kurum.local",
+    "deployment": "DATA_CENTER",
+    "spaceKeys": ["IK", "POLITIKA"],
+    "label": "yayinda",
+    "ancestorId": null,
+    "includeAttachments": false,
+    "skipRestricted": true,
+    "pageSize": 50
+  }
+}
+```
+
+- `host`, `port`, `share`, `pathPrefix`, `domain`, `includeGlobs`, `excludeGlobs` gönderilmez (`400 14012`). `confluence` zorunludur. `PUT` tam gövdedir: Confluence bağlayıcısında `type: "CONFLUENCE"` yeniden gönderilir (yoksa `SMB` sayılır ve `409 14015`).
+- `baseUrl`: `https://host[:port][/bağlam]`; kullanıcı bilgisi, sorgu, `#` ve `..` yok (`400 14014`). Data Center'da IP verilirse izinli iç ağlarda olmalıdır (`400 14004`); ad her eşitlemede çözülür, bütün adresleri izinli ağlarda olmalıdır. Cloud'da host kurulumun dış bağlantı listesinde olmalıdır (`VERSO_CONNECTOR_EXTERNAL_HOSTS`, ör. `*.atlassian.net`), yoksa ya da sıkı local moddaysa `400 14013`.
+- `deployment`: `DATA_CENTER` (kişisel erişim belirteci, Bearer; `username` boş olmalı) ya da `CLOUD` (`username` hesabın e-postası, belirteç API token; Basic).
+- `spaceKeys` 1–20 anahtar (`[A-Za-z0-9_~.-]`); `label` tek etiket; `ancestorId` bir sayfa kimliği (altındaki sayfalar); `pageSize` 1–250 (varsayılan 50; 429 alınıyorsa küçült).
+- `includeAttachments` (varsayılan `false`): sayfaların PDF ve DOCX ekleri, aynı boyut sınırıyla; ek sayfasının kısıtına uyar. Cloud ekleri medya sunucusuna yönlendirildiği için bu sürümde atlanır (`REDIRECT_REFUSED`).
+- Sayfa belgesinin adı sayfa başlığı + `.md`'dir; içerik storage formatından Markdown'a çevrilir (başlıklar ve tablolar korunur, makro parametreleri ve HTML makroları alınmaz).
+
 ### `ConnectorResponse` (alanlar)
 
-`id`, `name`, `host`, `port`, `share`, `pathPrefix` (normalize: `IK/Politikalar`), `domain`, `username`, `credentialRef`, `collectionId`, `includeGlobs`, `excludeGlobs`, `maxFileBytes`, `scheduleMinutes`, `enabled`, `health` (`OK`, `FAILING`, `STALE`, `NEVER_SYNCED`, `DISABLED`, `DELETING`), `lastSuccessAt`, `lastFailureAt`, `consecutiveFailures`, `lastErrorCode`, `nextRunAt`, `items` (`synced`, `failed`, `skipped`), `createdAt`, `updatedAt`. Zamanlar UTC ISO-8601.
+`id`, `name`, `host`, `port`, `share`, `pathPrefix` (normalize: `IK/Politikalar`), `domain`, `username`, `credentialRef`, `collectionId`, `includeGlobs`, `excludeGlobs`, `maxFileBytes`, `scheduleMinutes`, `enabled`, `health` (`OK`, `FAILING`, `STALE`, `NEVER_SYNCED`, `DISABLED`, `DELETING`), `lastSuccessAt`, `lastFailureAt`, `consecutiveFailures`, `lastErrorCode`, `nextRunAt`, `items` (`synced`, `failed`, `skipped`), `createdAt`, `updatedAt`, `type`, `confluence` (`baseUrl`, `deployment`, `spaceKeys`, `label`, `ancestorId`, `includeAttachments`, `skipRestricted`, `pageSize`, `lastFullListingAt`; SMB'de `null`). Zamanlar UTC ISO-8601.
 
 ### `SyncRunResponse`
 
-`id`, `status` (`RUNNING`, `SUCCEEDED`, `PARTIAL`, `FAILED`, `ABANDONED`), `startedAt`, `finishedAt`, `errorCode`, `listingComplete`, `listed`, `added`, `updated`, `deleted`, `unchanged`, `failed`, `skipped`, `deferred`. Dosya adı yoktur.
+`id`, `status` (`RUNNING`, `SUCCEEDED`, `PARTIAL`, `FAILED`, `ABANDONED`), `startedAt`, `finishedAt`, `errorCode`, `listingComplete`, `listed`, `added`, `updated`, `deleted`, `unchanged`, `failed`, `skipped`, `deferred`, `listingMode`, `pendingDeletions`. Dosya adı yoktur.
 
-- `PARTIAL`: kaynak listelendi ama bazı dosyalar başarısız (`FILES_FAILED`), sınıra ya da kuyruğa takıldı (`RUN_LIMIT`, `BACKLOG`; devamı birkaç dakika sonra), silmeler emniyetten bekletildi (`DELETION_SAFETY`), liste yarım kaldı (`DIRECTORY_UNREADABLE`, `LINK_NOT_FOLLOWED`, `LISTING_TOO_DEEP`, `LISTING_TOO_LARGE`) ya da uygulama kapandı (`INTERRUPTED`).
-- `FAILED`: kaynağa ulaşılamadı; **hiçbir belge silinmez**. Kodlar: `EGRESS_DENIED`, `SOURCE_UNREACHABLE`, `SOURCE_AUTH_FAILED`, `CREDENTIAL_MISSING`, `SHARE_NOT_FOUND`, `PATH_NOT_FOUND`, `PATH_UNREADABLE`, `COLLECTION_MISSING`, `CONFIG_INVALID`, `SYNC_ERROR`.
+- `listingMode`: "FULL" (kaynağın tamamı; silme yalnız bunda) ya da "INCREMENTAL" (Confluence: yalnız imleçten bu yana değişen sayfalar; hiçbir şey silmez). SMB her zaman "FULL"'dur.
+- `pendingDeletions`: silme emniyetinin bu koşuda beklettiği silmelerin kesin sayısı (yoksa 0). Onay (`confirmMassDeletion: true`) tam bu sayıdaki belgeyi siler; Confluence'ta onaylı koşu tam listedir. Bu alandan önceki koşularda `null`. `errorCode` ilk sorunu taşıdığı için silmeler bekletildiği hâlde kod başka olabilir; onay kutusu `pendingDeletions > 0`'a bakmalıdır.
+- `listingComplete`: listede boşluk yok (okunamayan klasör, kesilen liste, okunamayan bir kısıt).
+
+- `PARTIAL`: kaynak listelendi ama bazı dosyalar başarısız (`FILES_FAILED`), sınıra ya da kuyruğa takıldı (`RUN_LIMIT`, `BACKLOG`; devamı birkaç dakika sonra), silmeler emniyetten bekletildi (`DELETION_SAFETY`), liste yarım kaldı (`DIRECTORY_UNREADABLE`, `LINK_NOT_FOLLOWED`, `LISTING_TOO_DEEP`, `LISTING_TOO_LARGE`) ya da uygulama kapandı (`INTERRUPTED`). Confluence'a özgü liste sorunları: bir sayfanın kısıtları okunamadı (`RESTRICTION_CHECK_FAILED`; o sayfa alınmaz, hiçbir şey silinmez), devam bağlantısı başka bir yere gidiyordu (`LISTING_LINK_REFUSED`), bir sayfanın ekleri listelenemedi (`ATTACHMENTS_UNREADABLE`).
+- `FAILED`: kaynağa ulaşılamadı; **hiçbir belge silinmez**. Kodlar: `EGRESS_DENIED`, `SOURCE_UNREACHABLE`, `SOURCE_AUTH_FAILED`, `CREDENTIAL_MISSING`, `SHARE_NOT_FOUND`, `PATH_NOT_FOUND`, `PATH_UNREADABLE`, `COLLECTION_MISSING`, `CONFIG_INVALID`, `SYNC_ERROR`. Confluence: `RATE_LIMITED` (429, `Retry-After` ve geri çekilmeyle denendikten sonra), `SOURCE_UNAVAILABLE` (503), `REDIRECT_REFUSED` (başka sunucuya yönlendirme; belirteç gönderilmez), `SITE_NOT_FOUND` (arama ucu 403/404), `INVALID_RESPONSE`, `SOURCE_ERROR`.
 - `ABANDONED` / `INSTANCE_STOPPED`: koşan instance durdu; iş başka bir koşuda kaldığı yerden, çift belge üretmeden tamamlandı.
 
 ### `ConnectorItemResponse`
 
-`path` (önekten göreli), `state`, `failureCode` (`READ_FAILED`, `READ_TIMEOUT`, `ACCESS_DENIED`, `FILE_VANISHED`, `COLLECTION_FULL`, `TOO_LARGE`, `EMPTY`, `UNSUPPORTED`, `UNSAFE_LINK`), `attempts`, `nextAttemptAt`, `sizeBytes`, `modifiedAt`, `documentId`, `updatedAt`. Yollar kişisel veri içerebilir: yalnız yöneticiye gösterilir, URL'e ya da analitiğe konmaz.
+`path` (önekten göreli; Confluence'ta `pages/<sayfa id>` ya da `attachments/<sayfa id>/<ek id>`, başlık değil), `state`, `failureCode` (`READ_FAILED`, `READ_TIMEOUT`, `ACCESS_DENIED`, `FILE_VANISHED`, `COLLECTION_FULL`, `TOO_LARGE`, `EMPTY`, `UNSUPPORTED`, `UNSAFE_LINK`, `RESTRICTED`, `NOT_FOUND`, `REDIRECT_REFUSED`), `attempts`, `nextAttemptAt`, `sizeBytes`, `modifiedAt`, `documentId`, `updatedAt`. Yollar kişisel veri içerebilir: yalnız yöneticiye gösterilir, URL'e ya da analitiğe konmaz.
 
 ## Hata kodları
 
@@ -90,6 +136,10 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 | 14009 | 400 | `CONNECTOR_GLOB_INVALID` | desen kullanılamaz (kapanmamış `{`, `..`) |
 | 14010 | 400 | `CONNECTOR_FILE_SIZE_INVALID` | `maxFileBytes` belge sınırından büyük |
 | 14011 | 400 | `CONNECTOR_PAGE_INVALID` | `page` / `size` aralık dışı |
+| 14012 | 400 | `CONNECTOR_SETTINGS_INVALID` | alanlar türe uymuyor (SMB'de `host`/`share`/`username` eksik ya da `confluence` var; Confluence'ta SMB alanı var, Data Center'da `username` var, Cloud'da e-posta yok) |
+| 14013 | 400 | `CONNECTOR_EXTERNAL_EGRESS_DISABLED` | Cloud host'u kurulumun dış bağlantı listesinde değil, dış bağlantı kapalı ya da sıkı local mod |
+| 14014 | 400 | `CONNECTOR_URL_INVALID` | `baseUrl` https değil ya da kullanıcı bilgisi, sorgu, `#`, `..` içeriyor |
+| 14015 | 409 | `CONNECTOR_TYPE_IMMUTABLE` | `PUT` türü değiştirmeye çalıştı |
 | 90001 vb. | 400 | doğrulama | alan biçimi (`credentialRef` `SECRET_CONNECTOR_*` değil, `share` eğik çizgi içeriyor …) |
 
 ## Örnek akış
@@ -99,4 +149,11 @@ Bu doküman **24 Ekim 2026** tarihli `feature/doguyaras-smb-baglayici` branch'in
 3. Bir yoklama aralığı (30 sn) içinde ilk koşu başlar. `GET /v1/admin/connectors/{id}/runs` → `SUCCEEDED`, `added: 42`; `health: OK`.
 4. Hatalı dosyalar: `GET …/items?state=FAILED`.
 5. Paylaşım yeniden adlandırıldıysa koşu `FAILED/PATH_NOT_FOUND` olur ve hiçbir şey silinmez; `PUT` ile önek düzeltilir.
-6. Bir klasör bilinçli olarak boşaltıldıysa koşu `PARTIAL/DELETION_SAFETY` olur; `POST …/sync` gövdesi `{"confirmMassDeletion": true}` ile tek koşu onaylanır.
+6. Bir klasör bilinçli olarak boşaltıldıysa koşu `PARTIAL/DELETION_SAFETY` olur ve `pendingDeletions` kaç belgenin bekletildiğini söyler; `POST …/sync` gövdesi `{"confirmMassDeletion": true}` ile tek koşu onaylanır.
+
+### Confluence akışı
+
+1. Kurulum: `SECRET_CONNECTOR_CONFLUENCE_TOKEN` dosyası, `deploy/compose.confluence.yaml`; Data Center için `VERSO_CONNECTOR_ALLOWED_NETWORKS`, Cloud için `VERSO_CONNECTOR_EXTERNAL_EGRESS=true` + `VERSO_CONNECTOR_EXTERNAL_HOSTS=*.atlassian.net` (sıkı local modda açılmaz; README).
+2. `POST /v1/admin/connectors` (`type: CONFLUENCE`) → `201`. İlk koşu tam listedir ("FULL"): bütün sayfalar, her birinin kısıtı okunur.
+3. Sonraki koşular "INCREMENTAL": yalnız imleçten (son uygulanan "son değişiklik") bu yana değişen sayfalar. Silinen, arşivlenen ya da sonradan kısıtlanan sayfa ancak günde bir yapılan tam listede görülür (`verso.connector.confluence.full-listing-interval`, 24 saat).
+4. `GET …/items?state=SKIPPED` → `failureCode: RESTRICTED` olan sayfalar kısıt yüzünden alınmadı.

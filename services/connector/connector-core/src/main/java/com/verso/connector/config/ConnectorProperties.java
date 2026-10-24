@@ -1,5 +1,6 @@
 package com.verso.connector.config;
 
+import com.verso.connector.domain.HostAllowlist;
 import com.verso.connector.domain.NetworkAllowlist;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -29,6 +30,8 @@ import org.springframework.util.unit.DataSize;
  * @param staleFactor           schedule intervals without a successful sync before a connector is STALE (and alerts)
  * @param keepRuns              run rows kept per connector
  * @param smb                   SMB client settings
+ * @param confluence            Confluence client and sync settings (ADR-0044)
+ * @param externalEgress        internet egress of connectors, off by default (ADR-0044)
  */
 @ConfigurationProperties("verso.connector")
 public record ConnectorProperties(
@@ -49,7 +52,95 @@ public record ConnectorProperties(
         @DefaultValue("20") int deletionSafetyMinimum,
         @DefaultValue("3") int staleFactor,
         @DefaultValue("100") int keepRuns,
-        @DefaultValue Smb smb) {
+        @DefaultValue Smb smb,
+        @DefaultValue Confluence confluence,
+        @DefaultValue ExternalEgress externalEgress) {
+
+    /**
+     * The Confluence REST client and sync (ADR-0044).
+     *
+     * @param connectTimeout      TCP and TLS connect
+     * @param readTimeout         one response
+     * @param fullListingInterval a complete listing of every page id with its restrictions (deletions, archived pages,
+     *                            the restriction sweep that "last modified" cannot see, CONFCLOUD-41375) at least this often
+     * @param cursorOverlap       an incremental listing starts this long before the cursor (search index lag, clocks)
+     * @param maxAttempts         attempts of one request on 429, 503 or a transport error, then the run stops
+     * @param retryBase           backoff without Retry-After: base · 2^(attempt-1), with jitter ...
+     * @param maxRetryWait        ... and at most this, also for a longer Retry-After (then the run stops and the connector
+     *                            backs off as a whole)
+     * @param maxResponseSize     the largest REST response read (JSON and page bodies)
+     * @param requireHttps        refuse http:// base URLs (credentials on the wire); only a test stub turns it off
+     */
+    public record Confluence(
+            @DefaultValue("10s") Duration connectTimeout,
+            @DefaultValue("60s") Duration readTimeout,
+            @DefaultValue("24h") Duration fullListingInterval,
+            @DefaultValue("30m") Duration cursorOverlap,
+            @DefaultValue("5") int maxAttempts,
+            @DefaultValue("1s") Duration retryBase,
+            @DefaultValue("60s") Duration maxRetryWait,
+            @DefaultValue("32MB") DataSize maxResponseSize,
+            @DefaultValue("true") boolean requireHttps) {
+
+        public Confluence {
+            if (connectTimeout.isNegative() || connectTimeout.isZero() || connectTimeout.compareTo(Duration.ofMinutes(1)) > 0) {
+                throw new IllegalStateException("verso.connector.confluence.connect-timeout must be 1ms..1m");
+            }
+            if (readTimeout.isNegative() || readTimeout.isZero() || readTimeout.compareTo(Duration.ofMinutes(10)) > 0) {
+                throw new IllegalStateException("verso.connector.confluence.read-timeout must be 1ms..10m");
+            }
+            if (fullListingInterval.compareTo(Duration.ofHours(1)) < 0 || fullListingInterval.compareTo(Duration.ofDays(7)) > 0) {
+                throw new IllegalStateException("verso.connector.confluence.full-listing-interval must be 1h..7d");
+            }
+            if (cursorOverlap.isNegative() || cursorOverlap.compareTo(Duration.ofDays(2)) > 0) {
+                throw new IllegalStateException("verso.connector.confluence.cursor-overlap must be 0..2d");
+            }
+            if (maxAttempts < 1 || maxAttempts > 10) throw new IllegalStateException("verso.connector.confluence.max-attempts must be 1..10");
+            if (retryBase.isNegative() || retryBase.isZero() || maxRetryWait.compareTo(retryBase) < 0
+                    || maxRetryWait.compareTo(Duration.ofMinutes(5)) > 0) {
+                throw new IllegalStateException("verso.connector.confluence retry-base must be > 0 and <= max-retry-wait <= 5m");
+            }
+            if (maxResponseSize.toBytes() < 1024 || maxResponseSize.toMegabytes() > 256) {
+                throw new IllegalStateException("verso.connector.confluence.max-response-size must be 1KB..256MB");
+            }
+        }
+
+        static Confluence defaults() {
+            return new Confluence(Duration.ofSeconds(10), Duration.ofSeconds(60), Duration.ofHours(24),
+                    Duration.ofMinutes(30), 5, Duration.ofSeconds(1), Duration.ofSeconds(60), DataSize.ofMegabytes(32),
+                    true);
+        }
+    }
+
+    /**
+     * Internet egress of connectors (ADR-0044; llm-rules 1.1 and 1.7). Off by default: a connector reaches only the
+     * private allowlist above. Confluence Cloud needs it. Local mode is strict: with verso.ai.mode=local the application
+     * refuses to start with it on (ConnectorEgressConfiguration), so local mode keeps its no-egress promise without an
+     * exception; cloud mode, which already has an internet route for the chat call, may enable it for listed hosts.
+     *
+     * @param enabled      VERSO_CONNECTOR_EXTERNAL_EGRESS
+     * @param allowedHosts comma-separated host names a connector may reach on the internet, exact or one leading "*."
+     *                     label (e.g. *.atlassian.net); empty while enabled refuses to start (VERSO_CONNECTOR_EXTERNAL_HOSTS)
+     */
+    public record ExternalEgress(
+            @DefaultValue("false") boolean enabled,
+            @DefaultValue("") String allowedHosts) {
+
+        public ExternalEgress {
+            // Fail fast: a malformed or too broad pattern never reaches a sync.
+            HostAllowlist.parse(allowedHosts);
+            if (enabled && HostAllowlist.parse(allowedHosts).isEmpty()) {
+                throw new IllegalStateException("verso.connector.external-egress.allowed-hosts must name the hosts when "
+                        + "external egress is enabled");
+            }
+        }
+
+        /** The hosts a connector may reach on the internet; empty when external egress is off. */
+        public HostAllowlist hosts() {
+            return enabled ? HostAllowlist.parse(allowedHosts)
+                    : HostAllowlist.parse("");
+        }
+    }
 
     /**
      * @param connectTimeout  TCP connect
@@ -92,6 +183,8 @@ public record ConnectorProperties(
         if (staleFactor < 2 || staleFactor > 100) throw new IllegalStateException("stale-factor must be 2..100");
         if (keepRuns < 1 || keepRuns > 10_000) throw new IllegalStateException("keep-runs must be 1..10000");
         if (smb == null) smb = new Smb(Duration.ofSeconds(10), Duration.ofSeconds(60), true, false);
+        if (confluence == null) confluence = Confluence.defaults();
+        if (externalEgress == null) externalEgress = new ExternalEgress(false, "");
     }
 
     public NetworkAllowlist allowlist() {

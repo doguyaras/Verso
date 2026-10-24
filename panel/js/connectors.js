@@ -1,4 +1,4 @@
-// The "Bağlayıcılar" screen (ADR-0038, ADR-0042) without the DOM: the form rules that mirror the server's
+// The "Bağlayıcılar" screen (ADR-0038, ADR-0042, ADR-0044) without the DOM: the form rules that mirror the server's
 // (ConnectorRequest, SourcePaths, GlobSet; docs/api-connectors-integration-v1.md), the health badge, the run and file
 // texts, the deletion-safety approval and the typed confirmations. Nothing here touches a password: the form only names
 // the secret file (credentialRef) that holds it on the server, and the API never returns a password either.
@@ -10,7 +10,26 @@ export const DOCS = Object.freeze({
   adr: 'docs/adr/0038-smb-baglayicisi.md',
   overlay: 'deploy/compose.smb.yaml',
   runbook: 'docs/runbooks/connector-sync-stale.md',
+  confluenceReadme: 'README.md → "Confluence bağlayıcısı"',
+  confluenceAdr: 'docs/adr/0044-confluence-baglayicisi.md',
+  confluenceOverlay: 'deploy/compose.confluence.yaml',
 });
+
+/** Connector types (ConnectorType) and Confluence deployments (ConfluenceDeployment) in plain Turkish. */
+export const TYPES = Object.freeze({ SMB: 'Dosya paylaşımı (SMB)', CONFLUENCE: 'Confluence' });
+export const DEPLOYMENTS = Object.freeze({ DATA_CENTER: 'Data Center / Server (kurum içi)', CLOUD: 'Cloud (atlassian.net)' });
+
+/** The secret file a new connector of each type names by default. */
+export const DEFAULT_CREDENTIAL = Object.freeze({
+  SMB: 'SECRET_CONNECTOR_SMB_PASSWORD', CONFLUENCE: 'SECRET_CONNECTOR_CONFLUENCE_TOKEN',
+});
+
+/** ConfluenceRequest's limits: 1-20 space keys, page size 1-250 (default 50), a label of letters, digits and _ . : -. */
+export const MAX_SPACES = 20;
+export const PAGE_SIZE_MAX = 250;
+const SPACE_KEY = /^[A-Za-z0-9_~.-]{1,100}$/;
+const LABEL = /^[\p{L}\p{N}_.:-]{1,255}$/u;
+const EMAIL = /^[A-Za-z0-9._+-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 
 /** Page sizes within the API's caps (connectors 1-200, runs and items as documented). */
 export const CONNECTOR_PAGE_SIZE = 50;
@@ -97,6 +116,15 @@ export const RUN_CODES = Object.freeze({
   CONFIG_INVALID: 'Bağlayıcı ayarı geçersiz; düzenleyip kaydedin.',
   SYNC_ERROR: 'Beklenmeyen bir eşitleme hatası.',
   INSTANCE_STOPPED: 'Eşitleyen sunucu durdu; iş başka bir koşuda tamamlandı.',
+  RESTRICTION_CHECK_FAILED: 'Bir sayfanın kısıtları okunamadı; o sayfa alınmadı ve liste eksik olduğu için hiçbir şey silinmedi.',
+  LISTING_LINK_REFUSED: 'Sunucu listenin devamını başka bir adrese yönlendirdi; izlenmedi, hiçbir şey silinmedi.',
+  ATTACHMENTS_UNREADABLE: 'Bir sayfanın ekleri listelenemedi; liste eksik olduğu için hiçbir şey silinmedi.',
+  RATE_LIMITED: 'Confluence istek sınırına takıldı (429); bağlayıcı bir süre sonra yeniden dener.',
+  SOURCE_UNAVAILABLE: 'Confluence geçici olarak hizmet veremiyor (503); bağlayıcı bir süre sonra yeniden dener.',
+  REDIRECT_REFUSED: 'Sunucu başka bir adrese yönlendirdi; belirteç başka sunucuya gönderilmedi.',
+  SITE_NOT_FOUND: 'Site adresi ya da arama erişimi bulunamadı (adres veya hesap izni).',
+  INVALID_RESPONSE: 'Sunucunun yanıtı okunamadı.',
+  SOURCE_ERROR: 'Sunucu beklenmeyen bir hata döndü.',
 });
 
 export const ITEM_STATES = Object.freeze({
@@ -115,6 +143,9 @@ export const ITEM_FAILURES = Object.freeze({
   EMPTY: 'Boş dosya',
   UNSUPPORTED: 'Desteklenmeyen tür ya da yapı',
   UNSAFE_LINK: 'Bağlantı olduğu için atlandı',
+  RESTRICTED: 'Confluence\'ta okuma kısıtı var (v1 kuralı: alınmaz)',
+  NOT_FOUND: 'Kaynakta bulunamadı',
+  REDIRECT_REFUSED: 'Başka adrese yönlendirildi, izlenmedi',
 });
 
 /** A fixed code as words; an unknown one is shown raw. */
@@ -147,17 +178,19 @@ export function deletionNeedsApproval(deletions, tracked, safety = DELETION_SAFE
 }
 
 /**
- * The approval a run waits for, or null: the newest run ended PARTIAL with DELETION_SAFETY and the connector is not
- * being deleted. count is the run's "deferred" number: the held-back deletions, plus any other change left for the
- * next run, so it is an upper bound and the screen says "en çok". The percentage is of the tracked files.
+ * The approval a run waits for, or null: the newest run held deletions back and the connector is not being deleted.
+ * count is the run's pendingDeletions, the exact number (exact: true). A run recorded before that field existed
+ * (pendingDeletions null) falls back to "deferred", an upper bound (exact: false, the screen says "en çok"), and then
+ * needs errorCode DELETION_SAFETY. The percentage is of the tracked files.
  */
 export function pendingApproval(connector, latestRun) {
-  if (!latestRun || latestRun.status !== 'PARTIAL' || latestRun.errorCode !== 'DELETION_SAFETY') return null;
-  if (connector?.health === 'DELETING') return null;
-  const count = Number.isFinite(latestRun.deferred) ? latestRun.deferred : 0;
+  if (!latestRun || latestRun.status !== 'PARTIAL' || connector?.health === 'DELETING') return null;
+  const exact = Number.isInteger(latestRun.pendingDeletions);
+  if (!exact && latestRun.errorCode !== 'DELETION_SAFETY') return null;
+  const count = exact ? latestRun.pendingDeletions : (Number.isFinite(latestRun.deferred) ? latestRun.deferred : 0);
   if (count <= 0) return null;
   const tracked = Math.max(trackedCount(connector), count);
-  return { count, tracked, percent: Math.round((count * 100) / tracked), runId: latestRun.id };
+  return { count, exact, tracked, percent: Math.round((count * 100) / tracked), runId: latestRun.id };
 }
 
 /** The approval is sent only when the admin typed the number of files shown, exactly. */
@@ -261,6 +294,8 @@ const blank = (value) => String(value ?? '').trim();
  * edited, whose target collection cannot change (409 14006), so the body keeps it.
  */
 export function connectorRequest(form, original = null) {
+  const type = original?.type ?? form.type ?? 'SMB';
+  if (type === 'CONFLUENCE') return confluenceRequest(form, original);
   const problems = {};
   const name = blank(form.name);
   if (!name) problems.name = 'Ad boş olamaz.';
@@ -328,14 +363,128 @@ export function connectorRequest(form, original = null) {
   };
 }
 
+/**
+ * The site URL as ConfluenceUrl accepts it: https, a host, an optional port and context path; no user info (a
+ * credential in a URL), query or fragment. Returns the problem text or null.
+ */
+export function baseUrlProblem(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text) return 'Confluence sitesinin adresini yazın (ör. https://wiki.kurum.local ya da https://kurum.atlassian.net/wiki).';
+  if (text.length > 2048) return 'Adres en çok 2048 karakterdir.';
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    return 'Geçerli bir adres yazın (https:// ile başlar).';
+  }
+  if (url.protocol !== 'https:') return 'Adres https:// ile başlamalı; belirteç şifresiz bağlantıda gönderilmez.';
+  if (url.username || url.password) return 'Adrese kullanıcı adı ya da parola yazılmaz; belirteç secrets dosyasındadır.';
+  if (url.search || url.hash || text.includes('?') || text.includes('#')) return 'Adres soru işareti ya da # içermez; yalnız site ve bağlam yolu.';
+  if (url.pathname.split('/').some((s) => s === '.' || s === '..')) return 'Adres . ya da .. içeremez.';
+  const host = url.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost')) return 'Bu makinenin kendisi bağlanamaz; Confluence sunucusunu yazın.';
+  return null;
+}
+
+/** Space keys of a textarea: one per line or comma-separated, blanks dropped, duplicates removed. */
+export function parseSpaceKeys(text) {
+  return [...new Set(String(text ?? '').split(/[\r\n,]+/).map((key) => key.trim()).filter(Boolean))];
+}
+
+/** The Confluence form as POST/PUT /v1/admin/connectors takes it (ADR-0044); same contract as connectorRequest. */
+function confluenceRequest(form, original) {
+  const problems = {};
+  const name = blank(form.name);
+  if (!name) problems.name = 'Ad boş olamaz.';
+  else if (name.length > 100) problems.name = 'Ad en çok 100 karakterdir.';
+  else if (NAME_HIDDEN.test(name)) problems.name = 'Ad görünmeyen denetim karakteri içeremez.';
+
+  const baseUrl = blank(form.baseUrl).replace(/\/+$/, '');
+  const urlIssue = baseUrlProblem(baseUrl);
+  if (urlIssue) problems.baseUrl = urlIssue;
+
+  const deployment = form.deployment === 'CLOUD' ? 'CLOUD' : form.deployment === 'DATA_CENTER' ? 'DATA_CENTER' : null;
+  if (!deployment) problems.deployment = 'Kurulum türünü seçin.';
+
+  const username = blank(form.username);
+  if (deployment === 'CLOUD') {
+    if (!EMAIL.test(username)) problems.username = 'Cloud için hesabın e-posta adresini yazın (API belirteci bu hesabındır).';
+  } else if (username) {
+    problems.username = 'Data Center\'da kişisel erişim belirteci hesabı zaten tanır; bu alan boş kalmalı.';
+  }
+
+  const spaceKeys = parseSpaceKeys(form.spaceKeys);
+  if (!spaceKeys.length) problems.spaceKeys = 'En az bir alan (space) anahtarı yazın, ör. IK.';
+  else if (spaceKeys.length > MAX_SPACES) problems.spaceKeys = `En çok ${MAX_SPACES} alan anahtarı.`;
+  else if (spaceKeys.some((key) => !SPACE_KEY.test(key))) problems.spaceKeys = 'Alan anahtarı yalnız harf, rakam ve _ ~ . - içerir.';
+
+  const label = blank(form.label);
+  if (label && !LABEL.test(label)) problems.label = 'Etiket boşluksuz tek sözcüktür (harf, rakam, _ . : -).';
+
+  let ancestorId = null;
+  if (blank(form.ancestorId)) {
+    ancestorId = Number(blank(form.ancestorId));
+    if (!Number.isSafeInteger(ancestorId) || ancestorId <= 0) problems.ancestorId = 'Üst sayfanın kimliği pozitif bir sayıdır.';
+  }
+
+  let pageSize = null;
+  if (blank(form.pageSize)) {
+    pageSize = Number(blank(form.pageSize));
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > PAGE_SIZE_MAX) problems.pageSize = `İstek başına sonuç 1 ile ${PAGE_SIZE_MAX} arasında olmalı.`;
+  }
+
+  const credentialRef = blank(form.credentialRef);
+  if (!CREDENTIAL_REF.test(credentialRef)) {
+    problems.credentialRef = 'SECRET_CONNECTOR_ ile başlayan, büyük harf, rakam ve _ içeren bir dosya adı yazın. Belirtecin kendisini değil.';
+  }
+
+  const collectionId = original ? original.collectionId : blank(form.collectionId);
+  if (!UUID_PATTERN.test(String(collectionId ?? ''))) problems.collectionId = 'Hedef bilgi alanını seçin.';
+
+  let maxFileBytes = null;
+  if (blank(form.maxFileMb)) {
+    const mb = Number(blank(form.maxFileMb).replace(',', '.'));
+    if (!Number.isFinite(mb) || mb <= 0 || mb > MAX_FILE_MB) problems.maxFileMb = `En büyük dosya 0 ile ${MAX_FILE_MB} MB arasında olmalı.`;
+    else maxFileBytes = Math.max(1, Math.round(mb * 1024 * 1024));
+  }
+
+  const schedule = Number(blank(form.scheduleMinutes));
+  if (!Number.isInteger(schedule) || schedule < SCHEDULE_MIN || schedule > SCHEDULE_MAX) {
+    problems.scheduleMinutes = `Eşitleme aralığı ${SCHEDULE_MIN} ile ${SCHEDULE_MAX} dakika (1 hafta) arasında bir tam sayıdır.`;
+  }
+
+  if (Object.keys(problems).length) return { problems, body: null };
+  return {
+    problems,
+    body: {
+      type: 'CONFLUENCE', name, username: deployment === 'CLOUD' ? username : null, credentialRef, collectionId, maxFileBytes,
+      scheduleMinutes: schedule, enabled: form.enabled !== false,
+      confluence: {
+        baseUrl, deployment, spaceKeys, label: label || null, ancestorId, includeAttachments: form.includeAttachments === true,
+        skipRestricted: form.skipRestricted !== false, pageSize,
+      },
+    },
+  };
+}
+
 /** The form values of a connector being edited (the inverse of connectorRequest). */
-export function connectorForm(connector) {
+export function connectorForm(connector, type = 'SMB') {
+  const confluence = connector?.confluence ?? null;
+  const confluenceValues = {
+    baseUrl: confluence?.baseUrl ?? '', deployment: confluence?.deployment ?? 'DATA_CENTER',
+    spaceKeys: (confluence?.spaceKeys ?? []).join('\n'), label: confluence?.label ?? '',
+    ancestorId: confluence?.ancestorId ? String(confluence.ancestorId) : '', includeAttachments: confluence?.includeAttachments === true,
+    skipRestricted: confluence ? confluence.skipRestricted !== false : true,
+    pageSize: confluence?.pageSize && confluence.pageSize !== 50 ? String(confluence.pageSize) : '',
+  };
   if (!connector) {
-    return { name: '', host: '', port: '', share: '', pathPrefix: '', domain: '', username: '', credentialRef: 'SECRET_CONNECTOR_SMB_PASSWORD',
-      collectionId: '', includeGlobs: '', excludeGlobs: '', maxFileMb: '', scheduleMinutes: '60', enabled: true };
+    const kind = type === 'CONFLUENCE' ? 'CONFLUENCE' : 'SMB';
+    return { type: kind, name: '', host: '', port: '', share: '', pathPrefix: '', domain: '', username: '', credentialRef: DEFAULT_CREDENTIAL[kind],
+      collectionId: '', includeGlobs: '', excludeGlobs: '', maxFileMb: '', scheduleMinutes: '60', enabled: true, ...confluenceValues };
   }
   const mb = Number.isFinite(connector.maxFileBytes) ? connector.maxFileBytes / 1024 / 1024 : null;
   return {
+    type: connector.type === 'CONFLUENCE' ? 'CONFLUENCE' : 'SMB', ...confluenceValues,
     name: connector.name ?? '', host: connector.host ?? '', port: connector.port && connector.port !== 445 ? String(connector.port) : '',
     share: connector.share ?? '', pathPrefix: connector.pathPrefix ?? '', domain: connector.domain ?? '', username: connector.username ?? '',
     credentialRef: connector.credentialRef ?? '', collectionId: connector.collectionId ?? '',
@@ -348,10 +497,12 @@ export function connectorForm(connector) {
 /** The form field an error code points to, so the message lands under the right input; null for a screen-wide one. */
 export const ERROR_FIELDS = Object.freeze({
   14002: 'name', 14003: 'pathPrefix', 14004: 'host', 14005: 'collectionId', 14006: 'collectionId', 14009: 'includeGlobs',
-  14010: 'maxFileMb',
+  14010: 'maxFileMb', 14013: 'baseUrl', 14014: 'baseUrl',
 });
 
-export function errorField(code) {
+/** A Confluence connector has no host field: the site URL carries it (14004 lands there). */
+export function errorField(code, type = 'SMB') {
+  if (type === 'CONFLUENCE' && Number(code) === 14004) return 'baseUrl';
   return ERROR_FIELDS[code] ?? null;
 }
 

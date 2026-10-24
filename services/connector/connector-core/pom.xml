@@ -67,6 +67,21 @@
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
     </dependency>
+    <!-- Confluence storage format to Markdown (MIT; ADR-0044, docs/versions.md). XML mode keeps code-block CDATA. -->
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+    </dependency>
+    <!-- Confluence REST client: Boot's HTTP client with a per-client InetAddressFilter (ADR-0044). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-http-client</artifactId>
+    </dependency>
+    <!-- InfoContributor: whether connectors may reach the internet, and which hosts (ADR-0044, llm-rules 1.1). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-actuator</artifactId>
+    </dependency>
     <!-- SMB2/3 client (Apache-2.0; ADR-0038, docs/versions.md). DFS stays off: a referral could send us to another host. -->
     <dependency>
       <groupId>com.hierynomus</groupId>

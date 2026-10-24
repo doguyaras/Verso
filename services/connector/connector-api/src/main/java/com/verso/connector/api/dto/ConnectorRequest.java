@@ -1,5 +1,7 @@
 package com.verso.connector.api.dto;
 
+import com.verso.connector.api.enums.ConnectorType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -10,19 +12,21 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Create or replace an SMB connector (ADR-0038, verso-admin only). The password is never part of a request: it lives in
+ * Create or replace a connector (ADR-0038 SMB, ADR-0044 Confluence; verso-admin only). The password is never part of a request: it lives in
  * a secret file under /run/secrets whose name {@code credentialRef} gives (security-rules 1). Shapes are checked here;
  * the path prefix, the globs, the host against the egress allowlist and the size against the pipeline limit are checked
- * by the server.
+ * by the server. Which fields a type needs is checked by the server too (400 14012): SMB needs host, share and
+ * username and no {@code confluence}; CONFLUENCE needs {@code confluence}, takes {@code username} as the Cloud account
+ * e-mail (none for Data Center) and no host, share, path prefix, domain or globs.
  *
  * @param name            shown to admins only; 1-100 characters, unique ignoring case
- * @param host            the file server: a DNS name or an IP literal, no scheme, port, path or credentials
+ * @param host            SMB: the file server, a DNS name or an IP literal, no scheme, port, path or credentials
  * @param port            SMB port, default 445
  * @param share           the share name, no slashes
  * @param pathPrefix      folder inside the share to mirror ("" or null: the whole share); relative, "/" or "\"
  *                        separated, no "." or ".." segment, no ":" (alternate data streams)
  * @param domain          NTLM domain of the service account; null or "" for a local account
- * @param username        the read-only service account
+ * @param username        SMB: the read-only service account; Confluence Cloud: the account e-mail
  * @param credentialRef   name of the secret file holding that account's password: {@code SECRET_CONNECTOR_*}
  * @param collectionId    target collection (ADR-0028): its grants decide who reads the synced files; fixed after
  *                        creation
@@ -31,25 +35,27 @@ import java.util.UUID;
  * @param maxFileBytes    larger files are skipped; default and upper bound: the pipeline's limit (ADR-0016)
  * @param scheduleMinutes how often a sync runs, 5-10080 (one week)
  * @param enabled         false pauses the schedule; default true
+ * @param type            SMB (default when null) or CONFLUENCE; fixed after creation (409 14015)
+ * @param confluence      the Confluence settings, for type CONFLUENCE only
  */
 public record ConnectorRequest(
         @NotBlank @Size(max = 100)
         @Pattern(regexp = "[^\\p{Cc}\\u202A-\\u202E\\u2066-\\u2069]*",
                 message = "must not contain control characters or bidirectional overrides")
         String name,
-        @NotBlank @Size(max = 253)
+        @Size(max = 253)
         @Pattern(regexp = "[A-Za-z0-9.:-]+", message = "must be a host name or an IP address")
         String host,
         @Min(1) @Max(65535) Integer port,
-        @NotBlank @Size(max = 80)
+        @Size(max = 80)
         @Pattern(regexp = "[A-Za-z0-9_.$ -]+", message = "must be a share name")
         String share,
         @Size(max = 1024) String pathPrefix,
         @Size(max = 253)
         @Pattern(regexp = "[A-Za-z0-9.-]*", message = "must be a domain name")
         String domain,
-        @NotBlank @Size(max = 104)
-        @Pattern(regexp = "[A-Za-z0-9._@$ -]+", message = "must be an account name")
+        @Size(max = 104)
+        @Pattern(regexp = "[A-Za-z0-9._@$+ -]+", message = "must be an account name")
         String username,
         @NotBlank
         @Pattern(regexp = "SECRET_CONNECTOR_[A-Z0-9_]{1,60}", message = "must name a SECRET_CONNECTOR_* secret file")
@@ -59,5 +65,7 @@ public record ConnectorRequest(
         @Size(max = 20) List<@NotBlank @Size(max = 200) String> excludeGlobs,
         @Min(1) Long maxFileBytes,
         @NotNull @Min(5) @Max(10080) Integer scheduleMinutes,
-        Boolean enabled) {
+        Boolean enabled,
+        ConnectorType type,
+        @Valid ConfluenceRequest confluence) {
 }

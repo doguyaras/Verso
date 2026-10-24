@@ -289,11 +289,12 @@ verso:
     # Failure retention: DEAD rows are deleted after this; the alert OutboxDeadRows fires on the first one.
     dead-retention: 30d
     purge-interval: 1h
-  # SMB file-share connector (ADR-0038): the module's own schema "connector", its own pool as svc_connector (DML) and
+  # File-share (SMB, ADR-0038) and Confluence (ADR-0044) connectors: the module's own schema "connector", its own pool as svc_connector (DML) and
   # its own Flyway as svc_connector_migrate (owner, DDL), like audit (ADR-0026). Passwords from /run/secrets
   # (SECRET_DB_CONNECTOR_PASSWORD, SECRET_DB_CONNECTOR_MIGRATE_PASSWORD), no fallback. A connector's service account
   # password is a secret file too, named by the connector (credentialRef, only SECRET_CONNECTOR_* names, e.g.
-  # SECRET_CONNECTOR_SMB_PASSWORD from deploy/compose.smb.yaml); it is read through the config tree at sync time and
+  # SECRET_CONNECTOR_SMB_PASSWORD from deploy/compose.smb.yaml, SECRET_CONNECTOR_CONFLUENCE_TOKEN from
+  # deploy/compose.confluence.yaml); it is read through the config tree at sync time and
   # never stored. Starting values; see ConnectorProperties for each limit.
   connector:
     datasource:
@@ -340,6 +341,28 @@ verso:
       timeout: PT60S
       signing-required: true
       encrypt-data: false
+    # Confluence Data Center/Server and Cloud over REST (ADR-0044). Incremental by "last modified" (CQL, relative to the
+    # server's clock, minus cursor-overlap); every full-listing-interval a full listing of every page with its read
+    # restrictions (deletions, archived pages, and the restriction sweep "last modified" cannot see). 429/503 and
+    # transport errors: Retry-After or backoff with jitter, max-attempts, then the run stops (connector-level backoff).
+    confluence:
+      connect-timeout: PT10S
+      read-timeout: PT60S
+      full-listing-interval: PT24H
+      cursor-overlap: PT30M
+      max-attempts: 5
+      retry-base: PT1S
+      max-retry-wait: PT60S
+      max-response-size: 32MB
+      # http:// base URLs are refused (the token would cross the wire in clear); only a test stub turns this off.
+      require-https: true
+    # Internet egress of connectors (ADR-0044; llm-rules 1.7), needed by Confluence Cloud only. Off by default. With it
+    # on, a connector may reach only these host patterns (exact or one leading "*.", e.g. *.atlassian.net) on public
+    # addresses. Local mode is strict (llm-rules 1.1): with verso.ai.mode=local the application refuses to start with it
+    # on. /actuator/info shows the setting.
+    external-egress:
+      enabled: ${VERSO_CONNECTOR_EXTERNAL_EGRESS:false}
+      allowed-hosts: ${VERSO_CONNECTOR_EXTERNAL_HOSTS:}
   # Documents and ingestion (ADR-0011, llm-rules 6). Starting values; see DocumentProperties for each limit.
   document:
     # The document module's own pool (ADR-0039), as svc_document (DML only), and its own Flyway as

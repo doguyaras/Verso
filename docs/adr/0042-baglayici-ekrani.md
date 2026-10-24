@@ -55,6 +55,7 @@
 - **Etkilenen dosyalar:** `panel/js/connectors.js`, `panel/js/screens/connectors.js`, `panel/js/roles.js`, `panel/js/app.js`, `panel/js/api.js`, `panel/css/panel.css`, `scripts/panel.test.mjs`; `README.md`, `docs/adr/0038-smb-baglayicisi.md`, `docs/api-connectors-integration-v1.md`, `docs/decisions.md`, `docs/evidence/baglayici-ekrani-dogrulama.md`.
 - **Rollout (referans 18.4):** yalnız panel; mevcut uçları kullanır. Bağlayıcı modülü olmayan eski sunucuda uçlar 404 döner, ekran hata bildirimi gösterir (zararsız).
 - **Geri alma yolu:** `SCREENS.connectors` satırını ve `RENDER`/hesap menüsü girdisini kaldırmak; API davranışı etkilenmez.
+- **Sonradan (ADR-0044):** API `SyncRunResponse.pendingDeletions`'ı ekledi; onay kutusu artık kesin sayıyı gösterir ve kod başka bir sorun olsa da görünür (yukarıdaki iki sınırlama kalktı; alan `null` olan eski koşularda `deferred`, "en çok"). Form tür seçici ve Confluence alanlarıyla genişledi.
 
 ## Yeniden değerlendirme koşulu
 

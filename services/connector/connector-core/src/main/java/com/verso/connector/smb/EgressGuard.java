@@ -42,6 +42,25 @@ public class EgressGuard {
      */
     public InetAddress resolve(String host) {
         if (allowlist.isEmpty()) throw SourceException.fatal("EGRESS_DENIED");
+        InetAddress[] addresses = lookup(host);
+        for (InetAddress address : addresses) {
+            // All of them: a name that also resolves to an outside address could be steered there on another try.
+            if (!allowlist.allows(address)) throw SourceException.fatal("EGRESS_DENIED");
+        }
+        return addresses[0];
+    }
+
+    /** Whether an address is inside the private allowlist (the Confluence Data Center client's connect filter). */
+    public boolean allows(InetAddress address) {
+        return !allowlist.isEmpty() && allowlist.allows(address);
+    }
+
+    /**
+     * Every address the host resolves to, with a time limit; an IP literal is itself.
+     *
+     * @throws SourceException fatal SOURCE_UNREACHABLE (no answer) or EGRESS_DENIED (a malformed literal)
+     */
+    public InetAddress[] lookup(String host) {
         InetAddress[] addresses;
         if (NetworkAllowlist.isLiteral(host)) {
             addresses = new InetAddress[]{literal(host)};
@@ -64,11 +83,7 @@ public class EgressGuard {
             }
         }
         if (addresses.length == 0) throw SourceException.fatal("SOURCE_UNREACHABLE");
-        for (InetAddress address : addresses) {
-            // All of them: a name that also resolves to an outside address could be steered there on another try.
-            if (!allowlist.allows(address)) throw SourceException.fatal("EGRESS_DENIED");
-        }
-        return addresses[0];
+        return addresses;
     }
 
     /** Whether an IP literal is allowed (admin validation; names are judged at sync time, DNS may change). */

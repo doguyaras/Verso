@@ -49,6 +49,8 @@
     <!-- Flyway library and CLI image move together (ADR-0009 #4). Boot 4.1.2 manages 12.4.0; 13.x is pinned here so the
          CLI used by the restore drill validates with the same major (docs/versions.md). -->
     <flyway.version>13.11.1</flyway.version>
+    <!-- Confluence storage format parser (ADR-0044): MIT; 1.23.2 fixes GHSA-65r4-943x-97jj (XmlTreeBuilder, HIGH). -->
+    <jsoup.version>1.23.2</jsoup.version>
     <!-- SMB2/3 client of the file-share connector (ADR-0038): Apache-2.0, maintained; jcifs-ng is LGPL (docs/versions.md). -->
     <smbj.version>0.15.0</smbj.version>
     <!-- smbj's crypto provider (NTLM, signing, SMB3 encryption); managed so the tree converges on one version. -->
@@ -186,6 +188,11 @@
         <groupId>com.verso</groupId>
         <artifactId>connector-core</artifactId>
         <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>${jsoup.version}</version>
       </dependency>
       <dependency>
         <groupId>com.hierynomus</groupId>

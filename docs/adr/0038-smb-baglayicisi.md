@@ -127,6 +127,7 @@ Eşitleme sıcak yol değildir (asenkron worker). Soru-cevap yolu değişmedi (u
   - Dokümanlar: `docs/api-connectors-integration-v1.md`, `README.md`, `docs/decisions.md`, `docs/ai/repo-context.md`, `docs/versions.md`, `docs/uyum/01-vked-sablonu.md`, `docs/runbooks/connector-sync-stale.md`, `docs/evidence/adr-0038-dogrulama.md`.
 - **Geri alma yolu:** bağlayıcıları API ile sil (belgeleri de gider) ya da `enabled: false`; overlay'i kapat. Şema ve rollerin kaldırılması elle yapılan DBA işidir (`DROP SCHEMA connector CASCADE`, `DROP ROLE`). `DocumentIngestion` ve yeni denetim eylemleri geriye uyumludur.
 - **Panel (sonradan):** yönetim ekranı artık var: "Yönetim → Bağlayıcılar" ([ADR-0042](0042-baglayici-ekrani.md)). API sözleşmesi ekran için değişmedi; ekran `health`'i, koşuları, dosyaları ve silme emniyeti onayını bu ADR'nin kurallarıyla gösterir.
+- **Confluence (sonradan):** aynı çerçeve, `type` sütunu ve `confluence` paketiyle Confluence'ı da eşitler ([ADR-0044](0044-confluence-baglayicisi.md)); `FileSource.Listing` artımlı listeyi, `ListedFile` kaynak kısıtını taşır. SMB davranışı değişmedi; `SyncRunResponse.pendingDeletions` SMB koşularında da kesin bekleyen silme sayısını verir.
 
 ## Yeniden değerlendirme koşulu
 

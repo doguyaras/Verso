@@ -21,6 +21,8 @@ import java.util.UUID;
  *   <li>Listed, tracked, anything of the three differs: <b>changed</b>, fetched; the content hash decides later whether
  *       the document must be replaced (a touched but identical file is not re-ingested).</li>
  *   <li>Tracked, its document gone from Verso (someone deleted or moved it): fetched again, the source wins.</li>
+ *   <li>Listed, tracked, same version, but restricted now and not before, or the other way round: fetched with
+ *       RESTRICTION_CHANGED (the caller skips a restricted file and removes its document).</li>
  *   <li>Tracked, not listed: <b>deleted</b> at the source, but only when the listing was complete: an unreadable folder
  *       or a cut listing must never read as "everything inside was deleted".</li>
  * </ul>
@@ -29,27 +31,53 @@ public final class SyncPlanner {
 
     private SyncPlanner() {}
 
-    /** A file as the source lists it now. */
-    public record ListedFile(String path, long fileId, long sizeBytes, Instant modifiedAt) {
+    /**
+     * A file as the source lists it now.
+     *
+     * @param restricted the source restricts who may read it (Confluence page restrictions, ADR-0044): it is not
+     *                   synced, and a synced version is removed; SMB files are never restricted here
+     */
+    public record ListedFile(String path, long fileId, long sizeBytes, Instant modifiedAt, boolean restricted) {
         public ListedFile {
             Objects.requireNonNull(path, "path");
             Objects.requireNonNull(modifiedAt, "modifiedAt");
         }
+
+        public ListedFile(String path, long fileId, long sizeBytes, Instant modifiedAt) {
+            this(path, fileId, sizeBytes, modifiedAt, false);
+        }
     }
 
-    /** What the connector remembers about a file. */
+    /** The skip code of a file left out because the source restricts it (ADR-0044). */
+    public static final String RESTRICTED = "RESTRICTED";
+
+    /** What the connector remembers about a file; failureCode is the FAILED or SKIPPED reason. */
     public record KnownItem(String path, long fileId, long sizeBytes, Instant modifiedAt, String contentSha256,
-                            UUID documentId, State state, Instant nextAttemptAt, int attempts) {
+                            UUID documentId, State state, Instant nextAttemptAt, int attempts, String failureCode) {
 
         public enum State { SYNCED, FAILED, SKIPPED }
+
+        public KnownItem(String path, long fileId, long sizeBytes, Instant modifiedAt, String contentSha256,
+                         UUID documentId, State state, Instant nextAttemptAt, int attempts) {
+            this(path, fileId, sizeBytes, modifiedAt, contentSha256, documentId, state, nextAttemptAt, attempts, null);
+        }
+
+        /** Left out because the source restricted it when it was last seen. */
+        boolean skippedAsRestricted() {
+            return state == State.SKIPPED && RESTRICTED.equals(failureCode);
+        }
 
         boolean sameVersion(ListedFile file) {
             return fileId == file.fileId() && sizeBytes == file.sizeBytes() && modifiedAt.equals(file.modifiedAt());
         }
     }
 
-    /** Why a file is fetched. */
-    public enum Reason { NEW, CHANGED, RETRY, RESTORE }
+    /**
+     * Why a file is fetched. RESTRICTION_CHANGED: same version, but the source restricted it (its document goes) or
+     * lifted the restriction (it is fetched); "last modified" does not move for either (CONFCLOUD-41375), only the
+     * restriction check of a listing sees it.
+     */
+    public enum Reason { NEW, CHANGED, RETRY, RESTORE, RESTRICTION_CHANGED }
 
     /** One file to download, with what was known about it (null for a new file). */
     public record Fetch(ListedFile file, KnownItem known, Reason reason) {
@@ -88,6 +116,8 @@ public final class SyncPlanner {
                 fresh.add(new Fetch(file, null, Reason.NEW));
             } else if (!item.sameVersion(file)) {
                 changed.add(new Fetch(file, item, Reason.CHANGED));
+            } else if (file.restricted() != item.skippedAsRestricted()) {
+                changed.add(new Fetch(file, item, Reason.RESTRICTION_CHANGED));
             } else if (item.state() == KnownItem.State.FAILED) {
                 if (item.nextAttemptAt() == null || !item.nextAttemptAt().isAfter(now)) {
                     retries.add(new Fetch(file, item, Reason.RETRY));

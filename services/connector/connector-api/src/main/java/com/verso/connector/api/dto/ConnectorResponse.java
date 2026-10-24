@@ -1,6 +1,7 @@
 package com.verso.connector.api.dto;
 
 import com.verso.connector.api.enums.ConnectorHealth;
+import com.verso.connector.api.enums.ConnectorType;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -13,14 +14,17 @@ import java.util.UUID;
  * @param lastSuccessAt       end of the last run that listed the whole source and applied its changes; null: never
  * @param consecutiveFailures runs in a row that failed as a whole (connection, credentials, egress, collection)
  * @param lastErrorCode       fixed code of the last failed run or item, never a message
- * @param items               state counts of the files this connector tracks
+ * @param items               state counts of the files (Confluence: pages and attachments) this connector tracks
+ * @param type                SMB or CONFLUENCE; host, share and username are null where the type has none
+ * @param confluence          the Confluence settings; null for SMB
  */
 public record ConnectorResponse(UUID id, String name, String host, int port, String share, String pathPrefix,
                                 String domain, String username, String credentialRef, UUID collectionId,
                                 List<String> includeGlobs, List<String> excludeGlobs, long maxFileBytes,
                                 int scheduleMinutes, boolean enabled, ConnectorHealth health, Instant lastSuccessAt,
                                 Instant lastFailureAt, int consecutiveFailures, String lastErrorCode, Instant nextRunAt,
-                                ItemCounts items, Instant createdAt, Instant updatedAt) {
+                                ItemCounts items, Instant createdAt, Instant updatedAt, ConnectorType type,
+                                ConfluenceResponse confluence) {
 
     /** How many tracked files are in each state. */
     public record ItemCounts(long synced, long failed, long skipped) {
