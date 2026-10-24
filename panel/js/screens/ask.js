@@ -10,8 +10,6 @@ import { pulse, wordSpans } from '../motion.js';
 import { fileIcon, toast } from '../ui.js';
 
 const MAX_CHARS = 1000;
-// Suggested questions come from the installation (config.js): each client's own systems and documents.
-const SUGGESTIONS = CONFIG.deployment.suggestions;
 // Nielsen's limits: nothing under 1 s, a skeleton up to 10 s, then the elapsed time and what to expect.
 const SHOW_WAIT_MS = 1000;
 const SLOW_MS = 10000;
@@ -188,7 +186,8 @@ export function renderAsk(ctx) {
       logo(44),
       el('h1', {}, 'Belgelerinize sorun'),
       el('p', {}, 'Cevaplar yalnız sizin belgelerinizden gelir ve her bilginin yanında kaynağı durur. Belgelerde yoksa asistan uydurmaz, "bulunamadı" der.'),
-      el('div', { class: 'suggestions' }, SUGGESTIONS.map((s) =>
+      // The installation's questions (config.js, merged with branding.json at startup), read when the screen renders.
+      el('div', { class: 'suggestions' }, CONFIG.deployment.suggestions.map((s) =>
         el('button', { class: 'suggestion', type: 'button', onclick: () => ask(s) }, icon('chat', 'sm'), s))),
       el('span', { class: 'privacy-line' }, icon('shield', 'sm'),
         lastMode === 'cloud' ? 'Bulut modu açık: soru ve ilgili pasajlar sağlayıcıya gider.' : 'Yerel mod: soru, belge ve cevap bu sunucudan çıkmaz.'));

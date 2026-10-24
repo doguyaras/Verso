@@ -1,6 +1,7 @@
 // Documents (ADR-0017): a drop zone with per-file progress, search, status filters, a sortable table with keyboard
 // rows, and a detail drawer with deletion that names the file.
 import { api, ApiError } from '../api.js';
+import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 import { el, fill, foldTr, formatDate, formatLabel, formatSize, plainName, UPLOAD_TYPES } from '../render.js';
 import { CONNECTORS } from './setup.js';
@@ -69,7 +70,7 @@ export function renderDocuments(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Bilgi kaynakları'),
-        el('p', {}, 'Verso\'nun cevap verirken okuduğu belgeler. Bu sunucuda işlenir ve yalnız size görünür; Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.')),
+        el('p', {}, `${CONFIG.deployment.productName} cevap verirken bu belgeleri okur. Belgeler bu sunucuda işlenir ve yalnız size görünür; Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.`)),
       el('div', { class: 'page-actions' },
         el('button', { class: 'button secondary', type: 'button', onclick: () => refresh() }, icon('refresh'), 'Yenile'),
         el('button', { class: 'button', type: 'button', onclick: () => input.click() }, icon('upload'), 'Belge yükle'))),

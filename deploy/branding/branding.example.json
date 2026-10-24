@@ -1,0 +1,43 @@
+{
+  "productName": "Bilgi Asistanı",
+  "client": "Örnek Lojistik A.Ş.",
+  "logo": "/branding/logo.svg",
+  "phase": "pilot",
+  "pilotGroup": false,
+  "team": "Kurulum ekibi · destek@ornek.com.tr",
+  "accent": {
+    "light": {
+      "fg-accent": "#1d5a85",
+      "accent-fill": "#2f7bb5",
+      "accent-emphasis": "#183a5a",
+      "accent-emphasis-hover": "#204a70",
+      "focus-ring": "#1d5a85"
+    },
+    "dark": {
+      "fg-accent": "#8cc4ec",
+      "accent-fill": "#6aaee0",
+      "accent-emphasis": "#8cc4ec",
+      "accent-emphasis-hover": "#a3d0f0",
+      "focus-ring": "#8cc4ec"
+    }
+  },
+  "showcase": {
+    "tr": {
+      "label": "Örnek · depo yönetim sistemi",
+      "question": "Sevkiyat emri onaylandıktan sonra stok neden hemen düşmüyor?",
+      "answer": "Stok, emir onaylandığında değil, toplama tamamlanıp koli kapatıldığında düşer. Aradaki kalemler “rezerve” görünür ve başka siparişe ayrılamaz.",
+      "source": "depo-yonetim-kilavuzu.pdf · bölüm 3.4"
+    },
+    "en": {
+      "label": "Example · warehouse management system",
+      "question": "Why doesn’t stock drop as soon as a shipment order is approved?",
+      "answer": "Stock drops when picking is finished and the parcel is closed, not when the order is approved. Items in between show as “reserved” and cannot be allocated to another order.",
+      "source": "warehouse-management-guide.pdf · section 3.4"
+    }
+  },
+  "suggestions": [
+    "Satın alma onay matrisi tutara göre nasıl işliyor?",
+    "500.000 TL'yi aşan alımlarda süreç nasıl ilerler?",
+    "Yeni tedarikçi çalışmaya başlamadan önce hangi belgeleri vermeli?"
+  ]
+}

@@ -343,6 +343,9 @@ svg.signature { display: block; flex: none; width: auto; overflow: visible; }
 .brand > .logo { display: none; }
 .shell.rail .brand > .logo { display: block; }
 .brand-text small { color: var(--fg-muted); font-size: var(--text-xs); }
+/* the installation's logo next to the client's name (ADR-0021); the file's own aspect ratio, capped in width */
+.brand-client { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
+.client-logo { display: block; height: 20px; width: auto; max-width: 96px; object-fit: contain; }
 .search-trigger {
   display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 10px; margin: 0 0 10px; width: 100%;
   border: 1px solid var(--border-muted); border-radius: var(--r-md); background: var(--bg-surface); color: var(--fg-subtle);

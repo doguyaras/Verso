@@ -55,7 +55,7 @@ function onboarding(ctx, docs, rerender) {
   if (state.dismissed || done === steps.length) return null;
   return el('section', { class: 'card onboarding', 'aria-labelledby': 'onboarding-title' },
     ring(done, steps.length),
-    el('div', {}, el('h2', { id: 'onboarding-title' }, 'Verso\'yu kullanmaya başlayın'),
+    el('div', {}, el('h2', { id: 'onboarding-title' }, `${CONFIG.deployment.productName} ile başlayın`),
       el('p', {}, 'Üç kısa adımda belgelerinize kaynaklı cevap almaya hazır olursunuz.'),
       el('ol', { class: 'steps' }, steps.map((s) => el('li', { class: s.done ? 'done' : '' },
         el('button', { type: 'button', onclick: s.run, 'aria-label': `${s.label}${s.done ? ' (tamamlandı)' : ''}` },

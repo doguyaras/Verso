@@ -2,6 +2,7 @@
 // operators. No framework and no build step; ES modules served by the edge proxy. Screens are hash routes (#/ask, …).
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
 import { api, ApiError, lastMode } from './api.js';
+import { applyAccent, loadBranding } from './branding.js';
 import { CONFIG } from './config.js';
 import { icon, logo } from './icons.js';
 import { openPalette } from './palette.js';
@@ -38,6 +39,8 @@ function applyTheme() {
   const chosen = prefs.theme();
   const dark = isDark(chosen, matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  // The installation's accent, when its branding file sets one for this theme (ADR-0021).
+  applyAccent(document.documentElement.style, dark ? 'dark' : 'light', CONFIG.deployment.accent);
   for (const toggle of document.querySelectorAll('.theme-switch')) toggle.setAttribute('aria-checked', String(dark));
 }
 
@@ -140,7 +143,7 @@ function show(screen) {
   const shown = view;
   if (typeof cleanup === 'function') cleanup();
   cleanup = null;
-  document.title = `${SCREENS[screen].title} · Verso`;
+  document.title = `${SCREENS[screen].title} · ${CONFIG.deployment.productName}`;
   if (screen === 'system') prefs.markOnboarding({ sawMode: true });
   const ctx = {
     main: $('#main'), roles, identity: currentIdentity(), expiresAt, guarded, withAuth, navigate, setCount, showMode,
@@ -225,15 +228,23 @@ function shortcuts() {
 }
 
 function buildShell() {
+  const { client, logo: clientLogo, productName } = CONFIG.deployment;
   const identity = currentIdentity();
   const name = identity.preferred_username ?? 'kullanıcı';
   const operator = roles.includes('verso-operator');
   if (prefs.rail()) $('#shell').classList.add('rail');
 
   $('#brand').prepend(logo(30));
+  $('#brand').setAttribute('aria-label', `${productName}, genel bakış`);
   $('#brand .brand-text').prepend(signature({ height: 42, ink: 'var(--signature-ink)' }));
-  // Under the signature only the client's name, when the installation sets one (ADR-0018).
-  if (CONFIG.deployment.client) $('#brand .brand-text').append(el('small', {}, CONFIG.deployment.client));
+  // Under the signature only the client's name and logo, when the installation sets them (ADR-0018, ADR-0021). The
+  // logo is a same-origin file (CSP img-src 'self'); one that fails to load is removed rather than shown broken.
+  if (client || clientLogo) {
+    $('#brand .brand-text').append(el('span', { class: 'brand-client' },
+      clientLogo ? el('img', { class: 'client-logo', src: clientLogo, alt: client ? '' : 'Kurum logosu', height: 20, decoding: 'async',
+        onerror: (event) => event.currentTarget.remove() }) : null,
+      client ? el('small', {}, client) : null));
+  }
   document.querySelector('.workspace').prepend(el('div', { class: 'toggles app-toggles' },
     themeSwitch({ dark: document.documentElement.dataset.theme === 'dark', label: 'Koyu tema', onChange: (dark) => setTheme(dark ? 'dark' : 'light') })));
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
@@ -261,7 +272,7 @@ function buildShell() {
   const mobileAccount = el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Hesap ve tema', 'aria-haspopup': 'menu',
     onclick: () => accountMenu(mobileAccount, 'below') }, el('span', { class: 'avatar' }, initials(name)));
   $('#mobilebar').replaceChildren(
-    el('a', { class: 'brand', href: '#/overview', 'aria-label': 'Verso, genel bakış' },
+    el('a', { class: 'brand', href: '#/overview', 'aria-label': `${productName}, genel bakış` },
       signature({ height: 26, ink: 'var(--signature-ink)' })),
     el('span', { class: 'spacer' }),
     el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Ara', onclick: () => openPalette(paletteSources()) }, icon('search')),
@@ -273,9 +284,9 @@ function buildShell() {
 // TR / EN switch, which also sets the language of the IdP's sign-in page; the rest of the panel is Turkish.
 const INTRO = Object.freeze({
   tr: { caption: 'Kurumunuza uyum sağlayan yapay zekâ', question: 'Soru', answer: 'Cevap', button: 'Başlayın',
-    assure: ['Veriniz kurum içinde kalır', 'Her yanıt kaynağıyla'], theme: 'Koyu tema', lang: 'Dil', title: 'Verso' },
+    assure: ['Veriniz kurum içinde kalır', 'Her yanıt kaynağıyla'], theme: 'Koyu tema', lang: 'Dil' },
   en: { caption: 'The AI that fits your organisation', question: 'Question', answer: 'Answer', button: 'Get started',
-    assure: ['Your data stays inside', 'Every answer with its source'], theme: 'Dark theme', lang: 'Language', title: 'Verso' },
+    assure: ['Your data stays inside', 'Every answer with its source'], theme: 'Dark theme', lang: 'Language' },
 });
 
 function showSignIn(problem, { quiet = false } = {}) {
@@ -289,6 +300,7 @@ function showSignIn(problem, { quiet = false } = {}) {
   const text = INTRO[lang];
   const example = CONFIG.deployment.showcase[lang];
   document.documentElement.lang = lang;
+  document.title = CONFIG.deployment.productName;
   const mark = signature({ height: 104, ink: 'var(--signature-ink)', tip: 'var(--accent-fill)', animated: !quiet });
   gate.replaceChildren(el('section', { class: `intro${quiet ? ' quiet' : ''}`, 'aria-labelledby': 'intro-title' },
     el('div', { class: 'toggles' },
@@ -298,7 +310,7 @@ function showSignIn(problem, { quiet = false } = {}) {
         setTimeout(() => showSignIn(problem, { quiet: true }), 320); // after the marker has slid
       } })),
     el('header', { class: 'intro-head' },
-      el('h1', { id: 'intro-title', class: 'sr-only' }, text.title), mark, el('p', { class: 'intro-caption' }, text.caption)),
+      el('h1', { id: 'intro-title', class: 'sr-only' }, CONFIG.deployment.productName), mark, el('p', { class: 'intro-caption' }, text.caption)),
     el('p', { class: 'example-label' }, example.label),
     el('div', { class: 'book' },
       el('div', { class: 'leaf left' }, el('span', { class: 'eyebrow' }, text.question),
@@ -323,6 +335,8 @@ async function start() {
     location.replace(`${location.protocol}//localhost:${location.port}${location.pathname}${location.hash}`);
     return;
   }
+  // The branding file is fetched while the sign-in completes; both come before the first screen (ADR-0021).
+  const branding = loadBranding();
   applyTheme();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
   let signedIn = false;
@@ -331,6 +345,8 @@ async function start() {
   } catch {
     signedIn = false;
   }
+  await branding;
+  applyTheme(); // again, now with the installation's accent
   if (!signedIn) {
     showSignIn();
     return;

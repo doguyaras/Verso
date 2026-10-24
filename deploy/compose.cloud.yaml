@@ -25,6 +25,7 @@ services:
       - ./deploy/edge/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./deploy/edge/mode-cloud.conf:/etc/nginx/mode.conf:ro
       - ./panel:/usr/share/verso-panel:ro
+      - ./deploy/branding:/usr/share/verso-branding:ro
 
 networks:
   egress: {}

@@ -347,6 +347,19 @@ class ComposeConfigTest {
         assertThat(nginx).contains("location /panel/ {", "alias /usr/share/verso-panel/;",
                 "add_header Content-Security-Policy \"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:8180; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types 'none'\" always;",
                 "add_header X-Content-Type-Options nosniff always;", "absolute_redirect off;");
+        // ADR-0021: the installation's branding, read-only in both modes; only branding.json and logo files are served,
+        // as data (sandboxed), revalidated on every load; nothing else from the directory.
+        assertThat(String.valueOf(service("edge").get("volumes"))).contains("./deploy/branding:/usr/share/verso-branding:ro");
+        assertThat(read("deploy/compose.cloud.yaml")).contains("- ./deploy/branding:/usr/share/verso-branding:ro");
+        assertThat(nginx).contains("location = /branding.json {", "alias /usr/share/verso-branding/branding.json;",
+                "location ~ \"^/branding/([A-Za-z0-9][A-Za-z0-9_-]{0,63}\\.(?:svg|png|webp))$\" {",
+                "alias /usr/share/verso-branding/$1;",
+                "add_header Content-Security-Policy \"default-src 'none'; frame-ancestors 'none'; sandbox\" always;");
+        assertThat(Pattern.compile("location /branding/ \\{\\s*add_header X-Rag-Mode \\$rag_mode always;\\s*return 404;\\s*}")
+                .matcher(nginx).find()).isTrue();
+        String branding = nginx.substring(nginx.indexOf("location = /branding.json {"), nginx.indexOf("location / {"));
+        assertThat(branding.split("add_header X-Rag-Mode \\$rag_mode always;", -1)).as("llm-rules 1.3 on every response").hasSize(4);
+        assertThat(ROOT.resolve("deploy/branding/branding.example.json")).exists();
         assertThat(read("deploy/edge/mode-cloud.conf")).contains("default cloud;");
     }
 

@@ -86,8 +86,8 @@ Tarayıcıdan: `http://localhost:8080/panel/`. İki hazır kullanıcı var, ikis
 
 Ekranlar:
 
-- **Tanıtım ve giriş:** panel önce bir tanıtım gösterir: büyük imza ve açık kitapta kurulumun örnek sorusu ile kaynaklı cevabı (`panel/js/config.js` → `deployment.showcase`). "Giriş yap" kurumun kimlik sağlayıcısına götürür; paketteki demo Keycloak ikiye bölünmüş bir ekranla açılır: solda imzalı boyalı levha, sağda form. İkisinde de sağ üstte tema ve TR / EN anahtarları var.
-- **Genel bakış:** ortada büyük imza ve soru kutusu, kurulumun önerdiği sorular (`deployment.suggestions`), sorulabilir belge, kurulum aşaması ve çalışma modu kartları, ilk kullanım listesi, son belgeler ve bu oturumun soruları. Menü varsayılan olarak ince ikon şerididir, genişletilebilir.
+- **Tanıtım ve giriş:** panel önce bir tanıtım gösterir: büyük imza ve açık kitapta kurulumun örnek sorusu ile kaynaklı cevabı (marka dosyasında `showcase`; aşağıda). "Giriş yap" kurumun kimlik sağlayıcısına götürür; paketteki demo Keycloak ikiye bölünmüş bir ekranla açılır: solda imzalı boyalı levha, sağda form. İkisinde de sağ üstte tema ve TR / EN anahtarları var.
+- **Genel bakış:** ortada büyük imza ve soru kutusu, kurulumun önerdiği sorular (`suggestions`), sorulabilir belge, kurulum aşaması ve çalışma modu kartları, ilk kullanım listesi, son belgeler ve bu oturumun soruları. Menü varsayılan olarak ince ikon şerididir, genişletilebilir.
 - **Soru sor:**
   - Sohbet görünümünde bir atıf numarasının üzerine gelince belge adı, sayfa ya da bölüm ve alıntılanan pasaj görünür.
   - Kaynak kartları belgeye göre gruplanır.
@@ -95,7 +95,7 @@ Ekranlar:
   - Beklerken geçen süre ve gerçekçi bir beklenti görünür; bir durdurma düğmesi vardır.
   - Kopyalanan cevap kaynaklarıyla birlikte gelir.
 - **Bilgi kaynakları:** sayfanın her yerine sürükle-bırak; dosya başına ilerleme ve "tekrar dene"; Türkçe harf duyarsız arama, durum filtresi ve sıralanabilir tablo; ayrıntı paneli; dosya adıyla silme onayı. Altında planlanan bağlantılar (SharePoint ve dosya paylaşımları, talep yönetimi, ERP) "Planlandı" olarak görünür.
-- **Kurulum durumu:** kurulumu yapan ekibin aşamaları (Keşif, Pilot, Yaygınlaştırma, Entegrasyonlar) ve sistemden okunan kontrol listesi. Aşama, pilot grubu ve kurum adı `panel/js/config.js`'teki `deployment` alanından gelir.
+- **Kurulum durumu:** kurulumu yapan ekibin aşamaları (Keşif, Pilot, Yaygınlaştırma, Entegrasyonlar) ve sistemden okunan kontrol listesi. Aşama, pilot grubu ve kurum adı marka dosyasından gelir.
 - **Sistem ve güvenlik:** mod ve KVKK açıklaması, üç koruma katmanı, modeller, oturum süresi, gözlem bağlantıları. Yalnız operatör rolüne görünür.
 
 Gezinme: etiketli sol menü (ikon şeridine daraltılabilir), telefonda alt sekme çubuğu, **Ctrl+K / ⌘K** komut paleti (sayfa, eylem ve belge arar) ve `g` + harf kısayolları (`g s` soru, `g b` bilgi kaynakları, `g k` kurulum). Varsayılan tema açık ("Fildişi tuval"); koyu tema ("Obscur") ya da "sistemi izle" hesap menüsünden seçilir. Tasarım sistemi ve gerekçeleri: [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md).
@@ -108,7 +108,7 @@ Panelin özellikleri:
 - Rol matrisi tek dosyadadır (`panel/js/roles.js`).
 - Varsayılan portlarla çalışır (8080, 8180, 3000). Port değişirse `panel/js/config.js`, realm'deki `verso-panel` istemcisi ve `deploy/edge/nginx.conf`'taki CSP birlikte değişir.
 
-Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
+Kararlar: [ADR-0015](docs/adr/0015-panel.md), [ADR-0017](docs/adr/0017-panel-v3-tasarim-sistemi.md), [ADR-0018](docs/adr/0018-fildisi-tuval.md), [ADR-0021](docs/adr/0021-kurulum-marka-dosyasi.md). Belgeler hesaba aittir: `demo.sh`'ın yüklediği belgeler CI istemcisinin hesabındadır; panelde `samples/` PDF'lerini sürükleyip bırakın.
 
 Daha önce kurulmuş bir yığında panelin IdP istemcisi, `admin` kullanıcısı ya da Verso giriş teması yoktur (Keycloak realm'i yalnız ilk açılışta içe aktarır). Önce eksik secret dosyalarını üretin (`bash scripts/dev-secrets.sh`, var olanlara dokunmaz). Sonra Keycloak'ı tema bağlantısıyla yeniden oluşturun; bu, sıkıştırılmış kaynak önbelleğini de siler (tema dosyaları her değiştiğinde de gerekir):
 
@@ -123,6 +123,32 @@ bash scripts/keycloak-reimport.sh
 ```
 
 Demo kullanıcıları yeni kimlik alır; önceki kimlikle yüklenen belgeler silinmez ama yeni oturumda görünmez.
+
+### Kuruluma özel marka
+
+Kurulum ekibi paneli JavaScript'e dokunmadan markalar ([ADR-0021](docs/adr/0021-kurulum-marka-dosyasi.md)):
+
+1. Şablonu kopyalayın ve düzenleyin: `cp deploy/branding/branding.example.json deploy/branding/branding.json`. Logo kullanacaksanız dosyayı aynı dizine koyun (`deploy/branding/logo.svg`; ad harf, rakam, `-` ve `_`, uzantı `.svg`, `.png` ya da `.webp`).
+2. Paneli yenileyin. Kenar proxy dizini salt okunur bağlar ve dosyayı önbelleksiz sunar (`Cache-Control: no-cache`); yeniden başlatma gerekmez. Dizin bağlantısı yeni olduğu için, bu sürüme geçen bir yığında `edge` bir kez yeniden oluşturulur: `docker compose up -d --force-recreate --no-deps edge`.
+3. Tarayıcı konsoluna bakın. Dosyada bir hata varsa panel dosyanın tamamını yok sayar, varsayılanlarla açılır ve konsola her hatayı yoluyla sayan tek bir uyarı yazar.
+
+| Alan | Ne | Sınır |
+|---|---|---|
+| `productName` | Sayfa başlığı ve etiketlerdeki ürün adı (varsayılan "Verso"). İmza Verso işareti olarak kalır. Ad hâl eki almadan kullanılır. | 40 karakter |
+| `client` | Menüde imzanın altındaki kurum adı | 80 karakter |
+| `logo` | Kurum adının yanındaki logo: `/branding/<ad>.svg\|png\|webp` | yalnız bu dizin |
+| `phase` | `discovery`, `pilot`, `rollout`, `integrations` (Kurulum durumu) | |
+| `pilotGroup` | Pilot kullanıcı grubu tanımlandı mı (`true`/`false`) | |
+| `team` | Kurulum ekibinin adı ve iletişim adresi (ekip adresi, kişisel değil) | 160 karakter |
+| `showcase` | Tanıtım ekranındaki örnek: `tr` ve `en`'in ikisi de, `label`, `question`, `answer`, `source` dolu | 80 / 200 / 600 / 120 |
+| `suggestions` | Önerilen sorular; gerçekten sorulur, dizinli belgelerden cevaplanabilmeli | 1–6 soru, her biri 200 |
+| `accent` | Temaya göre (`light`, `dark`) vurgu token'ları: `fg-accent`, `accent-fill`, `accent-emphasis`, `accent-emphasis-hover`, `focus-ring`; yalnız `#rrggbb` | kontrast: metin 4,5:1, UI 3:1 |
+
+Dosyada olmayan alan `panel/js/config.js`'teki varsayılanında kalır; `null` isteğe bağlı bir alanı (`client`, `logo`, `team`, `accent`) boşaltır. Bilinmeyen anahtar, sınırı aşan metin, kontrol karakteri ya da kontrastı yetmeyen renk hatadır; dosya 16 KB'ı aşamaz.
+
+Dosya girişten önce, kimliksiz okunur: içine gizli bilgi, iç sunucu adı ya da kişisel veri yazmayın. `branding.json` ve logolar git'e girmez (`.gitignore`); yalnız örnek dosya repodadır.
+
+Giriş sayfası bu dosyayı okumaz: Keycloak'ın sunucu tarafı temasıdır (`deploy/keycloak/themes/verso/`) ve ayrıca markalanır. Müşterinin kendi IdP'si kullanılıyorsa giriş sayfası onundur.
 
 ## curl ile
 

@@ -37,8 +37,10 @@ export async function renderSetup(ctx) {
   const { main, guarded } = ctx;
   const deployment = CONFIG.deployment;
   const current = Math.max(0, PHASES.findIndex((p) => p.id === deployment.phase));
+  // The product's name without a Turkish case ending: the suffix of an installation's name cannot be known.
+  const intro = `Kurumunuzdaki ${deployment.productName} kurulumunda nerede olduğumuz, neyin hazır olduğu ve sırada ne olduğu.`;
   fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Kurulum durumu'),
-    el('p', {}, 'Verso\'nun kurumunuza kurulumunda nerede olduğumuz, neyin hazır olduğu ve sırada ne olduğu.'))),
+    el('p', {}, intro))),
   el('div', { class: 'skeleton block' }));
   const [docs, info] = await Promise.all([guarded(() => api.listAllDocuments()), guarded(() => api.info())]);
   if (!ctx.isCurrent()) return;
@@ -54,8 +56,8 @@ export async function renderSetup(ctx) {
   fill(main,
     el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Kurulum durumu'),
       el('p', {}, deployment.client
-        ? `${deployment.client} için Verso kurulumunun aşamaları ve kontrol listesi.`
-        : 'Verso\'nun kurumunuza kurulumunda nerede olduğumuz, neyin hazır olduğu ve sırada ne olduğu.'))),
+        ? `${deployment.client} için ${deployment.productName} kurulumunun aşamaları ve kontrol listesi.`
+        : intro))),
     el('section', { class: 'card', 'aria-labelledby': 'phases-title' },
       el('div', { class: 'card-head' }, el('h2', { id: 'phases-title' }, 'Aşamalar')),
       el('ol', { class: 'phases' }, PHASES.map((phase, i) => el('li', {

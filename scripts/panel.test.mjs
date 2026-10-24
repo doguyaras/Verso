@@ -15,6 +15,9 @@ import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 import { SIGN_MS, SIGNATURE, timeline } from '../panel/js/signature-data.js';
 import { CONNECTORS, PHASES, setupSteps } from '../panel/js/screens/setup.js';
 import { isDark } from '../panel/js/store.js';
+import { ACCENT_TOKENS, applyAccent, contrast, LIMITS, loadBranding, LOGO_PATTERN, MAX_BYTES, MAX_SUGGESTIONS, THEME_COLOURS,
+  validateBranding } from '../panel/js/branding.js';
+import { CONFIG, DEPLOYMENT_DEFAULTS, useDeployment } from '../panel/js/config.js';
 
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
@@ -441,4 +444,220 @@ test('theme: the ivory light theme is the default even on a dark system; dark on
   assert.equal(isDark('system', true), true);
   assert.equal(isDark('system', false), false);
   assert.match(readFileSync('deploy/keycloak/themes/verso/login/theme.properties', 'utf8'), /^darkMode=false$/m, 'the login page is light too');
+});
+
+// ---------- the installation's branding file (ADR-0021) ----------
+const EXAMPLE = 'deploy/branding/branding.example.json';
+const example = () => JSON.parse(readFileSync(EXAMPLE, 'utf8'));
+const errorsOf = (raw) => validateBranding(raw).errors ?? [];
+
+test('branding: the example file is valid and is merged over the defaults; keys left out keep the defaults', () => {
+  const { deployment, errors } = validateBranding(example());
+  assert.equal(errors, undefined, String(errors));
+  assert.equal(deployment.productName, 'Bilgi Asistanı');
+  assert.equal(deployment.client, 'Örnek Lojistik A.Ş.');
+  assert.equal(deployment.logo, '/branding/logo.svg');
+  assert.equal(deployment.accent.light['fg-accent'], '#1d5a85');
+  assert.ok(Object.isFrozen(deployment) && Object.isFrozen(deployment.showcase.tr) && Object.isFrozen(deployment.suggestions));
+  const partial = validateBranding({ client: '  Acme A.Ş. ', suggestions: ['Acme stok sayımı nasıl yapılır?'] }).deployment;
+  assert.equal(partial.client, 'Acme A.Ş.', 'trimmed');
+  assert.deepEqual([...partial.suggestions], ['Acme stok sayımı nasıl yapılır?']);
+  for (const key of ['productName', 'logo', 'phase', 'pilotGroup', 'team', 'accent', 'showcase']) {
+    assert.deepEqual(partial[key], DEPLOYMENT_DEFAULTS[key], key);
+  }
+  assert.equal(validateBranding({}).deployment.productName, 'Verso', 'an empty file is the defaults');
+  assert.equal(validateBranding({ client: null, logo: null, accent: null }).deployment.client, null, 'null clears an optional field');
+  assert.equal(DEPLOYMENT_DEFAULTS.productName, 'Verso');
+});
+
+test('branding: unknown keys, wrong types and a wrong showcase shape are refused, each named by its path', () => {
+  const cases = [
+    [[], 'the file must hold a JSON object'], [null, 'the file must hold a JSON object'], ['Verso', 'the file must hold a JSON object'],
+    [{ colour: '#000000' }, 'colour is not a known key'],
+    [JSON.parse('{"__proto__": {"client": "x"}}'), '__proto__ is not a known key'],
+    [{ productName: 42 }, 'productName must be a string'],
+    [{ productName: '   ' }, 'productName is empty'],
+    [{ client: 'Acme‮gnp.exe' }, 'client contains control or bidi characters'],
+    [{ pilotGroup: 'yes' }, 'pilotGroup must be true or false'],
+    [{ phase: 'done' }, 'phase must be one of discovery, pilot, rollout, integrations'],
+    [{ suggestions: 'Soru?' }, 'suggestions must be a list of questions'],
+    [{ suggestions: [] }, 'suggestions is empty'],
+    [{ suggestions: ['Soru?', 7] }, 'suggestions[1] must be a string'],
+    [{ showcase: { tr: example().showcase.tr } }, 'showcase.en must be an object with label, question, answer, source'],
+    [{ showcase: { ...example().showcase, de: example().showcase.en } }, 'showcase.de is not a known key'],
+    [{ showcase: { ...example().showcase, en: { ...example().showcase.en, link: 'x' } } }, 'showcase.en.link is not a known key'],
+    [{ showcase: { ...example().showcase, tr: { label: 'x', question: 'y', answer: 'z' } } }, 'showcase.tr.source must be a string'],
+    [{ accent: '#1d5a85' }, 'accent must be an object with "light" and/or "dark", or null'],
+    [{ accent: { light: { 'fg-default': '#000000' } } }, 'accent.light.fg-default is not a known key'],
+    [{ accent: { light: { 'fg-accent': '#15a' } } }, 'accent.light.fg-accent must be a colour written as #rrggbb'],
+    [{ accent: { light: { 'fg-accent': 'red; background: url(x)' } } }, 'accent.light.fg-accent must be a colour written as #rrggbb'],
+    [{ accent: { sepia: {} } }, 'accent.sepia is not a known key'],
+  ];
+  for (const [raw, expected] of cases) assert.ok(errorsOf(raw).includes(expected), `${JSON.stringify(raw)}: ${errorsOf(raw).join(' | ')}`);
+  for (const logo of ['/branding/../secrets/x.svg', 'https://cdn.example.com/logo.svg', '//evil.example/logo.svg', '/panel/img/favicon.svg',
+    '/branding/logo.svg?x=1', '/branding/logo.gif', '/branding/a/logo.png', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>', 3]) {
+    assert.ok(errorsOf({ logo }).some((e) => e.startsWith('logo must be a file under /branding/')), String(logo));
+  }
+  assert.ok(LOGO_PATTERN.test('/branding/acme_logo-2.webp'));
+  assert.equal(validateBranding({ client: 'Acme', phase: 'done' }).deployment, undefined, 'one error rejects the whole file');
+});
+
+/** A stub of fetch for /branding.json: the body, a content type and an optional declared length. */
+function served(body, { status = 200, type = 'application/json; charset=utf-8', length } = {}) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    const headers = { 'content-type': type, 'content-length': length };
+    return { ok: status >= 200 && status < 300, status, headers: { get: (name) => headers[name.toLowerCase()] ?? null }, text: async () => body };
+  };
+  fetchImpl.calls = calls;
+  return fetchImpl;
+}
+
+test('branding: oversized input is refused (strings over their cap, more than six suggestions, a file over 16 KB)', async () => {
+  const long = (n) => 'a'.repeat(n);
+  assert.equal(errorsOf({ productName: long(LIMITS.productName) }).length, 0, 'the cap itself is allowed');
+  assert.ok(errorsOf({ productName: long(LIMITS.productName + 1) }).includes(`productName is longer than ${LIMITS.productName} characters`));
+  assert.ok(errorsOf({ client: long(LIMITS.client + 1) }).includes(`client is longer than ${LIMITS.client} characters`));
+  const showcase = { ...example().showcase, tr: { ...example().showcase.tr, answer: long(LIMITS.answer + 1) } };
+  assert.ok(errorsOf({ showcase }).includes(`showcase.tr.answer is longer than ${LIMITS.answer} characters`));
+  assert.equal(MAX_SUGGESTIONS, 6);
+  assert.equal(errorsOf({ suggestions: Array.from({ length: 6 }, (_, i) => `Soru ${i}?`) }).length, 0);
+  assert.ok(errorsOf({ suggestions: Array.from({ length: 7 }, (_, i) => `Soru ${i}?`) }).includes('suggestions has 7 questions, at most 6'));
+  assert.ok(errorsOf({ suggestions: [long(LIMITS.suggestion + 1)] }).includes(`suggestions[0] is longer than ${LIMITS.suggestion} characters`));
+  try {
+    const warnings = [];
+    const big = JSON.stringify({ client: 'Acme', team: ' '.repeat(MAX_BYTES) });
+    assert.equal((await loadBranding({ fetchImpl: served(big), warn: (m) => warnings.push(m) })).client, null);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /larger than 16384 bytes/);
+    const declared = [];
+    await loadBranding({ fetchImpl: served('{}', { length: String(MAX_BYTES + 1) }), warn: (m) => declared.push(m) });
+    assert.match(declared[0], /larger than 16384 bytes/, 'a declared length over the cap is not even read');
+  } finally {
+    useDeployment(DEPLOYMENT_DEFAULTS);
+  }
+});
+
+test('branding: an accent colour without enough contrast is refused (3:1 for UI parts, 4.5:1 for text and labels)', () => {
+  // The gold fill is 2:1 on the ivory page: fine as a hairline in panel.css, refused as an installation's text colour.
+  const gold = errorsOf({ accent: { light: { 'fg-accent': '#c9a45c' } } });
+  assert.equal(gold.length, ACCENT_TOKENS['fg-accent'].against.length, gold.join(' | '));
+  assert.match(gold[0], /^accent\.light\.fg-accent has 2\.\d\d:1 against bg-canvas, needs 4\.5:1$/);
+  // A light grey button fails under its cream label.
+  assert.ok(errorsOf({ accent: { light: { 'accent-emphasis': '#d8cdb6' } } })
+    .some((e) => /accent-emphasis has [\d.]+:1 under its label \(fg-on-emphasis\), needs 4\.5:1/.test(e)));
+  // Per theme: a dark ink focus ring is fine on ivory and invisible in the dark theme.
+  assert.equal(errorsOf({ accent: { light: { 'focus-ring': '#1c1a17' } } }).length, 0);
+  assert.ok(errorsOf({ accent: { dark: { 'focus-ring': '#1c1a17' } } }).some((e) => e.startsWith('accent.dark.focus-ring has')));
+  // 3:1 is the floor for UI parts: just under it is refused, at or over it accepted.
+  const canvas = THEME_COLOURS.light['bg-canvas'];
+  const under = ['#8a7a63', '#958670', '#a09078'].find((c) => contrast(c, canvas) < 3 && contrast(c, canvas) > 2.5);
+  const over = ['#7d6f5a', '#76684f', '#6b5e4c'].find((c) => Math.min(...ACCENT_TOKENS['accent-fill'].against
+    .map((bg) => contrast(c, THEME_COLOURS.light[bg]))) >= 3);
+  assert.ok(under && over, `${under} ${over}`);
+  assert.ok(errorsOf({ accent: { light: { 'accent-fill': under } } }).length > 0, under);
+  assert.equal(errorsOf({ accent: { light: { 'accent-fill': over } } }).length, 0, over);
+  assert.equal(contrast('#000000', '#ffffff').toFixed(0), '21');
+});
+
+test('branding: a failed, refused or broken fetch keeps the defaults with one warning; a missing file with none', async () => {
+  const run = async (fetchImpl, timeoutMs) => {
+    const warnings = [];
+    const deployment = await loadBranding({ fetchImpl, warn: (m) => warnings.push(m), timeoutMs });
+    assert.equal(CONFIG.deployment, deployment, 'what the screens read');
+    return { deployment, warnings };
+  };
+  const hanging = (_url, init) => new Promise((_resolve, reject) => init.signal.addEventListener('abort',
+    () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+  try {
+    const cases = [
+      [async () => { throw new TypeError('Failed to fetch'); }, /could not be fetched/],
+      [served('', { status: 500 }), /answered 500/],
+      [served('<html>', { type: 'text/html' }), /not served as application\/json/],
+      [served('{"client": "Acme",}'), /not valid JSON/],
+      [served(JSON.stringify({ client: 'Acme', colour: 'red' })), /colour is not a known key/],
+      [hanging, /no answer within 20 ms/],
+    ];
+    for (const [fetchImpl, reason] of cases) {
+      const { deployment, warnings } = await run(fetchImpl, 20);
+      assert.equal(deployment, DEPLOYMENT_DEFAULTS, String(reason));
+      assert.equal(warnings.length, 1, String(reason));
+      assert.match(warnings[0], /^Verso: \/branding\.json was ignored, the defaults are used \(ADR-0021\): /);
+      assert.match(warnings[0], reason);
+    }
+    const missing = await run(served('', { status: 404 }));
+    assert.equal(missing.deployment, DEPLOYMENT_DEFAULTS);
+    assert.equal(missing.warnings.length, 0, 'no file is the normal case of an installation without branding');
+
+    const fetchImpl = served(readFileSync(EXAMPLE, 'utf8'));
+    const branded = await run(fetchImpl);
+    assert.equal(branded.warnings.length, 0);
+    assert.equal(CONFIG.deployment.client, 'Örnek Lojistik A.Ş.');
+    assert.equal(fetchImpl.calls[0].url, '/branding.json', 'same origin: connect-src \'self\' allows it');
+    assert.equal(fetchImpl.calls[0].init.credentials, 'omit');
+  } finally {
+    useDeployment(DEPLOYMENT_DEFAULTS);
+  }
+});
+
+test('branding: the accent is set per theme through the CSSOM, the other theme\'s tokens removed', () => {
+  const set = new Map();
+  const style = { setProperty: (k, v) => set.set(k, v), removeProperty: (k) => set.delete(k) };
+  const { accent } = validateBranding({ accent: { light: { 'fg-accent': '#1d5a85' } } }).deployment;
+  applyAccent(style, 'light', accent);
+  assert.deepEqual([...set], [['--fg-accent', '#1d5a85']]);
+  applyAccent(style, 'dark', accent);
+  assert.equal(set.size, 0, 'panel.css decides in the dark theme');
+  applyAccent(style, 'light', null);
+  assert.equal(set.size, 0);
+  // The contrast table is the stylesheet's: resolve each background token of panel.css per theme.
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  const block = (selector) => {
+    const start = css.indexOf(`\n${selector} {`);
+    assert.ok(start >= 0, selector);
+    return Object.fromEntries([...css.slice(start, css.indexOf('\n}', start + 1)).matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  };
+  const resolve = (tokens, value) => {
+    for (let i = 0; i < 10 && value.startsWith('var('); i++) value = tokens[value.slice(6, -1)];
+    return value;
+  };
+  const light = block(':root');
+  const dark = { ...light, ...block(':root[data-theme="dark"]') };
+  for (const [name, tokens, menu] of [['light', light, block('.sidebar')], ['dark', dark, block(':root[data-theme="dark"] .sidebar')]]) {
+    const expected = {};
+    for (const token of ['bg-canvas', 'bg-surface', 'bg-sidebar', 'accent-bg-subtle', 'fg-on-emphasis']) expected[token] = resolve(tokens, `var(--${token})`);
+    expected['sidebar-surface'] = resolve(tokens, menu['bg-surface']);
+    expected['sidebar-subtle'] = resolve(tokens, menu['accent-bg-subtle']);
+    assert.deepEqual({ ...THEME_COLOURS[name] }, expected, name);
+  }
+  for (const token of Object.keys(ACCENT_TOKENS)) assert.ok(light[token] && dark[token], `--${token} is an accent token of panel.css`);
+});
+
+test('branding: loaded before the first screen, read at render time, served read-only and kept out of git', () => {
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  const start = app.slice(app.indexOf('async function start()'));
+  assert.ok(start.indexOf('await branding;') > 0 && start.indexOf('await branding;') < start.indexOf('showSignIn()'), 'before the intro');
+  assert.ok(start.indexOf('await branding;') < start.indexOf('buildShell()'), 'before the shell');
+  for (const file of ['app.js', ...readdirSync('panel/js/screens').map((f) => `screens/${f}`)]) {
+    assert.doesNotMatch(readFileSync(`panel/js/${file}`, 'utf8'), /^const \w+ = CONFIG\.deployment/m, `${file}: read at module load, before the file arrived`);
+  }
+  const nginx = readFileSync('deploy/edge/nginx.conf', 'utf8');
+  const open = nginx.indexOf('location = /branding.json {');
+  const json = nginx.slice(open, nginx.indexOf('\n        }', open));
+  for (const line of ['alias /usr/share/verso-branding/branding.json;', 'default_type application/json;',
+    'add_header Cache-Control "no-cache" always;', 'add_header X-Content-Type-Options nosniff always;']) {
+    assert.ok(json.includes(line), line);
+  }
+  assert.ok(nginx.includes(`location ~ "^/branding/([A-Za-z0-9][A-Za-z0-9_-]{0,63}\\.(?:svg|png|webp))$" {`), 'the logo pattern of branding.js');
+  assert.equal(LOGO_PATTERN.source, '^\\/branding\\/[A-Za-z0-9][A-Za-z0-9_-]{0,63}\\.(svg|png|webp)$');
+  assert.match(nginx, /location \/branding\/ \{\s*add_header X-Rag-Mode \$rag_mode always;\s*return 404;\s*\}/, 'nothing else from the directory');
+  const branding = nginx.slice(open, nginx.indexOf('location / {'));
+  assert.equal((branding.match(/add_header X-Rag-Mode \$rag_mode always;/g) ?? []).length, 3, 'every response says the mode (llm-rules 1.3)');
+  for (const file of ['compose.yaml', 'deploy/compose.cloud.yaml']) {
+    assert.match(readFileSync(file, 'utf8'), /- \.\/deploy\/branding:\/usr\/share\/verso-branding:ro/, file);
+  }
+  const ignored = readFileSync('.gitignore', 'utf8');
+  assert.match(ignored, /^\/deploy\/branding\/\*$/m);
+  assert.match(ignored, /^!\/deploy\/branding\/branding\.example\.json$/m);
 });

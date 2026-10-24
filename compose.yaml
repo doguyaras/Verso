@@ -312,6 +312,8 @@ services:
       - ./deploy/edge/mode-local.conf:/etc/nginx/mode.conf:ro
       # The panel (ADR-0015): static files, served at /panel/.
       - ./panel:/usr/share/verso-panel:ro
+      # The installation's branding (ADR-0021): branding.json and its logo, served at /branding.json and /branding/.
+      - ./deploy/branding:/usr/share/verso-branding:ro
     tmpfs:
       - /tmp:size=32m
     depends_on:

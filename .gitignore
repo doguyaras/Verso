@@ -23,5 +23,9 @@ secrets/*
 deploy/**/*.env*
 !deploy/**/*.env.example
 
+# The installation's branding (ADR-0021): branding.json and the logo belong to one client; only the example enters git.
+/deploy/branding/*
+!/deploy/branding/branding.example.json
+
 # demo.sh writes the question body here while it runs
 demo-question.tmp
