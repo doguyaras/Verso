@@ -69,7 +69,7 @@ x-db-env: &db-env
   VERSO_MCP_RESOURCE: ${VERSO_MCP_RESOURCE:-http://localhost:8080/mcp}
   VERSO_MCP_SHOW_DOCUMENT_NAMES: ${VERSO_MCP_SHOW_DOCUMENT_NAMES:-true}
 
-x-ollama-image: &ollama-image ollama/ollama:0.35.1@sha256:292ee7945dfc3d5840a181f3ab86fedb1e66703e02c8af98b50f4da56b7e278c
+x-ollama-image: &ollama-image ollama/ollama:0.40.10@sha256:4c5b27871a3239a717048f9b93057680a51b60c8119a7016aebb57f938e25e35
 
 x-postgres-image: &postgres-image pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
 
@@ -216,9 +216,11 @@ services:
       retries: 30
       start_period: 120s
 
-  # Model download, once (llm-rules 8.2): a private Ollama server inside this container pulls the embedding model into
-  # the volume and checks the pinned layer digest (bge-m3:567m, MIT licence, docs/versions.md). Needs internet only
-  # when the model is not in the volume yet.
+  # Model download and store upgrade, once (llm-rules 8.2, ADR-0033): a private Ollama server inside this container
+  # pulls the models into the volume (the only writer) and checks the pinned layer digest (bge-m3:567m, MIT licence,
+  # docs/versions.md). Ollama 0.40 keeps models in "manifests-v2/" and cannot start on a read-only volume that has
+  # none, so a volume written by 0.35 is migrated here too: the pull reuses the blobs and only writes the v2 manifest.
+  # Needs internet only when a model is not in the v2 store yet.
   ollama-pull:
     <<: *hardening
     image: *ollama-image
@@ -239,7 +241,8 @@ services:
 
   # Local embedding model server (ADR-0006, ADR-0011). Only on the internal "models" network: no route to the internet
   # (llm-rules 8.2) and nobody but the application can reach it. It never pulls (ollama-pull did) and reads the models
-  # read-only.
+  # read-only: the verified blobs and manifests cannot be changed from here. Ollama 0.40 starts on a read-only volume
+  # only when the store is complete (manifests-v2 populated by ollama-pull; ADR-0033).
   ollama:
     <<: *hardening
     image: *ollama-image

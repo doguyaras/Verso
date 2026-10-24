@@ -177,6 +177,12 @@ class ComposeConfigTest {
         assertThat((List<String>) ollama.get("volumes")).containsExactly("ollama-models:/root/.ollama:ro",
                 "./deploy/ollama/serve.sh:/opt/verso/serve.sh:ro");
         assertThat(environment("ollama")).containsEntry("OLLAMA_NO_CLOUD", "true");
+        // ADR-0033: the pull container is the only writer of the model store and runs the same Ollama build as the
+        // runtime, so the store layout it writes (manifests-v2) is the one the read-only runtime expects; the runtime
+        // waits for the pull to finish.
+        assertThat((List<String>) service("ollama-pull").get("volumes")).contains("ollama-models:/root/.ollama");
+        assertThat(service("ollama-pull").get("image")).isEqualTo(ollama.get("image"));
+        assertThat((Map<String, Object>) ollama.get("depends_on")).containsKey("ollama-pull");
         // Warm models (docs/capacity.md "Soğuk açılış"): loaded at start, never unloaded; healthy only when in memory.
         assertThat((List<String>) ollama.get("entrypoint")).containsExactly("bash", "/opt/verso/serve.sh");
         assertThat(environment("ollama")).containsEntry("OLLAMA_KEEP_ALIVE", "-1");
@@ -266,7 +272,7 @@ class ComposeConfigTest {
     }
 
     /**
-     * ADR-0032: the docling overlay adds the sidecar on its own internal network, unpublished, hardened, with memory,
+     * ADR-0033: the docling overlay adds the sidecar on its own internal network, unpublished, hardened, with memory,
      * CPU and process limits and offline flags; the application joins that network and gets the switch. The default
      * stack has no sidecar and keeps the switch off.
      */

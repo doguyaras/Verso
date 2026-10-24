@@ -18,6 +18,7 @@
 | Ollama açıldıktan sonra ilk sorular 10030 alıyor | Isınma henüz bitmedi ya da başarısız oldu: `docker compose logs ollama` içindeki `ollama-warm:` satırları. Sağlık kontrolü modeller bellekte değilse `unhealthy` der. Isınma başarısızsa modeller ilk kullanımda yüklenir; `docker compose restart ollama` ısınmayı yeniden dener |
 | Ollama yeniden başlıyor ya da bellek yetmiyor | `OLLAMA_MEM_LIMIT`'i artır ya da daha küçük chat modeli kullan (`VERSO_CHAT_MODEL` + digest) |
 | Model volume'de yok | `docker compose up ollama-pull` (internet gerekir); log'da `does not match the pinned digest` varsa digest'i kontrol et |
+| `ollama` logunda `manifests-v2: read-only file system` ya da modeller bulunamıyor | Volume 0.35'ten kalma (`manifests-v2` yok ya da boş). `ollama-pull` bunu tamamlar: `docker compose up ollama-pull` (manifest için internet gerekir), sonra `docker compose up -d --wait ollama`. Çalışan Ollama'ya yazma izni verme (ADR-0033) |
 | Yanlış model adı (`misconfigured`) | `OLLAMA_EMBEDDING_MODEL` ve `bge-m3:567m` eşleşmeli; worker 5 dk'da bir yeniden dener |
 
 Belge kaybı yoktur. Model kesintisinde belgeler deneme harcamadan `PENDING`'e döner (ADR-0011).
