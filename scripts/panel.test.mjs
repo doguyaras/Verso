@@ -136,7 +136,10 @@ test('sign-in: the redirect to the IdP asks for a code with an S256 challenge an
   assert.equal(url.searchParams.get('code_challenge'), await challengeOf(verifier));
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   assert.equal(url.searchParams.get('scope'), 'openid');
-  assert.equal(url.searchParams.has('prompt'), false);
+  assert.equal(url.searchParams.has('prompt'), false, 'the automatic sign-in after a 401 reuses the IdP session');
+  calls.assigned.length = 0;
+  await signIn({ prompt: 'login' });
+  assert.equal(new URL(calls.assigned[0]).searchParams.get('prompt'), 'login', 'the intro button always shows the sign-in form');
 });
 
 test('refresh: concurrent callers near expiry share one refresh (the realm revokes a used refresh token)', async () => {

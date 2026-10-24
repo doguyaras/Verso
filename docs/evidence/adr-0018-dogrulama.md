@@ -101,6 +101,12 @@ Değişiklikler canlı yığına iki adımla alındı:
 - Test her kalem hareketinde iki yanda en az yarım çizgi kalınlığı pay arıyor; eski desen testi kırdı ("stroke of 99.3: gap 121.3, offset 121.3").
 - Tanıtım örneği depo yönetim sistemine taşındı, düğme "Başlayın →" oldu.
 
+## Giriş formu her seferinde (ek, aynı gün)
+
+- Keycloak oturumu açıkken "Başlayın" formu atlıyordu (sessiz SSO). Düğme artık `prompt=login` gönderiyor.
+- Canlı: oturum açıkken tıklandı; adres `prompt=login` içeriyor ve `#kc-form-login` göründü.
+- Test, otomatik girişte `prompt` olmadığını ve düğmede `login` olduğunu kontrol ediyor; 35/35.
+
 ## Bilinen sınırlar
 
 ADR-0018'in "Olumsuz / kabul edilen risk" bölümünde ayrıntılı:

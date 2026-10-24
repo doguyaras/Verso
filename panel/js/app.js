@@ -311,7 +311,7 @@ function showSignIn(problem, { quiet = false } = {}) {
       el('button', { class: 'button lg sheen', type: 'button', onclick: (event) => {
         event.currentTarget.setAttribute('aria-busy', 'true');
         sessionStorage.removeItem(AUTO_SIGN_IN);
-        signIn();
+        signIn({ prompt: 'login' }); // the sign-in form every time, even with an IdP session
       } }, text.button, icon('arrowRight')),
       el('div', { class: 'assure' }, ...text.assure.map((t) => el('span', {}, t))))));
   if (!quiet) sign(mark, { delay: 250 });

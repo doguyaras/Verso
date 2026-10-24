@@ -33,7 +33,12 @@ export function claimsOf(jwt) {
 
 const endpoint = (name) => `${CONFIG.issuer}/protocol/openid-connect/${name}`;
 
-export async function signIn() {
+/**
+ * Sends the browser to the IdP. With `prompt: 'login'` the IdP shows its sign-in form even when it still has a session
+ * (the intro's button: the user expects the sign-in step); without it an existing IdP session signs in silently (the
+ * automatic sign-in after a 401).
+ */
+export async function signIn({ prompt } = {}) {
   const verifier = randomString(48);
   const state = randomString(16);
   sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state }));
@@ -43,6 +48,7 @@ export async function signIn() {
     // the IdP's sign-in page opens in the intro screen's language (Turkish unless EN was picked), whatever the browser's
     ui_locales: prefs.lang(),
   });
+  if (prompt === 'login') params.set('prompt', 'login');
   location.assign(`${endpoint('auth')}?${params}`);
 }
 

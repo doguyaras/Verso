@@ -81,6 +81,7 @@
   - Sol sayfada bir örnek soru, sağ sayfada kaynaklı cevabı ve kenar notu, altında "Giriş yap".
   - Örnek kurulumundur (`config.js` → `deployment.showcase`, TR ve EN) ve "Örnek · …" etiketiyle gösterilir. Kullanıcı basit politika sorularını "basit ve saçma" buldu; Verso bir firmaya kurulduğunda o sistemin teknik işleyişini cevaplar. Varsayılan örnek bir depo yönetim sisteminin stok davranışıdır (ilk sürümdeki e-fatura örneği kullanıcı isteğiyle değişti); kurulum ekibi firmanın kendi sisteminden bir örnek koyar.
   - Tanıtımın düğmesi "Başlayın →" der; "Giriş yap" yalnız giriş sayfasındadır, iki kez görünmez.
+  - "Başlayın" IdP'ye `prompt=login` ile gider: Keycloak'ta açık bir oturum olsa da giriş formu her seferinde görünür. Kullanıcı formun atlanmasını (sessiz SSO) "giriş adımı uçmuş" diye gördü. 401 sonrası otomatik giriş sessiz kalır.
 - **Giriş ekranı (Keycloak, 2C):** ekran ikiye bölünür.
   - Sol yarı baştan sona boyalı levhadır; ortasında büyük imza (132 px, CSS ile atılır), altında "Kurumunuza uyum sağlayan yapay zekâ".
   - Sağ yarı kâğıttır: "Giriş yapın", alt satır, altın çizgi, form, iki güvence.
