@@ -236,7 +236,7 @@ Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 b
  isteğe bağlı: prometheus · alertmanager · loki ◄ alloy · grafana (obs profili) · yedek ve restore provası
 ```
 
-Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0024). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
+Kararlar [`docs/decisions.md`](docs/decisions.md) içindedir (ADR-0001 – ADR-0030). Fazlar [`docs/roadmap.md`](docs/roadmap.md), her fazın kanıtı `docs/evidence/faz-N-dogrulama.md` dosyasındadır.
 
 ---
 
@@ -430,7 +430,9 @@ bash scripts/restore-drill.sh
 - **Parola ve anahtar rotasyonu:** [`secrets/README.md`](secrets/README.md). Init script'leri yalnız ilk kurulumda çalışır.
 - **Backup servisi** son başarılı yedek iki aralıktan eskiyse `unhealthy` görünür (`docker compose ps`).
 
-**İmaj yayını** (`.github/workflows/release.yml`): `v*` etiketi önce o commit'te build ve testleri koşar, sonra uygulama imajını bir kez build edip SBOM ve provenance ile `ghcr.io/<owner>/verso` adresine iter. Sürüm etiketi, geri çekilip kontrol edilen digest'e konur. İmaj yalnız uygulamayı içerir: compose dosyaları, kenar proxy ayarı, panel, realm ve init script'leri depodan bağlanır. Yani imajdan kurulum için de depo checkout'u gerekir.
+**İmaj yayını** (`.github/workflows/release.yml`): `v*` etiketi önce o commit'te build ve testleri koşar, sonra uygulama imajını bir kez build edip SBOM ve provenance ile `ghcr.io/<owner>/verso` adresine iter. Digest cosign ile anahtarsız imzalanır, CycloneDX SBOM'u atestasyon olarak eklenir ve ikisi doğrulandıktan sonra sürüm etiketi, geri çekilip kontrol edilen digest'e konur. İmaj yalnız uygulamayı içerir: compose dosyaları, kenar proxy ayarı, panel, realm ve init script'leri depodan bağlanır. Yani imajdan kurulum için de depo checkout'u gerekir.
+
+**Aylık SBOM ve zafiyet taraması** (`.github/workflows/supply-chain-scan.yml`, [ADR-0030](docs/adr/0030-sbom-ve-zafiyet-taramasi.md)): her ayın 1'inde, elle ve pom, `compose.yaml`, `Dockerfile` ya da sürüm tablosu değişince Java derlemesinin ve compose'taki her imajın CycloneDX SBOM'unu üretir (artifact olarak saklanır), Grype ile tarar; CRITICAL ve düzeltmesi olan HIGH bulgusu işi kırar. Kabul edilmiş riskler [`.github/vuln-allowlist.yaml`](.github/vuln-allowlist.yaml) dosyasında gerekçe ve son kullanma tarihiyle durur. Şimdilik zorunlu kontrol değildir. Adımlar: [aylık güvenlik taraması](docs/runbooks/aylik-guvenlik-taramasi.md).
 
 ## Geliştirme
 

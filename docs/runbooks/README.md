@@ -23,6 +23,8 @@ docker compose --profile obs up -d --wait
 - **page:** kullanıcıyı etkiler, hemen bakılır.
 - **ticket:** bir sonraki iş günü bakılır.
 
+**Alarmsız, periyodik iş:** [aylık güvenlik taraması](aylik-guvenlik-taramasi.md): `supply-chain-scan` iş akışı kırmızıysa (CRITICAL ya da düzeltmesi olan HIGH bulgu, süresi dolmuş istisna) bakılacak yer burasıdır (ADR-0030).
+
 **Bildirim kanalı:** henüz bağlı değil. `deploy/obs/alertmanager/alertmanager.yml` içindeki `default` alıcısına bir kanal eklenmeden (Slack, Telegram, e-posta ya da webhook) alarmlar yalnız Grafana ve Alertmanager arayüzlerinde görünür. Kanalın adresi ya da token'ı `/run/secrets` altından `*_file` ayarıyla okunur, YAML'a yazılmaz.
 
 **Hangi log'lar toplanır:** yalnız `verso-app`, `migrate`, `edge` ve `backup`. Keycloak (başarısız girişlerde kullanıcı adı ve adres), PostgreSQL (hata satırları değer içerebilir), Ollama ve gözlem servisleri Loki'ye gönderilmez; onlar için `docker compose logs <servis>` kullanılır.

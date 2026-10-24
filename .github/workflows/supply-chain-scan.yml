@@ -1,0 +1,126 @@
+# Monthly SBOM and vulnerability scan (ADR-0030, security-rules 9, reference 16/25). Runs on the 1st of each month, on demand,
+# and on pushes and pull requests that touch what the scan reads (poms, compose.yaml, Dockerfile, the version table, the
+# allowlist, the gate itself).
+#
+# What it does: a CycloneDX SBOM of the Java build (CycloneDX Maven plugin) and a CycloneDX SBOM of every image in
+# compose.yaml plus the Dockerfile runtime base (Syft, from the pinned digests); Grype scans each SBOM; scripts/vuln-gate.js
+# fails on CRITICAL and on HIGH with a fix available, minus the live entries of .github/vuln-allowlist.yaml.
+#
+# This workflow is deliberately separate from ci.yml: it needs the network for the vulnerability database and image layers,
+# and a new CVE must not turn the required "backend" and "scripts-and-hooks" checks red on an unrelated PR. It is NOT a
+# required check for now (ADR-0030); a failed run is a ticket, not a merge block.
+#
+# Syft and Grype run as containers pinned by digest, so no third-party action besides the pinned checkout/setup/upload
+# ones the other workflows use. Only the default read-only token is granted; no secrets.
+name: supply-chain-scan
+on:
+  schedule:
+    - cron: '17 5 1 * *'   # 05:17 UTC on the 1st of every month (off the hour on purpose: the hour is busy)
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'pom.xml'
+      - '**/pom.xml'
+      - 'compose.yaml'
+      - 'Dockerfile'
+      - 'docs/versions.md'
+      - '.github/vuln-allowlist.yaml'
+      - '.github/workflows/supply-chain-scan.yml'
+      - 'scripts/vuln-gate.js'
+      - 'scripts/vuln-gate.test.js'
+      - 'scripts/sbom-images.js'
+  push:
+    branches: [develop, release, main, 'feature/**', 'fix/**']
+    paths:
+      - 'pom.xml'
+      - '**/pom.xml'
+      - 'compose.yaml'
+      - 'Dockerfile'
+      - 'docs/versions.md'
+      - '.github/vuln-allowlist.yaml'
+      - '.github/workflows/supply-chain-scan.yml'
+      - 'scripts/vuln-gate.js'
+      - 'scripts/vuln-gate.test.js'
+      - 'scripts/sbom-images.js'
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # Resolved 2026-10-24 (docker buildx imagetools inspect). Apache-2.0 both.
+  SYFT: ghcr.io/anchore/syft:v1.55.0@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a
+  GRYPE: ghcr.io/anchore/grype:v0.121.0@sha256:621d56d1d68106b787022c81546f7e0a36202a25d1239f0c20195fab8c16f7ea
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      images: ${{ steps.images.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '24' }
+      - name: gate and allowlist tests (an expired allowlist entry fails here)
+        run: node --test scripts/vuln-gate.test.js
+      - name: images to scan (every one must be pinned by digest)
+        id: images
+        run: echo "matrix=$(node scripts/sbom-images.js)" >> "$GITHUB_OUTPUT"
+
+  maven:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '24' }
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: '25', cache: maven }
+      - name: CycloneDX SBOM of the Java build (compile and runtime scope; version pinned in pom.xml)
+        run: |
+          ./mvnw -B -ntp -DskipTests package org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+          mkdir -p sbom
+          cp target/verso-bom.json sbom/maven.cdx.json
+      - name: Grype on the SBOM
+        run: docker run --rm -v "$PWD/sbom:/w" "$GRYPE" sbom:/w/maven.cdx.json -q -o json --file /w/maven.grype.json
+      - name: gate
+        run: |
+          set -o pipefail
+          node scripts/vuln-gate.js --label maven --grype sbom/maven.grype.json --sbom sbom/maven.cdx.json \
+            --allowlist .github/vuln-allowlist.yaml --min-components 100 | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with: { name: sbom-maven, path: sbom/, retention-days: 90 }
+
+  images:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45   # the Ollama image alone is several gigabytes of layers
+    strategy:
+      fail-fast: false   # one failing image must not hide the findings of the others
+      matrix: ${{ fromJSON(needs.plan.outputs.images) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '24' }
+      - name: Syft SBOM from the pinned digest (read straight from the registry; nothing is run)
+        env: { IMAGE: "${{ matrix.image }}", NAME: "${{ matrix.name }}" }
+        run: |
+          mkdir -p sbom
+          docker run --rm -v "$PWD/sbom:/w" "$SYFT" "registry:$IMAGE" -q -o "cyclonedx-json@1.6=/w/$NAME.cdx.json"
+      - name: Grype on the SBOM
+        env: { NAME: "${{ matrix.name }}" }
+        run: docker run --rm -v "$PWD/sbom:/w" "$GRYPE" "sbom:/w/$NAME.cdx.json" -q -o json --file "/w/$NAME.grype.json"
+      - name: gate
+        env: { NAME: "${{ matrix.name }}" }
+        run: |
+          set -o pipefail
+          node scripts/vuln-gate.js --label "$NAME" --grype "sbom/$NAME.grype.json" --sbom "sbom/$NAME.cdx.json" \
+            --allowlist .github/vuln-allowlist.yaml --min-components 5 | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with: { name: "sbom-${{ matrix.name }}", path: sbom/, retention-days: 90 }

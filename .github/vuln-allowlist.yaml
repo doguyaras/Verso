@@ -1,0 +1,102 @@
+# Accepted vulnerabilities for the monthly scan (ADR-0030, docs/runbooks/aylik-guvenlik-taramasi.md).
+# Every entry needs a justification and an expiry date. An expired entry waives nothing, fails the gate and fails
+# `node --test scripts/vuln-gate.test.js`. Do not renew silently: re-assess, then pick a new date (max ~6 months; a
+# package-wide entry with id "*" max ~2 months, because it also hides advisories that appear later).
+# Fields: id (CVE, GHSA or Go advisory; "*" needs scope and package) · scope (part of the SBOM name) · package (name,
+# or a prefix with one trailing "*") · reason (at least 20 characters, no hash sign) · expires (YYYY-MM-DD).
+#
+# Snapshot of the first scan, 2026-10-24: 9 of 11 images failed the gate. The remedy for all of them is a newer upstream
+# image; the follow-up bumps are listed in docs/versions.md. The entries below only bridge until then.
+entries:
+  # --- Known and accepted by design --------------------------------------------------------------------------------
+  - id: CVE-2025-63389
+    scope: ollama
+    reason: "Ollama has no server-side authentication and no upstream fix. Mitigated by the network only: compose.yaml gives Ollama no host port and puts it on the internal models network (security-rules 9)."
+    expires: 2027-01-31
+  - id: GHSA-f6mr-38g8-39rg
+    scope: ollama
+    reason: "Advisory alias of CVE-2025-63389 (missing authentication, no fix); same mitigation: internal-only models network, no host port."
+    expires: 2027-01-31
+
+  # --- Ollama 0.35.1: stale Go toolchain and Go modules inside the upstream binary (newer upstream: 0.40.10) -----------
+  - id: "*"
+    scope: ollama
+    package: stdlib
+    reason: "Go standard library of the upstream Ollama build. Fix needs a newer Ollama release (0.40.x exists, not yet qualified against the pinned model digests). Reachable only from verso-app over the internal models network, which has no route out."
+    expires: 2026-12-15
+  - id: "*"
+    scope: ollama
+    package: "golang.org/x/*"
+    reason: "Go x/ modules of the upstream Ollama build (crypto, net, image, text, mod). Same remedy and same exposure as the Ollama stdlib entry: a newer release, internal-only network."
+    expires: 2026-12-15
+  - id: "*"
+    scope: ollama
+    package: "github.com/*"
+    reason: "Go modules of the upstream Ollama build (jsonparser, klauspost/compress). Same remedy and same exposure as the Ollama stdlib entry."
+    expires: 2026-12-15
+
+  # --- pgvector 0.8.7-pg18-trixie: the pinned digest is still the newest build of this tag (Docker Hub, 2026-10-24) ---
+  - id: "*"
+    scope: pgvector
+    package: stdlib
+    reason: "Go standard library inside gosu, the privilege-drop helper of the official postgres image. It runs once at container start and never listens or parses network input. Newest pgvector build of this tag is already pinned."
+    expires: 2026-12-15
+  - id: CVE-2026-6653
+    scope: pgvector
+    package: libxml2
+    reason: "libxml2 in the Debian trixie base of the pgvector image, no Debian fix at scan time. No SQL migration in this repository uses XML types or functions, and the database is reachable only from the internal db network."
+    expires: 2026-12-15
+  - id: CVE-2026-103111
+    scope: pgvector
+    package: libpcre2-8-0
+    reason: "libpcre2 in the Debian trixie base of the pgvector image; used by system tools in the image; PostgreSQL itself uses its own regular-expression engine. Rebuild of the upstream image picks up the Debian fix."
+    expires: 2026-12-15
+
+  # --- Keycloak 26.8.1 --------------------------------------------------------------------------------------------
+  - id: CVE-2026-114406
+    scope: keycloak
+    package: ca-certificates
+    reason: "Red Hat rates it CVSS 6.8 (grype shows Critical): weak intermediate CAs under eMudhra roots need a man-in-the-middle on an outbound TLS connection. The realm under deploy/keycloak/realm configures no identity-provider brokering and no SMTP server, so Keycloak starts no outbound TLS connection to the internet. No fixed ca-certificates package yet."
+    expires: 2027-01-31
+
+  # --- nginx 1.30.6-alpine -------------------------------------------------------------------------------------------
+  - id: CVE-2026-85091
+    scope: nginxinc-nginx
+    package: zlib
+    reason: "zlib in the Alpine base of the edge proxy. No gzip directive is configured under deploy/ (nginx does not run zlib on traffic unless compression is switched on), and the proxy only forwards to verso-app. A fixed zlib arrives with the next Alpine rebuild; the digest refresh picks it up."
+    expires: 2026-12-15
+
+  # --- Observability profile (obs): Prometheus, Alertmanager, Loki, Alloy, Grafana -----------------------------------
+  # None of them is published except Grafana through the loopback-only edge proxy (compose.yaml, obs profile).
+  - id: "*"
+    scope: prom-prometheus
+    package: "*"
+    reason: "Stale Go toolchain and x/ modules in the upstream Prometheus build (v3.15.1 exists). Internal obs network only, no published port, obs profile is optional. Remedy is the upstream bump."
+    expires: 2026-12-15
+  - id: "*"
+    scope: prom-alertmanager
+    package: "*"
+    reason: "Stale Go toolchain, x/ modules and grpc in the upstream Alertmanager v0.34.1 build (no newer release at scan time). Internal obs network only, no published port, obs profile is optional."
+    expires: 2026-12-15
+  - id: "*"
+    scope: grafana-loki
+    package: "*"
+    reason: "Stale Go toolchain and x/ modules in the upstream Loki build (3.7.9 exists). Internal obs network only, no published port, obs profile is optional. Remedy is the upstream bump."
+    expires: 2026-12-15
+  - id: "*"
+    scope: grafana-alloy
+    package: "*"
+    reason: "Stale Go toolchain, x/ modules and OpenSSL in the upstream Alloy build (v1.21.2 exists). Its server listens on 127.0.0.1 inside its own container only; obs profile is optional. Remedy is the upstream bump."
+    expires: 2026-12-15
+  - id: "*"
+    scope: grafana-grafana
+    package: "*"
+    reason: "Stale Go toolchain and Go modules in the upstream Grafana 13.2.3 build (13.2.4 exists). Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls. Remedy is the upstream bump."
+    expires: 2026-12-15
+
+  # --- Flyway CLI 12.4.0 (restore drill only) -----------------------------------------------------------------------
+  - id: "*"
+    scope: flyway
+    package: "*"
+    reason: "Bundled Java libraries of the Flyway CLI image (netty, jackson, httpcore, openjdk, openssl). It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL. Flyway 13.x exists; the major bump needs its own qualification."
+    expires: 2026-12-15

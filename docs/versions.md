@@ -23,6 +23,7 @@
 | PostgreSQL JDBC / HikariCP | 42.7.14 / 7.0.2 | – | Boot 4.1.2 BOM | |
 | Flyway (kütüphane / CLI image) | 12.4.0 / `flyway/flyway:12.4.0@sha256:5be18367…afac` | – | Boot 4.1.2 BOM; Docker Hub 2026-10-02 | CLI yalnız restore provasında `validate` için; kütüphaneyle aynı sürüm |
 | Testcontainers | 2.0.5 (`testcontainers-postgresql`) | – | Boot 4.1.2 BOM | `org.testcontainers.postgresql.PostgreSQLContainer` (2.x paketi) |
+| SBOM ve tarama araçları | CycloneDX Maven eklentisi 2.9.3; Syft v1.55.0 (`ghcr.io/anchore/syft@sha256:4cc92b64…a110a`); Grype v0.121.0 (`ghcr.io/anchore/grype@sha256:621d56d1…f7ea`); cosign v3.1.4 (`sigstore/cosign-installer` v4.1.2) | – | Maven Central metadata ve `git ls-remote` (2026-10-24); digest'ler `docker buildx imagetools inspect` ile | Hepsi Apache 2.0. Syft ve Grype `supply-chain-scan.yml`'de, cosign yalnız `release.yml`'de (ADR-0030) |
 | Keycloak (demo IdP) | 26.8.1 (`quay.io/keycloak/keycloak:26.8.1@sha256:a78d6b79…dd6b`) | – | quay.io 2026-10-24; keycloak.org/2026/10/keycloak-2681-released | 26.7.5 → 26.8.1 (2026-10-24, güvenlik): 26.8.1 sürüm notları 18 Keycloak + 9 bağımlılık CVE kapatır (ör. CVE-2026-18569, CVE-2026-94000, jackson CVE-2026-91777); 26.7.x için 26.7.6 yok, yama yalnız 26.8.1'de. Geri dönüş: 26.8 veritabanı şemasını yükseltir, eski image'a dönüş desteklenmez; var olan kurulumda yükseltmeden önce `keycloak` veritabanı yedeklenir. | prod modu (`start`), compose'ta; üretimde müşterinin IdP'si (ADR-0010) |
 | Spring Security / OAuth2 Resource Server | 7.1.2 | – | Boot 4.1.2 BOM | `spring-boot-starter-oauth2-resource-server`; Nimbus JOSE+JWT BOM'dan |
 | Node (CI script'leri) | 24 LTS | 2028-04-30 | nodejs.org/en/about/eol | |
@@ -43,3 +44,22 @@
 **Bilinen CVE tetikleyicileri** (yaması yalnız ticari sürümde olan → upgrade): 2026-10-24: Spring AI 2.0.1 (CVE-2026-47851/-47852; 2.0.0.1 ticari, 2.0.1 OSS) zaten kullanılıyor; pgvector 0.8.7 (CVE-2026-3172, -18022, -103484) zaten kullanılıyor; Keycloak 26.8.1, nginx 1.30.6 ve Boot 4.1.2 bu tarihte yükseltildi (yukarıdaki satırlar). OSV taraması (182 çalışma zamanı bağımlılığı, 2026-10-24): Boot 4.1.2 sonrası bilinen HIGH/CRITICAL yok.
 
 **Son kontrol komutları:** `./mvnw versions:display-dependency-updates`, Renovate panosu, `osv-scanner`.
+
+## Aylık SBOM ve zafiyet taraması rutini (ADR-0030)
+
+Her ayın 1'inde `supply-chain-scan` iş akışı kendiliğinden koşar (elle: Actions → `supply-chain-scan` → Run workflow). Java derlemesinin ve compose'taki 11 imajın CycloneDX SBOM'unu üretir (artifact, 90 gün), Grype ile tarar; CRITICAL ya da düzeltmesi olan HIGH bulgu işi kırar. Kırmızı koşu **zorunlu kontrol değildir**: bir iş kaydıdır, birleştirmeyi engellemez; `backend` ve `scripts-and-hooks` aynen kalır. Adımlar: [`docs/runbooks/aylik-guvenlik-taramasi.md`](runbooks/aylik-guvenlik-taramasi.md). Bu dosyadaki tarih ve satırlar, bir bulgu yüzünden sürüm değiştikçe CVE kimliğiyle güncellenir.
+
+**İlk tarama (2026-10-24, `develop`):**
+
+| Hedef | Bileşen | Bulgu (CRITICAL / HIGH / toplam) | Kapı |
+|---|---|---|---|
+| Java derlemesi (compile + runtime) | 192 | 0 / 0 / 0 | geçti, istisna yok |
+| `eclipse-temurin` JRE (Dockerfile çalışma tabanı) | 3881 | 0 / 0 / 87 (düşük ve orta) | geçti, istisna yok |
+| Keycloak 26.8.1 | 4577 | 1 / 1 / 92 | allowlist: CVE-2026-114406 (ca-certificates, düzeltme yok) |
+| nginx 1.30.6-alpine | 1282 | 0 / 2 / 7 | allowlist: CVE-2026-85091 (zlib) |
+| pgvector 0.8.7-pg18-trixie | 7482 | 4 / 118 / 370 | allowlist: gosu'nun Go stdlib'i, libxml2, libpcre2 (pinli digest bu etiketin en yenisi) |
+| Ollama 0.35.1 | 2920 | 10 / 53 / 194 | allowlist: Go stdlib ve x/ modülleri; CVE-2025-63389 kaydı (Grype bu kimliği eşlemiyor) |
+| Prometheus v3.15.0 / Alertmanager v0.34.1 / Loki 3.7.8 / Alloy v1.20.1 / Grafana 13.2.3 | 444 / 234 / 1321 / 4013 / 2689 | 6/29, 6/35, 3/13, 3/15, 42/207 | allowlist: paket genelinde, 2026-12-15'e kadar |
+| Flyway CLI 12.4.0 | 4691 | 2 / 81 / 620 | allowlist: görüntü genelinde (yalnız `drill` profili), 2026-12-15'e kadar |
+
+İstisnasız yalnız Java derlemesi ve Temurin geçti; kalan dokuz imaj gerçek bulgu taşıyor ve `.github/vuln-allowlist.yaml` kayıtlarıyla örtülüdür (gerekçe ve son kullanma tarihi kayıtlarda). Hepsinin çaresi daha yeni yukarı akış imajıdır. **2026-12-15'ten önce yapılacak yükseltmeler** (Docker Hub, 2026-10-24'te görülen etiketler; her biri kendi `@sha256` digest'i, testi ve bu tablonun güncellenmesiyle ayrı bir değişikliktir): Prometheus v3.15.1, Loki 3.7.9, Alloy v1.21.2, Grafana 13.2.4; Alertmanager için v0.34.1 hâlâ en yeni; Ollama 0.40.x (model digest'leriyle nitelendirilmeli); Flyway 13.x (büyük sürüm); pgvector ve nginx için yeni bir build bekleniyor (aynı etiketin yeni digest'i ya da nginx 1.31.x anadalı).

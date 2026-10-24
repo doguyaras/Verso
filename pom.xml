@@ -50,6 +50,7 @@
     <maven-install-plugin.version>3.2.0</maven-install-plugin.version>
     <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
     <flatten-maven-plugin.version>1.8.0</flatten-maven-plugin.version>
+    <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
     <verso.excludedGroups>eval</verso.excludedGroups>
   </properties>
 
@@ -180,6 +181,24 @@
   <build>
     <pluginManagement>
       <plugins>
+        <!-- SBOM of the shipped (compile and runtime) dependencies, CycloneDX 1.6 JSON. Not bound to a phase: the
+             monthly scan workflow runs it by name (ADR-0030), so a normal build is not slowed. -->
+        <plugin>
+          <groupId>org.cyclonedx</groupId>
+          <artifactId>cyclonedx-maven-plugin</artifactId>
+          <version>${cyclonedx-maven-plugin.version}</version>
+          <configuration>
+            <projectType>application</projectType>
+            <schemaVersion>1.6</schemaVersion>
+            <outputFormat>json</outputFormat>
+            <outputName>verso-bom</outputName>
+            <includeCompileScope>true</includeCompileScope>
+            <includeRuntimeScope>true</includeRuntimeScope>
+            <includeProvidedScope>false</includeProvidedScope>
+            <includeSystemScope>false</includeSystemScope>
+            <includeTestScope>false</includeTestScope>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>

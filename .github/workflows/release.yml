@@ -2,8 +2,10 @@
 # the tagged commit (the Dockerfile itself skips tests), then builds the application image once and pushes it to GitHub
 # Container Registry with the build's SBOM and provenance attestations. The pushed digest is pulled back and checked
 # before the version tag points at it; until then only ghcr.io/<owner>/verso:sha-<commit> exists. Nothing is pushed for
-# branches or pull requests. Only GITHUB_TOKEN is used (packages: write for the image job only); no third-party action
-# besides the pinned checkout and setup-java ones the ci workflow uses; BuildKit and the SBOM scanner are pinned by digest.
+# branches or pull requests. The checked digest is then signed keyless with cosign (the workflow's OIDC identity, no stored key) and
+# gets a CycloneDX SBOM attestation; both are verified before the version tag moves (ADR-0030). Only GITHUB_TOKEN is used
+# (packages: write and id-token: write for the image job only); no third-party action besides the pinned checkout, setup-java and
+# cosign-installer ones; BuildKit, Syft and cosign are pinned by digest or version.
 #
 #   git tag v0.1.0 && git push origin v0.1.0
 name: release
@@ -35,11 +37,17 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write   # keyless cosign signing with the workflow's OIDC identity, no stored key (ADR-0030)
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/verso
       # moby/buildkit:v0.31.0 and docker/buildkit-syft-scanner:1.12.0, resolved 2026-10-03
       BUILDKIT: moby/buildkit:v0.31.0@sha256:a095b3d11ce1a9a05b6064ef515dfca0291ec5bcf2ea8178da8f6461924294e1
       SBOM_SCANNER: docker/buildkit-syft-scanner:1.12.0@sha256:ae4f3b554449e7e25548e7d8ccc029d17357348e30c6e3df01b92bc93654d6a9
+      # Same Syft as the monthly scan (supply-chain-scan.yml); it writes the CycloneDX SBOM that cosign attests.
+      SYFT: ghcr.io/anchore/syft:v1.55.0@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a
+      # Only this workflow, run for a version tag of this repository, counts as a valid signer.
+      SIGNER_IDENTITY: ^https://github\.com/${{ github.repository }}/\.github/workflows/release\.yml@refs/tags/v
+      OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -76,6 +84,19 @@ jobs:
           [[ "$user" =~ ^[1-9][0-9]*$ ]] || { echo "image user is '$user'" >&2; exit 1; }
           revision="$(docker image inspect "$IMAGE_NAME@$DIGEST" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
           [[ "$revision" == "$GITHUB_SHA" ]] || { echo "image revision is '$revision'" >&2; exit 1; }
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with: { cosign-release: 'v3.1.4' }
+      - name: sign the digest and attest its CycloneDX SBOM (keyless), then verify both
+        env:
+          IMAGE_NAME: ${{ steps.version.outputs.image }}
+        run: |
+          # Syft and cosign reuse the registry login above; the SBOM describes exactly the pushed digest.
+          docker run --rm -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" -v "$RUNNER_TEMP:/out" "$SYFT" \
+            "registry:$IMAGE_NAME@$DIGEST" -q -o "cyclonedx-json@1.6=/out/image.cdx.json"
+          cosign sign --yes "$IMAGE_NAME@$DIGEST"
+          cosign attest --yes --type cyclonedx --predicate "$RUNNER_TEMP/image.cdx.json" "$IMAGE_NAME@$DIGEST"
+          cosign verify --certificate-identity-regexp "$SIGNER_IDENTITY" --certificate-oidc-issuer "$OIDC_ISSUER" "$IMAGE_NAME@$DIGEST" > /dev/null
+          cosign verify-attestation --type cyclonedx --certificate-identity-regexp "$SIGNER_IDENTITY" --certificate-oidc-issuer "$OIDC_ISSUER" "$IMAGE_NAME@$DIGEST" > /dev/null
       - name: point the version tag at the checked digest
         env:
           VERSION: ${{ steps.version.outputs.version }}
