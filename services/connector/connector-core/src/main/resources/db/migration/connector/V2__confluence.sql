@@ -6,6 +6,8 @@
 -- and "attachments/<page id>/<attachment id>" as paths, never a title, so nothing human-readable of a page reaches
 -- this schema.
 
+-- contract: the DROPs only widen checks (a new type, SMB-only NOT NULLs moved into a type-scoped check, "+" in
+-- account names); every row the previous release writes still satisfies them, so it runs on this schema.
 ALTER TABLE connector.connector DROP CONSTRAINT ck_connector_type;
 ALTER TABLE connector.connector ADD CONSTRAINT ck_connector_type CHECK (type IN ('SMB', 'CONFLUENCE'));
 
