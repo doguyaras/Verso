@@ -555,7 +555,7 @@ class CollectionAccessTest {
 
         HttpResponse<String> aliceList = get(alice, "/v1/documents?collectionId=" + hukuk);
         assertThat(ids(aliceList)).containsExactly(shown.toString());
-        assertThat(JsonPath.<Number>read(aliceList.body(), "$.totalElements").intValue()).isEqualTo(1);
+        assertThat(JsonPath.<Number>read(aliceList.body(), "$.page.totalElements").intValue()).isEqualTo(1);
         assertThat(ids(get(admin, "/v1/documents?collectionId=" + hukuk))).containsExactlyInAnyOrder(shown.toString(),
                 drifted.toString());
         // A collection the caller does not read stays a 404 (the first layer).
