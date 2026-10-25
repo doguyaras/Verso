@@ -15,7 +15,7 @@
 ## 1. Onaylı araç
 
 - Kurumun onayladığı üretken yapay zekâ aracı: **{{ASISTAN_ADI}}** (Verso). Çalışma modu: {{AI_MODU}}.
-- `local` modda sorularınız, belgeleriniz ve cevaplar kurumun sunucularında kalır. `cloud` modda soru ve en fazla 5 belge pasajı {{BULUT_SAGLAYICI}} sağlayıcısına gider ([02](02-aydinlatma-metni-calisan.md)).
+- `local` modda sorularınız, belgeleriniz ve cevaplar kurumun sunucularında kalır. `cloud` modda soru (takip sorusunda konuşmanın son iki sorusuyla birlikte) ve en fazla 5 belge pasajı {{BULUT_SAGLAYICI}} sağlayıcısına gider ([02](02-aydinlatma-metni-calisan.md)).
 - **Başka üretken YZ araçları** (kişisel hesaplarla halka açık sohbet botları, tarayıcı eklentileri, yapay zekâ özellikli not alma uygulamaları): {{DIGER_ARACLAR_KURALI}}. Yasak tek başına yeterli kabul edilmez; kurumun ihtiyacını onaylı araç karşılamalıdır. Onaylı listeye yeni araç ekleme süreci: {{ARAC_ONAY_SURECI}}.
 - Kurumun ağ düzeyindeki engel/izin listesi: {{AG_ENGEL_LISTESI}}.
 

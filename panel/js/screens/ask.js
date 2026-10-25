@@ -7,7 +7,7 @@
 // In the browser the open conversation lives in this tab's memory only (store.js); a reload starts a new one.
 import { api, lastMode } from '../api.js';
 import { disclosureLine, disclosureNotice } from '../disclosure.js';
-import { answerMarkdown, chipLabel, errorState, followUps, markdownFileName, selectionQuestion } from '../answer.js';
+import { answerMarkdown, chipLabel, contextQueryNote, errorState, followUps, markdownFileName, selectionQuestion } from '../answer.js';
 import { CONFIG } from '../config.js';
 import { continueWith, startOverNote, startsOver } from '../conversations.js';
 import { citingSpans, citingText, excerptParts, matchRanges } from '../excerpt.js';
@@ -307,12 +307,16 @@ function answerView(entry, actions) {
   if (text) segments.push(...text.segments);
   const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored, actions.page) : null;
   const chips = restored ? [] : followUps(result);
+  // ADR-0046: a follow-up searched with the conversation says how it was understood (not stored: fresh answers only).
+  const contextNote = contextQueryNote(result);
   // EU AI Act Art. 50 (ADR-0027): a generated answer is machine-readable as such. The fixed "not found" text is not generated.
   const view = el('div', { class: `answer${sources ? ' has-sources' : ''}`, 'data-ai-generated': notFound ? null : 'true' },
     // ADR-0021: the installation's product name, never followed by a Turkish case suffix.
     el('h3', { class: 'sr-only' }, `${productName} cevap verdi`),
     el('div', { class: 'answer-head' }, outcomeBadge(result),
-      restored ? el('span', { class: 'pill neutral', title: 'Geçmişten açıldı; alıntılar saklanmaz.' }, icon('history', 'sm'), 'Geçmişten') : null),
+      restored ? el('span', { class: 'pill neutral', title: 'Geçmişten açıldı; alıntılar saklanmaz.' }, icon('history', 'sm'), 'Geçmişten') : null,
+      contextNote ? el('p', { class: 'context-query', title: 'Soru, konuşmanın önceki sorularıyla birlikte bu sorguyla arandı.' },
+        icon('search', 'sm'), contextNote) : null),
     entry.notice ? el('div', { class: 'notice info start-over' }, icon('info', 'sm'), el('div', { class: 'grow' }, entry.notice)) : null,
     notFound
       ? el('div', { class: 'notice neutral answer-empty' }, icon('search', 'sm'), el('div', { class: 'grow' },
@@ -329,7 +333,7 @@ function answerView(entry, actions) {
       : null,
     sources,
     chips.length ? el('div', { class: 'follow-ups', role: 'group', 'aria-label': 'Takip soruları' }, chips.map((f) =>
-      // The tooltip is the question as it will be sent: a new question, the conversation is not sent along.
+      // The tooltip is the question as it will be sent: a standalone question (the follow-up rewrite of ADR-0046 skips it).
       el('button', { class: 'chip follow', type: 'button', title: f.local ? 'Kaynaklar bu cevapta gösteriliyor; yeni soru sorulmaz.' : f.question(entry.question), onclick: () => (f.local ? actions.sources(link, result) : actions.ask(f.question(entry.question))) },
         icon(f.local ? 'book' : 'chat', 'sm'), f.label))) : null,
     el('div', { class: 'answer-foot' }, modeMeta(result, entry.ms), el('span', { class: 'spacer' }),

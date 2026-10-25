@@ -110,6 +110,25 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
     }
 
     @Override
+    public List<PriorTurn> recent(AccountId account, UUID conversationId, int count) {
+        List<TurnRepository.RecentTurn> rows;
+        try {
+            rows = turns.recent(account.value(), conversationId, count);
+        } catch (DataAccessException e) {
+            // The rewrite is best effort (ADR-0046): the question is then searched as asked. Type only (llm-rules 2.1).
+            log.warn("Conversation history not read for a follow-up: reason=DATABASE exceptionType={}",
+                    e.getClass().getSimpleName());
+            return List.of();
+        }
+        List<PriorTurn> oldestFirst = new ArrayList<>(rows.size());
+        for (int i = rows.size() - 1; i >= 0; i--) {
+            TurnRepository.RecentTurn row = rows.get(i);
+            oldestFirst.add(new PriorTurn(row.question(), row.answer(), AnswerOutcome.ANSWERED.name().equals(row.outcome())));
+        }
+        return oldestFirst;
+    }
+
+    @Override
     public Optional<StoredTurn> record(AccountId account, UUID conversationId, String question, AnswerResponse answer,
                                        Timings timings) {
         StoredTurn stored;

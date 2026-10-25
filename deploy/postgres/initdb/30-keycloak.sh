@@ -9,7 +9,7 @@
 # The bundled Keycloak is a demo IdP; in production Verso validates the customer's IdP and this database is unused.
 set -euo pipefail
 SECRETS="${VERSO_SECRETS_DIR:-/run/secrets}"
-if [ ! -r "$SECRETS/SECRET_DB_KEYCLOAK_PASSWORD" ] || [ ! -s "$SECRETS/SECRET_DB_KEYCLOAK_PASSWORD" ]; then
+if [ ! -f "$SECRETS/SECRET_DB_KEYCLOAK_PASSWORD" ] || [ ! -r "$SECRETS/SECRET_DB_KEYCLOAK_PASSWORD" ] || [ ! -s "$SECRETS/SECRET_DB_KEYCLOAK_PASSWORD" ]; then
   echo "30-keycloak: secret SECRET_DB_KEYCLOAK_PASSWORD missing, empty or unreadable" >&2
   exit 1
 fi

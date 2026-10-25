@@ -90,6 +90,28 @@ public class TurnRepository {
                 .param("conversation", conversationId).query(Integer.class).single();
     }
 
+    /** A question and answer of an earlier turn, for the follow-up rewrite (ADR-0046); no ids, no rating. */
+    public record RecentTurn(String question, String answer, String outcome) {
+
+        @Override
+        public String toString() {
+            return "RecentTurn[outcome=" + outcome + "]";
+        }
+    }
+
+    /**
+     * The latest {@code limit} turns of one of the account's conversations, newest first (ADR-0046). The account is
+     * part of the query: another account's conversation yields nothing.
+     */
+    public List<RecentTurn> recent(String accountId, UUID conversationId, int limit) {
+        return db.jdbc().sql("SELECT question, answer, outcome FROM qa.turn "
+                        + "WHERE account_id = :account AND conversation_id = :conversation "
+                        + "ORDER BY created_at DESC, id DESC LIMIT :limit")
+                .param("account", accountId).param("conversation", conversationId).param("limit", limit)
+                .query((rs, n) -> new RecentTurn(rs.getString("question"), rs.getString("answer"), rs.getString("outcome")))
+                .list();
+    }
+
     /** The turns of one of the account's conversations, oldest first, with the owner's rating. */
     public List<TurnRow> list(String accountId, UUID conversationId) {
         return db.jdbc().sql("SELECT t.id, t.question, t.answer, t.outcome, t.mode, t.chat_model, t.total_ms, t.created_at, "

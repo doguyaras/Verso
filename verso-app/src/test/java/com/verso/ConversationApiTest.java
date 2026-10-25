@@ -343,7 +343,10 @@ class ConversationApiTest {
         }
     }
 
-    /** ADR-0023: the history is stored, not used; a follow-up question is answered on its own (llm-rules 3.1). */
+    /**
+     * ADR-0023, ADR-0046: the history never enters the answer prompt. A short follow-up goes through the rewrite (the
+     * test model repeats it unchanged), and the answer prompt still holds only the question as asked (llm-rules 3.1).
+     */
     @Test
     void ask_whenAConversationContinues_doesNotPutTheHistoryIntoThePrompt() throws Exception {
         ready(owner, "topic-leave Annual leave is twenty working days.");

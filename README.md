@@ -128,6 +128,7 @@ Ekranlar:
   - **Sayfa görünümü:** kaynak satırındaki "Sayfayı aç" (DOCX/TXT/MD'de "Bölümü aç") sağdan bir panel açar: belgenin saklanan sayfa metni, alıntı vurgulu, önceki/sonraki sayfa. Yalnız okuyabildiğiniz belgeler açılır. Esc kapatır, odak açan düğmeye döner.
   - **Bekleme:** geçen süre ve gerçekçi bir beklenti görünür.
   - **Konuşma** ([ADR-0025](docs/adr/0025-gecmis-geri-bildirim-deger-panosu.md)): ardışık sorular sunucuda aynı konuşmaya yazılır; "Yeni konuşma" yenisini başlatır. Konuşma silinmiş ya da dolmuşsa soru kendiliğinden yeni konuşmada sorulur ve bir notla belirtilir.
+  - **Takip soruları** ([ADR-0046](docs/adr/0046-takip-sorulari.md)): aynı konuşmada "Peki P2 için?" ya da "Bunun süresi ne kadar?" gibi tek başına anlaşılmayan bir soru, aramadan önce son iki turla tek başına anlaşılan bir arama sorgusuna yeniden yazılır. Akışta "Soru bağlamla yeniden yazılıyor" adımı görünür, cevabın üstünde küçük bir "Bağlamla arandı: …" notu çıkar. Cevap yine sorulan soruya yazılır. Kısa ya da "bu, bunun, peki, ya…" içeren sorular yeniden yazılır; diğerleri olduğu gibi aranır. `VERSO_QA_FOLLOWUP_ENABLED=false` kapatır.
   - **Geri bildirim:** her cevabın altında 👍/👎. 👎'den sonra küçük bir neden seçici açılır (Yanlış kaynak, Eksik ya da yanlış, Güncel değil, Diğer); "Yanlış kaynak"ta hangi `[n]` olduğu sorulur. Yeni puan eskisinin yerine geçer.
 - **Geçmiş** (menüde "Soru sor"un altında, `g g`, hesap menüsü ya da soru ekranındaki düğme): kendi konuşmalarınız sağdan açılan bir panelde, son etkinliğe göre ve 20'şer. Yüklenen başlıklarda Türkçe harf duyarsız arama; yeniden adlandırma; tek konuşmayı silme (panelin kendi onay penceresi); "Tümünü sil" yalnız `SİL` yazılınca çalışır. Açılan konuşma soru ekranına salt okunur gelir (alıntı saklanmadığı için takip sorusu yok) ve sonraki soru onu sürdürür. Silinmiş belgeye atıf "Belge silinmiş" diye görünür. Konuşmalar kurulumun saklama süresi dolunca silinir (`VERSO_HISTORY_RETENTION_DAYS`, varsayılan 90 gün; panel süreyi API'den alamadığı için sayı yazmaz).
 - **Değer panosu** (yalnız `/v1/info` `verso-admin` rolü verirse; sunucu diğerlerine 403 döner): 7 / 30 / 90 günlük aralık; soru, aktif kullanıcı, kaynaklı / bulunamadı / kaynak gösterilemedi oranları, p50 / p95 süre ve 👍 oranı kartları; günlük soru ve sonuç oranı çizgileri (üzerine gelince ya da ←/→ ile gün gün, tablo olarak da); mod dağılımı, 👎 nedenleri, en çok ve hiç atıf almamış belgeler. Belge adları kurulum açtıysa görünür, yoksa "Belge #…". Cevaplanamayan sorular yalnız kurulum açtıysa ve en az 3 kişi sorduysa listelenir. "Tahmini kazanılan süre" gösterilmez: API'de dürüstçe türetilecek bir veri yok.
@@ -227,7 +228,7 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 |---|---|---|
 | Embedding | Yerel (Ollama, bge-m3) | Yerel (Ollama, bge-m3) |
 | Chat | Yerel (Ollama, gemma4:e2b) | Anthropic ya da OpenAI uyumlu API |
-| Host'tan çıkan | Hiçbir şey | Yalnız sistem kuralları, soru ve en fazla 5 pasaj |
+| Host'tan çıkan | Hiçbir şey | Yalnız sistem kuralları, soru ve en fazla 5 pasaj; takip sorusunda ayrıca aynı konuşmanın son iki sorusu ve son cevabın başı (ADR-0046) |
 | Kanıt | `scripts/prove-local-mode.sh` (CI'da koşar) | `X-Rag-Mode: cloud` her yanıtta |
 | Açma | `docker compose up` | `deploy/compose.cloud.yaml` + anahtar dosyası |
 
@@ -351,6 +352,7 @@ Kurulum ekibi için (Entra uygulama kaydı ve en az yetki):
 | Cevapta beklenen bilgi (sürüm 2, GPU) | 0,884 | aynı |
 | Belgelerde olmayan soruya "bulunamadı" (sürüm 2, 28 soru) | 0,607: kapı 7/7, model 10/21. Konusu belgede olan sorular en zayıf yer | aynı |
 | Cevap süresi (sürüm 2, GPU) | p50 1,5 sn, p95 3,3 sn | aynı |
+| Takip sorusu ("Peki P2 için?", 32 konuşma, GPU): doğru sayfaya atıf | yeniden yazmayla 0,875 (yazmadan 0,719); yazma çağrısı p50 0,38 sn, p95 0,68 sn | `eval/results/followup-{on,off}-gpu.json` |
 | Cevap süresi (CPU, 2 çekirdek; sürüm 1, 33 soru) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | `eval/results/e2e-gemma4_e2b.json` |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
 | Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır) | `docs/capacity.md` |

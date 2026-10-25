@@ -29,7 +29,7 @@ import { ACCENT_TOKENS, applyAccent, contrast, LIMITS, loadBranding, LOGO_PATTER
   validateBranding } from '../panel/js/branding.js';
 import { CONFIG, DEPLOYMENT_DEFAULTS, useDeployment } from '../panel/js/config.js';
 import { ABBREVIATIONS, citingSpans, citingText, excerptParts, fold, key, matchRanges, sentences, STEM, STOP_WORDS, terms } from '../panel/js/excerpt.js';
-import { answerMarkdown, chipLabel, CHIP_NAME_MAX, clip, errorState, escapeMarkdown, fitQuestion, FOLLOW_UPS, followUps, markdownFileName, MAX_QUESTION, SELECTION_MAX,
+import { answerMarkdown, chipLabel, CHIP_NAME_MAX, clip, contextQueryNote, MAX_CONTEXT_QUERY, errorState, escapeMarkdown, fitQuestion, FOLLOW_UPS, followUps, markdownFileName, MAX_QUESTION, SELECTION_MAX,
   selectionQuestion } from '../panel/js/answer.js';
 import { ApiError } from '../panel/js/api.js';
 // ask.js touches no DOM at module load (only inside its functions), so node can import it for its constants.
@@ -1500,7 +1500,27 @@ test('stream: stages say only what the server did; the draft hides markers until
   assert.equal(provisionalText('Liste [a] kalır.'), 'Liste [a] kalır.');
   assert.deepEqual(resultOf({ answer: 'A [1].', citations: [{ number: 1 }] },
     { outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' }),
-  { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' });
+  { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't',
+    contextQuery: null });
+});
+
+test('follow-up (ADR-0046): the rewrite stage, the query from "done" and the "searched with context" note', () => {
+  assert.equal(stageText({ stage: 'REWRITING' }), 'Soru bağlamla yeniden yazılıyor');
+  assert.equal(resultOf({ answer: 'A', citations: [] }, { outcome: 'ANSWERED', found: true, contextQuery: 'BT P2 ilk yanıt süresi?' })
+    .contextQuery, 'BT P2 ilk yanıt süresi?');
+  assert.equal(contextQueryNote({ contextQuery: 'BT P2 olayında ilk yanıt süresi nedir?' }),
+    'Bağlamla arandı: “BT P2 olayında ilk yanıt süresi nedir?”');
+  assert.equal(contextQueryNote({ contextQuery: null }), null);
+  assert.equal(contextQueryNote({}), null);
+  assert.equal(contextQueryNote({ contextQuery: '  ‮ \n ' }), null, 'only control and bidi characters: no note');
+  // Model text: one line, bidi overrides and line breaks gone, clipped; the screen sets it as text, never as markup.
+  const note = contextQueryNote({ contextQuery: `ilk\nsatır ‮ters ${'uzun '.repeat(80)}` });
+  assert.ok(note.startsWith('Bağlamla arandı: “ilk satır ters'));
+  assert.ok(!/[\n‮]/.test(note));
+  assert.ok([...note].length <= 'Bağlamla arandı: “”'.length + MAX_CONTEXT_QUERY);
+  const ask = readFileSync(new URL('../panel/js/screens/ask.js', import.meta.url), 'utf8');
+  assert.match(ask, /el\('p', \{ class: 'context-query'[^)]*\},\s*icon\('search', 'sm'\), contextNote\)/,
+    'the note is a text child of el(), not innerHTML');
 });
 
 test('stream: falling back to JSON only when no stream gets through, never for the API\'s own errors', () => {

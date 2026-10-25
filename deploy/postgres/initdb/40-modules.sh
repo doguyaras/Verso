@@ -16,8 +16,10 @@ MODULES=(document qa audit connector)
 # Test hook only (DatabaseRolesTest proves the "missing module" path with a throwaway module name).
 if [ -n "${VERSO_INIT_MODULES:-}" ]; then read -ra MODULES <<< "$VERSO_INIT_MODULES"; fi
 
+# -f: a secret whose host file was missing when the container was created is mounted as an empty directory; -r and -s
+# accept a directory, and `cat` of it would create the role with an empty (no) password (seen on an upgrade, ADR-0046).
 require_secret() {
-  if [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
+  if [ ! -f "$SECRETS/$1" ] || [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
     echo "40-modules: secret $1 missing, empty or unreadable" >&2
     exit 1
   fi

@@ -74,7 +74,7 @@
 - **Yazma:** `POST /v1/questions` cevaptan sonra, model çağrısı dışında, tek kısa transaction'da yazar: konuşma (kilitli ya da yeni), turn, atıflar ve günlük sayaçlar.
   - Yazma başarısız olursa cevap yine döner, `conversationId`/`turnId` boş kalır. Log'a yalnız tip yazılır; `verso.qa.history.not.stored{reason}` sayacı artar. Gerekçe: cevap üretilmiştir, bir DB hatası kullanıcıdan cevabı almamalıdır. En kötü durumda yazma cevabı yaklaşık 2 sn (bağlantı beklemesi) ya da kilit/ifade zaman aşımı kadar geciktirir.
   - İstekte `conversationId` varsa, model çağrılmadan önce sahiplik ve doluluk denetlenir: başkasının ya da silinmiş konuşma 404 `CONVERSATION_NOT_FOUND`, dolu konuşma 409 `CONVERSATION_FULL`. Sınır (200 turn) konuşma satırı kilidi altında kesindir.
-- **Geçmiş prompt'a girmez.** Takip soruları ayrı bir `verso-llm-review` ile gelir.
+- **Geçmiş prompt'a girmez.** Takip soruları ayrı bir `verso-llm-review` ile gelir. *(Ek, 2026-10-25: [ADR-0046](0046-takip-sorulari.md) ile son iki tur yalnız takip sorusunun arama sorgusuna yeniden yazılmasında kullanılır; cevap prompt'una yine girmez.)*
 - **Uçlar:** `GET /v1/conversations` (sayfalı, en çok 50), `GET/PATCH/DELETE /v1/conversations/{id}`, `DELETE /v1/conversations`.
   - Her sorgu `account_id` taşır; başkasının kimliği 404'tür (varlık oracle'ı yok).
   - Yeniden adlandırma `updated_at`'i değiştirmez: liste sırası ve saklama süresi yalnız turlara bağlıdır.

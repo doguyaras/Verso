@@ -68,6 +68,9 @@ export function createSseParser(onEvent) {
 /** The screen text of a stage: only what the server really did (ADR-0017: no invented steps). */
 export function stageText(stage) {
   switch (stage?.stage) {
+    case 'REWRITING':
+      // ADR-0046: only sent when a follow-up is really rewritten with the conversation.
+      return 'Soru bağlamla yeniden yazılıyor';
     case 'RETRIEVING':
       return 'Belgelerinizde aranıyor';
     case 'PASSAGES_FOUND':
@@ -93,11 +96,12 @@ export function provisionalText(text) {
 
 /**
  * The answer as POST /v1/questions returns it, from the last two events: the validated text and citations of
- * "citations", the outcome, mode, model and history ids of "done".
+ * "citations", the outcome, mode, model, history ids and the follow-up's search query (ADR-0046) of "done".
  */
 export function resultOf(citations, done) {
   return { answer: citations.answer, citations: citations.citations ?? [], outcome: done.outcome, found: Boolean(done.found),
-    mode: done.mode ?? null, model: done.model ?? null, conversationId: done.conversationId ?? null, turnId: done.turnId ?? null };
+    mode: done.mode ?? null, model: done.model ?? null, conversationId: done.conversationId ?? null, turnId: done.turnId ?? null,
+    contextQuery: done.contextQuery ?? null };
 }
 
 /** Thrown when the stream cannot be used at all (an old proxy or server): the JSON endpoint is asked instead. */

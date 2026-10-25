@@ -37,6 +37,9 @@ verso:
     flyway:
       url: jdbc:postgresql://localhost:${VERSO_DB_LOCAL_PORT:5432}/verso?logServerErrorDetail=false
       user: svc_qa_migrate
+    # Follow-up rewrite switch (ADR-0046), the same variable as the deploy; the rest of verso.qa.followup is shared.
+    followup:
+      enabled: ${VERSO_QA_FOLLOWUP_ENABLED:true}
   # The audit schema's own roles (ADR-0026), on the same local database; passwords from secrets/ like the others.
   audit:
     datasource:

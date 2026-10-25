@@ -12,6 +12,7 @@ import com.verso.qa.api.dto.AnswerOutcome;
 import com.verso.qa.api.dto.AnswerResponse;
 import com.verso.qa.api.dto.AnswerStage;
 import com.verso.qa.config.AiMode;
+import com.verso.qa.config.QaFollowUpProperties;
 import com.verso.qa.config.QaProperties;
 import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.exception.QaErrorCode;
@@ -21,7 +22,9 @@ import com.verso.qa.service.AnswerabilityGate;
 import com.verso.qa.service.AnswerabilityGate.Decision;
 import com.verso.qa.service.CitationExtractor;
 import com.verso.qa.service.CitationExtractor.Extracted;
+import com.verso.qa.service.FollowUpRewriter;
 import com.verso.qa.service.ConversationHistory;
+import com.verso.qa.service.ConversationHistory.PriorTurn;
 import com.verso.qa.service.ConversationHistory.Timings;
 import com.verso.qa.service.ModelCircuitBreaker;
 import com.verso.qa.service.PromptBuilder;
@@ -33,6 +36,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -72,8 +76,13 @@ import reactor.core.scheduler.Schedulers;
  *       down a circuit breaker answers 503 at once.</li>
  *   <li>Citations are mapped on the server to the passages that were retrieved (3.3).</li>
  *   <li>The answer is stored in the caller's history after the model call (ADR-0023): a database write, not a remote
- *       call; a failed write loses the turn, not the answer. The history never enters the prompt.</li>
+ *       call; a failed write loses the turn, not the answer.</li>
  * </ol>
+ *
+ * A question asked in a conversation that does not stand on its own may first be rewritten, from the latest turns of
+ * that conversation, into a standalone search query (ADR-0046): one more chat call on the same slot, under its own
+ * short time bound, skipped by a cheap heuristic for standalone questions. Retrieval uses the rewritten query; the
+ * answer prompt keeps the question as asked. Any rewrite failure searches the question as asked.
  *
  * The streamed variant (ADR-0035) runs the same steps with the same bulkhead, circuit and time bound; only the chat
  * call is a token stream, and citations are still mapped once, on the whole text, at the end. A client that leaves
@@ -106,12 +115,17 @@ public class QuestionServiceImpl implements QuestionService {
     private final ConversationHistory history;
     private final AnswerabilityGate gate;
     private final CallerGroups groups;
+    private final FollowUpRewriter rewriter;
+    private final QaFollowUpProperties followUp;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
-                               AnswerabilityGate gate, CallerGroups groups) {
+                               AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
+                               QaFollowUpProperties followUp) {
         this.groups = groups;
+        this.rewriter = rewriter;
+        this.followUp = followUp;
         this.history = history;
         this.retrieval = retrieval;
         this.chatModel = chatModel;
@@ -132,15 +146,16 @@ public class QuestionServiceImpl implements QuestionService {
         long started = System.nanoTime();
         // A foreign, deleted or full conversation is refused before any model call (ADR-0023).
         if (conversationId != null) history.checkWritable(account, conversationId);
-        Retrieved retrieved = retrieve(readerOf(account), question);
+        Search search = search(account, question, conversationId, null);
+        Retrieved retrieved = retrieve(readerOf(account), search.query());
         Answered answered;
         if (retrieved.relevant().isEmpty()) {
-            answered = notFound(retrieved, started, ANSWERED);
+            answered = notFound(retrieved, search, started, ANSWERED);
         } else {
-            BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant());
+            BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant(), answerContext(search));
             long chatStarted = System.nanoTime();
             String raw = chat(prompt);
-            answered = cited(raw, prompt, retrieved, elapsedMs(chatStarted), started, ANSWERED);
+            answered = cited(raw, prompt, retrieved, search, elapsedMs(chatStarted), started, ANSWERED);
         }
         return store(account, conversationId, question, answered, started);
     }
@@ -158,20 +173,21 @@ public class QuestionServiceImpl implements QuestionService {
     private void streamAnswer(AccountId account, Reader reader, String question, UUID conversationId, AnswerStream out,
                               long started) {
         try {
+            Search search = search(account, question, conversationId, out);
             if (!out.stage(AnswerStage.RETRIEVING, 0, 0)) throw new Cancelled();
-            Retrieved retrieved = retrieve(reader, question);
+            Retrieved retrieved = retrieve(reader, search.query());
             // A client that left during retrieval costs no model call.
             if (!out.stage(AnswerStage.PASSAGES_FOUND, retrieved.passages().size(), retrieved.relevant().size())) {
                 throw new Cancelled();
             }
             Answered answered;
             if (retrieved.relevant().isEmpty()) {
-                answered = notFound(retrieved, started, STREAMED);
+                answered = notFound(retrieved, search, started, STREAMED);
             } else {
-                BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant());
+                BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant(), answerContext(search));
                 long chatStarted = System.nanoTime();
                 String raw = streamChat(prompt, out);
-                answered = cited(raw, prompt, retrieved, elapsedMs(chatStarted), started, STREAMED);
+                answered = cited(raw, prompt, retrieved, search, elapsedMs(chatStarted), started, STREAMED);
             }
             out.completed(store(account, conversationId, question, answered, started));
         } catch (Cancelled e) {
@@ -194,6 +210,66 @@ public class QuestionServiceImpl implements QuestionService {
     /** Retrieval's result: what came back, what the gate lets into the prompt, and how long it took. */
     private record Retrieved(List<RetrievedPassage> passages, List<RetrievedPassage> relevant, Decision decision,
                              long retrievalMs) {
+    }
+
+    /**
+     * How the question was searched (ADR-0046): the query retrieval used, the rewritten query when there was one (null
+     * otherwise), what the follow-up step did (a fixed word for logs and metrics) and how long the rewrite took.
+     */
+    private record Search(String query, String contextQuery, String result, long rewriteMs) {
+
+        static Search asAsked(String question, String result, long rewriteMs) {
+            return new Search(question, null, result, rewriteMs);
+        }
+
+        @Override
+        public String toString() {
+            return "Search[result=" + result + "]";
+        }
+    }
+
+    /**
+     * The follow-up step (ADR-0046). Outside a conversation, with the feature off or for a question the heuristic finds
+     * standalone, nothing is read and no model is asked. Otherwise the latest turns of the caller's own conversation go
+     * to one rewrite call; a failure, a timeout or an output that is not one query searches the question as asked. A
+     * busy chat slot is the same 503 the answer would get.
+     */
+    private Search search(AccountId account, String question, UUID conversationId, AnswerStream out) {
+        if (conversationId == null || !followUp.enabled()) return Search.asAsked(question, "none", 0);
+        if (!FollowUpRewriter.needsContext(question)) return counted(Search.asAsked(question, "standalone", 0));
+        List<PriorTurn> turns = history.recent(account, conversationId, followUp.turns());
+        if (turns.isEmpty()) return counted(Search.asAsked(question, "no_history", 0));
+        if (out != null && !out.stage(AnswerStage.REWRITING, 0, 0)) throw new Cancelled();
+        long rewriteStarted = System.nanoTime();
+        Optional<String> query = rewrite(rewriter.prompt(question, turns)).flatMap(rewriter::query);
+        long rewriteMs = elapsedMs(rewriteStarted);
+        metrics.rewriteTook(rewriteMs);
+        if (query.isEmpty()) return counted(Search.asAsked(question, "fallback", rewriteMs));
+        if (FollowUpRewriter.sameQuestion(question, query.get())) {
+            return counted(Search.asAsked(question, "unchanged", rewriteMs));
+        }
+        return counted(new Search(query.get(), query.get(), "rewritten", rewriteMs));
+    }
+
+    private Search counted(Search search) {
+        metrics.followUp(search.result());
+        return search;
+    }
+
+    /** The rewrite call: the model's text, or empty when it failed or ran out of time (logged with a reason only). */
+    private Optional<String> rewrite(BuiltPrompt prompt) {
+        try {
+            return Optional.ofNullable(textOf(call(request(prompt), followUp.timeout())));
+        } catch (CallFailed e) {
+            // Best effort: the circuit is the answer call's to judge; a model that is really down fails that call too.
+            log.warn("Follow-up rewrite failed: reason={}", e.reason);
+            return Optional.empty();
+        }
+    }
+
+    /** The answer prompt gets the rewritten query only when configured (measured, ADR-0046). */
+    private String answerContext(Search search) {
+        return followUp.answerWithContext() ? search.contextQuery() : null;
     }
 
     /** The answer and where its time went (stored with the turn, ADR-0023). */
@@ -229,29 +305,33 @@ public class QuestionServiceImpl implements QuestionService {
         return new Retrieved(passages, relevant, decision, retrievalMs);
     }
 
-    private Answered notFound(Retrieved retrieved, long started, String event) {
-        log.info("{}: passages={} relevant=0 answerability=none retrievalMs={} chatMs=0 totalMs={} outcome=not_found",
-                event, retrieved.passages().size(), retrieved.retrievalMs(), elapsedMs(started));
+    private Answered notFound(Retrieved retrieved, Search search, long started, String event) {
+        log.info("{}: passages={} relevant=0 answerability=none followUp={} rewriteMs={} retrievalMs={} chatMs=0 "
+                        + "totalMs={} outcome=not_found", event, retrieved.passages().size(), search.result(),
+                search.rewriteMs(), retrieved.retrievalMs(), elapsedMs(started));
         metrics.record(Outcome.NOT_FOUND);
         return new Answered(new AnswerResponse(PromptBuilder.NOT_FOUND, false, AnswerOutcome.NOT_FOUND, List.of(),
-                ai.mode().header(), ai.chatModel(), null, null), retrieved.retrievalMs(), 0);
+                ai.mode().header(), ai.chatModel(), null, null, search.contextQuery()), retrieved.retrievalMs(), 0);
     }
 
     /** Maps the markers of the whole model text to the retrieved passages (llm-rules 3.3), the same for both paths. */
-    private Answered cited(String raw, BuiltPrompt prompt, Retrieved retrieved, long chatMs, long started, String event) {
+    private Answered cited(String raw, BuiltPrompt prompt, Retrieved retrieved, Search search, long chatMs, long started,
+                           String event) {
         metrics.chatTook(chatMs);
         Extracted extracted = citations.extract(raw, retrieved.relevant());
         AnswerOutcome outcome = !extracted.citations().isEmpty() ? AnswerOutcome.ANSWERED
                 : PromptBuilder.saysNotFound(extracted.answer()) ? AnswerOutcome.NOT_FOUND : AnswerOutcome.UNCITED;
         log.info("{}: passages={} relevant={} answerability={} citations={} promptChars={} answerChars={} "
-                        + "retrievalMs={} chatMs={} totalMs={} outcome={}", event, retrieved.passages().size(),
-                retrieved.relevant().size(), retrieved.decision().name().toLowerCase(Locale.ROOT),
-                extracted.citations().size(), prompt.system().length() + prompt.user().length(),
-                extracted.answer().length(), retrieved.retrievalMs(), chatMs, elapsedMs(started),
+                        + "followUp={} rewriteMs={} retrievalMs={} chatMs={} totalMs={} outcome={}", event,
+                retrieved.passages().size(), retrieved.relevant().size(),
+                retrieved.decision().name().toLowerCase(Locale.ROOT), extracted.citations().size(),
+                prompt.system().length() + prompt.user().length(), extracted.answer().length(), search.result(),
+                search.rewriteMs(), retrieved.retrievalMs(), chatMs, elapsedMs(started),
                 outcome.name().toLowerCase(Locale.ROOT));
         metrics.record(Outcome.valueOf(outcome.name()));
         return new Answered(new AnswerResponse(extracted.answer(), outcome == AnswerOutcome.ANSWERED, outcome,
-                extracted.citations(), ai.mode().header(), ai.chatModel(), null, null), retrieved.retrievalMs(), chatMs);
+                extracted.citations(), ai.mode().header(), ai.chatModel(), null, null, search.contextQuery()),
+                retrieved.retrievalMs(), chatMs);
     }
 
     /** After the answer, outside any model call: one short transaction in the qa schema (llm-rules 5.1). */
@@ -288,8 +368,24 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     private String chat(BuiltPrompt prompt) {
+        ChatResponse response;
+        try {
+            response = call(request(prompt), chatTimeout());
+        } catch (CallFailed e) {
+            throw failure(e.reason);
+        }
+        String text = textOf(response);
+        if (text == null || text.isBlank()) throw failure("EMPTY_ANSWER");
+        circuit.recordSuccess();
+        return text;
+    }
+
+    /**
+     * One blocking chat call on a chat slot under {@code timeout}; a failure is a {@link CallFailed} with a content-free
+     * reason, which the caller turns into a 503 (the answer) or a fallback (the follow-up rewrite, ADR-0046).
+     */
+    private ChatResponse call(Prompt request, Duration timeout) {
         acquireSlot();
-        Prompt request = request(prompt);
         Future<ChatResponse> call;
         // The slot is freed when the call really ends, not when the question gives up (bulkhead). Whoever claims
         // "started" owns the release: the task when it runs, the caller when it cancels a task that never started
@@ -306,31 +402,26 @@ public class QuestionServiceImpl implements QuestionService {
             });
         } catch (RuntimeException e) {
             chatSlots.release();
-            throw failure(e.getClass().getSimpleName());
+            throw new CallFailed(e.getClass().getSimpleName());
         }
-        ChatResponse response;
         try {
             // One bound for every provider (ADR-0008: local 90 s, cloud 30 s), whatever the client's own timeout says.
-            response = call.get(chatTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            return call.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             // Interrupt the call: the Ollama client (Reactor Netty) cancels the request and Ollama stops generating
             // (measured). An abandoned generation kept a CPU host busy for minutes and starved every question after it
             // (phase 8, docs/capacity.md). The cloud SDKs (OkHttp) are interrupted too; that the provider stops is
             // not verified.
             cancel(call, started);
-            throw failure("TIMEOUT");
+            throw new CallFailed("TIMEOUT");
         } catch (ExecutionException e) {
             // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
-            throw failure(e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName());
+            throw new CallFailed(e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName());
         } catch (InterruptedException e) {
             cancel(call, started);
             Thread.currentThread().interrupt();
-            throw failure("INTERRUPTED");
+            throw new CallFailed("INTERRUPTED");
         }
-        String text = textOf(response);
-        if (text == null || text.isBlank()) throw failure("EMPTY_ANSWER");
-        circuit.recordSuccess();
-        return text;
     }
 
     /**
@@ -454,6 +545,16 @@ public class QuestionServiceImpl implements QuestionService {
 
     /** A provider failure, queued for the streaming thread. */
     private record Failed(Throwable error) {
+    }
+
+    /** A blocking chat call that failed, with a content-free reason (llm-rules 2.3); no stack trace. */
+    private static final class CallFailed extends RuntimeException {
+        private final String reason;
+
+        CallFailed(String reason) {
+            super(null, null, false, false);
+            this.reason = reason;
+        }
     }
 
     /** The client left; unwinds the streaming thread without a stack trace. */

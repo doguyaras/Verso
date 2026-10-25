@@ -1,0 +1,4084 @@
+{
+  "measuredAt": "2026-10-25T09:03:26.014Z",
+  "commit": "b183e541ba0a",
+  "summary": {
+    "arm": "on-context",
+    "followUp": {
+      "followUps": {
+        "n": 32,
+        "errors": 0,
+        "answerable": 32,
+        "foundRate": 0.969,
+        "citationHitRate": 0.844,
+        "factAccuracy": 0.781,
+        "unanswerable": 0,
+        "notFoundAccuracy": 0,
+        "contextQueries": 25,
+        "latencyMs": {
+          "p50": 1486,
+          "p95": 2287
+        }
+      },
+      "firstTurns": {
+        "n": 32,
+        "errors": 0,
+        "answerable": 32,
+        "foundRate": 0.969,
+        "citationHitRate": 0.906,
+        "factAccuracy": 0.875,
+        "unanswerable": 0,
+        "notFoundAccuracy": 0,
+        "contextQueries": 0,
+        "latencyMs": {
+          "p50": 1210,
+          "p95": 2910
+        }
+      },
+      "byTag": {
+        "ellipsis": {
+          "n": 16,
+          "errors": 0,
+          "answerable": 16,
+          "foundRate": 0.938,
+          "citationHitRate": 0.938,
+          "factAccuracy": 0.813,
+          "unanswerable": 0,
+          "notFoundAccuracy": 0,
+          "contextQueries": 16,
+          "latencyMs": {
+            "p50": 1477,
+            "p95": 1899
+          }
+        },
+        "pronoun": {
+          "n": 9,
+          "errors": 0,
+          "answerable": 9,
+          "foundRate": 1,
+          "citationHitRate": 0.778,
+          "factAccuracy": 0.778,
+          "unanswerable": 0,
+          "notFoundAccuracy": 0,
+          "contextQueries": 9,
+          "latencyMs": {
+            "p50": 1799,
+            "p95": 3810
+          }
+        },
+        "implicit": {
+          "n": 7,
+          "errors": 0,
+          "answerable": 7,
+          "foundRate": 1,
+          "citationHitRate": 0.714,
+          "factAccuracy": 0.714,
+          "unanswerable": 0,
+          "notFoundAccuracy": 0,
+          "contextQueries": 0,
+          "latencyMs": {
+            "p50": 1469,
+            "p95": 2115
+          }
+        },
+        "disambiguation": {
+          "n": 7,
+          "errors": 0,
+          "answerable": 7,
+          "foundRate": 1,
+          "citationHitRate": 0.857,
+          "factAccuracy": 0.571,
+          "unanswerable": 0,
+          "notFoundAccuracy": 0,
+          "contextQueries": 7,
+          "latencyMs": {
+            "p50": 1482,
+            "p95": 2287
+          }
+        }
+      }
+    },
+    "standalone": {
+      "n": 140,
+      "errors": 0,
+      "answerable": 112,
+      "foundRate": 0.964,
+      "citationHitRate": 0.911,
+      "factAccuracy": 0.893,
+      "unanswerable": 28,
+      "notFoundAccuracy": 0.571,
+      "contextQueries": 4,
+      "latencyMs": {
+        "p50": 1330,
+        "p95": 2232
+      }
+    },
+    "rewriteMs": {
+      "n": 29,
+      "p50": 377,
+      "p95": 868,
+      "max": 869
+    },
+    "heuristic": {
+      "followUpsFired": 25,
+      "followUps": 32,
+      "standaloneFired": 4,
+      "standalone": 139,
+      "precision": 0.862,
+      "recall": 0.781,
+      "standaloneFiredIds": [
+        "depo-2",
+        "depo-18",
+        "erp-3",
+        "bt-2"
+      ],
+      "results": {
+        "rewritten": 29,
+        "unchanged": 0,
+        "fallback": 0,
+        "standalone": 142,
+        "no_history": 0,
+        "none": 0
+      }
+    },
+    "logJoin": {
+      "lines": 204,
+      "requests": 204,
+      "joined": true
+    }
+  },
+  "conversations": [
+    {
+      "id": "takip-1",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1464,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "izin-yonetmeligi.pdf#1"
+        ],
+        "answer": "Beş yıldan az hizmeti olan çalışanlar yılda yirmi iş günü yıllık izin kullanır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": false,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1495,
+        "found": true,
+        "contextQuery": "On beş yıldan fazla çalışmış bir çalışan yılda kaç gün yıllık izin kullanır?",
+        "citations": [
+          "izin-yonetmeligi.pdf#1"
+        ],
+        "answer": "On beş yıl ve daha fazla hizmeti olanlar yılda yirmi altı iş günü izin kullanır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 370
+      }
+    },
+    {
+      "id": "takip-2",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1193,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "izin-yonetmeligi.pdf#2"
+        ],
+        "answer": "Doğum izni toplam on altı haftadır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1822,
+        "found": true,
+        "contextQuery": "Babası için doğum izni kaç gündür?",
+        "citations": [
+          "izin-yonetmeligi.pdf#2"
+        ],
+        "answer": "Eşi doğum yapan çalışana beş iş günü babalık izni verilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 462
+      }
+    },
+    {
+      "id": "takip-3",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1069,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "izin-yonetmeligi.pdf#1"
+        ],
+        "answer": "Beş yıldan az hizmeti olan çalışanlar yılda yirmi iş günü yıllık izin kullanır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": false,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1411,
+        "found": true,
+        "contextQuery": "Kullanılmayan yıllık izin kısmı sonraki yıla devreder mi?",
+        "citations": [
+          "izin-yonetmeligi.pdf#1"
+        ],
+        "answer": "Evet, kullanılmayan yıllık izin bir sonraki yıla en fazla beş iş günü olarak devredilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 466
+      }
+    },
+    {
+      "id": "takip-4",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 978,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "izin-yonetmeligi.pdf#1"
+        ],
+        "answer": "Beş yıldan az hizmeti olan çalışanlar yılda yirmi iş günü yıllık izin kullanır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": false,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2115,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "izin-yonetmeligi.pdf#3"
+        ],
+        "answer": "Yıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır [2]. Acil durumlarda mazeret izni sonradan, en geç üç iş günü içinde portala girilir [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-5",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 988,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "masraf-politikasi.pdf#2"
+        ],
+        "answer": "Ankara için yurt içinde gecelik otel limiti 4.000 TL'dir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1899,
+        "found": true,
+        "contextQuery": "Günlük yemek limiti nedir?",
+        "citations": [
+          "masraf-politikasi.pdf#1"
+        ],
+        "answer": "İş seyahatinde günlük yemek limiti kişi başı 900 TL'dir [1]. Müşteri ağırlamalarında kişi başı limit 1.500 TL'dir ve ağırlama öncesinde bölüm yöneticisinin yazılı onayı gerekir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 275
+      }
+    },
+    {
+      "id": "takip-6",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1107,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "masraf-politikasi.pdf#1"
+        ],
+        "answer": "İş seyahatinde günlük yemek limiti kişi başı 900 TL'dir [1]. Müşteri ağırlamalarında kişi başı limit 1.500 TL'dir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1588,
+        "found": true,
+        "contextQuery": "Yemek limitlerini ne zamana kadar sisteme girmeliyim?",
+        "citations": [
+          "masraf-politikasi.pdf#1"
+        ],
+        "answer": "İş için yaptığınız makul harcamaları, harcamanın yapıldığı ayı izleyen ayın beşinci iş gününe kadar masraf sistemine girmeniz gerekir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 392
+      }
+    },
+    {
+      "id": "takip-7",
+      "tags": [
+        "ellipsis",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2910,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "masraf-politikasi.pdf#3"
+        ],
+        "answer": "30.000 TL'lik bir masraf için onay süreci şu şekildedir:\n\n*   5.000 TL'ye kadar olan masraflar doğrudan yönetici onayına gider [1].\n*   5.000 TL ile 25.000 TL arasındaki masraflar Finans Müdürü onayına gider [1].\n*   25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekir [1].\n\nBu durumda, 30.000 TL'lik bir masraf için Genel Müdür onayı gereklidir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1317,
+        "found": true,
+        "contextQuery": "10.000 TL'lik masraf kimin onayına gider?",
+        "citations": [
+          "masraf-politikasi.pdf#3"
+        ],
+        "answer": "5.000 TL'ye kadar olan masrafları doğrudan yönetici onaylar [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": false,
+        "followUp": "rewritten",
+        "rewriteMs": 360
+      }
+    },
+    {
+      "id": "takip-8",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1392,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bilgi-guvenligi.pdf#1"
+        ],
+        "answer": "Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalıdır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1469,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#4"
+        ],
+        "answer": "Standart değişiklikler (önceden onaylı, sık yapılan işler) doğrudan uygulanır [1]. Normal değişiklikler her salı toplanan Değişiklik Danışma Kurulu (CAB) onayından geçer [1].",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": false,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-9",
+      "tags": [
+        "ellipsis",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 806,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bilgi-guvenligi.pdf#3"
+        ],
+        "answer": "Oltalama tatbikatı yılda iki kez yapılır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1418,
+        "found": true,
+        "contextQuery": "Depodaki tahliye tatbikatı yılda kaç kez yapılır?",
+        "citations": [
+          "isg-depo-proseduru.pdf#4"
+        ],
+        "answer": "Depoda tahliye tatbikatı yılda iki kez yapılır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 466
+      }
+    },
+    {
+      "id": "takip-10",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 975,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "uzaktan-calisma.pdf#1"
+        ],
+        "answer": "Çalışanlar haftada en fazla iki gün uzaktan çalışabilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1723,
+        "found": true,
+        "contextQuery": "Ev interneti için ne kadar destek veriliyor?",
+        "citations": [
+          "uzaktan-calisma.pdf#2"
+        ],
+        "answer": "Ev interneti için aylık 500 TL destek ödenir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 277
+      }
+    },
+    {
+      "id": "takip-11",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1182,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "uzaktan-calisma.pdf#1"
+        ],
+        "answer": "Çalışanlar haftada en fazla iki gün uzaktan çalışabilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 525,
+        "found": false,
+        "contextQuery": "Çekirdek saatler hangileri?",
+        "citations": [],
+        "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": false,
+        "followUp": "rewritten",
+        "rewriteMs": 458
+      }
+    },
+    {
+      "id": "takip-12",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 589,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "kvkk-aydinlatma.pdf#2"
+        ],
+        "answer": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1494,
+        "found": true,
+        "contextQuery": "Kamera kayıtları ne kadar saklanır?",
+        "citations": [
+          "kvkk-aydinlatma.pdf#2"
+        ],
+        "answer": "Kamera kayıtları otuz gün sonra kendiliğinden silinir [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 263
+      }
+    },
+    {
+      "id": "takip-13",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1288,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "kvkk-aydinlatma.pdf#2"
+        ],
+        "answer": "Kamera kayıtları otuz gün sonra kendiliğinden silinir [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 3810,
+        "found": true,
+        "contextQuery": "Kamera kayıtları ile ilgili bir başvuru kaç günde sonuçlandırılır?",
+        "citations": [
+          "musteri-destek-sureci.pdf#3",
+          "musteri-destek-sureci.pdf#4"
+        ],
+        "answer": "Belgelerde kamera kayıtları ile ilgili bir başvuru kaç günde sonuçlandırılacağına dair spesifik bir bilgi bulunmamaktadır. Ancak, farklı kayıt türleri için çözüm hedefleri mevcuttur:\n\n*   **P1 Acil** kayıtlar için çözüm hedefi 8 saattir [2].\n*   **P2 Yüksek** kayıtlar için çözüm hedefi 2 iş günüdür [2].\n*   **P3 Normal** kayıtlar için çözüm hedefi 5 iş günüdür [2].\n*   **P4 Düşük** kayıtlar için çözüm hedefi 10 iş günüdür [2].\n\nAyrıca, yeniden açılan bir kaydın çözüm hedefi, önceliğin çözüm hedefinin yarısıdır ve yeniden açılma anından itibaren sayılır (örneğin, yeniden açılan bir P2 kaydın çözülmesi için 1 iş günü vardır) [1].",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": false,
+        "followUp": "rewritten",
+        "rewriteMs": 373
+      }
+    },
+    {
+      "id": "takip-14",
+      "tags": [
+        "ellipsis",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1314,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "satin-alma-proseduru.pdf#1"
+        ],
+        "answer": "50.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1482,
+        "found": true,
+        "contextQuery": "2 milyon TL'lik bir alıma kim karar verir?",
+        "citations": [
+          "satin-alma-proseduru.pdf#2",
+          "erp-satin-alma-kilavuzu.pdf#3"
+        ],
+        "answer": "1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [1][2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 361
+      }
+    },
+    {
+      "id": "takip-15",
+      "tags": [
+        "pronoun",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1210,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#2"
+        ],
+        "answer": "Mal kabulde sayılan koli adedi ile ASN miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir [1]. Fark yüzde 2'yi aşarsa WMS kabulü \"kabul farkı\" durumunda bekletir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2069,
+        "found": true,
+        "contextQuery": "ERP'de kabul farkı oranı nedir?",
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#2"
+        ],
+        "answer": "WMS kabul kontrolünde, sayılan miktar ile ASN miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir [2]. Fark yüzde 2'yi aşarsa WMS kabulü \"kabul farkı\" durumunda bekletir [2].",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": false,
+        "followUp": "rewritten",
+        "rewriteMs": 282
+      }
+    },
+    {
+      "id": "takip-16",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1720,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#2"
+        ],
+        "answer": "Kabul alanındaki ürünler kabulden sonra en geç 4 saat içinde yerleştirilmelidir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1873,
+        "found": true,
+        "contextQuery": "Karantinadakiler kaç günde incelenir?",
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#2"
+        ],
+        "answer": "Karantinadakiler kalite birimi tarafından en geç 3 iş günü içinde incelenir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 646
+      }
+    },
+    {
+      "id": "takip-17",
+      "tags": [
+        "pronoun",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1606,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#4"
+        ],
+        "answer": "B sınıfı ürünler üç ayda bir sayılır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2287,
+        "found": true,
+        "contextQuery": "4.500 TL'lik farkı kim onaylar?",
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#4"
+        ],
+        "answer": "1.000 TL ile 10.000 TL arasındaki sayım farkları Depo Müdürü tarafından onaylanır [3].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 462
+      }
+    },
+    {
+      "id": "takip-18",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1608,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#5"
+        ],
+        "answer": "WMS-502 | ERP bağlantısı yok durumunda terminal kayıtları 60 dakikaya kadar yerelde tutar ve bağlantı gelince gönderir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1399,
+        "found": true,
+        "contextQuery": "İşlem yapılmazsa kaç dakikada kilitlenir?",
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#1"
+        ],
+        "answer": "WMS kullanıcıları el terminalinde 10 dakika işlem yapılmazsa oturumu kilitler [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 201
+      }
+    },
+    {
+      "id": "takip-19",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1001,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#3"
+        ],
+        "answer": "Kargo firmalarına teslim için günlük kesim saati 16.30'dur; bu saatten sonra kapatılan koliler ertesi iş günü sevk edilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1517,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "depo-yonetim-kilavuzu.pdf#6"
+        ],
+        "answer": "Gün sonu işlemi her gün saat 23.00'te otomatik çalışır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-20",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1708,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "erp-satin-alma-kilavuzu.pdf#2"
+        ],
+        "answer": "Satın alma talebinde durum kodu 20, \"Onay bekliyor\" anlamına gelir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1376,
+        "found": true,
+        "contextQuery": "Taslak olarak kaydedip unuttuğum talebe ne olur?",
+        "citations": [
+          "erp-satin-alma-kilavuzu.pdf#2"
+        ],
+        "answer": "Taslak durumunda 30 gün bekleyen talepler kendiliğinden iptal edilir (durum 95) [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 247
+      }
+    },
+    {
+      "id": "takip-21",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 801,
+        "found": false,
+        "contextQuery": null,
+        "citations": [],
+        "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": false,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1477,
+        "found": true,
+        "contextQuery": "Onaycı izne çıkarsa tanımladığı vekalet kaç gün geçerli?",
+        "citations": [
+          "erp-satin-alma-kilavuzu.pdf#3",
+          "erp-satin-alma-kilavuzu.pdf#3"
+        ],
+        "answer": "Bir vekalet en fazla 30 gün geçerlidir [1][2].",
+        "citationHit": true,
+        "citationsOnPage": 2,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 372
+      }
+    },
+    {
+      "id": "takip-22",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2215,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "erp-satin-alma-kilavuzu.pdf#3"
+        ],
+        "answer": "1.000.000 TL üzeri tutarlar için Yönetim Kurulu kararı gereklidir [1]. 1.000.000 TL üzeri tutarlar için onay basamakları Bölüm yöneticisi, Satın Alma Müdürü ve Finans Direktörü'dür [1].\n\n750.000 TL, 1.000.000 TL'nin altında olduğu için, onay basamakları Bölüm yöneticisi, Satın Alma Müdürü ve Finans Direktörü olacaktır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1396,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "erp-satin-alma-kilavuzu.pdf#3"
+        ],
+        "answer": "Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-23",
+      "tags": [
+        "ellipsis",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2097,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#2",
+          "musteri-destek-sureci.pdf#3"
+        ],
+        "answer": "P1 olaylar için ilk yanıt süresi 15 dakikadır [1]. CRM'de müşteri kayıtlarında P1 Acil önceliği için ilk yanıt süresi 1 saattir [3].",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1517,
+        "found": true,
+        "contextQuery": "P2 olaylar için ilk yanıt süresi ne kadır?",
+        "citations": [
+          "bt-operasyon-runbook.pdf#1"
+        ],
+        "answer": "P2 olayları için ilk yanıt süresi 30 dakikadır [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 489
+      }
+    },
+    {
+      "id": "takip-24",
+      "tags": [
+        "ellipsis",
+        "disambiguation"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1202,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "musteri-destek-sureci.pdf#3"
+        ],
+        "answer": "P1 kaydın çözüm hedefi 8 saattir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1296,
+        "found": true,
+        "contextQuery": "P2 kaydın çözüm hedefi kaç saattir?",
+        "citations": [
+          "musteri-destek-sureci.pdf#3"
+        ],
+        "answer": "P2 kaydın çözüm hedefi 4 saattir [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": false,
+        "followUp": "rewritten",
+        "rewriteMs": 256
+      }
+    },
+    {
+      "id": "takip-25",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1508,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#2"
+        ],
+        "answer": "P1 olaylar için ilk yanıt süresi 15 dakikadır [1].",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1486,
+        "found": true,
+        "contextQuery": "P1 olayların çözüm hedefi kaç saattir?",
+        "citations": [
+          "bt-operasyon-runbook.pdf#1"
+        ],
+        "answer": "P1 olayların çözüm hedefi 4 saattir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 339
+      }
+    },
+    {
+      "id": "takip-26",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 796,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#2"
+        ],
+        "answer": "Bir kullanıcı aynı anda en fazla iki cihazdan bağlanabilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1477,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#2"
+        ],
+        "answer": "Bağlanırken Hata 809 veya \"sunucuya ulaşılamıyor\" alırsanız, kullanıcının bulunduğu ağ VPN trafiğini engelliyor olabilir [1]. Bu durumda, kullanıcıdan telefonunun mobil veri paylaşımıyla denemesi istenir; sorun devam ederse kayıt P3 açılır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-27",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1227,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#3"
+        ],
+        "answer": "Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 891,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#2"
+        ],
+        "answer": "Kendiliğinden yenilenir [1].",
+        "citationHit": false,
+        "citationsOnPage": 0,
+        "factFound": false,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-28",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1480,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "bt-operasyon-runbook.pdf#4"
+        ],
+        "answer": "Planlı bakım her ayın ikinci cumartesi günü 22.00 ile 02.00 arasında yapılır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1520,
+        "found": true,
+        "contextQuery": "CAB toplantısı hangi gün yapılıyor?",
+        "citations": [
+          "bt-operasyon-runbook.pdf#4"
+        ],
+        "answer": "Normal değişiklikler her salı toplanan Değişiklik Danışma Kurulu (CAB) onayından geçer [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 579
+      }
+    },
+    {
+      "id": "takip-29",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1110,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "musteri-destek-sureci.pdf#4"
+        ],
+        "answer": "Müşteri sunduğunuz çözümü beğenmezse kayıt \"Yeniden açıldı\" durumuna geçer ve aynı uzmana atanır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 2085,
+        "found": true,
+        "contextQuery": "Yeniden açıldı durumu en fazla kaç kez yapılabilir?",
+        "citations": [
+          "musteri-destek-sureci.pdf#4"
+        ],
+        "answer": "Bir kayıt en fazla iki kez yeniden açılabilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 448
+      }
+    },
+    {
+      "id": "takip-30",
+      "tags": [
+        "implicit"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1187,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "musteri-destek-sureci.pdf#4"
+        ],
+        "answer": "İade talepleri teslimattan sonraki 14 gün içinde kabul edilir [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1422,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "musteri-destek-sureci.pdf#4"
+        ],
+        "answer": "Ödeme iadesi kalite onayından sonra en geç 10 iş günü içinde yapılır [3].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "standalone",
+        "rewriteMs": 0
+      }
+    },
+    {
+      "id": "takip-31",
+      "tags": [
+        "ellipsis"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 3471,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "isg-depo-proseduru.pdf#3"
+        ],
+        "answer": "Turuncu sınıf raf hasarı 4 hafta içinde onarılmalıdır [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1318,
+        "found": true,
+        "contextQuery": "Kırmızı sınıfta ne yapılır?",
+        "citations": [
+          "isg-depo-proseduru.pdf#3"
+        ],
+        "answer": "Kırmızı sınıfta raf derhal boşaltılır ve kullanım dışı bırakılır; WMS'te lokasyonlar bloke edilir [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 380
+      }
+    },
+    {
+      "id": "takip-32",
+      "tags": [
+        "pronoun"
+      ],
+      "first": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1213,
+        "found": true,
+        "contextQuery": null,
+        "citations": [
+          "isg-depo-proseduru.pdf#1"
+        ],
+        "answer": "Soğuk odada tek seferde en fazla 45 dakika çalışma yapılabilir [2].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "none",
+        "rewriteMs": 0
+      },
+      "followUp": {
+        "answerable": true,
+        "status": 200,
+        "ms": 1799,
+        "found": true,
+        "contextQuery": "Soğuk odada yarım saatten uzun aralık dışına çıkarsa mallara ne olur?",
+        "citations": [
+          "isg-depo-proseduru.pdf#4"
+        ],
+        "answer": "Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider; odadaki ürünler WMS'te karantinaya alınır [1].",
+        "citationHit": true,
+        "citationsOnPage": 1,
+        "factFound": true,
+        "followUp": "rewritten",
+        "rewriteMs": 377
+      }
+    }
+  ],
+  "standalone": [
+    {
+      "id": "izin-1",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1381,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "Beş yıldan az hizmeti olan çalışanlar yılda yirmi iş günü yıllık izin kullanır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false,
+      "followUp": "none",
+      "rewriteMs": 0
+    },
+    {
+      "id": "izin-2",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1696,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "On beş yıldan fazla hizmeti olanlar yılda yirmi altı iş günü izin kullanır [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "izin-3",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 892,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "Evet, kullanılmayan izin bir sonraki yıla en fazla beş iş günü olarak devredilebilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "izin-4",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 900,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Eşi doğum yapan çalışana beş iş günü babalık izni verilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "izin-5",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1006,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Doğum izni toplam on altı haftadır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "izin-6",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1606,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "izin-yonetmeligi.pdf#3"
+      ],
+      "answer": "Yıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "masraf-1",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1908,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "masraf-politikasi.pdf#1"
+      ],
+      "answer": "İş seyahatinde günlük yemek limiti kişi başı 900 TL'dir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "masraf-2",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 898,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "masraf-politikasi.pdf#1"
+      ],
+      "answer": "Masraflar, harcamanın yapıldığı ayı izleyen ayın beşinci iş gününe kadar masraf sistemine girilmelidir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "masraf-3",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1171,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "Kişisel araçla yapılan iş yolculuklarında kilometre başına 9 TL yakıt ve yıpranma bedeli ödenir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "masraf-4",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1004,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "Ankara için yurt içinde gecelik otel limiti 4.000 TL'dir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "masraf-5",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 2406,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "masraf-politikasi.pdf#3"
+      ],
+      "answer": "30.000 TL'lik bir masraf için onay süreci şu şekildedir:\n\n*   5.000 TL'ye kadar olan masraflar doğrudan yönetici onayına gider [1].\n*   5.000 TL ile 25.000 TL arasındaki masraflar Finans Müdürü onayına gider [1].\n*   25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekir [1].\n\nBu durumda, 30.000 TL'lik bir masraf için Genel Müdür onayı gereklidir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "guvenlik-1",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1300,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bilgi-guvenligi.pdf#1"
+      ],
+      "answer": "Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalıdır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "guvenlik-2",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1218,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bilgi-guvenligi.pdf#1"
+      ],
+      "answer": "Kurumsal hesap parolaları doksan günde bir değiştirilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "guvenlik-3",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1475,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "guvenlik-4",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1798,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Şirket verileri dört sınıfa ayrılır: Kamuya Açık, İç Kullanım, Gizli ve Çok Gizli [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "guvenlik-5",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1190,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bilgi-guvenligi.pdf#3"
+      ],
+      "answer": "Oltalama tatbikatı yılda iki kez yapılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "uzaktan-1",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1331,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Haftada en fazla iki gün uzaktan çalışabilirsiniz [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "uzaktan-2",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1280,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Çekirdek çalışma saatleri 10.00 ile 16.00 arasında olmak zorundadır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "uzaktan-3",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1197,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "uzaktan-calisma.pdf#2"
+      ],
+      "answer": "Ev interneti için aylık 500 TL destek ödenir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "kvkk-1",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 996,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "kvkk-aydinlatma.pdf#2"
+      ],
+      "answer": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "kvkk-2",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1330,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "kvkk-aydinlatma.pdf#2"
+      ],
+      "answer": "Kamera kayıtları otuz gün sonra kendiliğinden silinir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "kvkk-3",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1189,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "kvkk-aydinlatma.pdf#3"
+      ],
+      "answer": "KVKK başvuruları en geç otuz gün içinde ücretsiz olarak sonuçlandırılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "satin-1",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1275,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "satin-alma-proseduru.pdf#1"
+      ],
+      "answer": "50.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "satin-2",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1297,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "satin-3",
+      "answerable": true,
+      "tags": null,
+      "status": 200,
+      "ms": 1020,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "Yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-1",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 207,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-2",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 699,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-3",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 1200,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Yıl sonunda bütün depoda tam sayım yapılır ve tam sayım günlerinde sevkiyat yapılmaz [1].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-4",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 1094,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-5",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 1477,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-6",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 49,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-7",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 158,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "yok-8",
+      "answerable": false,
+      "tags": null,
+      "status": 200,
+      "ms": 113,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-1",
+      "answerable": true,
+      "tags": [
+        "showcase"
+      ],
+      "status": 200,
+      "ms": 693,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "Stok, sevkiyat emri onaylandığında değil, toplama tamamlanıp koli kapatıldığında düşer [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-2",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 2198,
+      "found": false,
+      "contextQuery": "Müşteriye gidecek ürünün envanterde miktarı aynı görünmesi normal midir?",
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "rewritten",
+      "rewriteMs": 765
+    },
+    {
+      "id": "depo-3",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1410,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "Sevkiyat emri iptal edilirse rezervasyon en geç 15 dakika içinde kendiliğinden kaldırılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-4",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1396,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Tedarikçi, sevkiyattan en geç 24 saat önce ön bildirim (ASN) gönderir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-5",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1417,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Sayılan miktar ile ASN miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir [1]. Fark yüzde 2'yi aşarsa WMS kabulü \"kabul farkı\" durumunda bekletir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-6",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1073,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Kabul alanındaki ürünler kabulden sonra en geç 4 saat içinde yerleştirilmelidir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-7",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1121,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Kalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-8",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "status": 200,
+      "ms": 1394,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Kabul alanında bekleyen ürünler eldeki stoğa dahil değildir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-9",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "status": 200,
+      "ms": 1102,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Bloke edilmiş bir stok satırının blokesini yalnız stok kontrol uzmanı alabilir ve yalnız o kaldırabilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-10",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1486,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "B sınıfı ürünler üç ayda bir sayılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-11",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1206,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "masraf-politikasi.pdf#3"
+      ],
+      "answer": "5.000 TL'ye kadar olan masrafları doğrudan yönetici onaylar [3].",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-12",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "table"
+      ],
+      "status": 200,
+      "ms": 1875,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "WMS-204 hatası \"Yetersiz kullanılabilir stok\" anlamına gelir [1]. Bu durumda ürün rezerve edilebilir veya bloke edilebilir; stok durumu sorgulanmalı ve vardiya sorumlusuna bildirilmelidir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-13",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 2024,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "Koli kapatıldığında tartılan ağırlık, sistemin ürün ağırlıklarından hesapladığı beklenen ağırlıktan yüzde 5'ten fazla saparsa terminal \"TARTI-FARK\" uyarısı verir ve koli kapatılamaz; koli yeniden kontrol edilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-14",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1511,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "Kargo firmalarına teslim için günlük kesim saati 16.30'dur; bu saatten sonra kapatılan koliler ertesi iş günü sevk edilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-15",
+      "answerable": true,
+      "tags": [
+        "number",
+        "table"
+      ],
+      "status": 200,
+      "ms": 1366,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "WMS-502 | ERP bağlantısı yok durumunda terminal kayıtları 60 dakikaya kadar yerelde tutar ve bağlantı gelince gönderir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-16",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1315,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#6"
+      ],
+      "answer": "Gün sonu işlemi her gün saat 23.00'te otomatik çalışır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-17",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 597,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "B gözü demektir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-18",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1602,
+      "found": true,
+      "contextQuery": "FEFO ne demektir?",
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "FEFO, son kullanma tarihi en yakın olan ürünün önce sevk edilmesi kuralıdır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "rewritten",
+      "rewriteMs": 371
+    },
+    {
+      "id": "depo-19",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1716,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "Bütün depoda yeni toplama başlatılamıyorsa P1 öncelikle bildirilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-20",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1194,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "WMS kullanıcıları el terminalinde 10 dakika işlem yapılmazsa oturumu kilitler [3].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1565,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Satın alma talebinde durum kodu 20, \"Onay bekliyor\" anlamına gelir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-2",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "status": 200,
+      "ms": 1916,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Durum 60'taki bir sipariş iptal edilemez, ancak kapatılabilir (85). Kapatma için gerekçe yazılır ve Satın Alma Müdürü onayı gerekir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-3",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 2697,
+      "found": true,
+      "contextQuery": "Onaycım talebime bakmadığında ne olur?",
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Onaycı 48 saat içinde işlem yapmazsa hatırlatma e-postası gönderilir; 72 saat sonunda talep, onaycının tanımlı vekiline yönlendirilir. Vekil tanımlı değilse talep bir üst yöneticiye çıkar [3].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "rewritten",
+      "rewriteMs": 868
+    },
+    {
+      "id": "erp-4",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1796,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3",
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Bir vekalet en fazla 30 gün geçerlidir [1], [3].",
+      "citationHit": true,
+      "citationsOnPage": 2,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-5",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1926,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "Maliyet merkezinin yıllık bütçesinin yüzde 100'ü aşacaksa ek bütçe onayı gelmeden talep gönderilemez [1].",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-6",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "table"
+      ],
+      "status": 200,
+      "ms": 1672,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "SAT-E027 hatası, maliyet merkezinin yıllık bütçesinin yüzde 100'ünü aşması durumunda ortaya çıkar. Ek bütçe onayı gelmeden talep gönderilemez [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-7",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1801,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "Döviz cinsinden siparişte günün kuru henüz yüklenmemiş hatası alırsanız, kurlar her iş günü 15.45'te yüklenir; bu saatten sonra yeniden deneyin [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-8",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1197,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E058) ve fazla miktar tedarikçiye iade edilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-9",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1197,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Sipariş tutarı onaylı talep tutarını yüzde 10'dan fazla aşarsa sipariş \"Onayda\" (55) durumuna düşer ve fark için talebin son onaycısının onayı gerekir [3].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-10",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 2120,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "1.000.000 TL üzeri tutarlar için Yönetim Kurulu kararı gereklidir [1]. 1.000.000 TL üzeri tutarlar için onay basamakları Bölüm yöneticisi, Satın Alma Müdürü ve Finans Direktörü'dür [1].\n\n750.000 TL, 1.000.000 TL üzeri kategorisine girdiği için Yönetim Kurulu kararı gerektirebilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-11",
+      "answerable": true,
+      "tags": [
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1309,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-12",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1194,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Mal kabul WMS'te tamamlandığında ERP'de mal kabul belgesi (MK) otomatik oluşur [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-13",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 1111,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Hayır, bir kullanıcı aynı anda SAT-UZMAN ve SAT-ONAY rolüne sahip olamaz (görevler ayrılığı) [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-14",
+      "answerable": true,
+      "tags": [],
+      "status": 200,
+      "ms": 884,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Geciken teslimatlar raporu her pazartesi satın alma uzmanlarına e-postayla gelir [3].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-15",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1494,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Taslak durumunda 30 gün bekleyen talepler kendiliğinden iptal edilir (durum 95) [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-16",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 2073,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Ayın son iş günü saat 18.00'den sonra girilen mal kabul o aya kaydedilmez, bir sonraki aya geçer [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-17",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1537,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "SAT-E071 kodlu bir sipariş, 20 dakika işlem yapılılmazsa kendiliğinden kalkar [3].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-18",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1584,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#4",
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "ERP ile WMS arasındaki mesajlar entegrasyon kuyruğunda izlenir. Üç denemede iletilemeyen mesaj \"hatalı\" durumuna geçer ve ERP destek ekibinin panosunda görünür [1]. Aynı mesaj elle iki kez gönderilmez, çünkü WMS tekrar eden mesajı mesaj numarasından tanıyıp reddeder [3].",
+      "citationHit": true,
+      "citationsOnPage": 2,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "abbreviation",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1704,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "P1 olaylar için ilk yanıt süresi 15 dakikadır [1]. CRM'de müşteri kayıtlarında P1 Acil önceliği için ilk yanıt süresi 1 saattir [3].",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-2",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "table",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 2802,
+      "found": true,
+      "contextQuery": "BT depodaki terminallerin çökmesi için çözüm süresi ne kadar hedefleniyor?",
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5",
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Bütün depoda yeni toplama başlatılamıyorsa P1 öncelikle bildirilir [1]. P1 olayları açıldığında nöbetçi mühendis 15 dakika içinde olayı üstlenir ve olay köprüsünü (telefon konferansı) açar. 30 dakika içinde geçici çözüm bulunamazsa BT Operasyon Müdürü köprüye çağrılır [2]. Olay 2 saati aşarsa BT Direktörü bilgilendirilir ve etkilenen bölümlere her 30 dakikada bir durum e-postası gönderilir [2].",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "rewritten",
+      "rewriteMs": 869
+    },
+    {
+      "id": "bt-3",
+      "answerable": true,
+      "tags": [
+        "table",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1184,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#5"
+      ],
+      "answer": "Yazıcı sorunları için kayıtların çözülme süresi belirtilmemiştir [1].",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-4",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 2408,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "P1 olayında 30 dakika içinde geçici çözüm bulunamazsa BT Operasyon Müdürü köprüye çağrılır [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-5",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1194,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-6",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1206,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Bir kullanıcı aynı anda en fazla iki cihazdan bağlanabilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-7",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1681,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Hata 809 veya \"sunucuya ulaşılamıyor\" hatası alıyorsanız, kullanıcının bulunduğu ağ VPN trafiğini engelliyor olabilir. Bu durumda, kullanıcıdan telefonunun mobil veri paylaşımıyla denemesi istenir; sorun devam ederse kayıt P3 açılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-8",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 1801,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Cihaz sertifikası süresi dolduysa ve cihaz ofiste kablolu ağa bağlanırsa kendiliğinden yenilenir [1]. Uzaktaki kullanıcılar için Service Desk geçici erişim kodu üretilir ve bu kod 24 saat geçerlidir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-9",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1604,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-10",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1717,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir ve kilit süresi dolunca kendiliğinden açılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-11",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 2197,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3",
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Self servisi kullanamayan kullanıcılar Service Desk'i arayabilirler [1]. Analist kimliği doğrulamak için personel sicil numarasını sorar ve kullanıcının yöneticisini sistemdeki numarasından geri arar; yöneticiye ulaşılamazsa sıfırlama yapılmaz [1]. Parola telefonda söylenmez [1]. Geçici parola kullanıcının yöneticisine kısa mesajla gönderilir ve 24 saat geçerlidir; ilk girişte değiştirilmek zorundadır [2].",
+      "citationHit": true,
+      "citationsOnPage": 2,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-12",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1485,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3",
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Service Desk'in verdiği geçici parola 24 saat geçerlidir [1][2].",
+      "citationHit": true,
+      "citationsOnPage": 2,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-13",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1639,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4"
+      ],
+      "answer": "ERP veritabanı yedekleri 90 gün saklanmaktadır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-14",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "status": 200,
+      "ms": 1176,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4"
+      ],
+      "answer": "Dizüstü bilgisayarları yedeklenmez; dosyalar kurumsal bulut klasörüyle eşitlenir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-15",
+      "answerable": true,
+      "tags": [],
+      "status": 200,
+      "ms": 1072,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4"
+      ],
+      "answer": "Planlı bakım her ayın ikinci cumartesi günü 22.00 ile 02.00 arasında yapılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-16",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1319,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4"
+      ],
+      "answer": "Normal değişiklikler her salı toplanan Değişiklik Danışma Kurulu (CAB) onayından geçer [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-17",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1899,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Yeni çalışanın hesabı İnsan Kaynakları'nın işe giriş talebiyle açılır ve bu talep işe başlama tarihinden en az 3 iş günü önce gelmelidir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-18",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1106,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#5"
+      ],
+      "answer": "Cihaz 7 gün içinde bulunamazsa uzaktan silme komutu gönderilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-19",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1577,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#6"
+      ],
+      "answer": "Nöbetçi mühendis telefonu 5 dakika içinde açılmazsa çağrı yedek nöbetçiye geçer [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-20",
+      "answerable": true,
+      "tags": [
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1802,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Hayır, \"Kapatıldı\" durumundaki kayıt yeniden açılamaz [1].",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-21",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1811,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#1"
+      ],
+      "answer": "Bu saatler dışında telefon hattına nöbetçi mühendise yönlenir ve yalnız P1 ve P2 olaylar kabul edilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1180,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Hayır, \"Müşteri bekleniyor\" durumundaki kayıtta SLA saati durur [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-2",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 2232,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Müşteri \"Müşteri bekleniyor\" durumundaki kayıtta müşteriye 3. ve 6. günlerde hatırlatma gönderilir. Müşteri 7 gün içinde yanıt vermezse kayıt \"Çözüldü\" durumuna alınır ve kapanış nedeni \"müşteriden yanıt gelmedi\" olarak işaretlenir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-3",
+      "answerable": true,
+      "tags": [
+        "table",
+        "abbreviation",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 894,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "P1 kaydın çözüm hedefi 8 saattir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-4",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1073,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Altın sözleşmeli müşterilerin P1 kayıtlarında ilk yanıt süresi 30 dakika olmalıdır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-5",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1622,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Çözüm hedefinin yüzde 75'i dolduğunda CRM, kaydın sahibine ve takım liderine uyarı gönderir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-6",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 1881,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Müşteri sunduğunuz çözümü beğenmezse kayıt \"Yeniden açıldı\" durumuna geçer ve aynı uzmana atanır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-7",
+      "answerable": true,
+      "tags": [
+        "number",
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 2405,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Yeniden açılan bir P2 kaydın çözülmesi için 2 iş günü vardır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-8",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1094,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Bir kayıt en fazla iki kez yeniden açılabilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-9",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 901,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "İade talepleri teslimattan sonraki 14 gün içinde kabul edilir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-10",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 2001,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#5"
+      ],
+      "answer": "3 ve altı puan veren müşteriyi takım lideri 2 iş günü içinde arar [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-11",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1494,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#5"
+      ],
+      "answer": "Kapatılan kayıtlar 3 yıl saklanır ve ardından anonimleştirilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-12",
+      "answerable": true,
+      "tags": [
+        "table",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 2123,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Evet, \"Üçüncü taraf bekleniyor\" durumundaki bir kayıtta kargo firmasından veya tedarikçiden yanıt bekleniyorsa SLA saati durur [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-13",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1674,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-14",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "status": 200,
+      "ms": 2219,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Ödeme iadesi kalite onayından sonra en geç 10 iş günü içinde yapılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1676,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#2"
+      ],
+      "answer": "Raf koridorlarında forklift en fazla 6 km/sa hızla gidebilir [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-2",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1199,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#3"
+      ],
+      "answer": "Ağır palet rafı (C bölgesi) için göz başına azami yük 1.500 kg'dır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-3",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "table"
+      ],
+      "status": 200,
+      "ms": 1298,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#3",
+        "isg-depo-proseduru.pdf#3"
+      ],
+      "answer": "Rafın dikmesi 10 mm'den fazla eğilmişse raf kırmızı sınıftadır ve derhal boşaltılır ve kullanım dışı bırakılır [1][2].",
+      "citationHit": true,
+      "citationsOnPage": 2,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-4",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 914,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#3"
+      ],
+      "answer": "Turuncu sınıf raf hasarı 4 hafta içinde onarılmalıdır [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-5",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1304,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Tek başınıza en fazla 25 kg kaldırabilirsiniz [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-6",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1472,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Paketleme masalarında en az 500 lüks olmalıdır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-7",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "status": 200,
+      "ms": 1224,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Depoda tahliye tatbikatı yılda iki kez yapılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-8",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1481,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#1"
+      ],
+      "answer": "Soğuk odada tek seferde en fazla 45 dakika çalışma yapılabilir [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-9",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1820,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "DÖF kaydının aksiyonları 30 gün içinde tamamlanır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-10",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1071,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-11",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1500,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "İSG uzmanı her ramak kala bildirimini 5 iş günü içinde inceler [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-12",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "status": 200,
+      "ms": 1823,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider; odadaki ürünler WMS'te karantinaya alınır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-13",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "status": 200,
+      "ms": 1398,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#2"
+      ],
+      "answer": "Operatör belgesi yenileme eğitimi 5 yılda bir yapılır [1].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-14",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "table"
+      ],
+      "status": 200,
+      "ms": 1207,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#1"
+      ],
+      "answer": "Akü şarj odasında koruyucu gözlük, aside dayanıklı eldiven ve önlük zorunludur [2].",
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 1287,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 1083,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1136,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "Etiket rulosu değiştirildikten sonra ilk etiket test etiketi olarak basılır [1].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "depo-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation",
+        "number"
+      ],
+      "status": 200,
+      "ms": 2681,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "Belgelerde WMS el terminali PIN'inin ne sıklıkta değiştirilmesi gerektiğine dair bilgi bulunmamaktadır. [5]",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1212,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 789,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 1796,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "Döviz kurları her iş günü 15.45'te yüklenir [4].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "erp-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 2316,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Belgelerde onay süresi hedefini aşan onaycılara uygulanacak yaptırım hakkında bilgi bulunmamaktadır. Belgelerde sadece talep başına onay akışında geçen sürenin hedef ortalamasının 3 iş günü olduğu belirtilmiştir [3].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1196,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde VPN bağlantı hızı hakkında bilgi bulunmamaktadır.",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 105,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 176,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1421,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#6"
+      ],
+      "answer": "Nöbet ödemeleri İnsan Kaynakları prosedürüne göre yapılır [1].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "bt-yok-5",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 1787,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Belgelerde Örnek Connect VPN istemcisinin hangi sürümünün kullanılacağına dair bilgi bulunmamaktadır [1][3].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1517,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Altın sözleşmeli müşterilerin P1 kayıtlarında ilk yanıt süresi 30 dakika, P2 kayıtlarında ise 2 saattir [1].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 1270,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#1"
+      ],
+      "answer": "Belgelerde çağrı merkezinde ortalama bekleme süresi hedefi hakkında bilgi bulunmamaktadır. [3]",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation"
+      ],
+      "status": 200,
+      "ms": 320,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "crm-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 874,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "musteri-destek-sureci.pdf#4",
+        "erp-satin-alma-kilavuzu.pdf#4",
+        "musteri-destek-sureci.pdf#4",
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Belgelerde iade edilen ürünün kargo ücretini kimin ödediğine dair bilgi bulunmamaktadır. [1], [2], [3], [4]",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 805,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "status": 200,
+      "ms": 823,
+      "found": false,
+      "contextQuery": null,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "saysNotFound": true,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    },
+    {
+      "id": "isg-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "status": 200,
+      "ms": 1569,
+      "found": true,
+      "contextQuery": null,
+      "citations": [
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "İş kazası olduğunda vardiya sorumlusu İSG uzmanını arar [1].",
+      "saysNotFound": false,
+      "followUp": "standalone",
+      "rewriteMs": 0
+    }
+  ]
+}

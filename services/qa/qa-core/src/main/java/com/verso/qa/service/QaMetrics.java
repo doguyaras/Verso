@@ -28,7 +28,9 @@ public class QaMetrics {
     private final Map<Outcome, Counter> outcomes = new EnumMap<>(Outcome.class);
     private final Timer retrieval;
     private final Timer chat;
+    private final Timer rewrite;
     private final MeterRegistry registry;
+    private final Map<String, Counter> followUps = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> notStored = new java.util.concurrent.ConcurrentHashMap<>();
 
     public QaMetrics(MeterRegistry registry, ModelCircuitBreaker circuit) {
@@ -44,6 +46,8 @@ public class QaMetrics {
                 .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(30)).register(registry);
         chat = Timer.builder("verso.qa.chat.duration").description("One chat model call")
                 .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(120)).register(registry);
+        rewrite = Timer.builder("verso.qa.followup.duration").description("One follow-up rewrite call (ADR-0046)")
+                .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(30)).register(registry);
         Gauge.builder("verso.qa.circuit.open", circuit, c -> c.isOpen() ? 1 : 0)
                 .description("1 while the chat model circuit is open").register(registry);
     }
@@ -63,6 +67,21 @@ public class QaMetrics {
     private Counter turnNotStoredCounter(String reason) {
         return notStored.computeIfAbsent(reason, r -> Counter.builder("verso.qa.history.not.stored").tag("reason", r)
                 .description("Answers that could not be stored in the history").register(registry));
+    }
+
+    /**
+     * What happened to a question asked in a conversation (ADR-0046): "standalone" (the heuristic skipped the rewrite),
+     * "no_history", "rewritten", "unchanged" (the model repeated the question), "fallback" (timeout, failure or an
+     * output that is not a query: searched as asked). No content, a fixed set of tags.
+     */
+    public void followUp(String result) {
+        followUps.computeIfAbsent(result, r -> Counter.builder("verso.qa.followup").tag("result", r)
+                .description("Questions asked in a conversation, by follow-up handling").register(registry)).increment();
+    }
+
+    /** One rewrite call, whatever its result (it holds the chat slot for that long). */
+    public void rewriteTook(long millis) {
+        rewrite.record(Duration.ofMillis(millis));
     }
 
     public void retrievalTook(long millis) {

@@ -68,6 +68,8 @@ x-db-env: &db-env
   VERSO_SHOW_DOCUMENT_NAMES: ${VERSO_SHOW_DOCUMENT_NAMES:-false}
   # How long audit rows are kept, in days (ADR-0026; KVKK storage limitation, the data controller decides, 30-3650).
   VERSO_AUDIT_RETENTION_DAYS: ${VERSO_AUDIT_RETENTION_DAYS:-365}
+  # Follow-up questions rewritten with the conversation before the search (ADR-0046); false: searched as asked.
+  VERSO_QA_FOLLOWUP_ENABLED: ${VERSO_QA_FOLLOWUP_ENABLED:-true}
   # The docling sidecar (ADR-0032) is off here; deploy/compose.docling.yaml adds it and switches it on.
   VERSO_DOCLING_ENABLED: "false"
   VERSO_DOCLING_URL: http://docling:5001

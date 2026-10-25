@@ -6,7 +6,7 @@
 set -euo pipefail
 SECRETS="${VERSO_SECRETS_DIR:-/run/secrets}"
 read_secret() {
-  if [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
+  if [ ! -f "$SECRETS/$1" ] || [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
     echo "keycloak-start: secret $1 missing, empty or unreadable" >&2
     exit 1
   fi

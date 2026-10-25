@@ -34,7 +34,29 @@ Bir soru birden fazla türde olabilir. Sürüm 1 sorularının etiketi yoktur.
 | `on-topic` | Konu belgede var, sorulan bilgi yok. Örnekler: PIN değişim sıklığı, gümüş sözleşme SLA'sı | 20 |
 | `showcase` | Panel tanıtımındaki örnek soru | 1 |
 
-Konuşma bağlamı isteyen takip soruları sette yok: sistem sohbet geçmişi tutmuyor.
+Konuşma bağlamı isteyen takip soruları bu sette yok; ayrı bir sette ölçülür (aşağıda "Takip soruları").
+
+## Takip soruları (2026-10-25, ADR-0046)
+
+**[`followup-set.json`](followup-set.json):** 32 iki turlu konuşma. İlk soru bu setin cevaplanabilir bir sorusu (`first`), takip sorusu ancak onunla anlaşılır ("Peki P2 için?", "Bunun çözüm hedefi kaç saat?"). Türler: `ellipsis` 16, `pronoun` 9, `implicit` 7 (işaret sözcüğü yok), `disambiguation` 7. Her beklenen sayfa PDF metninden doğrulandı. Yöntem ve bütün tablolar: [`docs/evidence/takip-sorulari-olcumu.md`](../docs/evidence/takip-sorulari-olcumu.md).
+
+| Ölçüm (GPU, gemma4:e2b) | Yeniden yazma kapalı | Açık (varsayılan) |
+|---|---|---|
+| Takip soruları: recall@1 / recall@5 / MRR (`results/retrieval-followup-gpu.json`) | 0,563 / 0,875 / 0,681 | **0,656 / 0,938 / 0,772** |
+| Takip soruları: atıf isabeti / doğru bilgi (`results/followup-{off,on}-gpu.json`) | 0,719 / 0,750 | **0,875 / 0,844** |
+| Bağımsız 140 soru, konuşma içinde: atıf isabeti / doğru bilgi / "bulunamadı" | 0,902 / 0,884 / 0,571 | 0,920 / 0,893 / 0,607 |
+| Bağımsız sorular: recall@5 / kapı (cevaplanabilir geçen, cevaplanamaz duran) | 0,982 / 112, 7 | 0,982 / 112, 7 |
+| Yeniden yazma çağrısı p50 / p95 | – | 381 / 676 ms |
+| Sezgisel kural: kesinlik / duyarlılık | – | 0,862 / 0,781 |
+
+- Cevap prompt'una yazılmış sorguyu da eklemek (`answer-with-context`) takip sorularında atıfı 0,844'e, doğru bilgiyi 0,781'e düşürdü; kapalı.
+- Modelsiz taban "ilk soru + takip" çevrimdışı recall@5'te 0,969 (bir soru fazla); uçtan uca ölçülmedi.
+
+```bash
+ARM=on OUT=followup-on-gpu.json APP_CONTAINER=verso-verso-app-1 KEEP_DOCS=1 node scripts/followup-eval.mjs
+```
+
+Kol, çalışan uygulamanın ayarıdır (`VERSO_QA_FOLLOWUP_ENABLED`, `verso.qa.followup.answer-with-context`); `ARM` yalnız etikettir. Retrieval: `node eval/embedding-olcumu/takip-set.mjs . eval/results/followup-on-gpu.json set.json`, ardından `lex.mjs` ve `olcum.mjs` (yalnız bge-m3) ve `takip-rapor.mjs`.
 
 ## İki ölçüm
 

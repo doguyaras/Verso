@@ -9,6 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import com.verso.qa.service.FollowUpRewriter;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -23,6 +24,10 @@ import reactor.core.publisher.Flux;
  * Stands in for the chat model in application tests (no model download in CI): answers with a configurable function of
  * the prompt, can fail, and keeps the last prompt so tests can check what would have left the application. One
  * instance per JVM; tests reset it.
+ *
+ * <p>A follow-up rewrite (ADR-0046, told apart by its system message) is answered and counted on its own: by default it
+ * repeats the last question unchanged, so tests that ask in a conversation keep their retrieval, call count and last
+ * (answer) prompt.
  */
 public final class TestChatModel implements ChatModel {
 
@@ -33,6 +38,9 @@ public final class TestChatModel implements ChatModel {
     private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
     private volatile Function<Prompt, String> answer = prompt -> DEFAULT_ANSWER;
     private volatile Prompt lastPrompt;
+    private final AtomicInteger rewriteCalls = new AtomicInteger();
+    private volatile Function<Prompt, String> rewrite = TestChatModel::lastQuestion;
+    private volatile Prompt lastRewritePrompt;
     private volatile Duration tokenDelay = Duration.ZERO;
     private final AtomicInteger emittedTokens = new AtomicInteger();
     private final AtomicBoolean streamCancelled = new AtomicBoolean();
@@ -56,6 +64,9 @@ public final class TestChatModel implements ChatModel {
         failure.set(null);
         answer = prompt -> DEFAULT_ANSWER;
         lastPrompt = null;
+        rewriteCalls.set(0);
+        rewrite = TestChatModel::lastQuestion;
+        lastRewritePrompt = null;
         tokenDelay = Duration.ZERO;
         emittedTokens.set(0);
         streamCancelled.set(false);
@@ -119,8 +130,36 @@ public final class TestChatModel implements ChatModel {
         return lastPrompt;
     }
 
+    /** What follow-up rewrites return (ADR-0046); the default repeats the question unchanged. */
+    public void rewrite(Function<Prompt, String> function) {
+        rewrite = function;
+    }
+
+    public int rewriteCalls() {
+        return rewriteCalls.get();
+    }
+
+    public Prompt lastRewritePrompt() {
+        return lastRewritePrompt;
+    }
+
+    private static boolean isRewrite(Prompt prompt) {
+        return !prompt.getInstructions().isEmpty()
+                && FollowUpRewriter.SYSTEM.equals(prompt.getInstructions().getFirst().getText());
+    }
+
+    private static String lastQuestion(Prompt prompt) {
+        String user = prompt.getInstructions().getLast().getText();
+        return user.substring(user.lastIndexOf("Son soru: ") + "Son soru: ".length());
+    }
+
     @Override
     public ChatResponse call(Prompt prompt) {
+        if (isRewrite(prompt)) {
+            rewriteCalls.incrementAndGet();
+            lastRewritePrompt = prompt;
+            return new ChatResponse(List.of(new Generation(new AssistantMessage(rewrite.apply(prompt)))));
+        }
         calls.incrementAndGet();
         lastPrompt = prompt;
         RuntimeException error = failure.get();

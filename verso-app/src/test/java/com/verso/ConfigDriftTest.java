@@ -56,6 +56,8 @@ class ConfigDriftTest {
             "verso.qa.datasource.username",
             "verso.qa.flyway.url",
             "verso.qa.flyway.user",
+            // The follow-up rewrite switch (ADR-0046).
+            "verso.qa.followup.enabled",
             // The audit schema's own connection and Flyway (ADR-0026): same database, its own roles.
             "verso.audit.datasource.url",
             "verso.audit.datasource.username",

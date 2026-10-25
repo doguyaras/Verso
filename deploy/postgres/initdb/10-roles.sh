@@ -17,7 +17,7 @@ MODULES=(document qa audit connector)
 # PostgreSQL answers an empty password with a NOTICE and a role WITHOUT password while init reports success (phase 2
 # reviews C1/S2: 0600 secret files owned by the deploying user on Linux).
 require_secret() {
-  if [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
+  if [ ! -f "$SECRETS/$1" ] || [ ! -r "$SECRETS/$1" ] || [ ! -s "$SECRETS/$1" ]; then
     echo "10-roles: secret $1 missing, empty or unreadable" >&2
     exit 1
   fi

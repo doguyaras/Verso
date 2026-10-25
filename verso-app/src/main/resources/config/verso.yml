@@ -194,6 +194,21 @@ verso:
     local-chat-timeout: 90s
     cloud-chat-timeout: 30s
     chat-wait: 5s
+    # Follow-up questions (ADR-0046): in a conversation, a question the heuristic finds dependent ("Peki P2 için?",
+    # "Bunun süresi?", at most 3 words) is rewritten by the chat model from the last turns into one standalone search
+    # query, on the same chat slot. Retrieval uses that query; the answer prompt keeps the question as asked. Any
+    # failure or the timeout searches the question as asked. Off (VERSO_QA_FOLLOWUP_ENABLED=false): v1 behaviour, the
+    # history never reaches a model. Measured: docs/evidence/takip-sorulari-olcumu.md.
+    followup:
+      enabled: ${VERSO_QA_FOLLOWUP_ENABLED:true}
+      turns: 2
+      max-question-chars: 300
+      # Only the latest earlier answer, only when it was answered with sources.
+      max-answer-chars: 200
+      max-history-chars: 1000
+      max-query-chars: 300
+      timeout: 10s
+      answer-with-context: false
     # The qa module's own schema "qa" (ADR-0023): its own pool as svc_qa (DML only) and its own Flyway as
     # svc_qa_migrate (owner, DDL), the second module of reference 10.1's one-schema-two-roles rule. Passwords from
     # /run/secrets (SECRET_DB_QA_PASSWORD, SECRET_DB_QA_MIGRATE_PASSWORD), no fallback. The migration runs whenever

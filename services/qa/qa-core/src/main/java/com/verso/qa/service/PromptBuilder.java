@@ -55,6 +55,14 @@ public class PromptBuilder {
     }
 
     public BuiltPrompt build(String question, List<RetrievedPassage> passages) {
+        return build(question, passages, null);
+    }
+
+    /**
+     * With {@code contextQuery} (ADR-0046, {@code verso.qa.followup.answer-with-context}): the rewritten follow-up goes
+     * after the question as asked, as its reading in the conversation; defused like the question. No other history.
+     */
+    public BuiltPrompt build(String question, List<RetrievedPassage> passages, String contextQuery) {
         StringBuilder user = new StringBuilder("Pasajlar:\n");
         for (int i = 0; i < passages.size(); i++) {
             RetrievedPassage passage = passages.get(i);
@@ -65,6 +73,9 @@ public class PromptBuilder {
                     .append("\n[[/BELGE ").append(number).append("]]\n\n");
         }
         user.append("Soru: ").append(defuse(question.strip()));
+        if (contextQuery != null && !contextQuery.isBlank()) {
+            user.append("\nSorunun konuşmaya göre açık hali: ").append(defuse(contextQuery.strip()));
+        }
         return new BuiltPrompt(SYSTEM, user.toString());
     }
 

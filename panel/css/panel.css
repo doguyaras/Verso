@@ -699,6 +699,8 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .turn-bot > .logo { margin-top: 2px; }
 .answer { display: grid; gap: 12px; min-width: 0; }
 .answer-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* ADR-0046: the standalone query a follow-up was searched with, one muted line under the badge */
+.answer-head > .context-query { flex-basis: 100%; display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--text-sm); color: var(--fg-muted); overflow-wrap: anywhere; }
 .answer-text { font-size: var(--text-lg); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 72ch; }
 
 /* the [n] marker: a number, or on wide screens a "belge · s. 3" chip (the accessible name is the full source) */

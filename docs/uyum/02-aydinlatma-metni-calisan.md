@@ -34,7 +34,7 @@ Veri sorumlusu: **{{KURUM_ADI}}**, adres {{KURUM_ADRESI}}, iletişim {{VERI_SORU
 
 ## Verileriniz nerede işleniyor? Yurt dışına gidiyor mu?
 
-{{VERI_AKISI_METNI}} *(`local` mod için örnek: "Soru, belge ve cevaplar kurumun kendi sunucularında işlenir; kurum dışına ya da yurt dışına gönderilmez." `cloud` mod için örnek: "Sorunuz ve cevaba yardımcı olan en fazla 5 belge pasajı, cevabı üretmek üzere {{BULUT_SAGLAYICI}} adlı hizmet sağlayıcıya, {{SAGLAYICI_KONUMU}} konumuna iletilir. Belgenin tamamı ve dosya adı iletilmez. Aktarımın hukuki dayanağı: {{AKTARIM_MEKANIZMASI}}." Hangisinin geçerli olduğunu yalnızca bir tanesini bırakarak yazın.)*
+{{VERI_AKISI_METNI}} *(`local` mod için örnek: "Soru, belge ve cevaplar kurumun kendi sunucularında işlenir; kurum dışına ya da yurt dışına gönderilmez." `cloud` mod için örnek: "Sorunuz (aynı konuşmadaki bir takip sorusunda ayrıca konuşmanın son iki sorusu ve son cevabın başı) ve cevaba yardımcı olan en fazla 5 belge pasajı, cevabı üretmek üzere {{BULUT_SAGLAYICI}} adlı hizmet sağlayıcıya, {{SAGLAYICI_KONUMU}} konumuna iletilir. Belgenin tamamı ve dosya adı iletilmez. Aktarımın hukuki dayanağı: {{AKTARIM_MEKANIZMASI}}." Hangisinin geçerli olduğunu yalnızca bir tanesini bırakarak yazın.)*
 
 ## Verilerinizi hangi hukuki sebeple işliyoruz?
 

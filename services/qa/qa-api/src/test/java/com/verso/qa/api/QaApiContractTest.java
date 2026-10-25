@@ -53,14 +53,26 @@ class QaApiContractTest {
         java.util.UUID conversation = java.util.UUID.randomUUID();
         java.util.UUID turn = java.util.UUID.randomUUID();
         AnswerResponse answer = new AnswerResponse("a", true, com.verso.qa.api.dto.AnswerOutcome.ANSWERED, List.of(),
-                "local", "m", null, null);
+                "local", "m", null, null, "bağlamlı sorgu");
         AnswerResponse stored = answer.stored(conversation, turn);
         assertThat(stored.conversationId()).isEqualTo(conversation);
         assertThat(stored.turnId()).isEqualTo(turn);
         assertThat(stored.answer()).isEqualTo("a");
+        assertThat(stored.contextQuery()).isEqualTo("bağlamlı sorgu");
+        // ADR-0046 added contextQuery after them: the JSON still only grows.
         var components = AnswerResponse.class.getRecordComponents();
-        assertThat(components[components.length - 2].getName()).isEqualTo("conversationId");
-        assertThat(components[components.length - 1].getName()).isEqualTo("turnId");
+        assertThat(components[components.length - 3].getName()).isEqualTo("conversationId");
+        assertThat(components[components.length - 2].getName()).isEqualTo("turnId");
+        assertThat(components[components.length - 1].getName()).isEqualTo("contextQuery");
+        var done = com.verso.qa.api.dto.StreamDoneEvent.class.getRecordComponents();
+        assertThat(done[done.length - 1].getName()).isEqualTo("contextQuery");
+    }
+
+    /** ADR-0046: the optional rewrite step comes first, the ADR-0035 stages keep their order after it. */
+    @Test
+    void answerStage_whenListed_putsRewritingBeforeRetrieval() {
+        assertThat(com.verso.qa.api.dto.AnswerStage.values()).extracting(Enum::name)
+                .containsExactly("REWRITING", "RETRIEVING", "PASSAGES_FOUND", "WRITING");
     }
 
     /** The feedback rules a client can break before the server looks at the turn (ADR-0023). */

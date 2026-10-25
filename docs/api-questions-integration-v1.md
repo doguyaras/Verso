@@ -65,6 +65,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `mode` | `local` \| `cloud` | Bilinmeyen → "AI" |
 | `model` | string | Bilgi amaçlı |
 | `conversationId`, `turnId` | UUID \| null | Cevabın kaydedildiği konuşma ve tur (ADR-0023); puanlama ve devam sorusu için. Kayıt başarısızsa ikisi de `null`: cevap gösterilir, puanlama gizlenir |
+| `contextQuery` | string \| null | Takip sorusu (ADR-0046): soru konuşmanın son turlarıyla tek başına anlaşılan bir arama sorgusuna yeniden yazıldıysa aramada kullanılan o sorgu (en çok 300 karakter; model metnidir, düz metin olarak gösterin). Soru olduğu gibi arandıysa `null`. Saklanmaz, geçmişte görünmez |
 
 #### fetch örneği
 ```js
@@ -90,12 +91,13 @@ if (res.status === 503) retryLater(error.code);
 
 | Olay | `data` | Not |
 |---|---|---|
+| `stage` | `{"stage":"REWRITING","retrieved":null,"relevant":null}` | Yalnız takip sorusu konuşmayla yeniden yazılırken (ADR-0046); bağımsız soruda ve konuşmanın ilk sorusunda gelmez. Tanımadığınız bir `stage` değerini genel bir "hazırlanıyor" metniyle gösterin |
 | `stage` | `{"stage":"RETRIEVING","retrieved":null,"relevant":null}` | Soru vektörleniyor ve belgeler aranıyor |
 | `stage` | `{"stage":"PASSAGES_FOUND","retrieved":5,"relevant":2}` | `relevant` 0 ise model çağrılmaz, `WRITING` gelmez |
 | `stage` | `{"stage":"WRITING","retrieved":null,"relevant":null}` | Sohbet slotu alındı, model yazıyor |
 | `delta` | `{"text":"Yıllık izin "}` | 0..n kez; doğrulanmamış model metni |
 | `citations` | `{"answer":"…","citations":[…]}` | JSON uçtaki `answer` ve `citations` ile birebir aynı (sunucuda, bütün metin üzerinde doğrulanmış) |
-| `done` | `{"outcome":"ANSWERED","found":true,"mode":"local","model":"gemma4:e2b","conversationId":"…","turnId":"…"}` | Son olay; alanlar JSON uçtaki anlamlarıyla |
+| `done` | `{"outcome":"ANSWERED","found":true,"mode":"local","model":"gemma4:e2b","conversationId":"…","turnId":"…","contextQuery":null}` | Son olay; alanlar JSON uçtaki anlamlarıyla |
 | `error` | `{"code":11001,"message":"The language model is unavailable, try again later.","retryAfter":5}` | Başarısız akışın son olayı; `citations` ve `done` gelmez, hiçbir şey saklanmaz |
 
 Model sessizken 10 sn'de bir `:keep-alive` yorum satırı gelir (olay değildir). `error` kodları: 11001 (model kapalı ya da süre sınırı aşıldı), 11002 (meşgul), 10030, 10031, 99997, 99999. `retryAfter` yalnız 503 kodlarında, saniye.
@@ -164,7 +166,7 @@ const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
 
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
-- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026), istekte `conversationId` ve yanıtta `conversationId`/`turnId` (24 Ekim 2026, ADR-0023). Var olan alanların adı, tipi ve anlamı değişmedi.
+- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026), istekte `conversationId` ve yanıtta `conversationId`/`turnId` (24 Ekim 2026, ADR-0023), yanıtta ve `done` olayında `contextQuery`, akışta `REWRITING` aşaması (25 Ekim 2026, ADR-0046). Var olan alanların adı, tipi ve anlamı değişmedi.
 - `citations[].excerpt` seçimi (24 Ekim 2026, ADR-0020): pasajın başı yerine cevabın dayandığı pencere. Alan, tip ve 280 sınırı aynı; baştaki `…` yeni olabilir, düz metin olarak gösterilir.
 - `POST /v1/questions/stream` (24 Ekim 2026, ADR-0035): yeni uç; var olan uç ve alanlar değişmedi.
 

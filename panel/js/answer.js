@@ -24,6 +24,19 @@ export function clip(text, max) {
   return `${(space > kept.length / 2 ? kept.slice(0, space) : kept).trimEnd()}…`;
 }
 
+/** How long the "searched with context" note may get; the server's own bound is 300 characters (ADR-0046). */
+export const MAX_CONTEXT_QUERY = 200;
+
+/**
+ * The note under a follow-up answer (ADR-0046): the standalone query the server searched instead of the question as
+ * asked, so the asker sees how "Peki P2 için?" was understood. Null when the question was searched as asked. The query
+ * is model text: one plain line, without control or bidi characters, clipped; it becomes text content, never markup.
+ */
+export function contextQueryNote(result) {
+  const query = oneLine(result?.contextQuery);
+  return query ? `Bağlamla arandı: “${clip(query, MAX_CONTEXT_QUERY)}”` : null;
+}
+
 // Bidi controls (embeddings, overrides, isolates, marks) could make a line read as something else; line breaks stay.
 const BIDI = /[؜‎‏‪-‮⁦-⁩]/g;
 
