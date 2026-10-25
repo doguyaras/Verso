@@ -58,6 +58,25 @@ ARM=on OUT=followup-on-gpu.json APP_CONTAINER=verso-verso-app-1 KEEP_DOCS=1 node
 
 Kol, çalışan uygulamanın ayarıdır (`VERSO_QA_FOLLOWUP_ENABLED`, `verso.qa.followup.answer-with-context`); `ARM` yalnız etikettir. Retrieval: `node eval/embedding-olcumu/takip-set.mjs . eval/results/followup-on-gpu.json set.json`, ardından `lex.mjs` ve `olcum.mjs` (yalnız bge-m3) ve `takip-rapor.mjs`.
 
+## Dayanak kontrolü (2026-10-25, ADR-0047)
+
+[`grounding-set.json`](grounding-set.json) 192 cümle içerir; 57'si desteklenmiyor.
+
+- **Kaynak:** `results/e2e-rerank-off-gpu.json`'ın atıflı cevap cümleleri.
+- **Etiket:** her cümle, atıf yaptığı sayfaya (`samples/src`, sayfalar `---` ile ayrılmış) göre elle etiketlendi.
+- **Bozulmuş kopyalar:** sayı, sayı sözcüğü, olumsuzlama, ad ve kod değiştirildi. Destekleyen yeniden yazımlar da eklendi.
+- **Alanlar:** her öğede `cites` (`belge.pdf#sayfa`), `question` (`eval-set.json`'daki soru kimliği), `kind` ve `label` vardır.
+- Yöntem, adaylar (NLI dahil) ve bütün tablolar: [`docs/evidence/dayanaklilik-olcumu.md`](../docs/evidence/dayanaklilik-olcumu.md).
+
+| Ölçüm (sözcüksel kontrol, varsayılan) | Sonuç |
+|---|---|
+| Kesinlik / duyarlılık | 1,00 / 0,46 (26/57) |
+| Sayı ve kod bozulmalarında duyarlılık | 25/33 |
+| Olumsuzlama ve ad bozulmalarında duyarlılık | 0/21 (kapsam dışı) |
+| Doğal 128 cümle / dışarıda tutulan 110 gerçek cümle: işaretlenen | 1 / 1, ikisi de doğru |
+
+`GroundingEvalTest` bu seti her build'de koşar: yanlış alarm 0, en az 26 doğru işaret.
+
 ## İki ölçüm
 
 | Ölçüm | Ne ölçer | Nasıl koşulur |

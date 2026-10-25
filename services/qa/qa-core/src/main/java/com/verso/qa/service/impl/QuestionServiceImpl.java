@@ -23,6 +23,8 @@ import com.verso.qa.service.AnswerabilityGate.Decision;
 import com.verso.qa.service.CitationExtractor;
 import com.verso.qa.service.CitationExtractor.Extracted;
 import com.verso.qa.service.FollowUpRewriter;
+import com.verso.qa.service.GroundingCheck;
+import com.verso.qa.service.GroundingCheck.Grounding;
 import com.verso.qa.service.ConversationHistory;
 import com.verso.qa.service.ConversationHistory.PriorTurn;
 import com.verso.qa.service.ConversationHistory.Timings;
@@ -117,12 +119,14 @@ public class QuestionServiceImpl implements QuestionService {
     private final CallerGroups groups;
     private final FollowUpRewriter rewriter;
     private final QaFollowUpProperties followUp;
+    private final GroundingCheck grounding;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
-                               QaFollowUpProperties followUp) {
+                               QaFollowUpProperties followUp, GroundingCheck grounding) {
+        this.grounding = grounding;
         this.groups = groups;
         this.rewriter = rewriter;
         this.followUp = followUp;
@@ -155,7 +159,7 @@ public class QuestionServiceImpl implements QuestionService {
             BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant(), answerContext(search));
             long chatStarted = System.nanoTime();
             String raw = chat(prompt);
-            answered = cited(raw, prompt, retrieved, search, elapsedMs(chatStarted), started, ANSWERED);
+            answered = cited(question, raw, prompt, retrieved, search, elapsedMs(chatStarted), started, ANSWERED);
         }
         return store(account, conversationId, question, answered, started);
     }
@@ -187,7 +191,7 @@ public class QuestionServiceImpl implements QuestionService {
                 BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant(), answerContext(search));
                 long chatStarted = System.nanoTime();
                 String raw = streamChat(prompt, out);
-                answered = cited(raw, prompt, retrieved, search, elapsedMs(chatStarted), started, STREAMED);
+                answered = cited(question, raw, prompt, retrieved, search, elapsedMs(chatStarted), started, STREAMED);
             }
             out.completed(store(account, conversationId, question, answered, started));
         } catch (Cancelled e) {
@@ -315,23 +319,32 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     /** Maps the markers of the whole model text to the retrieved passages (llm-rules 3.3), the same for both paths. */
-    private Answered cited(String raw, BuiltPrompt prompt, Retrieved retrieved, Search search, long chatMs, long started,
-                           String event) {
+    private Answered cited(String question, String raw, BuiltPrompt prompt, Retrieved retrieved, Search search,
+                           long chatMs, long started, String event) {
         metrics.chatTook(chatMs);
         Extracted extracted = citations.extract(raw, retrieved.relevant());
-        AnswerOutcome outcome = !extracted.citations().isEmpty() ? AnswerOutcome.ANSWERED
+        // ADR-0047: after the citations are validated, on the same numbering. The answer text is never changed.
+        Grounding grounding = this.grounding.check(extracted.answer(), retrieved.relevant(), question);
+        AnswerOutcome outcome = !extracted.citations().isEmpty()
+                // No cited sentence is supported by what it cites: the answer has no verified source (UNCITED), and
+                // the citations stay listed so the reader can compare.
+                ? grounding.noneVerified() ? AnswerOutcome.UNCITED : AnswerOutcome.ANSWERED
                 : PromptBuilder.saysNotFound(extracted.answer()) ? AnswerOutcome.NOT_FOUND : AnswerOutcome.UNCITED;
+        if (grounding.unverified() != null) {
+            metrics.grounding(grounding.cited(), grounding.checked(), grounding.unverified().size());
+        }
         log.info("{}: passages={} relevant={} answerability={} citations={} promptChars={} answerChars={} "
-                        + "followUp={} rewriteMs={} retrievalMs={} chatMs={} totalMs={} outcome={}", event,
-                retrieved.passages().size(), retrieved.relevant().size(),
+                        + "followUp={} rewriteMs={} retrievalMs={} chatMs={} totalMs={} unverified={} outcome={}",
+                event, retrieved.passages().size(), retrieved.relevant().size(),
                 retrieved.decision().name().toLowerCase(Locale.ROOT), extracted.citations().size(),
                 prompt.system().length() + prompt.user().length(), extracted.answer().length(), search.result(),
                 search.rewriteMs(), retrieved.retrievalMs(), chatMs, elapsedMs(started),
+                grounding.unverified() == null ? "off" : grounding.unverified().size(),
                 outcome.name().toLowerCase(Locale.ROOT));
         metrics.record(Outcome.valueOf(outcome.name()));
         return new Answered(new AnswerResponse(extracted.answer(), outcome == AnswerOutcome.ANSWERED, outcome,
-                extracted.citations(), ai.mode().header(), ai.chatModel(), null, null, search.contextQuery()),
-                retrieved.retrievalMs(), chatMs);
+                extracted.citations(), ai.mode().header(), ai.chatModel(), null, null, search.contextQuery(),
+                grounding.unverified()), retrieved.retrievalMs(), chatMs);
     }
 
     /** After the answer, outside any model call: one short transaction in the qa schema (llm-rules 5.1). */

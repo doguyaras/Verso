@@ -99,6 +99,22 @@ class QuestionStreamApiTest {
         TestChatModel.INSTANCE.reset();
     }
 
+    /** ADR-0047: the groundedness check runs after the citations are validated and travels in the citations event. */
+    @Test
+    void stream_whenACitedSentenceIsUnsupported_sendsItInTheCitationsEvent() throws Exception {
+        ready("topic-leave Yillik izin 20 is gunudur. Babalik izni 5 is gunudur.");
+        String answer = "Yillik izin 20 is gunudur [1]. Babalik izni 7 is gunudur [1].";
+        TestChatModel.INSTANCE.answer(answer);
+
+        List<Event> events = parse(stream("topic-leave Babalik izni kac gun?", null).body());
+
+        Event citations = events.get(events.size() - 2);
+        assertThat(citations.name()).isEqualTo("citations");
+        assertThat(JsonPath.<Integer>read(citations.data(), "$.unverified[0].start")).isEqualTo(answer.indexOf("Babalik"));
+        assertThat(JsonPath.<List<Integer>>read(citations.data(), "$.unverified[0].citations")).containsExactly(1);
+        assertThat(events.getLast().data()).contains("\"outcome\":\"ANSWERED\"");
+    }
+
     /** The order of the contract: real stages, the text as it came, validated citations, then done with the ids. */
     @Test
     void stream_whenAPassageMatches_sendsStagesDeltasValidatedCitationsAndDone() throws Exception {

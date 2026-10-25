@@ -740,6 +740,10 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .quote mark.match { background: var(--accent-bg-hover); color: var(--fg-default); border-radius: 2px; padding: 0 1px; }
 /* the answer sentence that cites the source under the pointer or the focus */
 ::highlight(verso-cited) { background-color: var(--accent-bg-subtle); color: var(--fg-default); }
+/* ADR-0047: a sentence whose support could not be verified; subtle, and the note under the answer says why. */
+::highlight(verso-unverified) { text-decoration: underline dotted var(--warning-solid); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.unverified-list { margin: 6px 0 0; padding-left: 18px; }
+.unverified-list li { margin-top: 2px; }
 
 /* source cards, grouped by document: every citation with its page and excerpt (clamped until the card is opened) */
 .sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-content: start; }

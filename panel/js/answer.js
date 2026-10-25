@@ -37,6 +37,50 @@ export function contextQueryNote(result) {
   return query ? `Bağlamla arandı: “${clip(query, MAX_CONTEXT_QUERY)}”` : null;
 }
 
+/** How many unverified sentences the note quotes; the rest are counted. */
+export const UNVERIFIED_QUOTED = 3;
+/** Longest quoted unverified sentence, in characters. */
+export const UNVERIFIED_MAX = 160;
+
+/**
+ * The answer sentences the server could not verify (ADR-0047) as [{ start, end, text }], in answer order: spans of
+ * `result.unverified` that are whole integers inside the answer, start before end, not overlapping, at most one per
+ * sentence of the answer. Anything else in the field is dropped (an old or a foreign server must not break the view).
+ * `text` is the sentence without markers, one plain line: model text, only ever written as text content.
+ */
+export function unverifiedSentences(result) {
+  const answer = String(result?.answer ?? '');
+  const spans = Array.isArray(result?.unverified) ? result.unverified : [];
+  const out = [];
+  let last = 0;
+  for (const span of spans) {
+    const { start, end } = span ?? {};
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < last || end <= start || end > answer.length) continue;
+    const text = oneLine(answer.slice(start, end).replace(/\s*\[\d+\]/g, ''));
+    if (!text) continue;
+    out.push({ start, end, text });
+    last = end;
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
+/**
+ * The note under an answer with unverified sentences: { title, text, quotes: [string], more } or null. It names
+ * what the check saw, not a verdict: the sentence may still be right, the reader compares it with the source.
+ */
+export function unverifiedNote(result) {
+  const sentences = unverifiedSentences(result);
+  if (!sentences.length) return null;
+  const quotes = sentences.slice(0, UNVERIFIED_QUOTED).map((s) => `“${clip(s.text, UNVERIFIED_MAX)}”`);
+  return {
+    title: sentences.length === 1 ? 'Bir cümlenin dayanağı doğrulanamadı.' : `${sentences.length} cümlenin dayanağı doğrulanamadı.`,
+    text: 'Bu cümlelerdeki sayı ya da kod, gösterilen kaynakta aynı bağlamda geçmiyor. Kullanmadan önce kaynakla karşılaştırın.',
+    quotes,
+    more: Math.max(0, sentences.length - UNVERIFIED_QUOTED),
+  };
+}
+
 // Bidi controls (embeddings, overrides, isolates, marks) could make a line read as something else; line breaks stay.
 const BIDI = /[؜‎‏‪-‮⁦-⁩]/g;
 

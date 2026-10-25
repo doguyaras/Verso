@@ -7,11 +7,12 @@
 // In the browser the open conversation lives in this tab's memory only (store.js); a reload starts a new one.
 import { api, lastMode } from '../api.js';
 import { disclosureLine, disclosureNotice } from '../disclosure.js';
-import { answerMarkdown, chipLabel, contextQueryNote, errorState, followUps, markdownFileName, selectionQuestion } from '../answer.js';
+import { answerMarkdown, chipLabel, contextQueryNote, errorState, followUps, markdownFileName, selectionQuestion, unverifiedNote,
+  unverifiedSentences } from '../answer.js';
 import { CONFIG } from '../config.js';
 import { continueWith, startOverNote, startsOver } from '../conversations.js';
 import { citingSpans, citingText, excerptParts, matchRanges } from '../excerpt.js';
-import { prune, tintSentences, writeMarked } from '../highlight.js';
+import { markUnverified, prune, tintSentences, writeMarked } from '../highlight.js';
 import { icon, logo } from '../icons.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { ratingControls } from '../rating.js';
@@ -105,7 +106,10 @@ function outcomeBadge(result) {
   if (result.outcome === 'ANSWERED' || (result.outcome == null && result.found)) {
     return el('span', { class: 'pill ok' }, icon('checkCircle', 'sm'), 'Kaynaklı cevap');
   }
-  if (result.outcome === 'UNCITED') return el('span', { class: 'pill wait' }, icon('alert', 'sm'), 'Kaynak gösterilemedi');
+  // ADR-0047: UNCITED with citations: sources were cited, but none of the cited sentences is supported by them.
+  if (result.outcome === 'UNCITED') {
+    return el('span', { class: 'pill wait' }, icon('alert', 'sm'), result.citations?.length ? 'Dayanağı doğrulanamadı' : 'Kaynak gösterilemedi');
+  }
   return el('span', { class: 'pill neutral' }, icon('search', 'sm'), 'Belgelerde bulunamadı');
 }
 
@@ -305,6 +309,8 @@ function answerView(entry, actions) {
   const link = linker(result.answer, segments);
   const text = notFound ? null : answerText(result, evidence, link, counter);
   if (text) segments.push(...text.segments);
+  const unverified = notFound ? null : unverifiedNote(result);
+  if (text && unverified) markUnverified(text.segments, unverifiedSentences(result));
   const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored, actions.page) : null;
   const chips = restored ? [] : followUps(result);
   // ADR-0046: a follow-up searched with the conversation says how it was understood (not stored: fresh answers only).
@@ -326,10 +332,20 @@ function answerView(entry, actions) {
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Soruyu düzenle'),
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.navigate('documents', { upload: true }) }, icon('upload', 'sm'), 'Belge yükle'))))
       : text.box,
-    result.outcome === 'UNCITED'
+    result.outcome === 'UNCITED' && !unverified
       ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), el('div', { class: 'grow' },
-        el('strong', {}, 'Bu cevap bir kaynağa bağlanamadı.'),
-        el('div', {}, 'Doğru olabilir ama belgelerinizden doğrulanamadı; kullanmadan önce ilgili belgeye bakın.')))
+        // A turn from the history keeps its outcome but not the sentences (ADR-0047): with citations, say why.
+        el('strong', {}, result.citations.length ? 'Bu cevabın dayanağı doğrulanamadı.' : 'Bu cevap bir kaynağa bağlanamadı.'),
+        el('div', {}, result.citations.length
+          ? 'Cevaptaki sayı ya da kodlar gösterilen kaynaklarda aynı bağlamda geçmiyordu; kullanmadan önce kaynakla karşılaştırın.'
+          : 'Doğru olabilir ama belgelerinizden doğrulanamadı; kullanmadan önce ilgili belgeye bakın.')))
+      : null,
+    // ADR-0047: the sentences quoted as text; the answer itself is shown as the model wrote it.
+    unverified
+      ? el('div', { class: 'notice wait unverified-note', role: 'note' }, icon('alert', 'sm'), el('div', { class: 'grow' },
+        el('strong', {}, unverified.title), el('div', {}, unverified.text),
+        el('ul', { class: 'unverified-list' }, unverified.quotes.map((q) => el('li', {}, q)),
+          unverified.more ? el('li', { class: 'muted' }, `ve ${unverified.more} cümle daha`) : null)))
       : null,
     sources,
     chips.length ? el('div', { class: 'follow-ups', role: 'group', 'aria-label': 'Takip soruları' }, chips.map((f) =>

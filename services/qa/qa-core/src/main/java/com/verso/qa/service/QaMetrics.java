@@ -32,6 +32,7 @@ public class QaMetrics {
     private final MeterRegistry registry;
     private final Map<String, Counter> followUps = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> notStored = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Counter> grounding = new java.util.concurrent.ConcurrentHashMap<>();
 
     public QaMetrics(MeterRegistry registry, ModelCircuitBreaker circuit) {
         this.registry = registry;
@@ -77,6 +78,22 @@ public class QaMetrics {
     public void followUp(String result) {
         followUps.computeIfAbsent(result, r -> Counter.builder("verso.qa.followup").tag("result", r)
                 .description("Questions asked in a conversation, by follow-up handling").register(registry)).increment();
+    }
+
+    /**
+     * The groundedness check of one answer (ADR-0047), counted by sentence: "verified" and "unverified" sentences
+     * stated an anchor, "unchecked" ones cited a passage but stated none. A rising unverified share means the model
+     * restates numbers its sources do not give. No content, a fixed set of tags.
+     */
+    public void grounding(int cited, int checked, int unverified) {
+        groundingCounter("verified").increment(checked - unverified);
+        groundingCounter("unverified").increment(unverified);
+        groundingCounter("unchecked").increment(cited - checked);
+    }
+
+    private Counter groundingCounter(String result) {
+        return grounding.computeIfAbsent(result, r -> Counter.builder("verso.qa.grounding.sentences").tag("result", r)
+                .description("Cited answer sentences by groundedness check result").register(registry));
     }
 
     /** One rewrite call, whatever its result (it holds the chat slot for that long). */

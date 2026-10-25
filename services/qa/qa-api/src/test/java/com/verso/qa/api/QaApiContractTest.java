@@ -59,13 +59,30 @@ class QaApiContractTest {
         assertThat(stored.turnId()).isEqualTo(turn);
         assertThat(stored.answer()).isEqualTo("a");
         assertThat(stored.contextQuery()).isEqualTo("bağlamlı sorgu");
-        // ADR-0046 added contextQuery after them: the JSON still only grows.
+        assertThat(stored.unverified()).as("the nine-argument constructor: no groundedness check").isNull();
+        // ADR-0046 added contextQuery after them, ADR-0047 unverified after that: the JSON still only grows.
         var components = AnswerResponse.class.getRecordComponents();
-        assertThat(components[components.length - 3].getName()).isEqualTo("conversationId");
-        assertThat(components[components.length - 2].getName()).isEqualTo("turnId");
-        assertThat(components[components.length - 1].getName()).isEqualTo("contextQuery");
+        assertThat(components[components.length - 4].getName()).isEqualTo("conversationId");
+        assertThat(components[components.length - 3].getName()).isEqualTo("turnId");
+        assertThat(components[components.length - 2].getName()).isEqualTo("contextQuery");
+        assertThat(components[components.length - 1].getName()).isEqualTo("unverified");
         var done = com.verso.qa.api.dto.StreamDoneEvent.class.getRecordComponents();
         assertThat(done[done.length - 1].getName()).isEqualTo("contextQuery");
+        var citations = com.verso.qa.api.dto.StreamCitationsEvent.class.getRecordComponents();
+        assertThat(citations).extracting(java.lang.reflect.RecordComponent::getName)
+                .containsExactly("answer", "citations", "unverified");
+    }
+
+    /** ADR-0047: stored keeps the unverified sentences; the stream event carries the same list as the answer. */
+    @Test
+    void answerResponse_whenChecked_carriesTheUnverifiedSentencesIntoStoredAndTheStreamEvent() {
+        var unverified = List.of(new com.verso.qa.api.dto.UnverifiedSentence(0, 5, List.of(1)));
+        AnswerResponse answer = new AnswerResponse("a [1].", true, com.verso.qa.api.dto.AnswerOutcome.ANSWERED, List.of(),
+                "local", "m", null, null, null, unverified);
+        assertThat(answer.stored(java.util.UUID.randomUUID(), java.util.UUID.randomUUID()).unverified())
+                .isEqualTo(unverified);
+        assertThat(com.verso.qa.api.dto.StreamCitationsEvent.of(answer).unverified()).isEqualTo(unverified);
+        assertThat(com.verso.qa.api.dto.UnverifiedSentence.class.isRecord()).isTrue();
     }
 
     /** ADR-0046: the optional rewrite step comes first, the ADR-0035 stages keep their order after it. */

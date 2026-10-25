@@ -30,7 +30,7 @@ import { ACCENT_TOKENS, applyAccent, contrast, LIMITS, loadBranding, LOGO_PATTER
 import { CONFIG, DEPLOYMENT_DEFAULTS, useDeployment } from '../panel/js/config.js';
 import { ABBREVIATIONS, citingSpans, citingText, excerptParts, fold, key, matchRanges, sentences, STEM, STOP_WORDS, terms } from '../panel/js/excerpt.js';
 import { answerMarkdown, chipLabel, CHIP_NAME_MAX, clip, contextQueryNote, MAX_CONTEXT_QUERY, errorState, escapeMarkdown, fitQuestion, FOLLOW_UPS, followUps, markdownFileName, MAX_QUESTION, SELECTION_MAX,
-  selectionQuestion } from '../panel/js/answer.js';
+  selectionQuestion, UNVERIFIED_QUOTED, unverifiedNote, unverifiedSentences } from '../panel/js/answer.js';
 import { ApiError } from '../panel/js/api.js';
 // ask.js touches no DOM at module load (only inside its functions), so node can import it for its constants.
 import { FLASH_MS } from '../panel/js/screens/ask.js';
@@ -1501,7 +1501,42 @@ test('stream: stages say only what the server did; the draft hides markers until
   assert.deepEqual(resultOf({ answer: 'A [1].', citations: [{ number: 1 }] },
     { outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' }),
   { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't',
-    contextQuery: null });
+    contextQuery: null, unverified: null });
+});
+
+test('groundedness (ADR-0047): unverified sentences come from the citations event and are quoted as plain text', () => {
+  const answer = 'Yıllık izin yirmi gündür [1]. Babalık izni yedi gündür [1].';
+  const start = answer.indexOf('Babalık');
+  const spans = [{ start, end: answer.length, citations: [1] }];
+  assert.deepEqual(resultOf({ answer, citations: [], unverified: spans }, { outcome: 'ANSWERED' }).unverified, spans);
+  assert.deepEqual(unverifiedSentences({ answer, unverified: spans }), [{ start, end: answer.length, text: 'Babalık izni yedi gündür.' }]);
+  const note = unverifiedNote({ answer, unverified: spans });
+  assert.equal(note.title, 'Bir cümlenin dayanağı doğrulanamadı.');
+  assert.deepEqual(note.quotes, ['“Babalık izni yedi gündür.”']);
+  assert.equal(note.more, 0);
+  // Nothing to say without the field (an older server, the check off, a turn from the history) or with an empty list.
+  assert.equal(unverifiedNote({ answer }), null);
+  assert.equal(unverifiedNote({ answer, unverified: [] }), null);
+  assert.equal(unverifiedNote({ answer, unverified: null }), null);
+});
+
+test('groundedness (ADR-0047): malformed spans are dropped, never thrown on or drawn out of the answer', () => {
+  const answer = 'Bir [1]. İki [1]. Üç [1]. Dört [1]. Beş [1].';
+  const bad = [{ start: -1, end: 3 }, { start: 2, end: 1 }, { start: 0, end: 999 }, { start: 0.5, end: 3 }, null, 'x',
+    { start: '0', end: '3' }];
+  assert.deepEqual(unverifiedSentences({ answer, unverified: bad }), []);
+  assert.deepEqual(unverifiedSentences({ answer, unverified: { start: 0, end: 3 } }), []);
+  // Overlapping or out-of-order spans keep the first; control and bidi characters do not reach the quote.
+  const spans = [{ start: 0, end: 8 }, { start: 4, end: 12 }, { start: 9, end: 17 }];
+  assert.deepEqual(unverifiedSentences({ answer, unverified: spans }).map((s) => s.text), ['Bir.', 'İki.']);
+  const all = [0, 9, 18, 26, 35].map((s, i, a) => ({ start: s, end: (a[i + 1] ?? answer.length + 1) - 1 }));
+  const note = unverifiedNote({ answer, unverified: all });
+  assert.equal(note.title, '5 cümlenin dayanağı doğrulanamadı.');
+  assert.equal(note.quotes.length, UNVERIFIED_QUOTED);
+  assert.equal(note.more, 2);
+  const planted = '<img src=x onerror=alert(1)>‮ 12 gün [1].';
+  assert.deepEqual(unverifiedSentences({ answer: planted, unverified: [{ start: 0, end: planted.length }] }).map((s) => s.text),
+    ['<img src=x onerror=alert(1)> 12 gün.']);
 });
 
 test('follow-up (ADR-0046): the rewrite stage, the query from "done" and the "searched with context" note', () => {

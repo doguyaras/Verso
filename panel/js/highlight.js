@@ -70,10 +70,33 @@ export function tintSentences(segments, spans) {
   }
 }
 
+/** ::highlight(verso-unverified): answer sentences whose support the server could not verify (ADR-0047). */
+export const UNVERIFIED = 'verso-unverified';
+
+/**
+ * Underlines the answer sentences given as [{ start, end }] offsets, over the answer's text segments, until the text
+ * leaves the page (prune). Added to, never cleared: several answers stay on screen. No-op without the API; the note
+ * under the answer quotes the sentences anyway.
+ */
+export function markUnverified(segments, spans) {
+  if (!supported() || !spans.length) return;
+  const highlight = registry(UNVERIFIED);
+  for (const span of spans) {
+    for (const { node, start } of segments) {
+      const end = start + node.data.length;
+      if (end <= span.start || start >= span.end) continue;
+      const range = new Range();
+      range.setStart(node, Math.max(0, span.start - start));
+      range.setEnd(node, Math.min(node.data.length, span.end - start));
+      highlight.add(range);
+    }
+  }
+}
+
 /** Drops ranges whose text left the page (a redrawn thread, another screen), so the registry does not grow. */
 export function prune() {
   if (!supported()) return;
-  for (const name of [MATCH, CITED]) {
+  for (const name of [MATCH, CITED, UNVERIFIED]) {
     const highlight = CSS.highlights.get(name);
     if (!highlight) continue;
     for (const range of [...highlight]) if (!range.startContainer.isConnected) highlight.delete(range);

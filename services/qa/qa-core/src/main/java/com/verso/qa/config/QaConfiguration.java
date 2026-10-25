@@ -24,7 +24,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@EnableConfigurationProperties({QaProperties.class, QaFollowUpProperties.class, VersoAiProperties.class})
+@EnableConfigurationProperties({QaProperties.class, QaFollowUpProperties.class, QaGroundingProperties.class,
+        VersoAiProperties.class})
 public class QaConfiguration {
 
     public static final String MODE_HEADER = "X-Rag-Mode";

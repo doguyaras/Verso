@@ -1,0 +1,1931 @@
+{
+ "version": 1,
+ "description": "Answer groundedness set (ADR-0047): cited answer sentences of results/e2e-rerank-off-gpu.json (gemma4:e2b, GPU) labelled against their cited pages (samples/src, pages split at ---), plus perturbed copies (numbers, number words, negation, names, codes) and supported rewrites. Labels by reading the page; see docs/evidence/dayanaklilik-olcumu.md.",
+ "source": "eval/results/e2e-rerank-off-gpu.json",
+ "items": [
+  {
+   "id": "izin-1-s0",
+   "question": "izin-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Beş yıldan az hizmeti olan çalışanlar yılda on dört iş günü yıllık izin kullanır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#1"
+   ]
+  },
+  {
+   "id": "izin-2-s0",
+   "question": "izin-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "On beş yıldan fazla hizmeti olanlar yılda yirmi altı iş günü izin kullanır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#1"
+   ]
+  },
+  {
+   "id": "izin-3-s0",
+   "question": "izin-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Evet, kullanılmayan izin bir sonraki yıla en fazla beş iş günü olarak devredilebilir.",
+   "cites": [
+    "izin-yonetmeligi.pdf#1"
+   ]
+  },
+  {
+   "id": "izin-4-s0",
+   "question": "izin-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Eşi doğum yapan çalışana beş iş günü babalık izni verilir.",
+   "cites": [
+    "izin-yonetmeligi.pdf#2"
+   ]
+  },
+  {
+   "id": "izin-5-s0",
+   "question": "izin-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Doğum izni toplam on altı haftadır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#2"
+   ]
+  },
+  {
+   "id": "izin-6-s0",
+   "question": "izin-6",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Yıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#3"
+   ]
+  },
+  {
+   "id": "masraf-1-s0",
+   "question": "masraf-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "İş seyahatinde günlük yemek limiti kişi başı 900 TL'dir.",
+   "cites": [
+    "masraf-politikasi.pdf#1"
+   ]
+  },
+  {
+   "id": "masraf-2-s0",
+   "question": "masraf-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Masraflar, harcamanın yapıldığı ayı izleyen ayın beşinci iş gününe kadar masraf sistemine girilmelidir.",
+   "cites": [
+    "masraf-politikasi.pdf#1"
+   ]
+  },
+  {
+   "id": "masraf-3-s0",
+   "question": "masraf-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kişisel araçla yapılan iş yolculuklarında kilometre başına 9 TL yakıt ve yıpranma bedeli ödenir.",
+   "cites": [
+    "masraf-politikasi.pdf#2"
+   ]
+  },
+  {
+   "id": "masraf-4-s0",
+   "question": "masraf-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Ankara için yurt içinde gecelik otel limiti 4.000 TL'dir.",
+   "cites": [
+    "masraf-politikasi.pdf#2"
+   ]
+  },
+  {
+   "id": "masraf-5-s0",
+   "question": "masraf-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "5.000 TL'ye kadar olan masrafları doğrudan yönetici onaylar.",
+   "cites": [
+    "masraf-politikasi.pdf#3"
+   ]
+  },
+  {
+   "id": "masraf-5-s1",
+   "question": "masraf-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "5.000 TL ile 25.000 TL arasındaki masraflar Finans Müdürü onayına gider.",
+   "cites": [
+    "masraf-politikasi.pdf#3"
+   ]
+  },
+  {
+   "id": "masraf-5-s2",
+   "question": "masraf-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekir.",
+   "cites": [
+    "masraf-politikasi.pdf#3"
+   ]
+  },
+  {
+   "id": "masraf-5-s3",
+   "question": "masraf-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bu durumda, 30.000 TL'lik bir masraf için Genel Müdür onayı gereklidir.",
+   "cites": [
+    "masraf-politikasi.pdf#3"
+   ]
+  },
+  {
+   "id": "guvenlik-1-s0",
+   "question": "guvenlik-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalıdır.",
+   "cites": [
+    "bilgi-guvenligi.pdf#1"
+   ]
+  },
+  {
+   "id": "guvenlik-2-s0",
+   "question": "guvenlik-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kurumsal hesap parolaları doksan günde bir değiştirilir.",
+   "cites": [
+    "bilgi-guvenligi.pdf#1"
+   ]
+  },
+  {
+   "id": "guvenlik-3-s0",
+   "question": "guvenlik-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir.",
+   "cites": [
+    "bilgi-guvenligi.pdf#2"
+   ]
+  },
+  {
+   "id": "guvenlik-4-s0",
+   "question": "guvenlik-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kamuya Açık, İç Kullanım, Gizli ve Çok Gizli.",
+   "cites": [
+    "bilgi-guvenligi.pdf#2"
+   ]
+  },
+  {
+   "id": "guvenlik-5-s0",
+   "question": "guvenlik-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Oltalama tatbikatı yılda iki kez yapılır.",
+   "cites": [
+    "bilgi-guvenligi.pdf#3"
+   ]
+  },
+  {
+   "id": "uzaktan-1-s0",
+   "question": "uzaktan-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Haftada en fazla iki gün uzaktan çalışabilirsiniz.",
+   "cites": [
+    "uzaktan-calisma.pdf#1"
+   ]
+  },
+  {
+   "id": "uzaktan-2-s0",
+   "question": "uzaktan-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Çekirdek çalışma saatleri sabah 10.00 ile 16.00 arasında olmak zorundadır.",
+   "cites": [
+    "uzaktan-calisma.pdf#1"
+   ]
+  },
+  {
+   "id": "uzaktan-3-s0",
+   "question": "uzaktan-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Ev interneti için aylık 500 TL destek ödenir.",
+   "cites": [
+    "uzaktan-calisma.pdf#2"
+   ]
+  },
+  {
+   "id": "kvkk-1-s0",
+   "question": "kvkk-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#2"
+   ]
+  },
+  {
+   "id": "kvkk-2-s0",
+   "question": "kvkk-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kamera kayıtları otuz gün sonra kendiliğinden silinir.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#2"
+   ]
+  },
+  {
+   "id": "kvkk-3-s0",
+   "question": "kvkk-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "KVKK başvuruları en geç otuz gün içinde ücretsiz olarak sonuçlandırılır.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#3"
+   ]
+  },
+  {
+   "id": "satin-1-s0",
+   "question": "satin-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "50.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır.",
+   "cites": [
+    "satin-alma-proseduru.pdf#1"
+   ]
+  },
+  {
+   "id": "satin-2-s0",
+   "question": "satin-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır.",
+   "cites": [
+    "satin-alma-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "satin-3-s0",
+   "question": "satin-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez.",
+   "cites": [
+    "satin-alma-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "yok-3-s0",
+   "question": "yok-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Yıl sonunda bütün depoda tam sayım yapılır ve tam sayım günlerinde sevkiyat yapılmaz.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "depo-1-s0",
+   "question": "depo-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Stok, sevkiyat emri onaylandığında değil, toplama tamamlanıp koli kapatıldığında düşer.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-2-s0",
+   "question": "depo-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Fazla miktar ayırılmalı ve kabul sipariş miktarıyla yapılmalıdır.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "depo-2-s1",
+   "question": "depo-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E058) ve fazla miktar tedarikçiye iade edilir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "depo-3-s0",
+   "question": "depo-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Sevkiyat emri iptal edilirse rezervasyon en geç 15 dakika içinde kendiliğinden kaldırılır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-4-s0",
+   "question": "depo-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Tedarikçi, sevkiyattan en geç 24 saat önce ön bildirim (ASN) gönderir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-5-s0",
+   "question": "depo-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Sayılan miktar ile ASN miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-5-s1",
+   "question": "depo-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Fark yüzde 2'yi aşarsa WMS kabulü \"kabul farkı\" durumunda bekletir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-6-s0",
+   "question": "depo-6",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kabul alanındaki ürünler kabulden sonra en geç 4 saat içinde yerleştirilmelidir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-7-s0",
+   "question": "depo-7",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-8-s0",
+   "question": "depo-8",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kabul alanında bulunan ürünler, eldeki stokta yer alır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "depo-9-s0",
+   "question": "depo-9",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bloke edilmiş bir stok satırının blokesini yalnız stok kontrol uzmanı alabilir ve yalnız o kaldırabilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "depo-10-s0",
+   "question": "depo-10",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "B sınıfı ürünler üç ayda bir sayılır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "depo-11-s0",
+   "question": "depo-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "5.000 TL'ye kadar olan masrafları doğrudan yönetici onaylar.",
+   "cites": [
+    "masraf-politikasi.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-12-s0",
+   "question": "depo-12",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "WMS-204 hatası \"Yetersiz kullanılabilir stok\" anlamına gelir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "depo-12-s1",
+   "question": "depo-12",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bu durumda ürün rezerve edilebilir veya bloke edilebilir; stok durumu sorgulanmalı ve vardiya sorumlusuna bildirilmelidir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "depo-13-s0",
+   "question": "depo-13",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Koli kapatıldığında tartılan ağırlık, sistemin ürün ağırlıklarından hesapladığı beklenen ağırlıktan yüzde 5'ten fazla saparsa terminal \"TARTI-FARK\" uyarısı verir ve koli kapatılamaz; koli yeniden kontrol edilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-14-s0",
+   "question": "depo-14",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kargo firmalarına teslim için günlük kesim saati 16.30'dur; bu saatten sonra kapatılan koliler ertesi iş günü sevk edilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-15-s0",
+   "question": "depo-15",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "WMS-502 | ERP bağlantısı yok durumunda terminal kayıtları 60 dakikaya kadar yerelde tutar ve bağlantı gelince gönderir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "depo-16-s0",
+   "question": "depo-16",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Gün sonu işlemi her gün saat 23.00'te otomatik çalışır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "depo-17-s0",
+   "question": "depo-17",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "B gözü demektir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#1"
+   ]
+  },
+  {
+   "id": "depo-18-s0",
+   "question": "depo-18",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "FEFO, son kullanma tarihi en yakın olan ürünün önce sevk edilmesi kuralıdır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#1"
+   ]
+  },
+  {
+   "id": "depo-19-s0",
+   "question": "depo-19",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bütün depoda yeni toplama başlatılamıyorsa P1 öncelikle bildirilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "depo-20-s0",
+   "question": "depo-20",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "WMS kullanıcıları el terminalinde 10 dakika işlem yapılmazsa oturumu kilitler.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#1"
+   ]
+  },
+  {
+   "id": "erp-1-s0",
+   "question": "erp-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Satın alma talebinde durum kodu 20, \"Onay bekliyor\" anlamına gelir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "erp-4-s0",
+   "question": "erp-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bir vekalet en fazla 30 gün geçerlidir,.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3",
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-5-s0",
+   "question": "erp-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Maliyet merkezinin yıllık bütçesinin yüzde 100'ü aşacaksa ek bütçe onayı gelmeden talep gönderilemez (SAT-E027).",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5",
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-6-s0",
+   "question": "erp-6",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Ek bütçe onayı gelmeden talep gönderilemez.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-7-s0",
+   "question": "erp-7",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kurlar her iş günü 15.45'te yüklenir; bu saatten sonra yeniden deneyin.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-8-s0",
+   "question": "erp-8",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E058) ve fazla miktar tedarikçiye iade edilir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "erp-9-s0",
+   "question": "erp-9",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Sipariş tutarı onaylı talep tutarını yüzde 10'dan fazla aşarsa sipariş \"Onayda\" (55) durumuna düşer ve fark için talebin son onaycısının onayı gerekir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-10-s0",
+   "question": "erp-10",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "1.000.000 TL üzeri tutarlar için Yönetim Kurulu kararı gereklidir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-10-s1",
+   "question": "erp-10",
+   "kind": "natural",
+   "label": "unsupported",
+   "sentence": "1.000.000 TL ile 1.000.000 TL arası için Bölüm yöneticisi, Satın Alma Müdürü ve Finans Direktörü onayları gereklidir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-10-s2",
+   "question": "erp-10",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bölüm yöneticisi, Satın Alma Müdürü ve Finans Direktörü.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-11-s0",
+   "question": "erp-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-12-s0",
+   "question": "erp-12",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Mal kabul WMS'te tamamlandığında ERP'de mal kabul belgesi (MK) otomatik oluşur.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "erp-13-s0",
+   "question": "erp-13",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Hayır, bir kullanıcı aynı anda SAT-UZMAN ve SAT-ONAY rolüne sahip olamaz (görevler ayrılığı).",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "erp-14-s0",
+   "question": "erp-14",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Geciken teslimatlar raporu her pazartesi satın alma uzmanlarına e-postayla gelir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "erp-15-s0",
+   "question": "erp-15",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Taslak durumunda 30 gün bekleyen talepler kendiliğinden iptal edilir (durum 95).",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "erp-16-s0",
+   "question": "erp-16",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Ayın son iş günü saat 18.00'den sonra girilen mal kabul o aya kaydedilmez, bir sonraki aya geçer.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "erp-17-s0",
+   "question": "erp-17",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "SAT-E071 kodlu bir sipariş, 20 dakika işlem yapılılmazsa kendiliğinden kalkar.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-18-s0",
+   "question": "erp-18",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Üç denemede iletilemeyen mesaj \"hatalı\" durumuna geçer ve ERP destek ekibinin panosunda görünür.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "erp-18-s1",
+   "question": "erp-18",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Aynı mesaj elle iki kez gönderilmez, çünkü WMS tekrar eden mesajı mesaj numarasından tanıyıp reddeder.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-1-s0",
+   "question": "bt-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "P1 olaylar için ilk yanıt süresi 15 dakikadır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-1-s1",
+   "question": "bt-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "CRM'de müşteri kayıtlarında P1 Acil önceliği için ilk yanıt süresi 1 saattir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-2-s0",
+   "question": "bt-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bütün depoda yeni toplama başlatılamıyorsa P1 öncelikle bildirilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "bt-3-s0",
+   "question": "bt-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Yazıcı ağda görünmüyorsa kayıt P3 açılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#5"
+   ]
+  },
+  {
+   "id": "bt-4-s0",
+   "question": "bt-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "P1 olayında 30 dakika içinde geçici çözüm bulunamazsa BT Operasyon Müdürü köprüye çağrılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-6-s0",
+   "question": "bt-6",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bir kullanıcı aynı anda en fazla iki cihazdan bağlanabilir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-7-s0",
+   "question": "bt-7",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bu durumda, kullanıcıdan telefonunun mobil veri paylaşımıyla denemesi istenir; sorun devam ederse kayıt P3 açılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-8-s0",
+   "question": "bt-8",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Cihaz sertifikası süresi dolduysa ve cihaz ofiste kablolu ağa bağlanırsa kendiliğinden yenilenir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-8-s1",
+   "question": "bt-8",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Uzaktaki kullanıcılar için Service Desk geçici erişim kodu üretilir ve bu kod 24 saat geçerlidir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-9-s0",
+   "question": "bt-9",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-10-s0",
+   "question": "bt-10",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kilit süresi dolunca kendiliğinden açılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-11-s0",
+   "question": "bt-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Self servisi kullanamayan kullanıcılar Service Desk'i arayabilirler.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-11-s1",
+   "question": "bt-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Analist kimliği doğrulamak için personel sicil numarasını sorar ve kullanıcının yöneticisini sistemdeki numarasından geri arar; yöneticiye ulaşılamazsa sıfırlama yapılmaz.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-11-s2",
+   "question": "bt-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Parola telefonda söylenmez.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-11-s3",
+   "question": "bt-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Geçici parola kullanıcının yöneticisine kısa mesajla gönderilir ve 24 saat geçerlidir; ilk girişte değiştirilmek zorundadır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-12-s0",
+   "question": "bt-12",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Service Desk'in verdiği geçici parola 24 saat geçerlidir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3",
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-13-s0",
+   "question": "bt-13",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "ERP veritabanı yedekleri 90 gün saklanmaktadır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-14-s0",
+   "question": "bt-14",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Dizüstü bilgisayarları yedeklenmez; dosyalar kurumsal bulut klasörüyle eşitlenir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-15-s0",
+   "question": "bt-15",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Planlı bakım her ayın ikinci cumartesi günü 22.00 ile 02.00 arasında yapılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-16-s0",
+   "question": "bt-16",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Normal değişiklikler her salı toplanan Değişiklik Danışma Kurulu (CAB) onayından geçer.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-17-s0",
+   "question": "bt-17",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Yeni çalışanın hesabı İnsan Kaynakları'nın işe giriş talebiyle açılır ve bu talep işe başlama tarihinden en az 3 iş günü önce gelmelidir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-18-s0",
+   "question": "bt-18",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Cihaz 7 gün içinde bulunamazsa uzaktan silme komutu gönderilir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#5"
+   ]
+  },
+  {
+   "id": "bt-19-s0",
+   "question": "bt-19",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Nöbetçi mühendis telefonu 5 dakika içinde açılmazsa çağrı yedek nöbetçiye geçer.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#6"
+   ]
+  },
+  {
+   "id": "bt-20-s0",
+   "question": "bt-20",
+   "kind": "natural",
+   "label": "unsupported",
+   "sentence": "\"Çözüldü\" durumundaki bir kayıt yeniden açılamaz.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-21-s0",
+   "question": "bt-21",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bu saatler dışında telefon hattına yalnızca P1 ve P2 olaylar kabul edilir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#1"
+   ]
+  },
+  {
+   "id": "crm-1-s0",
+   "question": "crm-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Hayır, \"Müşteri bekleniyor\" durumundaki kayıtta SLA saati durur.",
+   "cites": [
+    "musteri-destek-sureci.pdf#2"
+   ]
+  },
+  {
+   "id": "crm-2-s0",
+   "question": "crm-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Müşteri 7 gün içinde yanıt vermezse kayıt \"Çözüldü\" durumuna alınır ve kapanış nedeni \"müşteriden yanıt gelmedi\" olarak işaretlenir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#2"
+   ]
+  },
+  {
+   "id": "crm-3-s0",
+   "question": "crm-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "P1 kaydın çözüm hedefi 8 saattir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#3"
+   ]
+  },
+  {
+   "id": "crm-4-s0",
+   "question": "crm-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Altın sözleşmeli müşterilerin P1 kayıtlarında ilk yanıt süresi 30 dakika olmalıdır.",
+   "cites": [
+    "musteri-destek-sureci.pdf#3"
+   ]
+  },
+  {
+   "id": "crm-5-s0",
+   "question": "crm-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Çözüm hedefinin yüzde 75'i dolduğunda CRM, kaydın sahibine ve takım liderine uyarı gönderir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#3"
+   ]
+  },
+  {
+   "id": "crm-6-s0",
+   "question": "crm-6",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Müşteri sunduğunuz çözümü beğenmezse kayıt \"Yeniden açıldı\" durumuna geçer ve aynı uzmana atanır.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "crm-7-s0",
+   "question": "crm-7",
+   "kind": "natural",
+   "label": "unsupported",
+   "sentence": "Yeniden açılan bir P2 kaydın çözülmesi için 2 iş günü vardır.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "crm-8-s0",
+   "question": "crm-8",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bir kayıt en fazla iki kez yeniden açılabilir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "crm-9-s0",
+   "question": "crm-9",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "İade talepleri teslimattan sonraki 14 gün içinde kabul edilir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "crm-10-s0",
+   "question": "crm-10",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "3 ve altı puan veren müşteriyi takım lideri 2 iş günü içinde arar.",
+   "cites": [
+    "musteri-destek-sureci.pdf#5"
+   ]
+  },
+  {
+   "id": "crm-11-s0",
+   "question": "crm-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Kapatılan kayıtlar 3 yıl saklanır ve ardından anonimleştirilir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#5"
+   ]
+  },
+  {
+   "id": "crm-12-s0",
+   "question": "crm-12",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Evet, bir kaydı \"Üçüncü taraf bekleniyor\" durumuna almak SLA'yı durdurmaz; kargo.",
+   "cites": [
+    "musteri-destek-sureci.pdf#2"
+   ]
+  },
+  {
+   "id": "crm-14-s0",
+   "question": "crm-14",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Ödeme iadesi kalite onayından sonra en geç 10 iş günü içinde yapılır.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-1-s0",
+   "question": "isg-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Raf koridorlarında forklift en fazla 6 km/sa hızla gidebilir.",
+   "cites": [
+    "isg-depo-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "isg-2-s0",
+   "question": "isg-2",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Ağır palet rafı (C bölgesi) için göz başına azami yük 1.500 kg'dır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#3"
+   ]
+  },
+  {
+   "id": "isg-3-s0",
+   "question": "isg-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Rafın dikmesi 10 mm'den fazla eğilmişse raf kırmızı sınıftadır ve derhal boşaltılır ve kullanım dışı bırakılır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#3",
+    "isg-depo-proseduru.pdf#3"
+   ]
+  },
+  {
+   "id": "isg-4-s0",
+   "question": "isg-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Turuncu sınıf raf hasarı 4 hafta içinde onarılmalıdır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#3"
+   ]
+  },
+  {
+   "id": "isg-5-s0",
+   "question": "isg-5",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Bir çalışanın tek başına kaldırabileceği yük en fazla 25 kg'dır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-6-s0",
+   "question": "isg-6",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Paketleme masalarında en az 500 lüks olmalıdır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-7-s0",
+   "question": "isg-7",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Depoda tahliye tatbikatı yılda iki kez yapılır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-8-s0",
+   "question": "isg-8",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Soğuk odada tek seferde en fazla 45 dakika çalışma yapılabilir.",
+   "cites": [
+    "isg-depo-proseduru.pdf#1"
+   ]
+  },
+  {
+   "id": "isg-9-s0",
+   "question": "isg-9",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "DÖF kaydının aksiyonları 30 gün içinde tamamlanır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#5"
+   ]
+  },
+  {
+   "id": "isg-11-s0",
+   "question": "isg-11",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "İSG uzmanı her ramak kala bildirimini 5 iş günü içinde inceler.",
+   "cites": [
+    "isg-depo-proseduru.pdf#5"
+   ]
+  },
+  {
+   "id": "isg-12-s0",
+   "question": "isg-12",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider; odadaki ürünler WMS'te karantinaya alınır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-13-s0",
+   "question": "isg-13",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Operatör belgesi yenileme eğitimi 5 yılda bir yapılır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "isg-14-s0",
+   "question": "isg-14",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Akü şarj odasında koruyucu gözlük, aside dayanıklı eldiven ve önlük zorunludur.",
+   "cites": [
+    "isg-depo-proseduru.pdf#1"
+   ]
+  },
+  {
+   "id": "depo-yok-3-s0",
+   "question": "depo-yok-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Etiket rulosu değiştirildikten sonra ilk etiket test etiketi olarak basılır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-yok-3-s0",
+   "question": "erp-yok-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Döviz kurları her iş günü 15.45'te yüklenir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-yok-4-s0",
+   "question": "erp-yok-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Belgelerde belirtilen onay süresi hedefi 3 iş günüdür.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "bt-yok-4-s0",
+   "question": "bt-yok-4",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Nöbet ödemeleri İnsan Kaynakları prosedürüne göre yapılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#6"
+   ]
+  },
+  {
+   "id": "crm-yok-1-s0",
+   "question": "crm-yok-1",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "Altın sözleşmeli müşterilerin P1 kayıtlarında ilk yanıt süresi 30 dakika, P2 kayıtlarında ise 2 saattir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#3"
+   ]
+  },
+  {
+   "id": "isg-yok-3-s0",
+   "question": "isg-yok-3",
+   "kind": "natural",
+   "label": "supported",
+   "sentence": "İş kazası olduğunda vardiya sorumlusu İSG uzmanını arar.",
+   "cites": [
+    "isg-depo-proseduru.pdf#5"
+   ]
+  },
+  {
+   "id": "masraf-1-s0-p0",
+   "question": "masraf-1",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "İş seyahatinde günlük yemek limiti kişi başı 1.200 TL'dir.",
+   "cites": [
+    "masraf-politikasi.pdf#1"
+   ]
+  },
+  {
+   "id": "masraf-3-s0-p1",
+   "question": "masraf-3",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Kişisel araçla yapılan iş yolculuklarında kilometre başına 12 TL yakıt ve yıpranma bedeli ödenir.",
+   "cites": [
+    "masraf-politikasi.pdf#2"
+   ]
+  },
+  {
+   "id": "masraf-4-s0-p2",
+   "question": "masraf-4",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Ankara için yurt içinde gecelik otel limiti 3.000 TL'dir.",
+   "cites": [
+    "masraf-politikasi.pdf#2"
+   ]
+  },
+  {
+   "id": "satin-1-s0-p3",
+   "question": "satin-1",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "100.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır.",
+   "cites": [
+    "satin-alma-proseduru.pdf#1"
+   ]
+  },
+  {
+   "id": "depo-3-s0-p4",
+   "question": "depo-3",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Sevkiyat emri iptal edilirse rezervasyon en geç 30 dakika içinde kendiliğinden kaldırılır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-4-s0-p5",
+   "question": "depo-4",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Tedarikçi, sevkiyattan en geç 48 saat önce ön bildirim (ASN) gönderir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-5-s0-p6",
+   "question": "depo-5",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Sayılan miktar ile ASN miktarı arasındaki fark yüzde 5'e kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-6-s0-p7",
+   "question": "depo-6",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Kabul alanındaki ürünler kabulden sonra en geç 6 saat içinde yerleştirilmelidir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-7-s0-p8",
+   "question": "depo-7",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Kalite birimi karantinadaki ürünü en geç 5 iş günü içinde inceler.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-14-s0-p9",
+   "question": "depo-14",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Kargo firmalarına teslim için günlük kesim saati 17.30'dur; bu saatten sonra kapatılan koliler ertesi iş günü sevk edilir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "depo-16-s0-p10",
+   "question": "depo-16",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Gün sonu işlemi her gün saat 22.00'de otomatik çalışır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "depo-20-s0-p11",
+   "question": "depo-20",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "WMS kullanıcıları el terminalinde 15 dakika işlem yapılmazsa oturumu kilitler.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#1"
+   ]
+  },
+  {
+   "id": "erp-7-s0-p12",
+   "question": "erp-7",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Kurlar her iş günü 14.45'te yüklenir; bu saatten sonra yeniden deneyin.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-15-s0-p13",
+   "question": "erp-15",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Taslak durumunda 60 gün bekleyen talepler kendiliğinden iptal edilir (durum 95).",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "bt-9-s0-p14",
+   "question": "bt-9",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Art arda 3 hatalı parola denemesinde hesap 30 dakika kilitlenir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "bt-18-s0-p15",
+   "question": "bt-18",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Cihaz 10 gün içinde bulunamazsa uzaktan silme komutu gönderilir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#5"
+   ]
+  },
+  {
+   "id": "crm-9-s0-p16",
+   "question": "crm-9",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "İade talepleri teslimattan sonraki 30 gün içinde kabul edilir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "crm-11-s0-p17",
+   "question": "crm-11",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Kapatılan kayıtlar 5 yıl saklanır ve ardından anonimleştirilir.",
+   "cites": [
+    "musteri-destek-sureci.pdf#5"
+   ]
+  },
+  {
+   "id": "isg-5-s0-p18",
+   "question": "isg-5",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Bir çalışanın tek başına kaldırabileceği yük en fazla 30 kg'dır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-8-s0-p19",
+   "question": "isg-8",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Soğuk odada tek seferde en fazla 60 dakika çalışma yapılabilir.",
+   "cites": [
+    "isg-depo-proseduru.pdf#1"
+   ]
+  },
+  {
+   "id": "isg-13-s0-p20",
+   "question": "isg-13",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Operatör belgesi yenileme eğitimi 3 yılda bir yapılır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "erp-9-s0-p21",
+   "question": "erp-9",
+   "kind": "number",
+   "label": "unsupported",
+   "sentence": "Sipariş tutarı onaylı talep tutarını yüzde 20'den fazla aşarsa sipariş \"Onayda\" (55) durumuna düşer ve fark için talebin son onaycısının onayı gerekir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "izin-4-s0-p22",
+   "question": "izin-4",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Eşi doğum yapan çalışana üç iş günü babalık izni verilir.",
+   "cites": [
+    "izin-yonetmeligi.pdf#2"
+   ]
+  },
+  {
+   "id": "izin-5-s0-p23",
+   "question": "izin-5",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Doğum izni toplam on dört haftadır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#2"
+   ]
+  },
+  {
+   "id": "izin-6-s0-p24",
+   "question": "izin-6",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Yıllık izin talepleri, iznin başlangıç tarihinden en az yedi gün önce İK portalı üzerinden yapılmalıdır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#3"
+   ]
+  },
+  {
+   "id": "guvenlik-1-s0-p25",
+   "question": "guvenlik-1",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Kurumsal hesap parolaları en az sekiz karakter uzunluğunda olmalıdır.",
+   "cites": [
+    "bilgi-guvenligi.pdf#1"
+   ]
+  },
+  {
+   "id": "guvenlik-2-s0-p26",
+   "question": "guvenlik-2",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Kurumsal hesap parolaları altmış günde bir değiştirilir.",
+   "cites": [
+    "bilgi-guvenligi.pdf#1"
+   ]
+  },
+  {
+   "id": "kvkk-1-s0-p27",
+   "question": "kvkk-1",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren beş yıl saklanır.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#2"
+   ]
+  },
+  {
+   "id": "kvkk-2-s0-p28",
+   "question": "kvkk-2",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Kamera kayıtları altmış gün sonra kendiliğinden silinir.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#2"
+   ]
+  },
+  {
+   "id": "uzaktan-1-s0-p29",
+   "question": "uzaktan-1",
+   "kind": "number-word",
+   "label": "unsupported",
+   "sentence": "Haftada en fazla üç gün uzaktan çalışabilirsiniz.",
+   "cites": [
+    "uzaktan-calisma.pdf#1"
+   ]
+  },
+  {
+   "id": "izin-3-s0-p30",
+   "question": "izin-3",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Evet, kullanılmayan izin bir sonraki yıla en fazla beş iş günü olarak devredilemez.",
+   "cites": [
+    "izin-yonetmeligi.pdf#1"
+   ]
+  },
+  {
+   "id": "masraf-2-s0-p31",
+   "question": "masraf-2",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Masraflar, harcamanın yapıldığı ayı izleyen ayın beşinci iş gününe kadar masraf sistemine girilmek zorunda değildir.",
+   "cites": [
+    "masraf-politikasi.pdf#1"
+   ]
+  },
+  {
+   "id": "depo-1-s0-p32",
+   "question": "depo-1",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Stok, sevkiyat emri onaylandığında düşer.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#3"
+   ]
+  },
+  {
+   "id": "erp-6-s0-p33",
+   "question": "erp-6",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Ek bütçe onayı gelmeden talep gönderilebilir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-13-s0-p34",
+   "question": "erp-13",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Hayır, bir kullanıcı aynı anda SAT-UZMAN ve SAT-ONAY rolüne sahip olabilir (görevler ayrılığı).",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "bt-11-s2-p35",
+   "question": "bt-11",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Parola telefonda söylenir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#3"
+   ]
+  },
+  {
+   "id": "crm-12-s0-p36",
+   "question": "crm-12",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Evet, bir kaydı \"Üçüncü taraf bekleniyor\" durumuna almak SLA'yı durdurur; kargo.",
+   "cites": [
+    "musteri-destek-sureci.pdf#2"
+   ]
+  },
+  {
+   "id": "erp-16-s0-p37",
+   "question": "erp-16",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Ayın son iş günü saat 18.00'den sonra girilen mal kabul o aya kaydedilir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#6"
+   ]
+  },
+  {
+   "id": "bt-14-s0-p38",
+   "question": "bt-14",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Dizüstü bilgisayarları her gece yedeklenir; dosyalar kurumsal bulut klasörüyle eşitlenir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-12-s0-p39",
+   "question": "isg-12",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider; odadaki ürünler WMS'te satışa devam eder.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  },
+  {
+   "id": "yok-3-s0-p40",
+   "question": "yok-3",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Yıl sonunda bütün depoda tam sayım yapılır ve tam sayım günlerinde sevkiyat devam eder.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-6-s0-p41",
+   "question": "bt-6",
+   "kind": "negation",
+   "label": "unsupported",
+   "sentence": "Bir kullanıcı aynı anda sınırsız sayıda cihazdan bağlanabilir.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "masraf-5-s1-p42",
+   "question": "masraf-5",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "5.000 TL ile 25.000 TL arasındaki masraflar Genel Müdür onayına gider.",
+   "cites": [
+    "masraf-politikasi.pdf#3"
+   ]
+  },
+  {
+   "id": "satin-2-s0-p43",
+   "question": "satin-2",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "1.000.000 TL'yi aşan alımlar Satın Alma Müdürü kararıyla yapılır.",
+   "cites": [
+    "satin-alma-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-10-s0-p44",
+   "question": "depo-10",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "C sınıfı ürünler üç ayda bir sayılır.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-3-s0-p45",
+   "question": "bt-3",
+   "kind": "code",
+   "label": "unsupported",
+   "sentence": "Yazıcı ağda görünmüyorsa kayıt P1 açılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#5"
+   ]
+  },
+  {
+   "id": "erp-8-s0-p46",
+   "question": "erp-8",
+   "kind": "code",
+   "label": "unsupported",
+   "sentence": "Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E027) ve fazla miktar tedarikçiye iade edilir.",
+   "cites": [
+    "erp-satin-alma-kilavuzu.pdf#4"
+   ]
+  },
+  {
+   "id": "depo-12-s0-p47",
+   "question": "depo-12",
+   "kind": "code",
+   "label": "unsupported",
+   "sentence": "WMS-502 hatası \"Yetersiz kullanılabilir stok\" anlamına gelir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#5"
+   ]
+  },
+  {
+   "id": "bt-16-s0-p48",
+   "question": "bt-16",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "Normal değişiklikler her cuma toplanan Değişiklik Danışma Kurulu (CAB) onayından geçer.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#4"
+   ]
+  },
+  {
+   "id": "bt-4-s0-p49",
+   "question": "bt-4",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "P1 olayında 30 dakika içinde geçici çözüm bulunamazsa Genel Müdür köprüye çağrılır.",
+   "cites": [
+    "bt-operasyon-runbook.pdf#2"
+   ]
+  },
+  {
+   "id": "guvenlik-3-s0-p50",
+   "question": "guvenlik-3",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde İnsan Kaynakları birimine bildirir.",
+   "cites": [
+    "bilgi-guvenligi.pdf#2"
+   ]
+  },
+  {
+   "id": "crm-6-s0-p51",
+   "question": "crm-6",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "Müşteri sunduğunuz çözümü beğenmezse kayıt \"Yeniden açıldı\" durumuna geçer ve takım liderine atanır.",
+   "cites": [
+    "musteri-destek-sureci.pdf#4"
+   ]
+  },
+  {
+   "id": "isg-14-s0-p52",
+   "question": "isg-14",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "Soğuk odada koruyucu gözlük, aside dayanıklı eldiven ve önlük zorunludur.",
+   "cites": [
+    "isg-depo-proseduru.pdf#1"
+   ]
+  },
+  {
+   "id": "kvkk-3-s0-p53",
+   "question": "kvkk-3",
+   "kind": "entity",
+   "label": "unsupported",
+   "sentence": "KVKK başvuruları en geç otuz gün içinde ücret karşılığında sonuçlandırılır.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#3"
+   ]
+  },
+  {
+   "id": "izin-1-s0-p54",
+   "question": "izin-1",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Beş yıldan az hizmeti olan çalışanlar yılda 14 iş günü yıllık izin kullanır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#1"
+   ]
+  },
+  {
+   "id": "izin-5-s0-p55",
+   "question": "izin-5",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Doğum izni toplam 16 haftadır.",
+   "cites": [
+    "izin-yonetmeligi.pdf#2"
+   ]
+  },
+  {
+   "id": "guvenlik-2-s0-p56",
+   "question": "guvenlik-2",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Kurumsal hesap parolaları 90 günde bir değiştirilir.",
+   "cites": [
+    "bilgi-guvenligi.pdf#1"
+   ]
+  },
+  {
+   "id": "kvkk-2-s0-p57",
+   "question": "kvkk-2",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Kamera kayıtları 30 gün sonra kendiliğinden silinir.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#2"
+   ]
+  },
+  {
+   "id": "kvkk-1-s0-p58",
+   "question": "kvkk-1",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren 10 yıl saklanır.",
+   "cites": [
+    "kvkk-aydinlatma.pdf#2"
+   ]
+  },
+  {
+   "id": "guvenlik-5-s0-p59",
+   "question": "guvenlik-5",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Oltalama tatbikatı yılda 2 kez yapılır.",
+   "cites": [
+    "bilgi-guvenligi.pdf#3"
+   ]
+  },
+  {
+   "id": "satin-3-s0-p60",
+   "question": "satin-3",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "100 üzerinden 60 puanın altında kalan tedarikçiyle sözleşme yenilenmez.",
+   "cites": [
+    "satin-alma-proseduru.pdf#2"
+   ]
+  },
+  {
+   "id": "depo-6-s0-p61",
+   "question": "depo-6",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Kabul alanındaki ürünler kabulden sonra dört saat içinde yerleştirilmelidir.",
+   "cites": [
+    "depo-yonetim-kilavuzu.pdf#2"
+   ]
+  },
+  {
+   "id": "crm-10-s0-p62",
+   "question": "crm-10",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "3 ve altı puan veren müşteriyi ekip lideri 2 iş günü içinde arar.",
+   "cites": [
+    "musteri-destek-sureci.pdf#5"
+   ]
+  },
+  {
+   "id": "isg-7-s0-p63",
+   "question": "isg-7",
+   "kind": "rewrite",
+   "label": "supported",
+   "sentence": "Depoda tahliye tatbikatı senede iki defa yapılır.",
+   "cites": [
+    "isg-depo-proseduru.pdf#4"
+   ]
+  }
+ ]
+}

@@ -209,6 +209,13 @@ verso:
       max-query-chars: 300
       timeout: 10s
       answer-with-context: false
+    # Answer groundedness (ADR-0047): after the citations are validated, each cited answer sentence that states a
+    # number, a number word or a code is compared with its cited passages (in-process, lexical, a fraction of a
+    # millisecond). Unsupported sentences go to "unverified" in the answer and the citations event; the text is never
+    # changed; no supported cited sentence at all makes the answer UNCITED. Measured: precision 1.00 on 192 labelled
+    # sentences, docs/evidence/dayanaklilik-olcumu.md. Off (VERSO_QA_GROUNDING_ENABLED=false): no check.
+    grounding:
+      enabled: ${VERSO_QA_GROUNDING_ENABLED:true}
     # The qa module's own schema "qa" (ADR-0023): its own pool as svc_qa (DML only) and its own Flyway as
     # svc_qa_migrate (owner, DDL), the second module of reference 10.1's one-schema-two-roles rule. Passwords from
     # /run/secrets (SECRET_DB_QA_PASSWORD, SECRET_DB_QA_MIGRATE_PASSWORD), no fallback. The migration runs whenever

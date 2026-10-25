@@ -94,7 +94,7 @@ final class QuestionEventStream implements AnswerStream {
     public void completed(AnswerResponse answer) {
         // After the turn is stored, like the JSON path: ids and the outcome type only (ADR-0026).
         audit.questionAsked(answer);
-        if (send(CITATIONS, new StreamCitationsEvent(answer.answer(), answer.citations()))) {
+        if (send(CITATIONS, StreamCitationsEvent.of(answer))) {
             send(DONE, StreamDoneEvent.of(answer));
         }
         end();

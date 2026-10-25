@@ -20,6 +20,7 @@ import com.verso.qa.api.dto.AnswerOutcome;
 import com.verso.qa.api.dto.AnswerResponse;
 import com.verso.qa.api.dto.AnswerStage;
 import com.verso.qa.config.AiMode;
+import com.verso.qa.config.QaGroundingProperties;
 import com.verso.qa.config.QaProperties;
 import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.service.AnswerStream;
@@ -28,6 +29,7 @@ import com.verso.qa.service.CitationExtractor;
 import com.verso.qa.service.ConversationHistory;
 import com.verso.qa.service.ConversationHistory.StoredTurn;
 import com.verso.qa.service.FollowUpRewriter;
+import com.verso.qa.service.GroundingCheck;
 import com.verso.qa.service.ModelCircuitBreaker;
 import com.verso.qa.service.PromptBuilder;
 import com.verso.qa.service.QaMetrics;
@@ -75,7 +77,8 @@ class QuestionStreamTest {
         service = new QuestionServiceImpl(retrieval, model, new PromptBuilder(properties), new CitationExtractor(properties),
                 properties, new VersoAiProperties(AiMode.LOCAL, "test-chat", "test-embed"), circuit,
                 new QaMetrics(new SimpleMeterRegistry(), circuit), history, new AnswerabilityGate(properties), groups,
-                new FollowUpRewriter(FollowUpQuestionTest.FOLLOW_UP), FollowUpQuestionTest.FOLLOW_UP);
+                new FollowUpRewriter(FollowUpQuestionTest.FOLLOW_UP), FollowUpQuestionTest.FOLLOW_UP,
+                new GroundingCheck(new QaGroundingProperties(true), properties));
         when(groups.current()).thenReturn(List.of());
         when(retrieval.search(any(Reader.class), anyString(), anyInt())).thenReturn(List.of(
                 new RetrievedPassage(UUID.randomUUID(), "izin.pdf", 3, SourceUnit.PAGE, "Yıllık izin yirmi gündür.", 0.9, 0)));

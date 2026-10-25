@@ -101,7 +101,7 @@ export function provisionalText(text) {
 export function resultOf(citations, done) {
   return { answer: citations.answer, citations: citations.citations ?? [], outcome: done.outcome, found: Boolean(done.found),
     mode: done.mode ?? null, model: done.model ?? null, conversationId: done.conversationId ?? null, turnId: done.turnId ?? null,
-    contextQuery: done.contextQuery ?? null };
+    contextQuery: done.contextQuery ?? null, unverified: citations.unverified ?? null };
 }
 
 /** Thrown when the stream cannot be used at all (an old proxy or server): the JSON endpoint is asked instead. */

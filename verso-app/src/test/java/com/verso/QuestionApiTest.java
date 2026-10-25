@@ -199,6 +199,47 @@ class QuestionApiTest {
         assertThat(user).contains("Annual leave rules.").doesNotContain("SAT-E027 means");
     }
 
+    /**
+     * ADR-0047: a cited sentence whose number the cited passage does not give is listed in "unverified" with its
+     * offsets; the answer text stays as the model wrote it and the other sentence keeps the answer sourced.
+     */
+    @Test
+    void ask_whenACitedSentenceStatesANumberThePassageDoesNotGive_listsItAsUnverified() throws Exception {
+        // ASCII Turkish: the test PDF font has no Turkish glyphs.
+        ready("topic-leave Yillik izin 20 is gunudur. Babalik izni 5 is gunudur.");
+        String answer = "Yillik izin 20 is gunudur [1]. Babalik izni 7 is gunudur [1].";
+        TestChatModel.INSTANCE.answer(answer);
+
+        HttpResponse<String> response = ask("topic-leave Babalik izni kac gun?");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        int start = answer.indexOf("Babalik");
+        assertThat(response.body()).contains("\"outcome\":\"ANSWERED\"", "\"found\":true",
+                "\"answer\":\"" + answer + "\"",
+                "\"unverified\":[{\"start\":" + start + ",\"end\":" + answer.length() + ",\"citations\":[1]}]");
+    }
+
+    /** ADR-0047: when no cited sentence is supported the answer is UNCITED, the citations still listed to compare. */
+    @Test
+    void ask_whenNoCitedSentenceIsSupported_answersUncitedWithTheCitations() throws Exception {
+        UUID id = ready("topic-leave Babalik izni 5 is gunudur.");
+        TestChatModel.INSTANCE.answer("Babalik izni 7 is gunudur [1].");
+
+        HttpResponse<String> response = ask("topic-leave Babalik izni kac gun?");
+
+        assertThat(response.body()).contains("\"found\":false", "\"outcome\":\"UNCITED\"", id.toString(),
+                "\"unverified\":[{\"start\":0,");
+    }
+
+    /** ADR-0047: a supported answer has an empty list, and a passage in English is compared by its numbers only. */
+    @Test
+    void ask_whenEverySentenceIsSupported_hasNoUnverifiedSentence() throws Exception {
+        ready("topic-leave Annual leave is twenty working days.");
+        TestChatModel.INSTANCE.answer("Yıllık izin yirmi iş günüdür [1].");
+
+        assertThat(ask("topic-leave Yıllık izin kaç gün?").body()).contains("\"outcome\":\"ANSWERED\"", "\"unverified\":[]");
+    }
+
     /** Phase 10 review C1: the model's own not-found sentence and an uncited text are told apart by outcome. */
     @Test
     void ask_whenTheModelCitesNothing_tellsNotFoundFromUncited() throws Exception {
