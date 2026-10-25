@@ -115,6 +115,20 @@ Tam kayıt, yöntem ve ham sayılar: `docs/evidence/yuk-olcumu.md`. Donanım: AM
 
 Yeniden ölçüm: `SCENARIOS=qa node scripts/load-test.mjs` (`QA_CLIENTS`, `QA_INGEST`, `QA_STREAM`, `QA_SECONDS`; başlıktaki açıklamaya bakın). Yığın GPU'lu ve çalışır durumda olmalı; makinede boş RAM düşükse (< 5 GB) çalıştırmayın.
 
+## Rerank yan konteyneri (2026-10-25, ADR-0043; isteğe bağlı, varsayılan kapalı)
+
+`deploy/compose.reranker.yaml`, yalnız GPU kurulumları. Kanıt: `docs/evidence/rerank-olcumu.md`.
+
+| Kaynak | Ek maliyet |
+|---|---|
+| VRAM | +1,4 GB boşta, +1,6 GB yük altında (bge-reranker-v2-m3, fp16). Ollama'nın iki modeliyle toplam ~8–10 GB / 16 GB |
+| RAM | 2,5–2,7 GiB, sınır 3 GB (`RERANKER_MEM_LIMIT`; ağırlıkların sayfa önbelleği dahil) |
+| Disk | imaj 8,2 GB (`89-1.9`), model 2,27 GB (`reranker-models` volume'ü) |
+| Soru başına gecikme | rerank çağrısı p50 93 ms, p95 111 ms (ilk 20 aday); uçtan uca p50 1,21 → 1,30 sn, p95 1,98 → 2,18 sn |
+
+- **CPU desteklenmez:** `cpu-1.9` 3 GB sınırında ilk istekte belleği aştı; CPU gecikmesi ölçülemedi.
+- Yan konteyner düşerse ya da 2 sn'de cevap vermezse soru füzyon sırasıyla cevaplanır; arka arkaya 3 hatada 1 dk atlanır (`verso_retrieval_rerank_total{outcome}`).
+
 ## Ölçümün sınırları
 
 - Yük kapalı döngüdür: her istemci cevabını bekleyip sonraki isteği gönderir. Aşırı yükte gecikmeler, açık bir geliş hızının göstereceğinden iyi görünür.

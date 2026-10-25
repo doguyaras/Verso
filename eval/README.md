@@ -195,6 +195,26 @@ Bu sette, başlıklara göre kesilen bölümler (yaklaşık 3000 karakter) bilgi
   - depo-8: metriğin yanlış negatifi. "Eldeki stoğa dahildir" doğru, ama beklenen kelime "evet".
 - **Gecikme:** p50 1,4 sn, p95 3,1 sn, en çok 23 sn (ilk soru, model ısınması). Faz 8 GPU koşusu 33 soruda p50 1,3 sn idi.
 
+## Rerank (2026-10-25, ADR-0043)
+
+İsteğe bağlı çapraz kodlayıcı (bge-reranker-v2-m3, HF TEI, GPU), hibrit aramanın ilk 20 adayı üzerinde. Yöntem ve bütün tablolar: [`docs/evidence/rerank-olcumu.md`](../docs/evidence/rerank-olcumu.md).
+
+| Ölçüm | Hibrit | Hibrit + rerank |
+|---|---|---|
+| recall@1 / recall@5 / MRR (`results/retrieval-rerank-gpu.json`) | 0,795 / 0,982 / 0,877 | **0,929 / 1,00 / 0,958** |
+| `paraphrase` / `table` recall@1 | 0,647 / 0,731 | 0,824 / 0,885 |
+| Kapı: cevaplanabilir geçen / cevaplanamaz duran | 112/112, 7/28 | 112/112, 7/28 (kapının okuduğu pasaj korunur) |
+| Uçtan uca atıf isabeti / doğru bilgi (`results/e2e-rerank-{off,on,on2}-gpu.json`) | 0,902 / 0,902 | 0,893–0,911 / 0,902–0,920 |
+| Uçtan uca sıkı "bulunamadı" | 16/28 | 14/28 (iki koşuda da) |
+
+Çevrimdışı ölçüm (TEI çalışırken; `RERANK_URL`, `CANDIDATES`, `PASSES`):
+
+```bash
+node eval/embedding-olcumu/rerank.mjs lex.json emb.json eval/eval-set.json out.json gpu
+```
+
+`lex.json` `lex.mjs`'in, `emb.json` bge-m3 vektörlerinin (`{docs, qs}`) çıktısıdır; `docs/evidence/embedding-olcumu.md`'deki düzenek.
+
 ## Docling (2026-10-24, ADR-0032)
 
 İsteğe bağlı docling-serve yan konteyneri, üç belge setinde, sidecar'sız ve sidecar'lı. Setler aynı kaynaklardan `SamplePdfs` ile üretilir:

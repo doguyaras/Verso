@@ -11,7 +11,8 @@ import org.springframework.util.unit.DataSize;
 @Configuration(proxyBeanMethods = false)
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@EnableConfigurationProperties({DocumentProperties.class, CollectionProperties.class, DoclingProperties.class})
+@EnableConfigurationProperties({DocumentProperties.class, CollectionProperties.class, DoclingProperties.class,
+        RerankerProperties.class})
 @EnableScheduling
 public class DocumentConfiguration {
 

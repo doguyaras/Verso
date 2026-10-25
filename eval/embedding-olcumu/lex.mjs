@@ -15,8 +15,9 @@ const lit = (s, tag) => {
   if (s.includes(`$${tag}$`)) throw new Error('dollar tag clash');
   return `$${tag}$${s}$${tag}$`;
 };
-let sql = `DROP TABLE IF EXISTS chunk;
-CREATE TABLE chunk (id serial PRIMARY KEY, file text, page int, idx int, content text,
+// A session-only table: the script also runs against the stack's own PostgreSQL without leaving anything behind.
+let sql = `DROP TABLE IF EXISTS pg_temp.chunk;
+CREATE TEMP TABLE chunk (id serial PRIMARY KEY, file text, page int, idx int, content text,
   sv tsvector GENERATED ALWAYS AS (to_tsvector('turkish', content)) STORED);
 CREATE INDEX ON chunk USING gin (sv);\n`;
 for (const c of chunks) {

@@ -17,6 +17,7 @@ docker compose --profile obs up -d --wait
 | `ModelUnavailable` | page | [model-unavailable.md](model-unavailable.md) |
 | `IngestionBacklog` | ticket | [ingestion-backlog.md](ingestion-backlog.md) |
 | `DoclingFallback` (yalnız `deploy/compose.docling.yaml` ile, ADR-0032) | ticket | [docling-fallback.md](docling-fallback.md) |
+| `RerankerFallback` (yalnız `deploy/compose.reranker.yaml` ile, ADR-0043) | ticket | [reranker-fallback.md](reranker-fallback.md) |
 | `QaSlow` | ticket | [qa-slow.md](qa-slow.md) |
 | `QaP99OverBudget` | ticket | [qa-slow.md](qa-slow.md) |
 | `HistoryNotStored` | ticket | [history-not-stored.md](history-not-stored.md) |

@@ -66,6 +66,11 @@ verso:
     docling:
       enabled: ${VERSO_DOCLING_ENABLED:false}
       base-url: http://localhost:5001
+    # The reranker sidecar (ADR-0043) is off for an IDE run; a TEI started by hand on 127.0.0.1:8089 can be used by
+    # setting VERSO_RERANKER_ENABLED=true.
+    reranker:
+      enabled: ${VERSO_RERANKER_ENABLED:false}
+      base-url: http://localhost:8089
   security:
     jwt:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).

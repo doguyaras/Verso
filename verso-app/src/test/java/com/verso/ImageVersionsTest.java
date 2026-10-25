@@ -38,6 +38,14 @@ class ImageVersionsTest {
         Matcher docling = DOCKERFILE_FROM.matcher(read("deploy/docling/Dockerfile"));
         assertThat(docling.find()).as("deploy/docling/Dockerfile FROM").isTrue();
         images.add(docling.group(1));
+        // The reranker sidecar (ADR-0043): the default of an overridable image is pinned too.
+        Matcher reranker = COMPOSE_IMAGE.matcher(read("deploy/compose.reranker.yaml"));
+        int rerankerImages = 0;
+        while (reranker.find()) {
+            images.add(reranker.group(1).replaceFirst("^\\$\\{[A-Z_]+:-(.+)}$", "$1"));
+            rerankerImages++;
+        }
+        assertThat(rerankerImages).as("reranker overlay images (pull + server)").isEqualTo(2);
 
         assertThat(images).as("image references found").hasSizeGreaterThanOrEqualTo(5);
         for (String image : images) {

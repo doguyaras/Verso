@@ -87,6 +87,19 @@ docker compose -f compose.yaml -f deploy/compose.docling.yaml up -d --build --wa
 - **Donanım maliyeti** (eval setinde ölçüldü): image 7,6 GB; RAM boşta ~1,1 GB, ölçülen tepe 2,2 GB (sınır 4 GB, `DOCLING_MEM_LIMIT`); 3 CPU ile sayfa başına 0,7 sn (metin), 1,5 sn (çizgili tablo), 2,6 sn (taranmış sayfa, OCR). JDK ayrıştırıcısı sayfa başına 7–9 ms'dir. Varsayılan 2 CPU'dur (`DOCLING_CPUS`), daha yavaştır.
 - **Kazanç:** taranmış sette retrieval recall@5 0 → 0,964. Depodaki örneklerde (tablolar düz metin) kazanç yok; çizgili tablolarda tablo sorularının sıralaması biraz iyileşiyor. Bu yüzden varsayılan kapalıdır. Ayrıntı: [`eval/README.md`](eval/README.md) "Docling".
 
+**Rerank (isteğe bağlı, yalnız GPU, varsayılan kapalı; [ADR-0043](docs/adr/0043-capraz-kodlayici-rerank.md)).** Bir çapraz kodlayıcı (bge-reranker-v2-m3, HF TEI) hibrit aramanın ilk 20 adayını soruya göre yeniden sıralar. GPU overlay'inin üstüne eklenir:
+
+```bash
+docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.reranker.yaml up -d --wait
+```
+
+- İlk açılışta `reranker-pull` modeli (2,27 GB) sabit bir sürümden indirir ve her dosyayı SHA-256 ile doğrular. Sunucu sonra internetsiz, portsuz, yalnız uygulamayla paylaştığı iç ağda çalışır.
+- İmaj etiketi GPU kuşağına bağlıdır: varsayılan `89-1.9` RTX 40xx / L4 içindir. Başka bir GPU için `VERSO_RERANKER_IMAGE`'ı digest ile verin (A10/A40 `86-1.9`, A100 `1.9`, H100 `hopper-1.9`). CPU'lu kurulumda çalışmaz.
+- **Maliyet:** +1,4–1,6 GB VRAM, 2,5–2,7 GB RAM (sınır 3 GB, `RERANKER_MEM_LIMIT`), imaj 8,2 GB; soru başına p50 93 ms, p95 111 ms.
+- **Kazanç:** retrieval'da ilk sonucun doğru sayfa olma oranı 0,795'ten 0,929'a çıkar (MRR 0,877 → 0,958). Ama küçük yerel modelle (gemma4:e2b) cevaplarda kazanç ölçülmedi: atıf ve bilgi aynı kaldı, "bulunamadı" 28 sorunun 2'sinde kötüleşti. Bu yüzden varsayılan kapalıdır; sıralamanın kendisinin sonuç olduğu MCP aramasında işe yarar.
+- Yan konteyner düşerse ya da 2 sn'de cevap vermezse sorular rerank'siz cevaplanır. "Bulunamadı" kararı rerank'ten etkilenmez.
+- Kapatmak: overlay'i çıkarın (`VERSO_RERANKER_ENABLED=false`); `reranker-models` volume'ü silinebilir.
+
 Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde (sürüm 2, GPU) doğru sayfaya atıf yapılan 97 cevabın 3'ünde bilgi yanlış ya da eksikti. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
 ## Panel

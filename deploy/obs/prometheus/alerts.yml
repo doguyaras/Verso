@@ -63,6 +63,19 @@ groups:
           summary: The docling sidecar parsed nothing for 30 minutes; documents fall back to the JDK parser.
           runbook: docs/runbooks/docling-fallback.md
 
+      # The reranker sidecar (ADR-0043) was asked and no question of the last 30 minutes was reranked: answers use the
+      # fused order (still correct, ranking as without the overlay). Never fires without the overlay (nothing counted).
+      - alert: RerankerFallback
+        expr: |
+          sum(increase(verso_retrieval_rerank_total{job="verso", outcome!="reranked"}[30m])) > 0
+          unless sum(increase(verso_retrieval_rerank_total{job="verso", outcome="reranked"}[30m])) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: The reranker sidecar reranked nothing for 30 minutes; questions use the fused order.
+          runbook: docs/runbooks/reranker-fallback.md
+
       # A model fails and nothing succeeds: questions end as model_unavailable/circuit_open with no answer, or the
       # worker hands documents back (released) with none finished. Whatever the traffic and however slow the failure.
       - alert: ModelUnavailable

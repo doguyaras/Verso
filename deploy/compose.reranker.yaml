@@ -1,0 +1,80 @@
+# Reranker overlay (ADR-0043): a cross-encoder (BAAI/bge-reranker-v2-m3, Apache-2.0) served by HF TEI reorders the
+# fused candidates of every question. Opt-in, for GPU installs; add it after deploy/compose.gpu.yaml:
+#
+#   docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.reranker.yaml up -d --wait
+#
+# The image tag is per GPU generation: 89-1.9 is Ada Lovelace (RTX 40xx, L4); Ampere A10/A40 needs 86-1.9, A100 1.9,
+# Hopper hopper-1.9 (TEI README). Set VERSO_RERANKER_IMAGE to that tag pinned by digest. CPU hosts are not supported:
+# the cpu-1.9 image ran out of its 3 GB with this model (fp32) before it answered (ADR-0043).
+#
+# The model is fetched once by reranker-pull (pinned revision, SHA-256 per file) into the reranker-models volume; the
+# server reads it read-only, offline, on an internal network with no published port: no route out (llm-rules 1.1).
+services:
+  reranker-pull:
+    image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+    restart: "no"
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    # Root inside the container only to own the fresh volume; no capabilities.
+    user: "0"
+    entrypoint: ["sh", "/opt/verso/pull.sh"]
+    mem_limit: 256m
+    pids_limit: 64
+    # "default" has the gateway: the one-shot download, like ollama-pull.
+    networks: [default]
+    volumes:
+      - reranker-models:/data
+      - ./deploy/reranker/pull.sh:/opt/verso/pull.sh:ro
+    tmpfs:
+      - /tmp:size=16m
+
+  reranker:
+    image: ${VERSO_RERANKER_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:89-1.9@sha256:1a284d9ca1adcc20b78c261d4d052c06057f0a3cb49a15c5d2c00930f710fce2}
+    restart: always
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: ${RERANKER_MEM_LIMIT:-3g}
+    pids_limit: 256
+    depends_on:
+      reranker-pull:
+        condition: service_completed_successfully
+    networks: [rerankers]
+    command:
+      - --model-id=/data/bge-reranker-v2-m3
+      - --max-client-batch-size=100
+      - --max-concurrent-requests=32
+      # No API key: the network admits the application only. TEI 1.9.4 and older log a key in clear (ADR-0043).
+    environment:
+      HF_HUB_OFFLINE: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HOME: /tmp/hf
+      DO_NOT_TRACK: "1"
+      # TEI logs one line per request with its timings only, never the question or a passage (checked, ADR-0043).
+    volumes:
+      - reranker-models:/data:ro
+    tmpfs:
+      - /tmp:size=64m
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  verso-app:
+    # Retrieval works without the sidecar (fused order, ADR-0043), so no depends_on.
+    networks: [rerankers]
+    environment:
+      VERSO_RERANKER_ENABLED: "true"
+      VERSO_RERANKER_URL: http://reranker:80
+
+networks:
+  # Application ↔ reranker only; internal: no gateway to the outside.
+  rerankers:
+    internal: true
+
+volumes:
+  reranker-models:

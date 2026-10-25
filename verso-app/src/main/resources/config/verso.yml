@@ -429,6 +429,21 @@ verso:
       vector-candidates: 20
       lexical-candidates: 20
       rrf-k: 60
+    # Optional cross-encoder reranker (ADR-0043): a HF TEI sidecar with bge-reranker-v2-m3 reorders the fused top-N
+    # before the top-k are kept. Off unless deploy/compose.reranker.yaml runs it (VERSO_RERANKER_ENABLED). Every
+    # failure keeps the fused order; the answerability gate reads the same passage either way.
+    reranker:
+      enabled: ${VERSO_RERANKER_ENABLED:false}
+      base-url: ${VERSO_RERANKER_URL:http://reranker:80}
+      candidates: 20
+      connect-timeout: 500ms
+      # The whole call; GPU p95 was well below it (ADR-0043). After it the fused order is used.
+      timeout: 2s
+      max-passage-chars: 2000
+      # At most 4 calls at once per instance; after 3 failures in a row the sidecar is skipped for 1 minute.
+      concurrency: 4
+      circuit-failures: 3
+      circuit-open: 1m
     # Shared collections (ADR-0028): bounds of the denormalised access list; a grant change writes one row per
     # document of the collection, in one transaction.
     collections:

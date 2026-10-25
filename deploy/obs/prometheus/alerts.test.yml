@@ -101,6 +101,32 @@ tests:
         alertname: DoclingFallback
         exp_alerts: []
 
+  # Reranker sidecar down (ADR-0043): every question keeps the fused order.
+  - interval: 1m
+    input_series:
+      - series: 'verso_retrieval_rerank_total{job="verso", outcome="unavailable"}'
+        values: '0+1x60'
+      - series: 'verso_retrieval_rerank_total{job="verso", outcome="reranked"}'
+        values: '0x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: RerankerFallback
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations: {summary: "The reranker sidecar reranked nothing for 30 minutes; questions use the fused order.", runbook: docs/runbooks/reranker-fallback.md}
+
+  # The reranker sometimes times out but still reranks, and the default stack never counts: quiet.
+  - interval: 1m
+    input_series:
+      - series: 'verso_retrieval_rerank_total{job="verso", outcome="timeout"}'
+        values: '0+1x60'
+      - series: 'verso_retrieval_rerank_total{job="verso", outcome="reranked"}'
+        values: '0+5x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: RerankerFallback
+        exp_alerts: []
+
   # Backlog: the oldest due document waits longer than the lease.
   - interval: 15s
     input_series:

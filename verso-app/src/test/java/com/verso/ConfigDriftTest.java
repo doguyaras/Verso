@@ -70,6 +70,9 @@ class ConfigDriftTest {
             // The docling sidecar's switch and address (ADR-0032).
             "verso.document.docling.enabled",
             "verso.document.docling.base-url",
+            // The reranker sidecar's switch and address (ADR-0043).
+            "verso.document.reranker.enabled",
+            "verso.document.reranker.base-url",
             "spring.security.oauth2.resourceserver.jwt.",
             "verso.security.jwt.issuer",
             "verso.security.jwt.jwk-set-uri",

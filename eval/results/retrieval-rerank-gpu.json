@@ -1,0 +1,4266 @@
+{
+ "label": "gpu",
+ "measuredAt": "2026-10-24T20:55:34.763Z",
+ "url": "http://127.0.0.1:18089",
+ "configs": {
+  "hybrid": {
+   "metrics": {
+    "all": {
+     "n": 112,
+     "r1": 0.795,
+     "r5": 0.982,
+     "hits1": 89,
+     "hits5": 110,
+     "mrr": 0.877
+    },
+    "version1": {
+     "n": 25,
+     "r1": 0.84,
+     "r5": 1,
+     "hits1": 21,
+     "hits5": 25,
+     "mrr": 0.92
+    },
+    "version2": {
+     "n": 87,
+     "r1": 0.782,
+     "r5": 0.977,
+     "hits1": 68,
+     "hits5": 85,
+     "mrr": 0.864
+    },
+    "paraphrase": {
+     "n": 17,
+     "r1": 0.647,
+     "r5": 0.941,
+     "hits1": 11,
+     "hits5": 16,
+     "mrr": 0.752
+    },
+    "abbreviation": {
+     "n": 20,
+     "r1": 0.85,
+     "r5": 1,
+     "hits1": 17,
+     "hits5": 20,
+     "mrr": 0.925
+    },
+    "number": {
+     "n": 50,
+     "r1": 0.8,
+     "r5": 0.98,
+     "hits1": 40,
+     "hits5": 49,
+     "mrr": 0.875
+    },
+    "table": {
+     "n": 26,
+     "r1": 0.731,
+     "r5": 0.962,
+     "hits1": 19,
+     "hits5": 25,
+     "mrr": 0.827
+    },
+    "disambiguation": {
+     "n": 21,
+     "r1": 0.81,
+     "r5": 0.952,
+     "hits1": 17,
+     "hits5": 20,
+     "mrr": 0.869
+    }
+   },
+   "metricsKept": {
+    "all": {
+     "n": 112,
+     "r1": 0.795,
+     "r5": 0.982,
+     "hits1": 89,
+     "hits5": 110,
+     "mrr": 0.877
+    },
+    "version1": {
+     "n": 25,
+     "r1": 0.84,
+     "r5": 1,
+     "hits1": 21,
+     "hits5": 25,
+     "mrr": 0.92
+    },
+    "version2": {
+     "n": 87,
+     "r1": 0.782,
+     "r5": 0.977,
+     "hits1": 68,
+     "hits5": 85,
+     "mrr": 0.864
+    },
+    "paraphrase": {
+     "n": 17,
+     "r1": 0.647,
+     "r5": 0.941,
+     "hits1": 11,
+     "hits5": 16,
+     "mrr": 0.752
+    },
+    "abbreviation": {
+     "n": 20,
+     "r1": 0.85,
+     "r5": 1,
+     "hits1": 17,
+     "hits5": 20,
+     "mrr": 0.925
+    },
+    "number": {
+     "n": 50,
+     "r1": 0.8,
+     "r5": 0.98,
+     "hits1": 40,
+     "hits5": 49,
+     "mrr": 0.875
+    },
+    "table": {
+     "n": 26,
+     "r1": 0.731,
+     "r5": 0.962,
+     "hits1": 19,
+     "hits5": 25,
+     "mrr": 0.827
+    },
+    "disambiguation": {
+     "n": 21,
+     "r1": 0.81,
+     "r5": 0.952,
+     "hits1": 17,
+     "hits5": 20,
+     "mrr": 0.869
+    }
+   },
+   "gate": {
+    "shipped": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "overReranked": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "keptEvidence": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "changedWithEvidence": [],
+    "changed": [],
+    "evidenceDropped": 0
+   },
+   "rows": [
+    {
+     "id": "izin-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "izin-2",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "izin-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "izin-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "izin-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "izin-6",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "masraf-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "masraf-2",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "masraf-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "masraf-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "masraf-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "guvenlik-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "guvenlik-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "guvenlik-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "guvenlik-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "guvenlik-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "uzaktan-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "uzaktan-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "uzaktan-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "kvkk-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "kvkk-2",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "kvkk-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "satin-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "satin-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "satin-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "yok-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "yok-6",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "yok-7",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "yok-8",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "depo-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-2",
+     "rank": 5,
+     "rankKept": 5,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-8",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-19",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-20",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-3",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-5",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-9",
+     "rank": 3,
+     "rankKept": 3,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "T",
+     "gateReranked": "T",
+     "gateKept": "T",
+     "topScore": null
+    },
+    {
+     "id": "erp-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-17",
+     "rank": 3,
+     "rankKept": 3,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-1",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-2",
+     "rank": 4,
+     "rankKept": 4,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-4",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "T",
+     "gateReranked": "T",
+     "gateKept": "T",
+     "topScore": null
+    },
+    {
+     "id": "bt-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-19",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-20",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-21",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-2",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-5",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-13",
+     "rank": 3,
+     "rankKept": 3,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-5",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-8",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-10",
+     "rank": 4,
+     "rankKept": 4,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-14",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "depo-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "erp-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "bt-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "bt-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "bt-yok-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "crm-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": null
+    },
+    {
+     "id": "crm-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    },
+    {
+     "id": "isg-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": null
+    }
+   ]
+  },
+  "rerank-top20": {
+   "metrics": {
+    "all": {
+     "n": 112,
+     "r1": 0.929,
+     "r5": 1,
+     "hits1": 104,
+     "hits5": 112,
+     "mrr": 0.958
+    },
+    "version1": {
+     "n": 25,
+     "r1": 1,
+     "r5": 1,
+     "hits1": 25,
+     "hits5": 25,
+     "mrr": 1
+    },
+    "version2": {
+     "n": 87,
+     "r1": 0.908,
+     "r5": 1,
+     "hits1": 79,
+     "hits5": 87,
+     "mrr": 0.946
+    },
+    "paraphrase": {
+     "n": 17,
+     "r1": 0.824,
+     "r5": 1,
+     "hits1": 14,
+     "hits5": 17,
+     "mrr": 0.897
+    },
+    "abbreviation": {
+     "n": 20,
+     "r1": 0.95,
+     "r5": 1,
+     "hits1": 19,
+     "hits5": 20,
+     "mrr": 0.967
+    },
+    "number": {
+     "n": 50,
+     "r1": 0.96,
+     "r5": 1,
+     "hits1": 48,
+     "hits5": 50,
+     "mrr": 0.98
+    },
+    "table": {
+     "n": 26,
+     "r1": 0.885,
+     "r5": 1,
+     "hits1": 23,
+     "hits5": 26,
+     "mrr": 0.926
+    },
+    "disambiguation": {
+     "n": 21,
+     "r1": 0.81,
+     "r5": 1,
+     "hits1": 17,
+     "hits5": 21,
+     "mrr": 0.885
+    }
+   },
+   "metricsKept": {
+    "all": {
+     "n": 112,
+     "r1": 0.929,
+     "r5": 1,
+     "hits1": 104,
+     "hits5": 112,
+     "mrr": 0.958
+    },
+    "version1": {
+     "n": 25,
+     "r1": 1,
+     "r5": 1,
+     "hits1": 25,
+     "hits5": 25,
+     "mrr": 1
+    },
+    "version2": {
+     "n": 87,
+     "r1": 0.908,
+     "r5": 1,
+     "hits1": 79,
+     "hits5": 87,
+     "mrr": 0.946
+    },
+    "paraphrase": {
+     "n": 17,
+     "r1": 0.824,
+     "r5": 1,
+     "hits1": 14,
+     "hits5": 17,
+     "mrr": 0.897
+    },
+    "abbreviation": {
+     "n": 20,
+     "r1": 0.95,
+     "r5": 1,
+     "hits1": 19,
+     "hits5": 20,
+     "mrr": 0.967
+    },
+    "number": {
+     "n": 50,
+     "r1": 0.96,
+     "r5": 1,
+     "hits1": 48,
+     "hits5": 50,
+     "mrr": 0.98
+    },
+    "table": {
+     "n": 26,
+     "r1": 0.885,
+     "r5": 1,
+     "hits1": 23,
+     "hits5": 26,
+     "mrr": 0.926
+    },
+    "disambiguation": {
+     "n": 21,
+     "r1": 0.81,
+     "r5": 1,
+     "hits1": 17,
+     "hits5": 21,
+     "mrr": 0.885
+    }
+   },
+   "gate": {
+    "shipped": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "overReranked": {
+     "answerablePass": 112,
+     "unanswerableStopped": 5
+    },
+    "keptEvidence": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "changedWithEvidence": [],
+    "changed": [
+     "yok-1",
+     "crm-yok-3"
+    ],
+    "evidenceDropped": 11
+   },
+   "topScoreAuc": 0.965,
+   "latencyMs": {
+    "n": 420,
+    "p50": 92.727,
+    "p95": 111.274,
+    "max": 430.032
+   },
+   "rows": [
+    {
+     "id": "izin-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.972
+    },
+    {
+     "id": "izin-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.925
+    },
+    {
+     "id": "izin-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.93
+    },
+    {
+     "id": "izin-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.995
+    },
+    {
+     "id": "izin-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.952
+    },
+    {
+     "id": "izin-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.982
+    },
+    {
+     "id": "masraf-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.976
+    },
+    {
+     "id": "masraf-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.834
+    },
+    {
+     "id": "masraf-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.988
+    },
+    {
+     "id": "masraf-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.919
+    },
+    {
+     "id": "masraf-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.833
+    },
+    {
+     "id": "guvenlik-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.992
+    },
+    {
+     "id": "guvenlik-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.783
+    },
+    {
+     "id": "guvenlik-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.803
+    },
+    {
+     "id": "guvenlik-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.987
+    },
+    {
+     "id": "guvenlik-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.981
+    },
+    {
+     "id": "uzaktan-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.61
+    },
+    {
+     "id": "uzaktan-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.764
+    },
+    {
+     "id": "uzaktan-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.957
+    },
+    {
+     "id": "kvkk-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.998
+    },
+    {
+     "id": "kvkk-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.961
+    },
+    {
+     "id": "kvkk-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.982
+    },
+    {
+     "id": "satin-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.596
+    },
+    {
+     "id": "satin-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.386
+    },
+    {
+     "id": "satin-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.958
+    },
+    {
+     "id": "yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "S",
+     "gateKept": "N",
+     "topScore": 0.001
+    },
+    {
+     "id": "yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.04
+    },
+    {
+     "id": "yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.001
+    },
+    {
+     "id": "yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.002
+    },
+    {
+     "id": "yok-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.003
+    },
+    {
+     "id": "yok-6",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0.122
+    },
+    {
+     "id": "yok-7",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0
+    },
+    {
+     "id": "yok-8",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0
+    },
+    {
+     "id": "depo-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.983
+    },
+    {
+     "id": "depo-2",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.004
+    },
+    {
+     "id": "depo-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.976
+    },
+    {
+     "id": "depo-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.976
+    },
+    {
+     "id": "depo-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.96
+    },
+    {
+     "id": "depo-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.97
+    },
+    {
+     "id": "depo-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.986
+    },
+    {
+     "id": "depo-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.829
+    },
+    {
+     "id": "depo-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.983
+    },
+    {
+     "id": "depo-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.965
+    },
+    {
+     "id": "depo-11",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.485
+    },
+    {
+     "id": "depo-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.961
+    },
+    {
+     "id": "depo-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.023
+    },
+    {
+     "id": "depo-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.973
+    },
+    {
+     "id": "depo-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.9
+    },
+    {
+     "id": "depo-16",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.882
+    },
+    {
+     "id": "depo-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.563
+    },
+    {
+     "id": "depo-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.88
+    },
+    {
+     "id": "depo-19",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.997
+    },
+    {
+     "id": "depo-20",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "erp-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.974
+    },
+    {
+     "id": "erp-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.96
+    },
+    {
+     "id": "erp-3",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.036
+    },
+    {
+     "id": "erp-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "erp-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.991
+    },
+    {
+     "id": "erp-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.889
+    },
+    {
+     "id": "erp-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.971
+    },
+    {
+     "id": "erp-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.994
+    },
+    {
+     "id": "erp-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.989
+    },
+    {
+     "id": "erp-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.864
+    },
+    {
+     "id": "erp-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.978
+    },
+    {
+     "id": "erp-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "T",
+     "gateReranked": "T",
+     "gateKept": "T",
+     "topScore": 0.717
+    },
+    {
+     "id": "erp-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.825
+    },
+    {
+     "id": "erp-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.939
+    },
+    {
+     "id": "erp-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.144
+    },
+    {
+     "id": "erp-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.942
+    },
+    {
+     "id": "erp-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.529
+    },
+    {
+     "id": "erp-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.986
+    },
+    {
+     "id": "bt-1",
+     "rank": 3,
+     "rankKept": 3,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.92
+    },
+    {
+     "id": "bt-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.59
+    },
+    {
+     "id": "bt-3",
+     "rank": 4,
+     "rankKept": 4,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.552
+    },
+    {
+     "id": "bt-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.978
+    },
+    {
+     "id": "bt-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.559
+    },
+    {
+     "id": "bt-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.979
+    },
+    {
+     "id": "bt-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.783
+    },
+    {
+     "id": "bt-8",
+     "rank": 4,
+     "rankKept": 4,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.009
+    },
+    {
+     "id": "bt-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.582
+    },
+    {
+     "id": "bt-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.633
+    },
+    {
+     "id": "bt-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.15
+    },
+    {
+     "id": "bt-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.995
+    },
+    {
+     "id": "bt-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.983
+    },
+    {
+     "id": "bt-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.913
+    },
+    {
+     "id": "bt-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.898
+    },
+    {
+     "id": "bt-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "T",
+     "gateReranked": "T",
+     "gateKept": "T",
+     "topScore": 0.414
+    },
+    {
+     "id": "bt-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.991
+    },
+    {
+     "id": "bt-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.933
+    },
+    {
+     "id": "bt-19",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.988
+    },
+    {
+     "id": "bt-20",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.849
+    },
+    {
+     "id": "bt-21",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.92
+    },
+    {
+     "id": "crm-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.978
+    },
+    {
+     "id": "crm-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.988
+    },
+    {
+     "id": "crm-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.995
+    },
+    {
+     "id": "crm-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.945
+    },
+    {
+     "id": "crm-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.992
+    },
+    {
+     "id": "crm-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.612
+    },
+    {
+     "id": "crm-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "crm-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.958
+    },
+    {
+     "id": "crm-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.813
+    },
+    {
+     "id": "crm-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.59
+    },
+    {
+     "id": "crm-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.971
+    },
+    {
+     "id": "crm-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.951
+    },
+    {
+     "id": "crm-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.849
+    },
+    {
+     "id": "crm-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.99
+    },
+    {
+     "id": "isg-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.982
+    },
+    {
+     "id": "isg-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.959
+    },
+    {
+     "id": "isg-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.456
+    },
+    {
+     "id": "isg-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.964
+    },
+    {
+     "id": "isg-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.921
+    },
+    {
+     "id": "isg-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.987
+    },
+    {
+     "id": "isg-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.997
+    },
+    {
+     "id": "isg-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.952
+    },
+    {
+     "id": "isg-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "isg-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "T",
+     "gateKept": "S",
+     "topScore": 0.73
+    },
+    {
+     "id": "isg-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.997
+    },
+    {
+     "id": "isg-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.61
+    },
+    {
+     "id": "isg-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "isg-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.825
+    },
+    {
+     "id": "depo-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.04
+    },
+    {
+     "id": "depo-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.159
+    },
+    {
+     "id": "depo-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.146
+    },
+    {
+     "id": "depo-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.343
+    },
+    {
+     "id": "erp-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.22
+    },
+    {
+     "id": "erp-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.14
+    },
+    {
+     "id": "erp-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.078
+    },
+    {
+     "id": "erp-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.128
+    },
+    {
+     "id": "bt-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.008
+    },
+    {
+     "id": "bt-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0.319
+    },
+    {
+     "id": "bt-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0.003
+    },
+    {
+     "id": "bt-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.434
+    },
+    {
+     "id": "bt-yok-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.351
+    },
+    {
+     "id": "crm-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.625
+    },
+    {
+     "id": "crm-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.007
+    },
+    {
+     "id": "crm-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "T",
+     "gateKept": "N",
+     "topScore": 0.018
+    },
+    {
+     "id": "crm-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.241
+    },
+    {
+     "id": "isg-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.06
+    },
+    {
+     "id": "isg-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.119
+    },
+    {
+     "id": "isg-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.05
+    }
+   ]
+  },
+  "rerank-top40": {
+   "metrics": {
+    "all": {
+     "n": 112,
+     "r1": 0.929,
+     "r5": 1,
+     "hits1": 104,
+     "hits5": 112,
+     "mrr": 0.958
+    },
+    "version1": {
+     "n": 25,
+     "r1": 1,
+     "r5": 1,
+     "hits1": 25,
+     "hits5": 25,
+     "mrr": 1
+    },
+    "version2": {
+     "n": 87,
+     "r1": 0.908,
+     "r5": 1,
+     "hits1": 79,
+     "hits5": 87,
+     "mrr": 0.946
+    },
+    "paraphrase": {
+     "n": 17,
+     "r1": 0.824,
+     "r5": 1,
+     "hits1": 14,
+     "hits5": 17,
+     "mrr": 0.897
+    },
+    "abbreviation": {
+     "n": 20,
+     "r1": 0.95,
+     "r5": 1,
+     "hits1": 19,
+     "hits5": 20,
+     "mrr": 0.967
+    },
+    "number": {
+     "n": 50,
+     "r1": 0.96,
+     "r5": 1,
+     "hits1": 48,
+     "hits5": 50,
+     "mrr": 0.98
+    },
+    "table": {
+     "n": 26,
+     "r1": 0.885,
+     "r5": 1,
+     "hits1": 23,
+     "hits5": 26,
+     "mrr": 0.926
+    },
+    "disambiguation": {
+     "n": 21,
+     "r1": 0.81,
+     "r5": 1,
+     "hits1": 17,
+     "hits5": 21,
+     "mrr": 0.885
+    }
+   },
+   "metricsKept": {
+    "all": {
+     "n": 112,
+     "r1": 0.929,
+     "r5": 1,
+     "hits1": 104,
+     "hits5": 112,
+     "mrr": 0.958
+    },
+    "version1": {
+     "n": 25,
+     "r1": 1,
+     "r5": 1,
+     "hits1": 25,
+     "hits5": 25,
+     "mrr": 1
+    },
+    "version2": {
+     "n": 87,
+     "r1": 0.908,
+     "r5": 1,
+     "hits1": 79,
+     "hits5": 87,
+     "mrr": 0.946
+    },
+    "paraphrase": {
+     "n": 17,
+     "r1": 0.824,
+     "r5": 1,
+     "hits1": 14,
+     "hits5": 17,
+     "mrr": 0.897
+    },
+    "abbreviation": {
+     "n": 20,
+     "r1": 0.95,
+     "r5": 1,
+     "hits1": 19,
+     "hits5": 20,
+     "mrr": 0.967
+    },
+    "number": {
+     "n": 50,
+     "r1": 0.96,
+     "r5": 1,
+     "hits1": 48,
+     "hits5": 50,
+     "mrr": 0.98
+    },
+    "table": {
+     "n": 26,
+     "r1": 0.885,
+     "r5": 1,
+     "hits1": 23,
+     "hits5": 26,
+     "mrr": 0.926
+    },
+    "disambiguation": {
+     "n": 21,
+     "r1": 0.81,
+     "r5": 1,
+     "hits1": 17,
+     "hits5": 21,
+     "mrr": 0.885
+    }
+   },
+   "gate": {
+    "shipped": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "overReranked": {
+     "answerablePass": 112,
+     "unanswerableStopped": 5
+    },
+    "keptEvidence": {
+     "answerablePass": 112,
+     "unanswerableStopped": 7
+    },
+    "changedWithEvidence": [],
+    "changed": [
+     "yok-1",
+     "crm-yok-3"
+    ],
+    "evidenceDropped": 11
+   },
+   "topScoreAuc": 0.965,
+   "latencyMs": {
+    "n": 420,
+    "p50": 115.519,
+    "p95": 133.963,
+    "max": 166.146
+   },
+   "rows": [
+    {
+     "id": "izin-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.972
+    },
+    {
+     "id": "izin-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.925
+    },
+    {
+     "id": "izin-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.93
+    },
+    {
+     "id": "izin-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.995
+    },
+    {
+     "id": "izin-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.952
+    },
+    {
+     "id": "izin-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.982
+    },
+    {
+     "id": "masraf-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.976
+    },
+    {
+     "id": "masraf-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.834
+    },
+    {
+     "id": "masraf-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.988
+    },
+    {
+     "id": "masraf-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.919
+    },
+    {
+     "id": "masraf-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.833
+    },
+    {
+     "id": "guvenlik-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.992
+    },
+    {
+     "id": "guvenlik-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.783
+    },
+    {
+     "id": "guvenlik-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.803
+    },
+    {
+     "id": "guvenlik-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.987
+    },
+    {
+     "id": "guvenlik-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.981
+    },
+    {
+     "id": "uzaktan-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.611
+    },
+    {
+     "id": "uzaktan-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.764
+    },
+    {
+     "id": "uzaktan-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.957
+    },
+    {
+     "id": "kvkk-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.998
+    },
+    {
+     "id": "kvkk-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.961
+    },
+    {
+     "id": "kvkk-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.982
+    },
+    {
+     "id": "satin-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.596
+    },
+    {
+     "id": "satin-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.386
+    },
+    {
+     "id": "satin-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.958
+    },
+    {
+     "id": "yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "S",
+     "gateKept": "N",
+     "topScore": 0.001
+    },
+    {
+     "id": "yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.04
+    },
+    {
+     "id": "yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.001
+    },
+    {
+     "id": "yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.002
+    },
+    {
+     "id": "yok-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.003
+    },
+    {
+     "id": "yok-6",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0.122
+    },
+    {
+     "id": "yok-7",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0
+    },
+    {
+     "id": "yok-8",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0
+    },
+    {
+     "id": "depo-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.983
+    },
+    {
+     "id": "depo-2",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.004
+    },
+    {
+     "id": "depo-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.976
+    },
+    {
+     "id": "depo-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.976
+    },
+    {
+     "id": "depo-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.96
+    },
+    {
+     "id": "depo-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.97
+    },
+    {
+     "id": "depo-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.986
+    },
+    {
+     "id": "depo-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.829
+    },
+    {
+     "id": "depo-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.983
+    },
+    {
+     "id": "depo-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.965
+    },
+    {
+     "id": "depo-11",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.485
+    },
+    {
+     "id": "depo-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.961
+    },
+    {
+     "id": "depo-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.023
+    },
+    {
+     "id": "depo-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.973
+    },
+    {
+     "id": "depo-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.9
+    },
+    {
+     "id": "depo-16",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.882
+    },
+    {
+     "id": "depo-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.564
+    },
+    {
+     "id": "depo-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.88
+    },
+    {
+     "id": "depo-19",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.997
+    },
+    {
+     "id": "depo-20",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "erp-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.974
+    },
+    {
+     "id": "erp-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.96
+    },
+    {
+     "id": "erp-3",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.036
+    },
+    {
+     "id": "erp-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "erp-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.991
+    },
+    {
+     "id": "erp-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.889
+    },
+    {
+     "id": "erp-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.971
+    },
+    {
+     "id": "erp-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.994
+    },
+    {
+     "id": "erp-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.989
+    },
+    {
+     "id": "erp-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.864
+    },
+    {
+     "id": "erp-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.978
+    },
+    {
+     "id": "erp-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "T",
+     "gateReranked": "T",
+     "gateKept": "T",
+     "topScore": 0.717
+    },
+    {
+     "id": "erp-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.826
+    },
+    {
+     "id": "erp-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.939
+    },
+    {
+     "id": "erp-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.144
+    },
+    {
+     "id": "erp-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.942
+    },
+    {
+     "id": "erp-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.529
+    },
+    {
+     "id": "erp-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.986
+    },
+    {
+     "id": "bt-1",
+     "rank": 3,
+     "rankKept": 3,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.92
+    },
+    {
+     "id": "bt-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.59
+    },
+    {
+     "id": "bt-3",
+     "rank": 4,
+     "rankKept": 4,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.551
+    },
+    {
+     "id": "bt-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.978
+    },
+    {
+     "id": "bt-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.56
+    },
+    {
+     "id": "bt-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.979
+    },
+    {
+     "id": "bt-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.783
+    },
+    {
+     "id": "bt-8",
+     "rank": 4,
+     "rankKept": 4,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.009
+    },
+    {
+     "id": "bt-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.582
+    },
+    {
+     "id": "bt-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.633
+    },
+    {
+     "id": "bt-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.15
+    },
+    {
+     "id": "bt-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.995
+    },
+    {
+     "id": "bt-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.983
+    },
+    {
+     "id": "bt-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.913
+    },
+    {
+     "id": "bt-15",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.898
+    },
+    {
+     "id": "bt-16",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "T",
+     "gateReranked": "T",
+     "gateKept": "T",
+     "topScore": 0.413
+    },
+    {
+     "id": "bt-17",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.991
+    },
+    {
+     "id": "bt-18",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.933
+    },
+    {
+     "id": "bt-19",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.988
+    },
+    {
+     "id": "bt-20",
+     "rank": 2,
+     "rankKept": 2,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.849
+    },
+    {
+     "id": "bt-21",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.92
+    },
+    {
+     "id": "crm-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.978
+    },
+    {
+     "id": "crm-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.988
+    },
+    {
+     "id": "crm-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.995
+    },
+    {
+     "id": "crm-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.945
+    },
+    {
+     "id": "crm-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.992
+    },
+    {
+     "id": "crm-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.612
+    },
+    {
+     "id": "crm-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "crm-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.958
+    },
+    {
+     "id": "crm-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.813
+    },
+    {
+     "id": "crm-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.59
+    },
+    {
+     "id": "crm-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.972
+    },
+    {
+     "id": "crm-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.951
+    },
+    {
+     "id": "crm-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.849
+    },
+    {
+     "id": "crm-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.99
+    },
+    {
+     "id": "isg-1",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.982
+    },
+    {
+     "id": "isg-2",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.959
+    },
+    {
+     "id": "isg-3",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.456
+    },
+    {
+     "id": "isg-4",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.964
+    },
+    {
+     "id": "isg-5",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.921
+    },
+    {
+     "id": "isg-6",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.987
+    },
+    {
+     "id": "isg-7",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.997
+    },
+    {
+     "id": "isg-8",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.952
+    },
+    {
+     "id": "isg-9",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "isg-10",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "T",
+     "gateKept": "S",
+     "topScore": 0.73
+    },
+    {
+     "id": "isg-11",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.997
+    },
+    {
+     "id": "isg-12",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.609
+    },
+    {
+     "id": "isg-13",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.993
+    },
+    {
+     "id": "isg-14",
+     "rank": 1,
+     "rankKept": 1,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.825
+    },
+    {
+     "id": "depo-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.04
+    },
+    {
+     "id": "depo-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.158
+    },
+    {
+     "id": "depo-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.146
+    },
+    {
+     "id": "depo-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.343
+    },
+    {
+     "id": "erp-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.22
+    },
+    {
+     "id": "erp-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.14
+    },
+    {
+     "id": "erp-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.078
+    },
+    {
+     "id": "erp-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.128
+    },
+    {
+     "id": "bt-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.008
+    },
+    {
+     "id": "bt-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0.319
+    },
+    {
+     "id": "bt-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "N",
+     "gateKept": "N",
+     "topScore": 0.003
+    },
+    {
+     "id": "bt-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.434
+    },
+    {
+     "id": "bt-yok-5",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.351
+    },
+    {
+     "id": "crm-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.625
+    },
+    {
+     "id": "crm-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.007
+    },
+    {
+     "id": "crm-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "N",
+     "gateReranked": "T",
+     "gateKept": "N",
+     "topScore": 0.018
+    },
+    {
+     "id": "crm-yok-4",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.241
+    },
+    {
+     "id": "isg-yok-1",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.06
+    },
+    {
+     "id": "isg-yok-2",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.119
+    },
+    {
+     "id": "isg-yok-3",
+     "rank": 0,
+     "rankKept": 0,
+     "gateBase": "S",
+     "gateReranked": "S",
+     "gateKept": "S",
+     "topScore": 0.049
+    }
+   ]
+  }
+ }
+}

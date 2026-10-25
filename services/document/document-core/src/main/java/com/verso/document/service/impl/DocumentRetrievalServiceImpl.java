@@ -9,7 +9,9 @@ import com.verso.document.exception.DocumentErrorCode;
 import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.RetrievalRepository;
 import com.verso.document.repository.RetrievalRepository.Candidate;
+import com.verso.document.service.PassageReranker;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * {@link DocumentRetrieval} (phase 5, ADR-0022): the question is embedded with the documents' own model, outside any
  * transaction (llm-rules 5.1); then, in one short read-only transaction, the hybrid query fuses the account's nearest
  * chunks with its best full-text matches, and the term shares of the returned passages are counted. A model that
- * does not answer is a 503; documents indexed with another model fail closed instead of returning noise (6.1).
+ * does not answer is a 503; documents indexed with another model fail closed instead of returning noise (6.1). With the
+ * optional reranker (ADR-0043) the fused top-N go to a cross-encoder after the transaction and its best top-k are
+ * returned; the answerability gate still reads the same passage as without it (see {@link #reranked}).
  */
 @Service
 // Web application only: the one-shot migrate run (no web server, no application DataSource) needs none of it.
@@ -46,10 +50,13 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
     private final DocumentProperties properties;
     private final TransactionTemplate readOnly;
     private final Semaphore embeddingSlots;
+    private final PassageReranker reranker;
 
     public DocumentRetrievalServiceImpl(RetrievalRepository repository, EmbeddingModel embeddingModel,
-                                        DocumentProperties properties, TransactionTemplate transaction) {
+                                        DocumentProperties properties, TransactionTemplate transaction,
+                                        PassageReranker reranker) {
         this.repository = repository;
+        this.reranker = reranker;
         this.embeddingModel = embeddingModel;
         this.properties = properties;
         this.readOnly = new TransactionTemplate(transaction.getTransactionManager());
@@ -118,15 +125,53 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         }
         DocumentProperties.Retrieval settings = properties.retrieval();
         int vectorCandidates = Math.max(settings.vectorCandidates(), topK);
-        return readOnly.execute(status -> {
+        // The reranker reads more fused candidates than top-k; the two candidate lists themselves stay as they are.
+        int limit = reranker.enabled() ? Math.max(topK, reranker.candidates()) : topK;
+        List<RetrievedPassage> fused = readOnly.execute(status -> {
             repository.prepareFilteredScan(vectorCandidates);
             List<Candidate> found = repository.hybrid(principals, model, vector, question, vectorCandidates,
-                    settings.lexicalCandidates(), settings.rrfK(), topK);
+                    settings.lexicalCandidates(), settings.rrfK(), limit);
             Map<UUID, Double> shares = settings.lexicalCandidates() == 0 ? Map.of() : termShares(principals, model, question, found);
             return found.stream().map(c -> new RetrievedPassage(c.documentId(), c.fileName(), c.pageNumber(), c.unit(),
                     c.content(), c.similarity(), shares.getOrDefault(c.chunkId(), 1.0), c.collectionId(),
                     c.collectionName(), c.chunkId())).toList();
         });
+        if (fused == null || !reranker.enabled()) return fused;
+        List<RetrievedPassage> base = fused.subList(0, Math.min(topK, fused.size()));
+        if (fused.size() <= 1) return base;
+        // The remote call runs after the transaction: no connection is held while the sidecar works (llm-rules 5.1).
+        return reranker.order(question, fused.stream().map(RetrievedPassage::content).toList())
+                .map(order -> reranked(fused, order, topK))
+                .orElse(base);
+    }
+
+    /**
+     * The reranked top-k (ADR-0043), built so that the answerability gate decides exactly as without the reranker. The
+     * gate reads the most similar passage (cosine) of the returned list (ADR-0022); that passage, the "evidence", is the
+     * most similar one of the fused top-k. It is always returned, and no other passage at least as similar is, so it
+     * stays the most similar one. Everything else follows the reranker's order. A passage the reranker would add from
+     * beyond the fused top-k that is more similar than the evidence is left out: it would change the gate's input
+     * without a re-calibration. The list is in reranked order, so citation numbers follow the reranker.
+     *
+     * @param fused the fused candidates, best first
+     * @param order a permutation of the candidates' indexes, most relevant first
+     */
+    static List<RetrievedPassage> reranked(List<RetrievedPassage> fused, List<Integer> order, int topK) {
+        RetrievedPassage evidence = fused.getFirst();
+        for (RetrievedPassage p : fused.subList(0, Math.min(topK, fused.size()))) {
+            if (p.similarity() > evidence.similarity()) evidence = p;
+        }
+        List<RetrievedPassage> result = new ArrayList<>(topK);
+        for (int index : order) {
+            if (result.size() == topK) break;
+            RetrievedPassage p = fused.get(index);
+            if (p == evidence || p.similarity() < evidence.similarity()) result.add(p);
+        }
+        if (!result.contains(evidence)) {
+            if (result.size() == topK) result.removeLast();
+            result.add(evidence);
+        }
+        return List.copyOf(result);
     }
 
     @Override

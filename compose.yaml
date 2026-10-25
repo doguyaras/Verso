@@ -71,6 +71,9 @@ x-db-env: &db-env
   # The docling sidecar (ADR-0032) is off here; deploy/compose.docling.yaml adds it and switches it on.
   VERSO_DOCLING_ENABLED: "false"
   VERSO_DOCLING_URL: http://docling:5001
+  # The reranker sidecar (ADR-0043) is off here; deploy/compose.reranker.yaml adds it and switches it on (GPU installs).
+  VERSO_RERANKER_ENABLED: "false"
+  VERSO_RERANKER_URL: http://reranker:80
   # Read-only MCP server (ADR-0031), off by default; the same variable picks the edge's /mcp route file below.
   VERSO_MCP_ENABLED: ${VERSO_MCP_ENABLED:-false}
   VERSO_MCP_RESOURCE: ${VERSO_MCP_RESOURCE:-http://localhost:8080/mcp}
