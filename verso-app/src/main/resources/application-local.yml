@@ -50,6 +50,9 @@ verso:
     # The procedure box switch (ADR-0053), the same variable as the deploy; the rest of verso.qa.skills is shared.
     skills:
       serving-enabled: ${VERSO_QA_SKILLS_SERVING_ENABLED:false}
+    # The system-model suggestion switch (ADR-0054), the same variable as the deploy; the rest is shared.
+    system-model:
+      suggestions-enabled: ${VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED:false}
   # The audit schema's own roles (ADR-0026), on the same local database; passwords from secrets/ like the others.
   audit:
     datasource:
@@ -84,6 +87,9 @@ verso:
     reranker:
       enabled: ${VERSO_RERANKER_ENABLED:false}
       base-url: http://localhost:8089
+    # The system-model retrieval enrichment switch (ADR-0054), the same variable as the deploy.
+    system-model:
+      enrichment-enabled: ${VERSO_DOCUMENT_SYSTEM_MODEL_ENRICHMENT_ENABLED:false}
   security:
     jwt:
       # The compose Keycloak published on 127.0.0.1 (VERSO_KEYCLOAK_PORT, default 8180).

@@ -124,6 +124,7 @@ public class IngestionWorker implements SmartLifecycle {
             List<StoredChunk> stored = embed(claim, chunks);
             tx.complete(claim, pages.size(), stored, properties.embeddingModel(), clock.instant());
             metrics.record(IngestionMetrics.Outcome.READY);
+            indexSystemModel(claim);
             log.info("Document ingestion finished: documentId={} pages={} chunks={} parser={} parseMs={} attempts={} "
                     + "durationMs={} outcome=READY", claim.documentId(), pages.size(), chunks.size(), parser, parseMs,
                     claim.attempts(), elapsedMs(started));
@@ -204,6 +205,16 @@ public class IngestionWorker implements SmartLifecycle {
         } catch (RuntimeException e) {
             // Shutdown closes the pool after this phase; the lease then hands the document to the next worker.
             log.warn("Document ingestion release failed: documentId={} exceptionType={} outcome=lease",
+                    claim.documentId(), e.getClass().getSimpleName());
+        }
+    }
+
+    /** ADR-0054: extracted after the document is READY; a failure is logged and left to the backfill job. */
+    private void indexSystemModel(Claim claim) {
+        try {
+            tx.indexSystemModel(claim.documentId(), clock.instant());
+        } catch (RuntimeException e) {
+            log.error("System model extraction failed: code=SYSTEM_MODEL_EXTRACTION_FAILED documentId={} exceptionType={}",
                     claim.documentId(), e.getClass().getSimpleName());
         }
     }

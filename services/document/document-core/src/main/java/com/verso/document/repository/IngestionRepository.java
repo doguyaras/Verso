@@ -132,6 +132,7 @@ public class IngestionRepository {
 
     /** Stores the chunks (replacing any of an earlier attempt) and marks the document READY. Call under holdClaim. */
     public void complete(Claim claim, int pageCount, List<StoredChunk> chunks, String model, Instant now) {
+        dropSystemModel(claim.documentId());
         jdbc.sql("DELETE FROM document.document_chunk WHERE document_id = :id").param("id", claim.documentId()).update();
         List<Object[]> rows = new ArrayList<>(chunks.size());
         for (StoredChunk chunk : chunks) {
@@ -156,6 +157,7 @@ public class IngestionRepository {
 
     /** Gives up: FAILED with a reason, and every derived piece of content is removed (data minimisation, ADR-0011). */
     public void fail(Claim claim, DocumentFailureReason reason, Instant now) {
+        dropSystemModel(claim.documentId());
         for (String table : List.of("document_chunk", "document_page", "document_file")) {
             jdbc.sql("DELETE FROM document." + table + " WHERE document_id = :id").param("id", claim.documentId()).update();
         }
@@ -167,6 +169,16 @@ public class IngestionRepository {
                         """)
                 .param("reason", reason.name()).param("now", Timestamp.from(now))
                 .param("id", claim.documentId()).param("token", claim.token()).update();
+    }
+
+    /**
+     * New chunks invalidate the system model read from the old ones (ADR-0054): its mentions and relations would go
+     * with the chunks anyway (ON DELETE CASCADE); the entities and the state row go here, so the model is extracted
+     * again from the new chunks and never outlives its source.
+     */
+    private void dropSystemModel(UUID documentId) {
+        jdbc.sql("DELETE FROM document.system_entity WHERE document_id = :id").param("id", documentId).update();
+        jdbc.sql("DELETE FROM document.system_model_state WHERE document_id = :id").param("id", documentId).update();
     }
 
     /** Back to PENDING after a temporary failure; claimed again once next_attempt_at has come. */

@@ -48,7 +48,11 @@ public enum DocumentErrorCode implements ErrorCode {
     COLLECTION_NOT_EMPTY(10041, "The collection still holds documents.", HttpStatus.CONFLICT),
     COLLECTION_GRANT_LIMIT_REACHED(10042, "The grant limit of the collection is reached.", HttpStatus.CONFLICT),
     COLLECTION_LIMIT_REACHED(10043, "The collection limit of the installation is reached.", HttpStatus.CONFLICT),
-    COLLECTION_DOCUMENT_LIMIT_REACHED(10044, "The document limit of the collection is reached.", HttpStatus.CONFLICT);
+    COLLECTION_DOCUMENT_LIMIT_REACHED(10044, "The document limit of the collection is reached.", HttpStatus.CONFLICT),
+    // --- system model (10050-10059, ADR-0054)
+    /** Unknown and unreadable entities alike: the caller cannot learn that a document it may not read names it. */
+    SYSTEM_ENTITY_NOT_FOUND(10050, "No such entity in the documents you can read.", HttpStatus.NOT_FOUND),
+    SYSTEM_MODEL_QUERY_INVALID(10051, "The lookup text must be 1-200 characters.", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

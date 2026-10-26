@@ -29,7 +29,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties({QaProperties.class, QaFollowUpProperties.class, QaGroundingProperties.class,
         QaKnowledgeProperties.class, QaDiagnosticsProperties.class, QaSkillProperties.class,
-        VersoAiProperties.class})
+        QaSystemModelProperties.class, VersoAiProperties.class})
 public class QaConfiguration {
 
     public static final String MODE_HEADER = "X-Rag-Mode";

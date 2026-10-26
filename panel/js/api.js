@@ -6,6 +6,7 @@ import { CONFIG } from './config.js';
 import { accessToken } from './auth.js';
 import { askBody, HISTORY_PAGE_SIZE } from './conversations.js';
 import { noStream, readEvents, resultOf, StreamUnavailable } from './stream.js';
+import { entitiesPath, entityPath, lookupPath, suggestionsPath } from './systemmap.js';
 
 export const MESSAGES = Object.freeze({
   10001: 'Belge bulunamadı.',
@@ -60,6 +61,13 @@ export const MESSAGES = Object.freeze({
   11077: 'Bu adla bir prosedür zaten var.',
   11078: 'Soru kümesi bulunamadı; teşhis yeniden çalışmış olabilir.',
   11079: 'Yalnız onaylı bir prosedür indirilebilir.',
+  // ADR-0054: the system map and its relation suggestions.
+  10050: 'Bu kayıt okuyabildiğiniz belgelerde geçmiyor.',
+  10051: 'Aranan metin 1-200 karakter olmalı.',
+  11080: 'Öneri geçişi kapalı (VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED).',
+  11081: 'Öneri bulunamadı.',
+  11082: 'Bu öneri zaten incelenmiş; sayfayı yenileyin.',
+  11083: 'Belge bulunamadı.',
   13001: 'Hesap kimliği (sub) geçersiz: yalnız harf, rakam ve . _ @ : - içerebilir.',
   13002: 'Onay, hesap kimliğiyle birebir aynı değil; hiçbir şey silinmedi.',
   13020: 'Onay, belge kimliğiyle birebir aynı değil; hiçbir cevap değişmedi.',
@@ -367,6 +375,27 @@ export const api = {
     Math.max(1, Math.trunc(Number(from)) || 1)}&to=${Math.max(1, Math.trunc(Number(to)) || 1)}`),
   /** The SKILL.md bundle (zip) as a Blob for the admin's own download click. */
   exportSkill: (id) => getFile(`/v1/admin/skills/${encodeURIComponent(id)}/export`),
+  // System map (ADR-0054). Read with the caller's own access: an entity appears only through documents this user may
+  // read. Types, keys and prefixes are encoded by systemmap.js; a value it cannot use never reaches the server.
+  systemMapStats: () => request('/v1/admin/system-map/stats'),
+  /** type: a tab type or '' for every type but STEP; prefix: the start of a key or label. */
+  systemEntities: (type = '', prefix = '', limit = 100) => request(entitiesPath(type, prefix, limit)),
+  systemEntity: (type, key) => {
+    const path = entityPath(type, key);
+    return path ? request(path) : Promise.reject(new ApiError(400, 90002));
+  },
+  /** Any signed-in user: entity details matching a code, an abbreviation or a system name. */
+  lookupSystemModel: (query) => {
+    const path = lookupPath(query);
+    return path ? request(path) : Promise.reject(new ApiError(400, 10051));
+  },
+  systemSuggestionSettings: () => request('/v1/admin/system-map/suggestions/settings'),
+  systemSuggestions: (state = 'DRAFT') => request(suggestionsPath(state)),
+  /** Asks the local model for relation suggestions on one document (409 11080 while the pass is off). */
+  suggestSystemRelations: (documentId) =>
+    request(`/v1/admin/system-map/suggestions/documents/${encodeURIComponent(documentId)}`, { method: 'POST' }),
+  acceptSystemSuggestion: (id) => request(`/v1/admin/system-map/suggestions/${encodeURIComponent(id)}/accept`, { method: 'POST' }),
+  rejectSystemSuggestion: (id) => request(`/v1/admin/system-map/suggestions/${encodeURIComponent(id)}/reject`, { method: 'POST' }),
   // SMB connectors (ADR-0038, ADR-0042), verso-admin only. No call carries a password: credentialRef is the name of a
   // secret file on the server, and the API never returns a password. Only ids, page numbers and the state filter go
   // into a URL; everything else travels in the JSON body.

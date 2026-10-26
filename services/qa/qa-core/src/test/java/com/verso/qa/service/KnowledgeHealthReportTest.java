@@ -106,4 +106,26 @@ class KnowledgeHealthReportTest {
             assertThat(KnowledgeHealthFindings.ruleDescription(key)).as(key).doesNotContain("_").endsWith(".");
         }
     }
+
+    @Test
+    void systemModelFindings_whenSignalsExist_areOnePerKindWithTitlesNotPeople() {
+        UUID doc = UUID.randomUUID();
+        List<KnowledgeHealthReport.SystemModelSignal> signals = List.of(
+                new KnowledgeHealthReport.SystemModelSignal("UNDEFINED_CODE", "CODE", "WMS-204", "WMS-204",
+                        List.of(doc), List.of()),
+                new KnowledgeHealthReport.SystemModelSignal("UNDEFINED_CODE", "CODE", "WMS-310", "WMS-310",
+                        List.of(doc), List.of()),
+                new KnowledgeHealthReport.SystemModelSignal("TERM_CONFLICT", "TERM", "FEFO", "FEFO",
+                        List.of(doc, UUID.randomUUID()), List.of("First Expired First Out", "First Ended First Out")),
+                new KnowledgeHealthReport.SystemModelSignal("PROCESS_WITHOUT_OWNER", "PROCESS", "iade sureci",
+                        "İade Süreci", List.of(doc), List.of()));
+
+        List<Finding> findings = KnowledgeHealthFindings.systemModel(signals);
+
+        assertThat(findings).extracting(Finding::code)
+                .containsExactly("TERM_CONFLICTS", "UNDEFINED_CODES", "PROCESSES_WITHOUT_OWNER");
+        assertThat(findings.get(1).finding()).contains("2 kod", "WMS-204");
+        assertThat(findings.get(2).recommendation()).contains("unvan");
+        assertThat(KnowledgeHealthFindings.systemModel(List.of())).isEmpty();
+    }
 }

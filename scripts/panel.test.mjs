@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills', 'systemmap']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1735,10 +1735,10 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
-    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills']) assert.equal(canOpen(id, roles), false, id);
+    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills', 'systemmap']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills']);
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills', 'systemmap']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
   for (const id of adminScreens(admin)) {
     assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
@@ -1749,7 +1749,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
   assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills', 'systemmap']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -2648,5 +2648,124 @@ test('skills: the admin API paths carry only ids, the state filter, versions and
     ['GET', '/v1/admin/skills/a%2Fb/diff?from=1&to=1', null],
     ['GET', '/v1/admin/skills/a%2Fb/export', null]]);
   for (let code = 11070; code <= 11079; code++) assert.ok(MESSAGES[code], String(code));
+  signOut();
+});
+
+test('system map: types and relations follow the server\'s enums; links are grouped in Turkish, steps by ordinal', async () => {
+  const { RELATION_GROUPS, RELATIONS, relationGroups, TABS, TYPES, typeLabel, typePlural } = await import('../panel/js/systemmap.js');
+  const enumOf = (file) => [...readFileSync(`services/document/document-api/src/main/java/com/verso/document/api/enums/${file}.java`, 'utf8')
+    .matchAll(/^    ([A-Z_]+)[,\n]/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(Object.keys(TYPES).sort(), enumOf('SystemEntityType'));
+  assert.ok(!Object.keys(TYPES).includes('PERSON'), 'no person is ever an entity');
+  assert.deepEqual(Object.keys(RELATIONS).sort(), enumOf('SystemRelationType'));
+  assert.deepEqual(TABS, ['SYSTEM', 'SCREEN', 'CODE', 'PROCESS', 'TERM', 'ROLE'], 'a STEP is reached from its process');
+  assert.ok(RELATION_GROUPS.every((g) => g.relation !== 'DEFINES'), 'definitions are their own list');
+  assert.equal(typeLabel('CODE'), 'Kod');
+  assert.equal(typePlural('ROLE'), 'Roller');
+  assert.equal(typeLabel('NOPE'), 'Kayıt');
+  const system = relationGroups({ links: [
+    { relation: 'CODE_OF', outgoing: false, type: 'CODE', key: 'WMS-204', label: 'WMS-204' },
+    { relation: 'PART_OF', outgoing: false, type: 'SCREEN', key: 'stok > sayım', label: 'Stok > Sayım' },
+    { relation: 'DEFINES', outgoing: true, type: 'TERM', key: 'x', label: 'x' }] });
+  assert.deepEqual(system.map((g) => g.label), ['Ekranlar', 'Kodlar']);
+  assert.deepEqual(system[1].items, [{ type: 'CODE', key: 'WMS-204', text: 'WMS-204' }]);
+  const process = relationGroups({ links: [
+    { relation: 'STEP_OF', outgoing: false, type: 'STEP', key: 's3', label: 'Onayla', ordinal: 3 },
+    { relation: 'OWNED_BY', outgoing: true, type: 'ROLE', key: 'depo sorumlusu', label: 'Depo Sorumlusu' },
+    { relation: 'STEP_OF', outgoing: false, type: 'STEP', key: 's1', label: 'Sayımı başlat', ordinal: 1 },
+    { relation: 'STEP_OF', outgoing: false, type: 'STEP', key: 'sx', label: 'Sırasız' }] });
+  assert.deepEqual(process.map((g) => g.label), ['Sorumlu', 'Adımlar']);
+  assert.deepEqual(process[1].items.map((i) => i.text), ['1. Sayımı başlat', '3. Onayla', 'Sırasız'], 'by ordinal, unordered last');
+  const code = relationGroups({ links: [{ relation: 'CODE_OF', outgoing: true, type: 'SYSTEM', key: 'wms', label: 'WMS' }] });
+  assert.deepEqual(code.map((g) => g.label), ['Sistem']);
+  const step = relationGroups({ links: [{ relation: 'NEXT_STEP', outgoing: true, type: 'STEP', key: 'b', label: 'B' },
+    { relation: 'NEXT_STEP', outgoing: false, type: 'STEP', key: 'a', label: 'A' },
+    { relation: 'STEP_OF', outgoing: true, type: 'PROCESS', key: 'p', label: 'Sayım' }] });
+  assert.deepEqual(step.map((g) => g.label), ['Süreç', 'Önceki adım', 'Sonraki adım']);
+  assert.deepEqual(relationGroups({ links: [{ relation: 'NEW_ONE', outgoing: true, type: 'TERM', key: 'k', label: 'K' }] })
+    .map((g) => g.label), ['NEW_ONE'], 'an unknown relation is shown, not dropped');
+  assert.deepEqual(relationGroups(null), []);
+});
+
+test('system map: sources, the stats strip, list lines and suggestions read as the admin should read them', async () => {
+  const { entityCounts, entityTitle, showSuggestions, sourceLabel, statsSummary, suggestionText } = await import('../panel/js/systemmap.js');
+  assert.equal(sourceLabel({ fileName: 'depo.txt', pageNumber: 2, unit: 'PAGE' }), 'depo.txt, s. 2');
+  assert.equal(sourceLabel({ documentId: '1a2b3c4d-5e6f', pageNumber: 3, unit: 'SECTION' }), 'Belge 1a2b3c4d, bölüm 3');
+  const summary = statsSummary({ entities: { SYSTEM: 2, CODE: 14, STEP: 9 }, documents: 5, pendingDocuments: 1,
+    extractorVersion: 1, enrichmentEnabled: false });
+  assert.deepEqual(summary.counts.map((c) => [c.label, c.count]),
+    [['Sistemler', 2], ['Ekranlar', 0], ['Kodlar', 14], ['Süreçler', 0], ['Terimler', 0], ['Roller', 0]]);
+  assert.equal(summary.steps, 9);
+  assert.equal(summary.documents, '5 belge çıkarıldı · 1 belge bekliyor');
+  assert.equal(summary.enrichment, 'Arama zenginleştirme kapalı');
+  assert.equal(statsSummary({ enrichmentEnabled: true }).enrichment, 'Arama zenginleştirme açık');
+  assert.equal(statsSummary(null).documents, '0 belge çıkarıldı · 0 belge bekliyor');
+  assert.equal(entityTitle({ key: 'fefo', label: 'FEFO' }), 'fefo · FEFO');
+  assert.equal(entityTitle({ key: 'WMS-204', label: 'WMS-204' }), 'WMS-204');
+  assert.equal(entityCounts({ documents: 3, mentions: 7 }), '3 belge · 7 geçiş');
+  assert.equal(suggestionText({ relation: 'CODE_OF', sourceType: 'CODE', sourceKey: 'WMS-204', targetType: 'SYSTEM', targetKey: 'wms' }),
+    'WMS-204 (Kod) → şu sistemin kodu → wms (Sistem)');
+  assert.equal(showSuggestions({ enabled: true }, []), true);
+  assert.equal(showSuggestions({ enabled: false }, []), false, 'off and nothing left: no card');
+  assert.equal(showSuggestions({ enabled: false }, [{ id: 's' }]), true, 'earlier drafts stay reviewable');
+});
+
+test('system map: the admin screen is text-only and admin-only', () => {
+  const screen = readFileSync('panel/js/screens/systemmap.js', 'utf8');
+  assert.doesNotMatch(screen, /innerHTML|insertAdjacentHTML|outerHTML|style=|\.style\./, 'text only, no inline styles (CSP, Trusted Types)');
+  assert.match(screen, /'Kod ya da terim ara'/);
+  assert.match(screen, /Yerel modelin önerdiği ilişkiler; onaylanmadan hiçbir yerde kullanılmaz\./);
+  assert.match(screen, /VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED/);
+  assert.equal(SCREENS.systemmap.group, 'admin');
+  assert.deepEqual(SCREENS.systemmap.roles, [ROLES.ADMIN]);
+  assert.equal(SCREENS.systemmap.tab, false);
+  assert.ok(ICON_NAMES.includes(SCREENS.systemmap.icon));
+  const user = rolesOf({ realm_access: { roles: ['verso-user', 'verso-operator', 'verso-admin'] } });
+  assert.equal(canOpen('systemmap', user), false, 'the token alone never opens it');
+  assert.equal(canOpen('systemmap', withServerRoles(user, { roles: ['verso-admin'] })), true);
+  const keys = Object.values(SCREENS).map((s) => s.key);
+  assert.equal(new Set(keys).size, keys.length, 'every "g" shortcut key is unique');
+});
+
+test('system map: the API paths encode types, keys and prefixes and never send what the server would refuse', async () => {
+  const { entitiesPath, entityPath, lookupPath, suggestionsPath } = await import('../panel/js/systemmap.js');
+  assert.equal(entityPath('NOPE', 'k'), null);
+  assert.equal(entityPath('CODE', ''), null);
+  assert.equal(entityPath('CODE', 'x'.repeat(201)), null);
+  assert.equal(lookupPath('   '), null);
+  assert.equal(entitiesPath('STEP', '', 0), '/v1/admin/system-map/entities?limit=1', 'STEP is not a tab; the limit is clamped');
+  assert.equal(suggestionsPath('x&state=ACCEPTED'), '/v1/admin/system-map/suggestions?state=DRAFT');
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push([init.method ?? 'GET', url, init.body ?? null]);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}) };
+  };
+  await api.systemMapStats();
+  await api.systemEntities('CODE', ' WMS-2&type=ROLE ', 500);
+  await api.systemEntities('', '', 50);
+  await api.systemEntity('SCREEN', 'stok > sayım & giriş');
+  await assert.rejects(api.systemEntity('PERSON', 'x'));
+  await api.lookupSystemModel('FEFO?');
+  await assert.rejects(api.lookupSystemModel(''));
+  await api.systemSuggestionSettings();
+  await api.systemSuggestions('ACCEPTED');
+  await api.suggestSystemRelations('a/b');
+  await api.acceptSystemSuggestion('a/b');
+  await api.rejectSystemSuggestion('a/b');
+  assert.deepEqual(sent, [
+    ['GET', '/v1/admin/system-map/stats', null],
+    ['GET', '/v1/admin/system-map/entities?type=CODE&prefix=WMS-2%26type%3DROLE&limit=200', null],
+    ['GET', '/v1/admin/system-map/entities?limit=50', null],
+    ['GET', '/v1/admin/system-map/entity?type=SCREEN&key=stok%20%3E%20say%C4%B1m%20%26%20giri%C5%9F', null],
+    ['GET', '/v1/system-model/lookup?q=FEFO%3F', null],
+    ['GET', '/v1/admin/system-map/suggestions/settings', null],
+    ['GET', '/v1/admin/system-map/suggestions?state=ACCEPTED', null],
+    ['POST', '/v1/admin/system-map/suggestions/documents/a%2Fb', null],
+    ['POST', '/v1/admin/system-map/suggestions/a%2Fb/accept', null],
+    ['POST', '/v1/admin/system-map/suggestions/a%2Fb/reject', null]]);
+  for (const code of [10050, 10051, 11080, 11081, 11082, 11083]) assert.ok(MESSAGES[code], String(code));
   signOut();
 });

@@ -18,14 +18,27 @@ import java.util.UUID;
  * @param neverCitedDocuments shared documents never cited by any answer
  * @param trend               the runs ending in the range, oldest first (questions and clusters per run)
  * @param openFlags           hook items still waiting for review
+ * @param systemModel         structural signals of the system model (ADR-0054), added last (additive change)
  */
 public record KnowledgeHealthReport(LocalDate from, LocalDate to, Instant generatedAt, Run run, int minAskers,
                                     boolean questionTextShown, List<Finding> findings, List<Cluster> clusters,
                                     List<StaleDocument> staleDocuments, List<CollectionCoverage> coverage,
                                     long neverCitedDocuments, List<Contradiction> contradictions, Cards cards,
-                                    List<FeedbackCell> downRatingReasons, List<RunPoint> trend, long openFlags) {
+                                    List<FeedbackCell> downRatingReasons, List<RunPoint> trend, long openFlags,
+                                    List<SystemModelSignal> systemModel) {
+
+    /** The report without system-model signals (before ADR-0054). */
+    public KnowledgeHealthReport(LocalDate from, LocalDate to, Instant generatedAt, Run run, int minAskers,
+                                 boolean questionTextShown, List<Finding> findings, List<Cluster> clusters,
+                                 List<StaleDocument> staleDocuments, List<CollectionCoverage> coverage,
+                                 long neverCitedDocuments, List<Contradiction> contradictions, Cards cards,
+                                 List<FeedbackCell> downRatingReasons, List<RunPoint> trend, long openFlags) {
+        this(from, to, generatedAt, run, minAskers, questionTextShown, findings, clusters, staleDocuments, coverage,
+                neverCitedDocuments, contradictions, cards, downRatingReasons, trend, openFlags, List.of());
+    }
 
     public KnowledgeHealthReport {
+        systemModel = systemModel == null ? List.of() : List.copyOf(systemModel);
         findings = List.copyOf(findings);
         clusters = List.copyOf(clusters);
         staleDocuments = List.copyOf(staleDocuments);
@@ -120,6 +133,23 @@ public record KnowledgeHealthReport(LocalDate from, LocalDate to, Instant genera
      */
     public record FeedbackCell(UUID collectionId, String collectionName, FeedbackReason reason, long ratings,
                                int askers) {
+    }
+
+    /**
+     * A structural signal of the system model (ADR-0054), over the shared documents the admin may read: a code no
+     * document defines (UNDEFINED_CODE), an abbreviation defined differently in two documents (TERM_CONFLICT), a
+     * process without a responsible role (PROCESS_WITHOUT_OWNER). The key and label come from documents the admin reads.
+     *
+     * @param documentIds the documents behind it (at most 20)
+     * @param values      TERM_CONFLICT: the differing definitions; empty otherwise
+     */
+    public record SystemModelSignal(String kind, String entityType, String key, String label, List<UUID> documentIds,
+                                    List<String> values) {
+
+        public SystemModelSignal {
+            documentIds = List.copyOf(documentIds);
+            values = List.copyOf(values);
+        }
     }
 
     /** One run of the trend series. */

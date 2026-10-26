@@ -36,5 +36,9 @@ public enum AuditTargetType {
     /** A contradiction candidate: two chunks of different documents (ADR-0052). */
     CONTRADICTION,
     /** A skill (procedure) of the learning layer (ADR-0053). */
-    SKILL
+    SKILL,
+    /** The system model (ADR-0054): a lookup (no id) or a document whose model was looked at. */
+    SYSTEM_MODEL,
+    /** A suggested relation of the system model awaiting or after an admin's review (ADR-0054). */
+    SYSTEM_SUGGESTION
 }

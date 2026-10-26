@@ -52,6 +52,13 @@ public class McpAudit {
                 .answeredBy(null, null, documentIds));
     }
 
+    /** RESULTS or NO_RESULTS (ADR-0054) with the documents of the returned sources; never the query. */
+    public void lookedUp(List<UUID> documentIds) {
+        publish(() -> AuditEvent.success(AuditAction.MCP_LOOKUP, AuditTargetType.SYSTEM_MODEL)
+                .withDetail(documentIds.isEmpty() ? "NO_RESULTS" : "RESULTS")
+                .answeredBy(null, null, documentIds));
+    }
+
     private void publish(Supplier<AuditEvent> event) {
         try {
             events.publishEvent(event.get());

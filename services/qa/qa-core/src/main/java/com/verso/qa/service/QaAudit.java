@@ -270,6 +270,18 @@ public class QaAudit {
         }
     }
 
+    /** ADR-0054: the suggestion pass ran on a document; the detail is the stored count. */
+    public void systemSuggestionsRunInTransaction(UUID documentId, int stored) {
+        append(() -> AuditEvent.success(AuditAction.SYSTEM_SUGGESTIONS_RUN, AuditTargetType.SYSTEM_MODEL, documentId)
+                .withDetail("STORED_" + stored));
+    }
+
+    /** ADR-0054: an admin accepted or rejected one suggested relation. */
+    public void systemSuggestionReviewedInTransaction(UUID suggestionId, boolean accepted) {
+        append(() -> AuditEvent.success(accepted ? AuditAction.SYSTEM_SUGGESTION_ACCEPTED
+                : AuditAction.SYSTEM_SUGGESTION_REJECTED, AuditTargetType.SYSTEM_SUGGESTION, suggestionId));
+    }
+
     private void appendSystem(Supplier<AuditEvent> build) {
         write(build, KNOWLEDGE_COMPONENT);
     }

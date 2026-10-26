@@ -146,10 +146,47 @@ Yalnız `APPROVED` (`409 11079`) ve bütün kaynakları özetleri tutarak okuyan
 
 `POST /v1/questions` yanıtına ve `done` olayına `procedure` (ekleyici; [api-questions-integration-v1.md](api-questions-integration-v1.md)); MCP araçları `verso_skills`, `verso_skill` ([api-mcp-integration-v1.md](api-mcp-integration-v1.md)). Denetim eylemleri `SKILL_DRAFTED`, `SKILL_EDITED`, `SKILL_APPROVED`, `SKILL_ARCHIVED`, `SKILL_STALE` (aktör `system:knowledge-skills`), `SKILL_EXPORTED`, `MCP_SKILLS`, `MCP_SKILL`; hedef türü `SKILL`. `KnowledgeEvalRunResponse`'a ekleyici `skillCases`, `skillFound`, `skillMissed`, `skillSourceLost` (kart recall'u ve uyarısı değişmedi).
 
+## Sistem modeli (faz 4, ADR-0054)
+
+Belgelerden alım anında **sabit kurallarla** çıkarılan sistemler, ekranlar, kodlar, roller (yalnız unvan/birim; kişi adı hiçbir zaman), süreçler, adımlar ve terimler; her biri kaynak parçasına SHA-256 ile bağlı. Her uç çağıranın **kendi** ilkeleriyle okur (ADR-0028): okuyamadığınız belgedeki bir varlık sizin için yoktur, sayılmaz da. Gövdeler `Cache-Control: private, no-store`; sorgu loglanmaz.
+
+Ortak varlık ayrıntısı (`SystemEntityDetail`): `{type, key, label, definitions: [{value, source}], links: [{relation, outgoing, type, key, label, ordinal}], sources: [{documentId, fileName, pageNumber, unit, passageId, contentSha256, collectionId, collectionName, defining}], truncated}`. `type` ∈ `SYSTEM`, `SCREEN`, `CODE`, `ROLE`, `PROCESS`, `STEP`, `TERM`; `relation` ∈ `STEP_OF`, `NEXT_STEP`, `CODE_OF`, `PART_OF`, `OWNED_BY` (`DEFINES` yalnız `definitions` olarak döner). `outgoing=true` "bu varlık → diğeri" demektir (adımın süreci), `false` tersi (sürecin adımları). `key` katlanmış anahtardır (`İK-3` → `IK-3`, `iade sureci`); bir sonraki çağrıda aynen gönderilir. `passageId` `GET /v1/documents/...` ve MCP `verso_fetch` ile okunabilir parça kimliğidir. `truncated`: bir liste sınıra takıldı (tanım 10, ilişki 60, kaynak 20; aramada kaynak 5).
+
+### `GET /v1/system-model/lookup?q=`
+
+Her oturum açmış kullanıcı. `q` 1-200 karakter bir kod, kısaltma ya da ad (büyük/küçük harf ve Türkçe harf farkı önemsiz: `wms-204`, `fefo`, `İK-3`). Yanıt en çok 10 varlıklık dizi (`SystemEntityDetail`); eşleşme yoksa `[]`. Boş ya da uzun `q`: 400 `10051`.
+
+### `GET /v1/admin/system-map/stats`
+
+Yalnız `verso-admin`. `{entities: {SYSTEM: n, …}, documents, pendingDocuments, extractorVersion, enrichmentEnabled}`: okuyabildiğiniz READY belgeler üzerinden tip başına farklı varlık sayısı, modeli çıkarılmış ve geri doldurmayı bekleyen belge sayısı, arama zenginleştirmenin açık olup olmadığı.
+
+### `GET /v1/admin/system-map/entities?type=&prefix=&limit=`
+
+Yalnız `verso-admin`. `type` isteğe bağlı (yoksa adımlar hariç hepsi), `prefix` en çok 200 karakter (katlanır), `limit` 1-200 (varsayılan 100). `[{type, key, label, documents, mentions}]`, en çok belgede geçen önce.
+
+### `GET /v1/admin/system-map/entity?type=&key=`
+
+Yalnız `verso-admin`. Bir varlığın ayrıntısı ("nerede geçiyor" dahil). Okuyabildiğiniz hiçbir belgede yoksa 404 `10050` (yok ile kapalı ayırt edilmez).
+
+### Öneri geçişi (isteğe bağlı, varsayılan kapalı)
+
+Yalnız `verso-admin`; geçiş yalnız local modda ve `VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED=true` iken çalışır.
+
+- `GET /v1/admin/system-map/suggestions/settings` → `{enabled}`.
+- `POST /v1/admin/system-map/suggestions/documents/{documentId}` → `{documentId, outcome, proposed, stored, rejected}`; `outcome` ∈ `STORED`, `NONE`, `TOO_FEW_ENTITIES`, `BUSY`, `TIMEOUT`, `UNPARSEABLE`, `FAILED`. Kapalıysa 409 `11080`; belge yok/okunamaz 404 `11083`.
+- `GET /v1/admin/system-map/suggestions?state=DRAFT|ACCEPTED|REJECTED` → `[{id, documentId, passageId, relation, sourceType, sourceKey, targetType, targetKey, state, createdAt, reviewedAt}]`, yalnız okuyabildiğiniz belgelerden; kanıt parçası değişmiş öneri silinir.
+- `POST /v1/admin/system-map/suggestions/{id}/accept` · `/reject` → öneri; yok/okunamaz 404 `11081`, zaten incelenmiş 409 `11082`. Kabul edilen öneri hiçbir aramada kullanılmaz; yalnız haritada "incelenmiş öneri" olarak görünür.
+
+### Bilgi sağlığı ve MCP
+
+`GET /v1/admin/knowledge-health` yanıtına ekleyici `systemModel: [{kind, entityType, key, label, documentIds, values}]` (`kind` ∈ `UNDEFINED_CODE`, `TERM_CONFLICT`, `PROCESS_WITHOUT_OWNER`; yalnız okuyabildiğiniz paylaşılan belgeler) ve bulgular `TERM_CONFLICTS`, `UNDEFINED_CODES`, `PROCESSES_WITHOUT_OWNER`; Markdown dışa aktarımda "Sistem modeli sinyalleri" tablosu. MCP aracı `verso_lookup` ([api-mcp-integration-v1.md](api-mcp-integration-v1.md)). Denetim eylemleri `MCP_LOOKUP`, `SYSTEM_SUGGESTIONS_RUN`, `SYSTEM_SUGGESTION_ACCEPTED`, `SYSTEM_SUGGESTION_REJECTED`; hedef türleri `SYSTEM_MODEL`, `SYSTEM_SUGGESTION`.
+
 ## Hata kodları
 
 | Kod | HTTP | Anlam | İstemci davranışı | Yeniden dene |
 |---|---|---|---|---|
+| 10050 | 404 | Sistem modelinde böyle bir varlık yok (ya da okuyamadığınız belgelerde) | listeyi yenile | hayır |
+| 10051 | 400 | Arama metni boş ya da 200 karakterden uzun | metni düzelt | hayır |
 | 11021 | 404 | Tur yok ya da yöneticinin değil | "Bu cevap artık geçmişte yok" | hayır |
 | 11040 | 404 | Kart yok | listeyi yenile | hayır |
 | 11041 | 409 | Bir kaynak yok ya da yöneticiye kapalı | kaynak listesini göster | hayır |
@@ -174,6 +211,10 @@ Yalnız `APPROVED` (`409 11079`) ve bütün kaynakları özetleri tutarak okuyan
 | 11077 | 409 | Bu adla canlı bir prosedür var | başka ad | hayır |
 | 11078 | 404 | Soru kümesi yok (koşu saklama süresiyle silinmiş) | önerileri yenile | hayır |
 | 11079 | 409 | Yalnız onaylı prosedür indirilebilir | düğmeyi gösterme | hayır |
+| 11080 | 409 | Öneri geçişi kapalı (bayrak ya da bulut modu) | düğmeyi gösterme | hayır |
+| 11081 | 404 | Öneri yok ya da belgesi okunamaz | listeyi yenile | hayır |
+| 11082 | 409 | Öneri zaten incelenmiş | listeyi yenile | hayır |
+| 11083 | 404 | Belge yok, hazır değil ya da okunamaz | belge listesini yenile | hayır |
 | 90101 | 403 | `verso-admin` değil | yönetici ekranını gösterme | hayır |
 
 ## Gizlilik

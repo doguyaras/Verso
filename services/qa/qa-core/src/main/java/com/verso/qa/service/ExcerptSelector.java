@@ -1,5 +1,6 @@
 package com.verso.qa.service;
 
+import com.verso.platform.core.text.TurkishText;
 import com.verso.qa.service.SentenceSplitter.Span;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -218,8 +219,8 @@ final class ExcerptSelector {
      * ö→o, ü→u, ı→i, â→a.
      */
     static String fold(String word) {
-        String lower = Normalizer.normalize(word, Normalizer.Form.NFKC).toLowerCase(TURKISH).replace('ı', 'i');
-        return MARKS.matcher(Normalizer.normalize(lower, Normalizer.Form.NFD)).replaceAll("");
+        // One folding for the answer check and the system model (ADR-0054): a code or term must read alike in both.
+        return TurkishText.fold(word);
     }
 
     private static int codePoints(String text, int from, int to) {

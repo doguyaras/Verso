@@ -11,6 +11,7 @@ import com.verso.document.exception.DocumentServiceException;
 import com.verso.document.repository.RetrievalRepository;
 import com.verso.document.repository.RetrievalRepository.Candidate;
 import com.verso.document.service.PassageReranker;
+import com.verso.document.service.SystemModelEnrichment;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,12 +53,14 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
     private final TransactionTemplate readOnly;
     private final Semaphore embeddingSlots;
     private final PassageReranker reranker;
+    private final SystemModelEnrichment enrichment;
 
     public DocumentRetrievalServiceImpl(RetrievalRepository repository, EmbeddingModel embeddingModel,
                                         DocumentProperties properties, TransactionTemplate transaction,
-                                        PassageReranker reranker) {
+                                        PassageReranker reranker, SystemModelEnrichment enrichment) {
         this.repository = repository;
         this.reranker = reranker;
+        this.enrichment = enrichment;
         this.embeddingModel = embeddingModel;
         this.properties = properties;
         this.readOnly = new TransactionTemplate(transaction.getTransactionManager());
@@ -154,8 +157,13 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         int limit = reranker.enabled() ? Math.max(topK, reranker.candidates()) : topK;
         List<RetrievedPassage> fused = readOnly.execute(status -> {
             repository.prepareFilteredScan(vectorCandidates);
-            List<Candidate> found = repository.hybrid(principals, model, vector, question, vectorCandidates,
+            List<Candidate> fusedOnly = repository.hybrid(principals, model, vector, question, vectorCandidates,
                     settings.lexicalCandidates(), settings.rrfK(), limit);
+            // ADR-0054 (off by default): defining chunks of a code, term or system the question names, after the
+            // fused ones; with the reranker they compete like every other candidate.
+            List<Candidate> extra = enrichment.extra(principals, model, vector, question, fusedOnly);
+            List<Candidate> found = extra.isEmpty() ? fusedOnly
+                    : java.util.stream.Stream.concat(fusedOnly.stream(), extra.stream()).toList();
             Map<UUID, Double> shares = settings.lexicalCandidates() == 0 ? Map.of() : termShares(principals, model, question, found);
             return found.stream().map(c -> new RetrievedPassage(c.documentId(), c.fileName(), c.pageNumber(), c.unit(),
                     c.content(), c.similarity(), shares.getOrDefault(c.chunkId(), 1.0), c.collectionId(),

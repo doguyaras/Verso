@@ -71,7 +71,16 @@ public enum QaErrorCode implements ErrorCode {
     /** The diagnostics cluster is unknown (or its run was deleted by the retention). */
     SKILL_CLUSTER_NOT_FOUND(11078, "Question cluster not found.", HttpStatus.NOT_FOUND),
     /** Only an approved procedure can be exported. */
-    SKILL_NOT_APPROVED(11079, "Only an approved procedure can be exported.", HttpStatus.CONFLICT);
+    SKILL_NOT_APPROVED(11079, "Only an approved procedure can be exported.", HttpStatus.CONFLICT),
+    // --- system model suggestions (11080-11089, ADR-0054)
+    /** The optional local-model suggestion pass is off (VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED) or not local. */
+    SYSTEM_SUGGESTIONS_DISABLED(11080, "Relation suggestions are turned off.", HttpStatus.CONFLICT),
+    /** Unknown and unreadable alike. */
+    SYSTEM_SUGGESTION_NOT_FOUND(11081, "Suggestion not found.", HttpStatus.NOT_FOUND),
+    /** Only a DRAFT suggestion can be accepted or rejected. */
+    SYSTEM_SUGGESTION_NOT_DRAFT(11082, "The suggestion was already reviewed.", HttpStatus.CONFLICT),
+    /** The document is unknown, not READY or not readable by the admin. */
+    SYSTEM_SUGGESTION_DOCUMENT_NOT_FOUND(11083, "Document not found.", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

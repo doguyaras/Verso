@@ -80,6 +80,9 @@ x-db-env: &db-env
   VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE: ${VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE:-false}
   # An approved procedure matching the question is shown above the answer (ADR-0053); off until measured.
   VERSO_QA_SKILLS_SERVING_ENABLED: ${VERSO_QA_SKILLS_SERVING_ENABLED:-false}
+  # System model (ADR-0054): retrieval enrichment and the local-model suggestion pass; both off until measured.
+  VERSO_DOCUMENT_SYSTEM_MODEL_ENRICHMENT_ENABLED: ${VERSO_DOCUMENT_SYSTEM_MODEL_ENRICHMENT_ENABLED:-false}
+  VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED: ${VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED:-false}
   # The docling sidecar (ADR-0032) is off here; deploy/compose.docling.yaml adds it and switches it on.
   VERSO_DOCLING_ENABLED: "false"
   VERSO_DOCLING_URL: http://docling:5001

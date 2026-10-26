@@ -96,13 +96,17 @@ Girdi `{"name": string 1..64}` (bir `verso_skills` sonucu). Çıktı `{"name","v
 
 Claude/Copilot'ta kullanım: istemci "nasıl yaparım" türü bir görevde `verso_skills` ile uygun prosedürü seçer, `verso_skill` ile adımları alır, adımları sırayla izler ve gerektiğinde kaynakları `verso_fetch` ile okuyup atıf yapar. Aynı prosedür panelden SKILL.md zip'i olarak da indirilebilir (Claude Code / Codex `.agents/skills` dizinine kopyalanabilir); ama dosya kaynak değişince güncellenmez, MCP her zaman günceldir.
 
+### `verso_lookup` (ADR-0054)
+
+Girdi `{"query": string 1..200}`: bir kod (`WMS-204`), kısaltma (`FEFO`) ya da sistem adı (`ERP`); büyük/küçük harf ve Türkçe harf farkı önemsiz. Çıktı `{"results": [{"type","key","label","definitions":[{"text","source"}],"related":[{"relation","direction","type","label"}],"sources":[{"id","url","title","defining"}]}], "notice"}`: belgelerden sabit kurallarla çıkarılmış sistem modeli (kodun sistemi, sistemin ekranları, sürecin adımları ve sorumlu rolü; kişi adı yok). Yalnız okuyabildiğiniz belgeler; eşleşme yoksa boş `results`. Kaynağın metnini `verso_fetch` ile okuyun. Boş ya da uzun sorgu araç hatasıdır (`isError`).
+
 ### Ertelenen: `verso_ask`
 
 Üretilmiş cevap aracı yoktur (ADR-0031 "Ertelenen"): istemcinin kendi modeli `search` + `fetch` ile atıflı cevabı kurar; Verso'nun chat havuzu instance başına 1'dir.
 
 ## Denetim
 
-Her okuma bir denetim satırıdır: `MCP_SEARCH` (sonuç sözcüğü `RESULTS`/`NO_RESULTS`, dönen belge kimlikleri) ya da `MCP_FETCH` (pasaj kimliği, `FOUND`/`NOT_FOUND`), `MCP_SKILLS` (`RESULTS`/`NO_RESULTS`; ad yok) ya da `MCP_SKILL` (prosedür kimliği ve kaynak belge kimlikleri, `FOUND`/`NOT_FOUND`). Sorgu, ad ve metin yazılmaz ve loglanmaz. `verso-admin` `GET /v1/admin/audit?action=MCP_SEARCH` ile görür ([api-audit-integration-v1.md](api-audit-integration-v1.md)).
+Her okuma bir denetim satırıdır: `MCP_SEARCH` (sonuç sözcüğü `RESULTS`/`NO_RESULTS`, dönen belge kimlikleri) ya da `MCP_FETCH` (pasaj kimliği, `FOUND`/`NOT_FOUND`), `MCP_SKILLS` (`RESULTS`/`NO_RESULTS`; ad yok) ya da `MCP_SKILL` (prosedür kimliği ve kaynak belge kimlikleri, `FOUND`/`NOT_FOUND`), `MCP_LOOKUP` (`RESULTS`/`NO_RESULTS`, dönen kaynakların belge kimlikleri; ADR-0054). Sorgu, ad ve metin yazılmaz ve loglanmaz. `verso-admin` `GET /v1/admin/audit?action=MCP_SEARCH` ile görür ([api-audit-integration-v1.md](api-audit-integration-v1.md)).
 
 ## Kurulum: IdP
 

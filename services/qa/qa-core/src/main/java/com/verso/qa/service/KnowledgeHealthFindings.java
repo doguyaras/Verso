@@ -36,6 +36,50 @@ public final class KnowledgeHealthFindings {
     private KnowledgeHealthFindings() {
     }
 
+    /**
+     * The findings of the system model's structural signals (ADR-0054), one per kind that occurs; fixed Turkish
+     * templates with counts and at most three keys (codes, abbreviations and process names the admin may read).
+     */
+    public static List<Finding> systemModel(List<KnowledgeHealthReport.SystemModelSignal> signals) {
+        List<Finding> findings = new ArrayList<>();
+        List<KnowledgeHealthReport.SystemModelSignal> conflicts = ofKind(signals, "TERM_CONFLICT");
+        if (!conflicts.isEmpty()) {
+            findings.add(new Finding("TERM_CONFLICTS", KnowledgeHealthSeverity.WARNING,
+                    "Farklı tanımlanan kısaltmalar",
+                    String.format(TR, "%d kısaltma iki ya da daha fazla belgede farklı açılımla tanımlanıyor (%s).",
+                            conflicts.size(), examples(conflicts)),
+                    "Kısaltmanın sahibiyle tek bir tanımda anlaşın; diğer belgeleri bu tanıma göre güncelleyin."));
+        }
+        List<KnowledgeHealthReport.SystemModelSignal> codes = ofKind(signals, "UNDEFINED_CODE");
+        if (!codes.isEmpty()) {
+            findings.add(new Finding("UNDEFINED_CODES", KnowledgeHealthSeverity.INFO, "Tanımı olmayan kodlar",
+                    String.format(TR, "%d kod paylaşılan belgelerde geçiyor ama hiçbirinde anlamı yazmıyor (%s).",
+                            codes.size(), examples(codes)),
+                    "Kodların anlamını içeren bir liste ya da tablo ekleyin (\"KOD: açıklama\"); asistan bu kodları "
+                            + "sorulduğunda o listeden açıklayabilir."));
+        }
+        List<KnowledgeHealthReport.SystemModelSignal> orphans = ofKind(signals, "PROCESS_WITHOUT_OWNER");
+        if (!orphans.isEmpty()) {
+            findings.add(new Finding("PROCESSES_WITHOUT_OWNER", KnowledgeHealthSeverity.INFO, "Sahibi yazmayan süreçler",
+                    String.format(TR, "%d adımlı süreçte sorumlu rol ya da birim yazmıyor (%s).", orphans.size(),
+                            examples(orphans)),
+                    "Her sürecin başına sorumlu unvanı ya da birimi ekleyin (\"Sorumlu: Depo Sorumlusu\"); kişi adı "
+                            + "değil unvan yazın."));
+        }
+        return findings;
+    }
+
+    private static List<KnowledgeHealthReport.SystemModelSignal> ofKind(
+            List<KnowledgeHealthReport.SystemModelSignal> signals, String kind) {
+        return signals.stream().filter(s -> kind.equals(s.kind())).toList();
+    }
+
+    private static String examples(List<KnowledgeHealthReport.SystemModelSignal> signals) {
+        String shown = signals.stream().limit(3).map(KnowledgeHealthReport.SystemModelSignal::label)
+                .collect(java.util.stream.Collectors.joining(", "));
+        return signals.size() > 3 ? shown + ", …" : shown;
+    }
+
     /** What the report's data says, most severe first (then in template order). */
     public static List<Finding> of(KnowledgeHealthReport.Run run, int minAskers, List<Cluster> clusters,
                                    List<StaleDocument> stale, Duration staleAfter, List<CollectionCoverage> coverage,

@@ -147,6 +147,32 @@ public class RetrievalRepository {
                 .optional();
     }
 
+    /**
+     * The given chunks with their similarity to the question (ADR-0054 enrichment), when their READY documents are
+     * readable and indexed with {@code model}; in the order of {@code ids}. Never more than the ids given.
+     */
+    public List<Candidate> byIds(String[] principals, String model, float[] question, List<UUID> ids) {
+        if (ids.isEmpty()) return List.of();
+        List<Candidate> found = jdbc.sql("""
+                        SELECT c.id, c.document_id, d.file_name, d.format, c.page_number, c.content,
+                               1 - (c.embedding <=> CAST(:q AS extensions.vector)) AS similarity,
+                               d.collection_id, col.name AS collection_name
+                        FROM document.document_chunk c
+                        JOIN document.document d ON d.id = c.document_id
+                        LEFT JOIN document.collection col ON col.id = d.collection_id
+                        WHERE c.id IN (:ids) AND c.embedding_model = :model AND d.status = 'READY' AND %s
+                        """.formatted(READABLE_CHUNK))
+                .param("q", IngestionRepository.vectorLiteral(question)).param("ids", ids)
+                .param("model", model).param("principals", principals)
+                .query((rs, n) -> new Candidate(rs.getObject("id", UUID.class), rs.getObject("document_id", UUID.class),
+                        rs.getString("file_name"), rs.getInt("page_number"),
+                        DocumentFormat.valueOf(rs.getString("format")).unit(), rs.getString("content"),
+                        rs.getDouble("similarity"), rs.getObject("collection_id", UUID.class),
+                        rs.getString("collection_name")))
+                .list();
+        return found.stream().sorted(java.util.Comparator.comparingInt(c -> ids.indexOf(c.chunkId()))).toList();
+    }
+
     /** Chunks the reader can search with this model: the denominator of a term share. From the document rows. */
     public long searchableChunks(String[] principals, String model) {
         return jdbc.sql("SELECT COALESCE(sum(d.chunk_count), 0) FROM document.document d "

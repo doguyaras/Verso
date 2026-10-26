@@ -121,7 +121,7 @@ class McpServerTest {
 
         List<McpSchema.Tool> tools = client.listTools().tools();
         assertThat(tools).extracting(McpSchema.Tool::name).containsExactlyInAnyOrder("verso_search", "verso_fetch",
-                "verso_skills", "verso_skill");
+                "verso_skills", "verso_skill", "verso_lookup");
         assertThat(tools).allSatisfy(tool -> {
             assertThat(tool.annotations().readOnlyHint()).isTrue();
             assertThat(tool.annotations().destructiveHint()).isFalse();
@@ -271,6 +271,47 @@ class McpServerTest {
         McpSyncClient carol = client(mcpToken("acct-mcp-carol-" + suffix));
         assertThat(results(carol.callTool(new CallToolRequest("verso_search", Map.of("query", "topic-policy fesih")))))
                 .isEmpty();
+    }
+
+    /** ADR-0054: verso_lookup reads the system model as the caller; the audit row holds ids, never the query. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void lookup_returnsOnlyTheCallersDefinitions_withFetchableSources() throws Exception {
+        UUID hukuk = collection("Hukuk " + suffix);
+        UUID ik = collection("IK " + suffix);
+        grant(hukuk, "/hukuk");
+        grant(ik, "/ik");
+        UUID depo = uploadInto(hukuk, "depo.pdf", "FEFO (First Expired First Out) kurali MCPLOOKUPA uygulanir.");
+        uploadInto(ik, "ik.pdf", "FEFO (First Ended First Out) kurali MCPLOOKUPB uygulanir.");
+        process();
+        McpSyncClient alice = client(mcpToken(aliceSub, "/hukuk"));
+
+        List<Map<String, Object>> found = results(alice.callTool(new CallToolRequest("verso_lookup",
+                Map.of("query", "fefo"))));
+        assertThat(found).singleElement().satisfies(result -> {
+            assertThat(result.get("type")).isEqualTo("term");
+            List<Map<String, Object>> definitions = (List<Map<String, Object>>) result.get("definitions");
+            assertThat(definitions).extracting(d -> d.get("text")).containsExactly("First Expired First Out");
+            List<Map<String, Object>> sources = (List<Map<String, Object>>) result.get("sources");
+            assertThat(sources).isNotEmpty().allSatisfy(s -> assertThat((String) s.get("url"))
+                    .startsWith("verso://passages/"));
+            // The source is a passage Alice can fetch.
+            assertThat(alice.callTool(new CallToolRequest("verso_fetch", Map.of("id", sources.getFirst().get("id"))))
+                    .isError()).isFalse();
+        });
+        McpSyncClient carol = client(mcpToken("acct-mcp-carol-" + suffix));
+        assertThat(results(carol.callTool(new CallToolRequest("verso_lookup", Map.of("query", "FEFO"))))).isEmpty();
+        assertThat(alice.callTool(new CallToolRequest("verso_lookup", Map.of("query", " "))).isError()).isTrue();
+        assertThat(alice.callTool(new CallToolRequest("verso_lookup", Map.of())).isError()).isTrue();
+
+        assertThat(AuditTables.strings("SELECT detail_code FROM audit.event WHERE action = 'MCP_LOOKUP' AND actor_sub = ?",
+                aliceSub)).containsExactly("RESULTS");
+        assertThat(AuditTables.count("SELECT count(*) FROM audit.event WHERE action = 'MCP_LOOKUP' AND actor_sub = ? "
+                + "AND ?::uuid = ANY(citation_document_ids)", aliceSub, depo.toString())).isEqualTo(1);
+        assertThat(AuditTables.count("SELECT count(*) FROM audit.event e WHERE row_to_json(e)::text ILIKE '%fefo%'"))
+                .isZero();
+        assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage)
+                .noneMatch(m -> m.contains("MCPLOOKUP") || m.contains("First Expired") || m.toLowerCase().contains("fefo"));
     }
 
     @Test

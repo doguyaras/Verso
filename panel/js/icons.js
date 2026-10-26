@@ -65,6 +65,7 @@ const SHAPES = Object.freeze({
   plus: [['path', { d: 'M12 5v14M5 12h14' }]],
   bell: [['path', { d: 'M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15Z' }], ['path', { d: 'M10 20.5a2 2 0 0 0 4 0' }]],
   pulse: [['path', { d: 'M3.5 12h4l2.5-6 4 12 2.5-6h4' }]],
+  map: [['path', { d: 'M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5-5.5 2.5Z' }], ['path', { d: 'M9 4v13.5M15 6.5V20' }]],
 });
 
 /**

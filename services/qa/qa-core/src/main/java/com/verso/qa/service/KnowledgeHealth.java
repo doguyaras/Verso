@@ -3,6 +3,7 @@ package com.verso.qa.service;
 import com.verso.document.api.DocumentCatalog;
 import com.verso.document.api.DocumentDiagnostics;
 import com.verso.document.api.DocumentProvenance;
+import com.verso.document.api.DocumentSystemModel;
 import com.verso.document.api.dto.DocumentAccess;
 import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.SourceChunk;
@@ -69,6 +70,8 @@ public class KnowledgeHealth {
 
     /** Contradiction candidates per report (the most recently seen). */
     static final int CONTRADICTIONS = 50;
+    /** System-model signals per kind and report (ADR-0054). */
+    static final int SYSTEM_MODEL_SIGNALS = 20;
     private static final int TREND_POINTS = 120;
     private static final int MAX_DIFFERENCES = 5;
 
@@ -79,6 +82,7 @@ public class KnowledgeHealth {
     private final DocumentCatalog catalog;
     private final DocumentDiagnostics documents;
     private final DocumentProvenance provenance;
+    private final DocumentSystemModel systemModel;
     private final QaDiagnosticsProperties properties;
     private final UsageMetricsProperties policy;
     private final JsonMapper json;
@@ -87,8 +91,9 @@ public class KnowledgeHealth {
     public KnowledgeHealth(KnowledgeDiagnosticsRepository runs, ContradictionRepository contradictions,
                            HookRepository hooks, KnowledgeCardRepository cards,
                            DocumentCatalog catalog, DocumentDiagnostics documents, DocumentProvenance provenance,
-                           QaDiagnosticsProperties properties, UsageMetricsProperties policy, JsonMapper json,
-                           Clock clock) {
+                           DocumentSystemModel systemModel, QaDiagnosticsProperties properties,
+                           UsageMetricsProperties policy, JsonMapper json, Clock clock) {
+        this.systemModel = systemModel;
         this.runs = runs;
         this.contradictions = contradictions;
         this.hooks = hooks;
@@ -127,11 +132,13 @@ public class KnowledgeHealth {
         List<RunPoint> trend = runs.series(from, to, TREND_POINTS).stream()
                 .map(r -> new RunPoint((UUID) r[0], (LocalDate) r[1], (Integer) r[2], (Integer) r[3])).toList();
         Optional<RunRow> latest = runs.latestSucceeded(from, to);
+        List<KnowledgeHealthReport.SystemModelSignal> structural = systemModelSignals(admin);
         if (latest.isEmpty()) {
             return new KnowledgeHealthReport(from, to, now, null, properties.minAskers(), showQuestions,
-                    KnowledgeHealthFindings.of(null, properties.minAskers(), List.of(), List.of(),
-                            properties.staleAfter(), List.of(), 0, 0, cardCounts, List.of(), openFlags),
-                    List.of(), List.of(), List.of(), 0, List.of(), cardCounts, List.of(), trend, openFlags);
+                    withSystemModel(KnowledgeHealthFindings.of(null, properties.minAskers(), List.of(), List.of(),
+                            properties.staleAfter(), List.of(), 0, 0, cardCounts, List.of(), openFlags), structural),
+                    List.of(), List.of(), List.of(), 0, List.of(), cardCounts, List.of(), trend, openFlags,
+                    structural);
         }
         RunRow row = latest.get();
         DiagnosticSnapshot snapshot = row.summaryJson() == null ? new DiagnosticSnapshot(null, null, 0, null, null)
@@ -156,9 +163,37 @@ public class KnowledgeHealth {
                 f.ratings(), f.askers())).toList();
         List<Contradiction> found = contradictions(admin);
         return new KnowledgeHealthReport(from, to, now, run, k, showQuestions,
-                KnowledgeHealthFindings.of(run, k, clusters, stale, properties.staleAfter(), coverage,
+                withSystemModel(KnowledgeHealthFindings.of(run, k, clusters, stale, properties.staleAfter(), coverage,
                         snapshot.neverCited(), (int) contradictions.count(), cardCounts, feedback, openFlags),
-                clusters, stale, coverage, snapshot.neverCited(), found, cardCounts, feedback, trend, openFlags);
+                        structural),
+                clusters, stale, coverage, snapshot.neverCited(), found, cardCounts, feedback, trend, openFlags,
+                structural);
+    }
+
+    /**
+     * The system model's signals (ADR-0054), live over the shared documents the admin may read (the document module
+     * filters with the admin's principals). A failure leaves the rest of the report intact.
+     */
+    private List<KnowledgeHealthReport.SystemModelSignal> systemModelSignals(Reader admin) {
+        try {
+            return systemModel.signals(admin, SYSTEM_MODEL_SIGNALS).stream()
+                    .map(s -> new KnowledgeHealthReport.SystemModelSignal(s.kind().name(), s.type().name(), s.key(),
+                            s.label(), s.documentIds(), s.values()))
+                    .toList();
+        } catch (RuntimeException e) {
+            log.error("Knowledge health system model signals failed: code=SYSTEM_MODEL_SIGNALS_FAILED exceptionType={}",
+                    e.getClass().getSimpleName());
+            return List.of();
+        }
+    }
+
+    private static List<KnowledgeHealthReport.Finding> withSystemModel(List<KnowledgeHealthReport.Finding> findings,
+                                                                      List<KnowledgeHealthReport.SystemModelSignal> signals) {
+        List<KnowledgeHealthReport.Finding> all = new ArrayList<>(findings);
+        all.addAll(KnowledgeHealthFindings.systemModel(signals));
+        // Most severe first, the order of every other finding (a stable sort keeps the template order within one).
+        all.sort(java.util.Comparator.comparingInt((KnowledgeHealthReport.Finding f) -> -f.severity().ordinal()));
+        return List.copyOf(all);
     }
 
     private Cards cards(Instant now) {

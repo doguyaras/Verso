@@ -29,7 +29,9 @@ public final class QaTables {
                     + "qa.hook_notification, qa.hook_eval_request, "
                     // ADR-0053: skills (procedures) and their golden-set results.
                     + "qa.skill, qa.skill_version, qa.skill_step, qa.skill_step_source, qa.skill_trigger, "
-                    + "qa.skill_golden_case, qa.skill_approval, qa.skill_event, qa.skill_eval_result");
+                    + "qa.skill_golden_case, qa.skill_approval, qa.skill_event, qa.skill_eval_result, "
+                    // ADR-0054: suggested relations of the system model.
+                    + "qa.system_model_suggestion");
             st.execute("UPDATE qa.hook_rule SET enabled = default_enabled");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the qa schema", e);

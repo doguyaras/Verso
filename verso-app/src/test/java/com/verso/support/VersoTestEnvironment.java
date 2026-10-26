@@ -46,6 +46,8 @@ public @interface VersoTestEnvironment {
                     "OLLAMA_EMBEDDING_MODEL=test-embedding",
                     "OLLAMA_CHAT_MODEL=test-chat",
                     "verso.document.ingestion.enabled=false",
+                    // ... and the system-model backfill (ADR-0054): SystemModelApiTest drives runOnce() itself.
+                    "verso.document.system-model.backfill-enabled=false",
                     // Connector syncs (ADR-0038) only when a test drives ConnectorSyncWorker.runDue(): a background run
                     // in another cached context would write audit rows other tests count.
                     "verso.connector.sync-enabled=false",

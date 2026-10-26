@@ -37,6 +37,8 @@ export const SCREENS = Object.freeze({
   health: { title: 'Bilgi sağlığı', short: 'Sağlık', icon: 'pulse', key: 'h', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
   // ADR-0053: the approved procedures (skills): drafts from recurring questions, approval, SKILL.md export.
   skills: { title: 'Prosedürler', short: 'Prosedür', icon: 'flag', key: 'r', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  // ADR-0054: the light system model (systems, screens, codes, processes, terms, roles) and its relation suggestions.
+  systemmap: { title: 'Sistem haritası', short: 'Harita', icon: 'map', key: 'm', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
 });
 
 /** The heading of the admin group (ADR-0036). */

@@ -603,6 +603,8 @@ svg.signature { display: block; flex: none; width: auto; overflow: visible; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border-muted); }
 .toolbar .input-icon { flex: 1 1 240px; max-width: 340px; }
 .segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--bg-control); border-radius: var(--r-md); }
+/* Six or more choices (the system map's entity types) wrap on a phone instead of scrolling the page sideways. */
+.segmented.wrap { flex-wrap: wrap; max-width: 100%; }
 .segmented button {
   border: 0; background: none; color: var(--fg-muted); font-size: var(--text-sm); font-weight: 500;
   height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;

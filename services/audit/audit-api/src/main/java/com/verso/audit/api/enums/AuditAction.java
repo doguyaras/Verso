@@ -108,5 +108,16 @@ public enum AuditAction {
      */
     MCP_SKILLS,
     /** An MCP client read one approved skill; the target is the skill, the outcome FOUND or NOT_FOUND. */
-    MCP_SKILL
+    MCP_SKILL,
+    /**
+     * An MCP client looked up a code, term or system in the system model (ADR-0054); the detail is RESULTS or
+     * NO_RESULTS, the citation list the documents of the returned sources. Never the query.
+     */
+    MCP_LOOKUP,
+    /** A verso-admin ran the optional local-model suggestion pass on one document (ADR-0054); the detail is the count. */
+    SYSTEM_SUGGESTIONS_RUN,
+    /** A verso-admin accepted a suggested relation of the system model (ADR-0054). */
+    SYSTEM_SUGGESTION_ACCEPTED,
+    /** A verso-admin rejected a suggested relation of the system model (ADR-0054). */
+    SYSTEM_SUGGESTION_REJECTED
 }

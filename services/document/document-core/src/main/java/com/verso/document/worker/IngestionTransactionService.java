@@ -31,9 +31,20 @@ public class IngestionTransactionService {
     }
 
     private final IngestionRepository repository;
+    private final SystemModelIndexer systemModel;
 
-    public IngestionTransactionService(IngestionRepository repository) {
+    public IngestionTransactionService(IngestionRepository repository, SystemModelIndexer systemModel) {
         this.repository = repository;
+        this.systemModel = systemModel;
+    }
+
+    /**
+     * The document's system model (ADR-0054), in its own short transaction right after it became READY: a failure here
+     * never undoes the ingestion; the backfill job takes the document again.
+     */
+    @Transactional
+    public void indexSystemModel(java.util.UUID documentId, Instant now) {
+        systemModel.index(documentId, now);
     }
 
     @Transactional

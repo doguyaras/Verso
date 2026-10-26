@@ -1,5 +1,6 @@
 package com.verso.qa.service;
 
+import com.verso.platform.core.text.TurkishText;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -30,8 +31,7 @@ final class AnchorCheck {
     // A code is a token of capitals and digits with at least one of each, hyphens inside: P1, SAT-E058, WMS-204,
     // A-03-02-B. Then numbers (dots, commas and colons inside: 25.000, 16.30), then words, then line breaks.
     private static final Pattern TOKEN = Pattern.compile(
-            "(?<code>(?<![\\p{L}\\p{N}])(?=[\\p{Lu}\\p{N}-]*\\p{N})(?=[\\p{Lu}\\p{N}-]*\\p{Lu})[\\p{Lu}\\p{N}]+"
-                    + "(?:-[\\p{Lu}\\p{N}]+)*(?![\\p{L}\\p{N}]))"
+            "(?<code>" + TurkishText.CODE_REGEX + ")"
                     + "|(?<number>[0-9]+(?:[.,:][0-9]+)*)"
                     + "|(?<word>\\p{L}[\\p{L}\\p{M}]*)"
                     + "|(?<line>\\n)");

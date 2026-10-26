@@ -104,6 +104,19 @@ public final class KnowledgeHealthMarkdown {
             md.append('\n');
         }
 
+        md.append("## Sistem modeli sinyalleri\n\n");
+        if (report.systemModel().isEmpty()) {
+            md.append("Yok.\n\n");
+        } else {
+            md.append("| Sinyal | Tür | Değer | Belge sayısı | Farklı tanımlar |\n|---|---|---|---|---|\n");
+            for (KnowledgeHealthReport.SystemModelSignal s : report.systemModel()) {
+                md.append("| ").append(s.kind()).append(" | ").append(s.entityType()).append(" | ")
+                        .append(cell(s.label())).append(" | ").append(s.documentIds().size()).append(" | ")
+                        .append(s.values().isEmpty() ? "–" : cell(String.join(" / ", s.values()))).append(" |\n");
+            }
+            md.append('\n');
+        }
+
         KnowledgeHealthReport.Cards cards = report.cards();
         md.append("## Onaylı bilgi kartları\n\n");
         md.append("| Onaylı | Taslak | Eskimiş | İtirazlı | Arşivde | Onayı yakında dolacak |\n|---|---|---|---|---|---|\n");
