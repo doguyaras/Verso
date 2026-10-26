@@ -518,3 +518,95 @@ entries:
     package: lz4-java
     reason: "Bundled Java library (lz4-java) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
     expires: 2027-01-31
+
+  # --- Scan of 2026-10-26: llama.cpp server-cuda b11561 (ADR-0051) and curl in the Grafana and nginx Alpine bases ---
+  - id: CVE-2026-45447
+    scope: ggml-org-llama.cpp-server-cuda
+    package: libssl3t64
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2026-45447
+    scope: ggml-org-llama.cpp-server-cuda
+    package: openssl
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2026-84782
+    scope: ggml-org-llama.cpp-server-cuda
+    package: libssl3t64
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2026-84782
+    scope: ggml-org-llama.cpp-server-cuda
+    package: openssl
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: dirmngr
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gnupg
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gnupg-utils
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gnupg2
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gpg
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gpg-agent
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gpgconf
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gpgsm
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: gpgv
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: ggml-org-llama.cpp-server-cuda
+    package: keyboxd
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    expires: 2026-12-15
+  - id: CVE-2026-92392
+    scope: grafana-grafana
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of the Grafana 13.2.4 image. Not invoked by Verso: the compose healthcheck uses wget, and Grafana is a Go binary that uses the Go HTTP client, not libcurl. Internal obs network only, reachable through obs-edge on 127.0.0.1. The next digest refresh picks up the Alpine fix."
+    expires: 2026-12-15
+  - id: CVE-2026-92392
+    scope: grafana-grafana
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of the Grafana 13.2.4 image. Not invoked by Verso: the compose healthcheck uses wget, and Grafana is a Go binary that uses the Go HTTP client, not libcurl. Internal obs network only, reachable through obs-edge on 127.0.0.1. The next digest refresh picks up the Alpine fix."
+    expires: 2026-12-15
+  - id: CVE-2026-92392
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6. Not invoked by Verso: the edge and obs-edge services define no curl healthcheck and nginx does not link libcurl; the proxies only forward to verso-app and Grafana. The next digest refresh picks up the Alpine fix."
+    expires: 2026-12-15
+  - id: CVE-2026-92392
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6. Not invoked by Verso: the edge and obs-edge services define no curl healthcheck and nginx does not link libcurl; the proxies only forward to verso-app and Grafana. The next digest refresh picks up the Alpine fix."
+    expires: 2026-12-15
