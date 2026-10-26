@@ -78,7 +78,8 @@ class QuestionStreamTest {
                 properties, new VersoAiProperties(AiMode.LOCAL, "test-chat", "test-embed"), circuit,
                 new QaMetrics(new SimpleMeterRegistry(), circuit), history, new AnswerabilityGate(properties), groups,
                 new FollowUpRewriter(FollowUpQuestionTest.FOLLOW_UP), FollowUpQuestionTest.FOLLOW_UP,
-                new GroundingCheck(new QaGroundingProperties(true), properties));
+                new GroundingCheck(new QaGroundingProperties(true), properties),
+                org.mockito.Mockito.mock(com.verso.qa.service.AnswerMemory.class));
         when(groups.current()).thenReturn(List.of());
         when(retrieval.search(any(Reader.class), anyString(), anyInt())).thenReturn(List.of(
                 new RetrievedPassage(UUID.randomUUID(), "izin.pdf", 3, SourceUnit.PAGE, "Yıllık izin yirmi gündür.", 0.9, 0)));

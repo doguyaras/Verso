@@ -310,3 +310,30 @@ tests:
       - eval_time: 100h
         alertname: QaP99OverBudget
         exp_alerts: []
+
+  # The golden-set check of the answer memory raised its alert (ADR-0049): the gauge is 1 on every instance.
+  - interval: 1m
+    input_series:
+      - series: 'verso_qa_knowledge_eval_alert{job="verso", instance="a"}'
+        values: '0 0 1x20'
+      - series: 'verso_qa_knowledge_eval_alert{job="verso", instance="b"}'
+        values: '0 0 1x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: KnowledgeRecallDropped
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: KnowledgeRecallDropped
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations: {summary: "The golden-set check of the verified answers found a recall drop or source drift.", runbook: docs/runbooks/knowledge-recall-dropped.md}
+
+  # The latest check was fine: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'verso_qa_knowledge_eval_alert{job="verso"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KnowledgeRecallDropped
+        exp_alerts: []

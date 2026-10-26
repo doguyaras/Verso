@@ -1,6 +1,7 @@
 package com.verso.qa.service.impl;
 
 import com.verso.document.api.DocumentRetrieval;
+import com.verso.document.api.dto.QuestionEmbedding;
 import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.platform.core.exception.CommonErrorCode;
@@ -17,6 +18,8 @@ import com.verso.qa.config.QaProperties;
 import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.exception.QaErrorCode;
 import com.verso.qa.exception.QaServiceException;
+import com.verso.qa.service.AnswerMemory;
+import com.verso.qa.service.AnswerMemory.Served;
 import com.verso.qa.service.AnswerStream;
 import com.verso.qa.service.AnswerabilityGate;
 import com.verso.qa.service.AnswerabilityGate.Decision;
@@ -120,12 +123,14 @@ public class QuestionServiceImpl implements QuestionService {
     private final FollowUpRewriter rewriter;
     private final QaFollowUpProperties followUp;
     private final GroundingCheck grounding;
+    private final AnswerMemory memory;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
-                               QaFollowUpProperties followUp, GroundingCheck grounding) {
+                               QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory) {
+        this.memory = memory;
         this.grounding = grounding;
         this.groups = groups;
         this.rewriter = rewriter;
@@ -151,9 +156,12 @@ public class QuestionServiceImpl implements QuestionService {
         // A foreign, deleted or full conversation is refused before any model call (ADR-0023).
         if (conversationId != null) history.checkWritable(account, conversationId);
         Search search = search(account, question, conversationId, null);
-        Retrieved retrieved = retrieve(readerOf(account), search.query());
+        Found found = find(readerOf(account), search.query());
+        Retrieved retrieved = found.retrieved();
         Answered answered;
-        if (retrieved.relevant().isEmpty()) {
+        if (found.served() != null) {
+            answered = fromMemory(found, search, started, ANSWERED);
+        } else if (retrieved.relevant().isEmpty()) {
             answered = notFound(retrieved, search, started, ANSWERED);
         } else {
             BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant(), answerContext(search));
@@ -179,13 +187,17 @@ public class QuestionServiceImpl implements QuestionService {
         try {
             Search search = search(account, question, conversationId, out);
             if (!out.stage(AnswerStage.RETRIEVING, 0, 0)) throw new Cancelled();
-            Retrieved retrieved = retrieve(reader, search.query());
-            // A client that left during retrieval costs no model call.
-            if (!out.stage(AnswerStage.PASSAGES_FOUND, retrieved.passages().size(), retrieved.relevant().size())) {
-                throw new Cancelled();
-            }
+            Found found = find(reader, search.query());
+            Retrieved retrieved = found.retrieved();
             Answered answered;
-            if (retrieved.relevant().isEmpty()) {
+            if (found.served() != null) {
+                // ADR-0049: "Onaylı bilgi bulundu"; the verified text follows in the citations event, no delta.
+                if (!out.stage(AnswerStage.MEMORY_FOUND, 0, 0)) throw new Cancelled();
+                answered = fromMemory(found, search, started, STREAMED);
+            } else if (!out.stage(AnswerStage.PASSAGES_FOUND, retrieved.passages().size(), retrieved.relevant().size())) {
+                // A client that left during retrieval costs no model call.
+                throw new Cancelled();
+            } else if (retrieved.relevant().isEmpty()) {
                 answered = notFound(retrieved, search, started, STREAMED);
             } else {
                 BuiltPrompt prompt = promptBuilder.build(question, retrieved.relevant(), answerContext(search));
@@ -293,11 +305,48 @@ public class QuestionServiceImpl implements QuestionService {
         }
     }
 
-    private Retrieved retrieve(Reader reader, String question) {
-        long retrievalStarted = System.nanoTime();
+    /** What the search found: a verified answer card that may answer this caller (ADR-0049), or retrieved passages. */
+    private record Found(Retrieved retrieved, Served served, long lookupMs) {
+    }
+
+    /**
+     * ADR-0049: with the answer memory on, the question is embedded once; the vector first looks up the verified answer
+     * cards (qa schema, no remote call) and, when none may answer this caller, searches the documents. With it off,
+     * the search embeds the question itself, exactly as before.
+     */
+    private Found find(Reader reader, String question) {
+        if (!memory.enabled()) return new Found(retrieve(reader, question, null, System.nanoTime()), null, 0);
+        long started = System.nanoTime();
+        QuestionEmbedding embedding;
+        try {
+            embedding = retrieval.embed(question);
+        } catch (ServiceException e) {
+            metrics.record(Outcome.RETRIEVAL_FAILED);
+            throw e;
+        }
+        Optional<Served> served = memory.lookup(reader, embedding);
+        if (served.isPresent()) return new Found(null, served.get(), elapsedMs(started));
+        return new Found(retrieve(reader, question, embedding, started), null, 0);
+    }
+
+    /** The verified text of the card, its server-mapped citations and the {@code memory} field (ADR-0049). */
+    private Answered fromMemory(Found found, Search search, long started, String event) {
+        Served served = found.served();
+        log.info("{}: source=memory cardId={} citations={} followUp={} rewriteMs={} retrievalMs={} chatMs=0 totalMs={} "
+                        + "outcome=memory", event, served.cardId(), served.citations().size(), search.result(),
+                search.rewriteMs(), found.lookupMs(), elapsedMs(started));
+        metrics.retrievalTook(found.lookupMs());
+        metrics.record(Outcome.MEMORY);
+        return new Answered(new AnswerResponse(served.answer(), true, AnswerOutcome.ANSWERED, served.citations(),
+                ai.mode().header(), AnswerResponse.MEMORY_MODEL, null, null, search.contextQuery(), null,
+                served.memory()), found.lookupMs(), 0);
+    }
+
+    private Retrieved retrieve(Reader reader, String question, QuestionEmbedding embedding, long retrievalStarted) {
         List<RetrievedPassage> passages;
         try {
-            passages = retrieval.search(reader, question, properties.topK());
+            passages = embedding == null ? retrieval.search(reader, question, properties.topK())
+                    : retrieval.search(reader, question, embedding, properties.topK());
         } catch (ServiceException e) {
             metrics.record(Outcome.RETRIEVAL_FAILED);
             throw e;

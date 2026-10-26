@@ -1,6 +1,7 @@
 package com.verso.document.api;
 
 import com.verso.document.api.dto.Passage;
+import com.verso.document.api.dto.QuestionEmbedding;
 import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import java.util.List;
@@ -32,6 +33,22 @@ public interface DocumentRetrieval {
      * @param topK     maximum number of passages
      */
     List<RetrievedPassage> search(Reader reader, String question, int topK);
+
+    /**
+     * Embeds the question with the documents' own local model (llm-rules 1.2, 6.1), under the same bulkhead and time
+     * bound as {@link #search(Reader, String, int)} (ADR-0008). ADR-0049: the qa module embeds once, looks up its
+     * verified answers with the vector, and only then searches with the same vector, so the hot path keeps one embedding
+     * call. Fails with a document error when the model is unreachable.
+     *
+     * @param question the question text; not logged
+     */
+    QuestionEmbedding embed(String question);
+
+    /**
+     * {@link #search(Reader, String, int)} with a vector from {@link #embed(String)}: no embedding call. A vector of
+     * another model or dimension fails like an unreachable model (it cannot be compared with the chunks).
+     */
+    List<RetrievedPassage> search(Reader reader, String question, QuestionEmbedding embedding, int topK);
 
     /** {@link #search(Reader, String, int)} for a reader without groups: personal documents and direct user grants. */
     default List<RetrievedPassage> search(String accountId, String question, int topK) {

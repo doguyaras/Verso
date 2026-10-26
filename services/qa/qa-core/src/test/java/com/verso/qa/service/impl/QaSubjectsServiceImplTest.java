@@ -30,7 +30,7 @@ class QaSubjectsServiceImplTest {
 
     @Test
     void redaction_whenGivenTooManyIdsOrNone_isBoundedBeforeAnyStatement() {
-        QaSubjectsServiceImpl service = new QaSubjectsServiceImpl(null, null);
+        QaSubjectsServiceImpl service = new QaSubjectsServiceImpl(null, null, null);
         assertThat(service.redactAnswersCiting(java.util.List.of())).isZero();
         java.util.List<UUID> many = IntStream.rangeClosed(0, QaSubjects.MAX_REDACTION_IDS)
                 .mapToObj(i -> UUID.randomUUID()).toList();
@@ -39,7 +39,7 @@ class QaSubjectsServiceImplTest {
 
     @Test
     void conversations_whenTheBatchIsOutOfBounds_isRefused() {
-        QaSubjectsServiceImpl service = new QaSubjectsServiceImpl(null, null);
+        QaSubjectsServiceImpl service = new QaSubjectsServiceImpl(null, null, null);
         assertThatThrownBy(() -> service.conversations("s", null, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.conversations("s", null, QaSubjects.MAX_CONVERSATION_BATCH + 1))
                 .isInstanceOf(IllegalArgumentException.class);

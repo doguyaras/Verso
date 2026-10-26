@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end check of the observability profile (ADR-0014) on the running stack:
-#   - Prometheus scrapes the application (up == 1), knows the Verso metrics and loaded the alert rules of alerts.yml (14);
+#   - Prometheus scrapes the application (up == 1), knows the Verso metrics and loaded the alert rules of alerts.yml (15);
 #   - Alertmanager is ready and Prometheus talks to it;
 #   - Grafana is up with both provisioned datasources healthy and the Verso dashboard;
 #   - Loki holds the application's log lines (through Alloy), labelled by service and level;
@@ -39,7 +39,7 @@ series="$(prom 'count({__name__=~"verso_.+"})' | count 'console.log((j.data.resu
 [ "${series:-0}" -ge 8 ] || die "too few Verso series in Prometheus ($series)"
 rules="$(docker compose exec -T prometheus wget -q -O - http://127.0.0.1:9090/api/v1/rules \
   | count 'console.log(j.data.groups.flatMap(g=>g.rules).filter(r=>r.type==="alerting").length)')"
-[ "$rules" = 14 ] || die "expected 14 alert rules, Prometheus has $rules"
+[ "$rules" = 15 ] || die "expected 15 alert rules, Prometheus has $rules"
 ams="$(docker compose exec -T prometheus wget -q -O - http://127.0.0.1:9090/api/v1/alertmanagers \
   | count 'console.log(j.data.activeAlertmanagers.length)')"
 [ "$ams" -ge 1 ] || die "Prometheus has no active Alertmanager"

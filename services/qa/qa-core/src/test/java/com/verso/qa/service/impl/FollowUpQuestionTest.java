@@ -107,7 +107,8 @@ class FollowUpQuestionTest {
                 properties, new VersoAiProperties(AiMode.LOCAL, "test-chat", "test-embed"), circuit,
                 new QaMetrics(new SimpleMeterRegistry(), circuit), history, new AnswerabilityGate(properties), groups,
                 new FollowUpRewriter(followUp), followUp,
-                new GroundingCheck(new QaGroundingProperties(true), properties));
+                new GroundingCheck(new QaGroundingProperties(true), properties),
+                org.mockito.Mockito.mock(com.verso.qa.service.AnswerMemory.class));
     }
 
     @Test

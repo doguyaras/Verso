@@ -521,7 +521,7 @@ class ComposeConfigTest {
         Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
         List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
                 .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
-        assertThat(alerts).hasSize(14);
+        assertThat(alerts).hasSize(15);
         assertThat(ROOT.resolve("deploy/obs/prometheus/alerts.test.yml")).as("promtool unit tests").exists();
         for (Map<String, Object> alert : alerts) {
             String name = String.valueOf(alert.get("alert"));

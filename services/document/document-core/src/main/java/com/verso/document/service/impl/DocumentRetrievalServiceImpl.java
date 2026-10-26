@@ -2,6 +2,7 @@ package com.verso.document.service.impl;
 
 import com.verso.document.api.DocumentRetrieval;
 import com.verso.document.api.dto.Passage;
+import com.verso.document.api.dto.QuestionEmbedding;
 import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import com.verso.document.config.DocumentProperties;
@@ -113,16 +114,40 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
 
     @Override
     public List<RetrievedPassage> search(Reader reader, String question, int topK) {
-        // Computed once from the token (ADR-0028); every statement below filters on exactly this set.
-        String[] principals = reader.principals().toArray(String[]::new);
-        String model = properties.embeddingModel();
-        if (repository.hasChunksOfAnotherModel(principals, model)) {
-            throw new DocumentServiceException(DocumentErrorCode.DOCUMENT_REINDEX_REQUIRED);
-        }
+        // The model check first: a reader whose documents need a reindex costs no embedding call.
+        refuseOtherModels(reader);
+        return searchWith(reader, question, embed(question).vector(), topK);
+    }
+
+    @Override
+    public QuestionEmbedding embed(String question) {
         float[] vector = embedQuestion(question);
         if (vector.length != properties.embeddingDimensions()) {
             throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
         }
+        return new QuestionEmbedding(properties.embeddingModel(), vector);
+    }
+
+    @Override
+    public List<RetrievedPassage> search(Reader reader, String question, QuestionEmbedding embedding, int topK) {
+        float[] vector = embedding.vector();
+        if (!properties.embeddingModel().equals(embedding.model()) || vector.length != properties.embeddingDimensions()) {
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+        }
+        refuseOtherModels(reader);
+        return searchWith(reader, question, vector, topK);
+    }
+
+    private void refuseOtherModels(Reader reader) {
+        if (repository.hasChunksOfAnotherModel(reader.principals().toArray(String[]::new), properties.embeddingModel())) {
+            throw new DocumentServiceException(DocumentErrorCode.DOCUMENT_REINDEX_REQUIRED);
+        }
+    }
+
+    private List<RetrievedPassage> searchWith(Reader reader, String question, float[] vector, int topK) {
+        // Computed once from the token (ADR-0028); every statement below filters on exactly this set.
+        String[] principals = reader.principals().toArray(String[]::new);
+        String model = properties.embeddingModel();
         DocumentProperties.Retrieval settings = properties.retrieval();
         int vectorCandidates = Math.max(settings.vectorCandidates(), topK);
         // The reranker reads more fused candidates than top-k; the two candidate lists themselves stay as they are.

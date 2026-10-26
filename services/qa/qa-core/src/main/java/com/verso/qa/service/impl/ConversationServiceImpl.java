@@ -22,6 +22,7 @@ import com.verso.qa.config.UsageMetricsProperties;
 import com.verso.qa.exception.QaErrorCode;
 import com.verso.qa.exception.QaServiceException;
 import com.verso.qa.repository.ConversationRepository;
+import com.verso.qa.repository.KnowledgeCardRepository;
 import com.verso.qa.repository.ConversationRepository.ConversationRow;
 import com.verso.qa.repository.QaDatabase;
 import com.verso.qa.repository.TurnRepository;
@@ -82,11 +83,13 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
     private final Clock clock;
     private final CallerGroups groups;
     private final QaAudit audit;
+    private final KnowledgeCardRepository knowledge;
 
     public ConversationServiceImpl(QaDatabase db, ConversationRepository conversations, TurnRepository turns,
                                    UsageRepository usage, DocumentCatalog catalog, QaHistoryProperties properties,
                                    UsageMetricsProperties metricsProperties, QaMetrics metrics, Clock clock,
-                                   CallerGroups groups, QaAudit audit) {
+                                   CallerGroups groups, QaAudit audit, KnowledgeCardRepository knowledge) {
+        this.knowledge = knowledge;
         this.groups = groups;
         this.audit = audit;
         this.db = db;
@@ -178,6 +181,8 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         for (Citation citation : answer.citations()) {
             turns.insertCitation(turnId, citation.number(), citation.documentId(), citation.page(), citation.unit().name());
         }
+        // ADR-0049: a down rating of this turn is then a dispute of the card that answered it.
+        if (answer.memory() != null) knowledge.linkTurn(turnId, answer.memory().cardId());
         boolean firstToday = usage.markActive(day, account);
         usage.addQuestion(day, outcome, answer.mode(), firstToday);
         usage.addLatency(day, LatencyBuckets.bucketFor(timings.totalMs()));

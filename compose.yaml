@@ -75,6 +75,9 @@ x-db-env: &db-env
   VERSO_QA_FOLLOWUP_ENABLED: ${VERSO_QA_FOLLOWUP_ENABLED:-true}
   # Cited sentences whose numbers or codes the cited passage does not give are listed as unverified (ADR-0047).
   VERSO_QA_GROUNDING_ENABLED: ${VERSO_QA_GROUNDING_ENABLED:-true}
+  # Questions matching an expert-verified answer card are answered with it (ADR-0049); two-person rule optional.
+  VERSO_QA_KNOWLEDGE_ENABLED: ${VERSO_QA_KNOWLEDGE_ENABLED:-true}
+  VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE: ${VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE:-false}
   # The docling sidecar (ADR-0032) is off here; deploy/compose.docling.yaml adds it and switches it on.
   VERSO_DOCLING_ENABLED: "false"
   VERSO_DOCLING_URL: http://docling:5001

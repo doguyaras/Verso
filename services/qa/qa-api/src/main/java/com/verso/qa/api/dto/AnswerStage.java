@@ -12,6 +12,12 @@ public enum AnswerStage {
     REWRITING,
     /** The question is embedded and the caller's documents are searched. */
     RETRIEVING,
+    /**
+     * An expert-verified answer card matched the question and the caller may read every document it cites (ADR-0049,
+     * "Onaylı bilgi bulundu"): its answer follows in the {@code citations} event; no passages are searched and no model
+     * writes. Added after ADR-0035; a client that does not know a stage shows the previous one.
+     */
+    MEMORY_FOUND,
     /** Retrieval ended: {@code retrieved} passages came back, {@code relevant} of them go to the model (0: none). */
     PASSAGES_FOUND,
     /** The chat model was asked and is writing; {@code delta} events follow. */

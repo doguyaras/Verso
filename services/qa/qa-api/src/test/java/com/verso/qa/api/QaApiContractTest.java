@@ -42,7 +42,11 @@ class QaApiContractTest {
                 // ADR-0035: the event payloads of the stream
                 com.verso.qa.api.dto.StreamStageEvent.class, com.verso.qa.api.dto.StreamDeltaEvent.class,
                 com.verso.qa.api.dto.StreamCitationsEvent.class, com.verso.qa.api.dto.StreamDoneEvent.class,
-                com.verso.qa.api.dto.StreamErrorEvent.class)) {
+                com.verso.qa.api.dto.StreamErrorEvent.class,
+                // ADR-0049: the answer memory
+                com.verso.qa.api.dto.KnowledgeMemory.class, com.verso.qa.api.dto.KnowledgeCardRequest.class,
+                com.verso.qa.api.dto.KnowledgeCardSummary.class, com.verso.qa.api.dto.KnowledgeCardResponse.class,
+                com.verso.qa.api.dto.KnowledgeEvalRunResponse.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
     }
@@ -62,12 +66,16 @@ class QaApiContractTest {
         assertThat(stored.unverified()).as("the nine-argument constructor: no groundedness check").isNull();
         // ADR-0046 added contextQuery after them, ADR-0047 unverified after that: the JSON still only grows.
         var components = AnswerResponse.class.getRecordComponents();
-        assertThat(components[components.length - 4].getName()).isEqualTo("conversationId");
-        assertThat(components[components.length - 3].getName()).isEqualTo("turnId");
-        assertThat(components[components.length - 2].getName()).isEqualTo("contextQuery");
-        assertThat(components[components.length - 1].getName()).isEqualTo("unverified");
+        assertThat(components[components.length - 5].getName()).isEqualTo("conversationId");
+        assertThat(components[components.length - 4].getName()).isEqualTo("turnId");
+        assertThat(components[components.length - 3].getName()).isEqualTo("contextQuery");
+        assertThat(components[components.length - 2].getName()).isEqualTo("unverified");
+        // ADR-0049: the answer memory's field after all of them.
+        assertThat(components[components.length - 1].getName()).isEqualTo("memory");
+        assertThat(stored.memory()).as("a model answer has no memory field").isNull();
         var done = com.verso.qa.api.dto.StreamDoneEvent.class.getRecordComponents();
-        assertThat(done[done.length - 1].getName()).isEqualTo("contextQuery");
+        assertThat(done[done.length - 2].getName()).isEqualTo("contextQuery");
+        assertThat(done[done.length - 1].getName()).isEqualTo("memory");
         var citations = com.verso.qa.api.dto.StreamCitationsEvent.class.getRecordComponents();
         assertThat(citations).extracting(java.lang.reflect.RecordComponent::getName)
                 .containsExactly("answer", "citations", "unverified");
@@ -85,11 +93,14 @@ class QaApiContractTest {
         assertThat(com.verso.qa.api.dto.UnverifiedSentence.class.isRecord()).isTrue();
     }
 
-    /** ADR-0046: the optional rewrite step comes first, the ADR-0035 stages keep their order after it. */
+    /**
+     * ADR-0046: the optional rewrite step comes first, the ADR-0035 stages keep their order after it; ADR-0049's
+     * MEMORY_FOUND ends a stream right after retrieval started (no passages, no writing).
+     */
     @Test
     void answerStage_whenListed_putsRewritingBeforeRetrieval() {
         assertThat(com.verso.qa.api.dto.AnswerStage.values()).extracting(Enum::name)
-                .containsExactly("REWRITING", "RETRIEVING", "PASSAGES_FOUND", "WRITING");
+                .containsExactly("REWRITING", "RETRIEVING", "MEMORY_FOUND", "PASSAGES_FOUND", "WRITING");
     }
 
     /** The feedback rules a client can break before the server looks at the turn (ADR-0023). */

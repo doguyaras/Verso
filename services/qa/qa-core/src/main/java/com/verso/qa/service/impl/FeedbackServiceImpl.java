@@ -14,6 +14,7 @@ import com.verso.qa.repository.TurnRepository;
 import com.verso.qa.repository.TurnRepository.OwnedTurn;
 import com.verso.qa.repository.UsageRepository;
 import com.verso.qa.service.FeedbackService;
+import com.verso.qa.service.KnowledgeTransitions;
 import com.verso.qa.service.QaAudit;
 import java.time.Clock;
 import java.util.Optional;
@@ -41,9 +42,11 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final UsageRepository usage;
     private final Clock clock;
     private final QaAudit audit;
+    private final KnowledgeTransitions knowledge;
 
     public FeedbackServiceImpl(QaDatabase db, TurnRepository turns, FeedbackRepository feedback, UsageRepository usage,
-                               Clock clock, QaAudit audit) {
+                               Clock clock, QaAudit audit, KnowledgeTransitions knowledge) {
+        this.knowledge = knowledge;
         this.audit = audit;
         this.db = db;
         this.turns = turns;
@@ -72,6 +75,10 @@ public class FeedbackServiceImpl implements FeedbackService {
                 throw new QaServiceException(QaErrorCode.TURN_NOT_FOUND, "TURN_DELETED");
             }
             moveCount(turn.day(), earlier.orElse(null), rating, reason);
+            // ADR-0049: a down rating of an answer served from a verified card is evidence against the card.
+            if (request.rating() == FeedbackRating.DOWN) {
+                knowledge.downRatedInTransaction(account.value(), turn.id(), reason, turn.day());
+            }
             // The audit record commits with the rating (ADR-0039).
             audit.feedbackGivenInTransaction(conversationId, turnId, request);
             return row;

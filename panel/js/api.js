@@ -35,6 +35,16 @@ export const MESSAGES = Object.freeze({
   11022: 'Konuşma dolu (200 soru); yeni bir konuşma başlatın.',
   11023: 'Seçilen kaynak bu cevapta yok.',
   11030: 'Tarih aralığı geçersiz (en çok 366 gün).',
+  // ADR-0049: the answer memory.
+  11040: 'Onaylı bilgi kartı bulunamadı.',
+  11041: 'Cevabın kaynaklarından biri artık yok ya da size kapalı; onaylanamaz.',
+  11042: 'Yalnız kaynak gösteren bir cevap onaylanabilir.',
+  11043: 'Kartın durumu bu işleme izin vermiyor; sayfayı yenileyin.',
+  11044: 'Kaynak metin değişmiş; güncel bir cevaptan yeni kart oluşturun.',
+  11045: 'Bu kartı zaten onayladınız; ikinci onay başka bir yöneticiden gelmeli.',
+  11046: 'Kişisel bir belgeye dayanan cevap onaylanamaz; belgeyi bir bilgi alanına taşıyın.',
+  11047: 'Bu soru için onaylı bir kart zaten var.',
+  11048: 'Bir kontrol zaten çalışıyor; biraz sonra yeniden deneyin.',
   13001: 'Hesap kimliği (sub) geçersiz: yalnız harf, rakam ve . _ @ : - içerebilir.',
   13002: 'Onay, hesap kimliğiyle birebir aynı değil; hiçbir şey silinmedi.',
   13020: 'Onay, belge kimliğiyle birebir aynı değil; hiçbir cevap değişmedi.',
@@ -286,6 +296,18 @@ export const api = {
   /** verso-admin: one page of the chunks of a document the admin reads (ADR-0036). */
   listChunks: (documentId, page = 0, size = 50) =>
     request(`/v1/admin/documents/${encodeURIComponent(documentId)}/chunks?page=${page}&size=${size}`),
+  // Verified answer cards (ADR-0049), verso-admin only. Only ids, the state filter and page numbers go into a URL.
+  /** state: DRAFT, VERIFIED, STALE, DISPUTED, ARCHIVED, or anything else for every card. */
+  listKnowledgeCards: (state = '', page = 0, size = 20) => request(`/v1/admin/knowledge-cards?${
+    ['DRAFT', 'VERIFIED', 'STALE', 'DISPUTED', 'ARCHIVED'].includes(state) ? `state=${state}&` : ''}page=${page}&size=${size}`),
+  getKnowledgeCard: (id) => request(`/v1/admin/knowledge-cards/${encodeURIComponent(id)}`),
+  /** From one of the admin's own answers; verify: true records the admin's verification at once ("Onayla"). */
+  createKnowledgeCard: (conversationId, turnId, verify = true) => request('/v1/admin/knowledge-cards',
+    json('POST', { conversationId, turnId, verify: verify === true })),
+  verifyKnowledgeCard: (id) => request(`/v1/admin/knowledge-cards/${encodeURIComponent(id)}/verify`, { method: 'POST' }),
+  archiveKnowledgeCard: (id) => request(`/v1/admin/knowledge-cards/${encodeURIComponent(id)}/archive`, { method: 'POST' }),
+  listKnowledgeRuns: (page = 0, size = 10) => request(`/v1/admin/knowledge-eval/runs?page=${page}&size=${size}`),
+  runKnowledgeEval: () => request('/v1/admin/knowledge-eval/runs', { method: 'POST' }),
   // SMB connectors (ADR-0038, ADR-0042), verso-admin only. No call carries a password: credentialRef is the name of a
   // secret file on the server, and the API never returns a password. Only ids, page numbers and the state filter go
   // into a URL; everything else travels in the JSON body.

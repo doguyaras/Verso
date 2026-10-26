@@ -6,6 +6,7 @@ import com.verso.qa.api.dto.SubjectConversation;
 import com.verso.qa.api.dto.SubjectHistoryCounts;
 import com.verso.qa.api.dto.SubjectTurn;
 import com.verso.qa.api.dto.SubjectTurn.SubjectCitation;
+import com.verso.qa.repository.KnowledgeCardRepository;
 import com.verso.qa.repository.QaDatabase;
 import com.verso.qa.repository.SubjectHistoryRepository;
 import com.verso.qa.repository.SubjectHistoryRepository.ConversationHead;
@@ -40,8 +41,10 @@ public class QaSubjectsServiceImpl implements QaSubjects {
 
     private final QaDatabase db;
     private final SubjectHistoryRepository history;
+    private final KnowledgeCardRepository knowledge;
 
-    public QaSubjectsServiceImpl(QaDatabase db, SubjectHistoryRepository history) {
+    public QaSubjectsServiceImpl(QaDatabase db, SubjectHistoryRepository history, KnowledgeCardRepository knowledge) {
+        this.knowledge = knowledge;
         this.db = db;
         this.history = history;
     }
@@ -91,6 +94,8 @@ public class QaSubjectsServiceImpl implements QaSubjects {
         }
         int days = db.inTransaction(status -> {
             history.lockSubject(sub);
+            // ADR-0049: the subject's pseudonymous disputes of verified answers go too (the counts on the cards stay).
+            knowledge.deleteDisputesOf(sub);
             return history.deleteActiveDays(sub);
         });
         return total.plus(new SubjectHistoryCounts(0, 0, 0, days));

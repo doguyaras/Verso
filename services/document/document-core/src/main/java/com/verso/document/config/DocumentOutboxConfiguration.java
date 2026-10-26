@@ -3,6 +3,8 @@ package com.verso.document.config;
 import com.verso.audit.api.AuditTrail;
 import com.verso.document.config.DocumentPersistenceConfiguration.DocumentDataSource;
 import com.verso.document.outbox.DocumentAuditOutboxHandler;
+import com.verso.document.outbox.DocumentChangeOutbox;
+import com.verso.document.outbox.DocumentChangeOutboxHandler;
 import com.verso.document.outbox.DocumentOutbox;
 import com.verso.platform.core.outbox.OutboxProperties;
 import com.verso.platform.core.outbox.OutboxRelay;
@@ -19,7 +21,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /**
  * The document module's outbox, {@code document.outbox_event} (ADR-0039, reference 11.2): the store on the module's
- * own pool and the relay that drains it into the audit log. Every process with a web server runs the relay (API-only
+ * own pool and the relay that drains it into the audit log and, for document changes (ADR-0049), into the listeners
+ * of other modules. Every process with a web server runs the relay (API-only
  * and worker-only alike: both write rows), so it does not follow {@code verso.ingestion.enabled}.
  */
 @Configuration(proxyBeanMethods = false)
@@ -33,10 +36,12 @@ public class DocumentOutboxConfiguration {
      */
     @Bean
     DocumentOutbox documentOutbox(JdbcClient jdbc, DocumentDataSource dataSource, DocumentAuditOutboxHandler audit,
+                                  DocumentChangeOutboxHandler changes,
                                   OutboxProperties properties, Clock clock, MeterRegistry registry) {
         OutboxStore store = new OutboxStore("document.outbox_event", jdbc,
                 () -> TransactionSynchronizationManager.hasResource(dataSource));
-        OutboxRelay relay = new OutboxRelay("document", store, Map.of(AuditTrail.OUTBOX_EVENT_TYPE, audit), properties,
+        OutboxRelay relay = new OutboxRelay("document", store, Map.of(AuditTrail.OUTBOX_EVENT_TYPE, audit,
+                DocumentChangeOutbox.EVENT_TYPE, changes), properties,
                 clock, registry);
         return new DocumentOutbox(store, relay);
     }

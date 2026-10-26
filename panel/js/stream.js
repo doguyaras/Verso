@@ -73,6 +73,9 @@ export function stageText(stage) {
       return 'Soru bağlamla yeniden yazılıyor';
     case 'RETRIEVING':
       return 'Belgelerinizde aranıyor';
+    case 'MEMORY_FOUND':
+      // ADR-0049: an expert-verified answer card matched; no passages are searched and no model writes.
+      return 'Onaylı bilgi bulundu';
     case 'PASSAGES_FOUND':
       return stage.relevant > 0 ? `${stage.relevant} ilgili pasaj bulundu` : 'İlgili pasaj bulunamadı';
     case 'WRITING':
@@ -101,7 +104,7 @@ export function provisionalText(text) {
 export function resultOf(citations, done) {
   return { answer: citations.answer, citations: citations.citations ?? [], outcome: done.outcome, found: Boolean(done.found),
     mode: done.mode ?? null, model: done.model ?? null, conversationId: done.conversationId ?? null, turnId: done.turnId ?? null,
-    contextQuery: done.contextQuery ?? null, unverified: citations.unverified ?? null };
+    contextQuery: done.contextQuery ?? null, unverified: citations.unverified ?? null, memory: done.memory ?? null };
 }
 
 /** Thrown when the stream cannot be used at all (an old proxy or server): the JSON endpoint is asked instead. */

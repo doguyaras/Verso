@@ -14,6 +14,8 @@ import { continueWith, startOverNote, startsOver } from '../conversations.js';
 import { citingSpans, citingText, excerptParts, matchRanges } from '../excerpt.js';
 import { markUnverified, prune, tintSentences, writeMarked } from '../highlight.js';
 import { icon, logo } from '../icons.js';
+import { canApprove, memoryBadge } from '../knowledge.js';
+import { ROLES } from '../roles.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { ratingControls } from '../rating.js';
 // The store's thread (which conversation is open) is "current" here: "thread" is the answer log element below.
@@ -103,6 +105,9 @@ function place(button) {
 }
 
 function outcomeBadge(result) {
+  // ADR-0049: an answer from an expert-verified answer card, not written by the model.
+  const memory = memoryBadge(result);
+  if (memory) return el('span', { class: 'pill ok', title: memory.title }, icon('shield', 'sm'), memory.label);
   if (result.outcome === 'ANSWERED' || (result.outcome == null && result.found)) {
     return el('span', { class: 'pill ok' }, icon('checkCircle', 'sm'), 'Kaynaklı cevap');
   }
@@ -363,7 +368,11 @@ function answerView(entry, actions) {
           }
         } }, icon('copy', 'sm'), 'Kopyala'),
         notFound || restored ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => download(entry) }, icon('download', 'sm'), '.md indir'),
-        restored ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Düzenle')),
+        restored ? null : el('button', { class: 'button ghost sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Düzenle'),
+        // ADR-0049: an admin turns their own sourced answer into an expert-verified answer card.
+        !restored && canApprove(result, actions.isAdmin) ? el('button', { class: 'button ghost sm', type: 'button',
+          title: 'Bu cevabı onaylı bilgi kartı yapar: aynı soru yeniden sorulunca, kaynakları okuyabilenlere bu cevap gösterilir.',
+          onclick: (event) => actions.approve(result, event.currentTarget) }, icon('checkCircle', 'sm'), 'Onayla') : null),
       rating?.controls ?? null),
     rating?.picker ?? null);
   link.attach(view);
@@ -433,6 +442,19 @@ export function renderAsk(ctx) {
     navigate: ctx.navigate,
     withAuth: ctx.withAuth,
     edit: prefill,
+    // ADR-0049: the server checks the role again (403); the button only shows for an admin.
+    isAdmin: (ctx.roles ?? []).includes(ROLES.ADMIN),
+    approve: async (result, button) => {
+      button.disabled = true;
+      try {
+        const card = await ctx.withAuth(() => api.createKnowledgeCard(result.conversationId, result.turnId, true));
+        toast(card?.state === 'VERIFIED' ? 'Cevap onaylı bilgi oldu.' : 'Onayınız kaydedildi; ikinci bir yöneticinin onayı bekleniyor.', 'ok');
+        button.remove();
+      } catch (error) {
+        button.disabled = false;
+        toast(error?.message ?? 'Onaylanamadı.');
+      }
+    },
     // The page viewer of a source (ADR-0035); the focus comes back to the button that opened it.
     page: (citation, opener) => openPageDrawer(citation, { withAuth: ctx.withAuth, opener }),
     sources: (link, result) => {

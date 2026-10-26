@@ -67,6 +67,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 | `conversationId`, `turnId` | UUID \| null | Cevabın kaydedildiği konuşma ve tur (ADR-0023); puanlama ve devam sorusu için. Kayıt başarısızsa ikisi de `null`: cevap gösterilir, puanlama gizlenir |
 | `contextQuery` | string \| null | Takip sorusu (ADR-0046): soru konuşmanın son turlarıyla tek başına anlaşılan bir arama sorgusuna yeniden yazıldıysa aramada kullanılan o sorgu (en çok 300 karakter; model metnidir, düz metin olarak gösterin). Soru olduğu gibi arandıysa `null`. Saklanmaz, geçmişte görünmez |
 | `unverified` | `[{start, end, citations}]` \| null | Dayanak kontrolü (ADR-0047). Liste, atıflı olup sayısı, sayı sözcüğü ya da kodu atıf yaptığı pasajda aynı bağlamda geçmeyen cümleleri cevap sırasıyla verir. `start`/`end` cümlenin `answer` içindeki `[start, end)` aralığıdır: UTF-16 birimi (JS dizi indeksi), `[n]` işaretleri dahil. `citations` cümlenin taşıdığı atıf numaralarıdır. Bütün cümleler destekleniyorsa `[]`. Kontrol kapalıysa ya da model çağrılmadıysa (`NOT_FOUND`) `null`. Önerilen gösterim: cümleyi hafifçe işaretleyin, "dayanağı doğrulanamadı" deyin, metni değiştirmeyin. Aralığı kullanmadan önce `answer` sınırları içinde olduğunu doğrulayın. Kontrol yalnız sayı ve kodlara bakar: işaret yoksa cevap doğru demek değildir. Saklanmaz, geçmişte görünmez |
+| `memory` | `{cardId, verifiedAt, expiresAt}` \| null | Onaylı bilgi belleği (ADR-0049). Cevap, uzmanın onayladığı bir bilgi kartından geldiyse kartın kimliği, onay zamanı ve onayın geçerlilik sonu (ISO-8601). O zaman `model` `verified-answer`, `outcome` `ANSWERED`, `unverified` `null`'dır ve model çağrılmamıştır; `citations` kartın kaynaklarıdır (sunucuda, sorana görünen sayfa metnine eşlenmiş). Önerilen gösterim: "Uzman onaylı" rozeti. Kart yalnız alıntıladığı **bütün** belgeleri okuyabilen kişiye gelir; okuyamayan ya da kart eskimiş/itirazlıysa alan `null` ve cevap normal yoldan gelir. Geçmişte görünmez |
 
 **`UNCITED` ve dolu `citations` (ADR-0047):** hiçbir atıflı cümle atıf yaptığı pasajla desteklenmiyorsa (`unverified` atıflı her cümleyi içeriyorsa) `outcome` `UNCITED`, `found` `false` olur. `citations` yine dolu gelir ki kullanıcı kaynakla karşılaştırabilsin. `UNCITED`'da atıf beklemeyen istemci kartları göstermeye devam etmeli; uyarı metni "kaynak gösterilemedi" yerine "dayanağı doğrulanamadı" olmalıdır.
 
@@ -96,11 +97,12 @@ if (res.status === 503) retryLater(error.code);
 |---|---|---|
 | `stage` | `{"stage":"REWRITING","retrieved":null,"relevant":null}` | Yalnız takip sorusu konuşmayla yeniden yazılırken (ADR-0046); bağımsız soruda ve konuşmanın ilk sorusunda gelmez. Tanımadığınız bir `stage` değerini genel bir "hazırlanıyor" metniyle gösterin |
 | `stage` | `{"stage":"RETRIEVING","retrieved":null,"relevant":null}` | Soru vektörleniyor ve belgeler aranıyor |
+| `stage` | `{"stage":"MEMORY_FOUND","retrieved":null,"relevant":null}` | Onaylı bir bilgi kartı eşleşti (ADR-0049, "Onaylı bilgi bulundu"): ardından doğrudan `citations` ve `done` gelir; `PASSAGES_FOUND`, `WRITING` ve `delta` gelmez |
 | `stage` | `{"stage":"PASSAGES_FOUND","retrieved":5,"relevant":2}` | `relevant` 0 ise model çağrılmaz, `WRITING` gelmez |
 | `stage` | `{"stage":"WRITING","retrieved":null,"relevant":null}` | Sohbet slotu alındı, model yazıyor |
 | `delta` | `{"text":"Yıllık izin "}` | 0..n kez; doğrulanmamış model metni |
 | `citations` | `{"answer":"…","citations":[…],"unverified":[…]}` | JSON uçtaki `answer`, `citations` ve `unverified` ile birebir aynı (sunucuda, bütün metin üzerinde doğrulanmış; dayanak kontrolü atıf doğrulamasından sonra, ADR-0047) |
-| `done` | `{"outcome":"ANSWERED","found":true,"mode":"local","model":"gemma4:e2b","conversationId":"…","turnId":"…","contextQuery":null}` | Son olay; alanlar JSON uçtaki anlamlarıyla |
+| `done` | `{"outcome":"ANSWERED","found":true,"mode":"local","model":"gemma4:e2b","conversationId":"…","turnId":"…","contextQuery":null,"memory":null}` | Son olay; alanlar JSON uçtaki anlamlarıyla |
 | `error` | `{"code":11001,"message":"The language model is unavailable, try again later.","retryAfter":5}` | Başarısız akışın son olayı; `citations` ve `done` gelmez, hiçbir şey saklanmaz |
 
 Model sessizken 10 sn'de bir `:keep-alive` yorum satırı gelir (olay değildir). `error` kodları: 11001 (model kapalı ya da süre sınırı aşıldı), 11002 (meşgul), 10030, 10031, 99997, 99999. `retryAfter` yalnız 503 kodlarında, saniye.
@@ -169,7 +171,7 @@ const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
 
 ## Önceki sürüme göre farklar
 - Önceki doküman yok.
-- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026), istekte `conversationId` ve yanıtta `conversationId`/`turnId` (24 Ekim 2026, ADR-0023), yanıtta ve `done` olayında `contextQuery`, akışta `REWRITING` aşaması (25 Ekim 2026, ADR-0046), yanıtta ve `citations` olayında `unverified` (25 Ekim 2026, ADR-0047; `UNCITED` artık dolu `citations` ile de gelebilir). Var olan alanların adı, tipi ve anlamı değişmedi.
+- v1 içinde eklenen alanlar (geriye uyumlu, ek alan): `outcome` (faz 10), `citations[].excerpt` (23 Ekim 2026), istekte `conversationId` ve yanıtta `conversationId`/`turnId` (24 Ekim 2026, ADR-0023), yanıtta ve `done` olayında `contextQuery`, akışta `REWRITING` aşaması (25 Ekim 2026, ADR-0046), yanıtta ve `citations` olayında `unverified` (25 Ekim 2026, ADR-0047; `UNCITED` artık dolu `citations` ile de gelebilir), yanıtta ve `done` olayında `memory`, akışta `MEMORY_FOUND` aşaması, `model` değeri `verified-answer` (26 Ekim 2026, ADR-0049). Var olan alanların adı, tipi ve anlamı değişmedi.
 - `citations[].excerpt` seçimi (24 Ekim 2026, ADR-0020): pasajın başı yerine cevabın dayandığı pencere. Alan, tip ve 280 sınırı aynı; baştaki `…` yeni olabilir, düz metin olarak gösterilir.
 - `POST /v1/questions/stream` (24 Ekim 2026, ADR-0035): yeni uç; var olan uç ve alanlar değişmedi.
 

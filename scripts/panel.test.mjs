@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1491,6 +1491,7 @@ test('sse: a body read in byte chunks keeps multi-byte letters whole and parses 
 
 test('stream: stages say only what the server did; the draft hides markers until they are validated', () => {
   assert.equal(stageText({ stage: 'RETRIEVING' }), 'Belgelerinizde aranıyor');
+  assert.equal(stageText({ stage: 'MEMORY_FOUND' }), 'Onaylı bilgi bulundu', 'ADR-0049');
   assert.equal(stageText({ stage: 'PASSAGES_FOUND', retrieved: 5, relevant: 2 }), '2 ilgili pasaj bulundu');
   assert.equal(stageText({ stage: 'PASSAGES_FOUND', retrieved: 5, relevant: 0 }), 'İlgili pasaj bulunamadı');
   assert.equal(stageText({ stage: 'WRITING' }), 'Cevap yazılıyor');
@@ -1501,7 +1502,7 @@ test('stream: stages say only what the server did; the draft hides markers until
   assert.deepEqual(resultOf({ answer: 'A [1].', citations: [{ number: 1 }] },
     { outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' }),
   { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't',
-    contextQuery: null, unverified: null });
+    contextQuery: null, unverified: null, memory: null });
 });
 
 test('groundedness (ADR-0047): unverified sentences come from the citations event and are quoted as plain text', () => {
@@ -1734,10 +1735,10 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
-    for (const id of ['subjects', 'chunks', 'connectors']) assert.equal(canOpen(id, roles), false, id);
+    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust']);
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
   for (const id of adminScreens(admin)) {
     assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
@@ -1748,7 +1749,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
   assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects', 'connectors', 'trust']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -2374,4 +2375,83 @@ test('connectors screen: no markup, inline style, storage, URL state or password
   assert.ok(block.includes('.connector-form'), 'the connector rules sit in the admin block');
   assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, 'only design tokens: the tested contrast pairs');
   assert.doesNotMatch(block, /animation|transition/, 'no new motion');
+});
+
+// ---------- the answer memory: "Onaylı bilgiler" and the "uzman onaylı" answer (ADR-0049) ----------
+test('knowledge: states, stale reasons and the actions an admin may take follow the server\'s state machine', async () => {
+  const { canArchive, canVerify, eventText, percent, runModel, staleText, STATE_FILTERS, STATES, stateLabel, verifierText } =
+    await import('../panel/js/knowledge.js');
+  const java = readFileSync('services/qa/qa-api/src/main/java/com/verso/qa/api/dto/KnowledgeCardState.java', 'utf8');
+  const serverStates = [...java.matchAll(/^    ([A-Z]+)[,\n]/gm)].map((m) => m[1]);
+  assert.deepEqual(Object.keys(STATES).sort(), [...serverStates].sort(), 'every server state has Turkish words');
+  assert.deepEqual(STATE_FILTERS.filter(Boolean).sort(), [...serverStates].sort());
+  const reasons = readFileSync('services/qa/qa-api/src/main/java/com/verso/qa/api/dto/KnowledgeStaleReason.java', 'utf8');
+  for (const m of reasons.matchAll(/^    ([A-Z_]+)[,\n]/gm)) assert.ok(staleText(m[1]) && !staleText(m[1]).includes('_'), m[1]);
+  assert.equal(stateLabel('VERIFIED'), 'Onaylı');
+  assert.equal(staleText(null), null);
+  assert.equal(eventText('DISPUTE_THRESHOLD'), 'İtiraz eşiği aşıldı');
+  assert.equal(canVerify({ state: 'DRAFT', verifiedByYou: false }), true);
+  assert.equal(canVerify({ state: 'DRAFT', verifiedByYou: true }), false, 'the two-person rule needs someone else');
+  assert.equal(canVerify({ state: 'DISPUTED' }), true);
+  assert.equal(canVerify({ state: 'STALE', staleReason: 'EXPIRED' }), true);
+  assert.equal(canVerify({ state: 'STALE', staleReason: 'SOURCE_DELETED' }), false, 'a changed source needs a new answer');
+  assert.equal(canVerify({ state: 'VERIFIED' }), false);
+  assert.equal(canVerify({ state: 'ARCHIVED' }), false);
+  assert.equal(canArchive({ state: 'ARCHIVED' }), false);
+  assert.equal(canArchive({ state: 'STALE' }), true);
+  assert.equal(verifierText({ verifiers: 1, requiredVerifiers: 2 }), '1 / 2 onay');
+  assert.equal(percent(0.925), '%92,5');
+  assert.equal(percent(1), '%100');
+  assert.equal(percent(null), '–');
+  const run = runModel({ status: 'SUCCEEDED', trigger: 'SCHEDULED', recallAtK: 0.9, baselineRecall: 0.95, sourceDrift: 0, alert: true,
+    found: 9, missed: 1, sourceLost: 0, skipped: 0 });
+  assert.deepEqual([run.status, run.trigger, run.recall, run.baseline, run.drift, run.alert], ['Tamamlandı', 'Gece', '%90', '%95', '%0', true]);
+});
+
+test('knowledge: the "uzman onaylı" badge and the "Onayla" action of an answer', async () => {
+  const { canApprove, memoryBadge } = await import('../panel/js/knowledge.js');
+  const sourced = { outcome: 'ANSWERED', citations: [{ number: 1 }], conversationId: 'c', turnId: 't', memory: null };
+  assert.equal(memoryBadge(sourced), null);
+  assert.equal(memoryBadge({ ...sourced, memory: { cardId: 'k' } }).label, 'Uzman onaylı');
+  assert.equal(canApprove(sourced, true), true);
+  assert.equal(canApprove(sourced, false), false, 'admins only (the server refuses everyone else)');
+  assert.equal(canApprove({ ...sourced, memory: { cardId: 'k' } }, true), false, 'already a verified answer');
+  assert.equal(canApprove({ ...sourced, citations: [] }, true), false);
+  assert.equal(canApprove({ ...sourced, outcome: 'UNCITED' }, true), false);
+  assert.equal(canApprove({ ...sourced, turnId: null }, true), false, 'not stored: nothing to make a card from');
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /canApprove\(result, actions\.isAdmin\)/);
+  assert.match(ask, /api\.createKnowledgeCard\(result\.conversationId, result\.turnId, true\)/);
+  const screen = readFileSync('panel/js/screens/knowledge.js', 'utf8');
+  assert.doesNotMatch(screen, /innerHTML|insertAdjacentHTML|style=|\.style\./, 'text only, no inline styles (CSP, Trusted Types)');
+});
+
+test('knowledge: the admin API paths carry only ids, the state filter and page numbers', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push([init.method ?? 'GET', url, init.body ?? null]);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}) };
+  };
+  await api.listKnowledgeCards('VERIFIED');
+  await api.listKnowledgeCards('x&state=DRAFT', 2, 50);
+  await api.getKnowledgeCard('a/b');
+  await api.createKnowledgeCard('c', 't');
+  await api.verifyKnowledgeCard('a/b');
+  await api.archiveKnowledgeCard('a/b');
+  await api.listKnowledgeRuns();
+  await api.runKnowledgeEval();
+  assert.deepEqual(sent, [
+    ['GET', '/v1/admin/knowledge-cards?state=VERIFIED&page=0&size=20', null],
+    ['GET', '/v1/admin/knowledge-cards?page=2&size=50', null],
+    ['GET', '/v1/admin/knowledge-cards/a%2Fb', null],
+    ['POST', '/v1/admin/knowledge-cards', '{"conversationId":"c","turnId":"t","verify":true}'],
+    ['POST', '/v1/admin/knowledge-cards/a%2Fb/verify', null],
+    ['POST', '/v1/admin/knowledge-cards/a%2Fb/archive', null],
+    ['GET', '/v1/admin/knowledge-eval/runs?page=0&size=10', null],
+    ['POST', '/v1/admin/knowledge-eval/runs', null]]);
+  for (const code of [11040, 11041, 11042, 11043, 11044, 11045, 11046, 11047, 11048]) assert.ok(MESSAGES[code], String(code));
+  signOut();
 });

@@ -220,6 +220,34 @@ verso:
     # sentences, docs/evidence/dayanaklilik-olcumu.md. Off (VERSO_QA_GROUNDING_ENABLED=false): no check.
     grounding:
       enabled: ${VERSO_QA_GROUNDING_ENABLED:true}
+    # Answer memory (ADR-0048 phase 1, ADR-0049): expert-verified answer cards, made by verso-admin from their own
+    # sourced answers. Before retrieval, a question whose vector is at least match-threshold similar to a VERIFIED,
+    # unexpired card's question is answered with the card ("uzman onaylı"), but only when the caller can read every
+    # document it cites and every bound chunk still has its hash. Off (VERSO_QA_KNOWLEDGE_ENABLED=false): no question is
+    # answered from a card (cards can still be made and checked). Starting values; the threshold is measured per customer.
+    knowledge:
+      enabled: ${VERSO_QA_KNOWLEDGE_ENABLED:true}
+      match-threshold: 0.93
+      match-candidates: 3
+      verification-cadence: 90d
+      # Two different admins must verify a card before it is served (high-impact domains: HR, finance, safety).
+      two-person-rule: ${VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE:false}
+      # Distinct users whose down rating of a served answer pulls the card (DISPUTED); at least 2.
+      dispute-threshold: 3
+      archived-retention: 365d
+      gauge-interval: PT5M
+      # The per-customer golden set: every verified card, checked nightly for source drift and retrieval recall@k,
+      # without any model call.
+      eval:
+        enabled: true
+        cron: "0 30 2 * * *"
+        zone: Europe/Istanbul
+        top-k: 5
+        max-cases: 1000
+        alert-drop: 0.02
+        alert-source-drift: 0.10
+        lease: 1h
+        run-retention: 180d
     # The qa module's own schema "qa" (ADR-0023): its own pool as svc_qa (DML only) and its own Flyway as
     # svc_qa_migrate (owner, DDL), the second module of reference 10.1's one-schema-two-roles rule. Passwords from
     # /run/secrets (SECRET_DB_QA_PASSWORD, SECRET_DB_QA_MIGRATE_PASSWORD), no fallback. The migration runs whenever

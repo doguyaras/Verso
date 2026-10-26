@@ -10,7 +10,9 @@ import com.verso.document.api.dto.IngestionResult.Outcome;
 import com.verso.document.api.enums.DocumentFormat;
 import com.verso.document.config.CollectionProperties;
 import com.verso.document.config.DocumentProperties;
+import com.verso.document.api.dto.DocumentChange;
 import com.verso.document.outbox.DocumentAuditOutbox;
+import com.verso.document.outbox.DocumentChangeOutbox;
 import com.verso.document.repository.CollectionRepository;
 import com.verso.document.repository.CollectionRepository.LockMode;
 import com.verso.document.repository.DocumentRepository;
@@ -57,10 +59,13 @@ public class DocumentIngestionServiceImpl implements DocumentIngestion {
     private final TransactionTemplate transaction;
     private final Clock clock;
     private final DocumentAuditOutbox audit;
+    private final DocumentChangeOutbox changes;
 
     public DocumentIngestionServiceImpl(DocumentRepository repository, CollectionRepository collections,
                                         DocumentProperties properties, CollectionProperties collectionProperties,
-                                        TransactionTemplate transaction, Clock clock, DocumentAuditOutbox audit) {
+                                        TransactionTemplate transaction, Clock clock, DocumentAuditOutbox audit,
+            DocumentChangeOutbox changes) {
+        this.changes = changes;
         this.repository = repository;
         this.collections = collections;
         this.properties = properties;
@@ -112,7 +117,11 @@ public class DocumentIngestionServiceImpl implements DocumentIngestion {
                 DocumentRow row = repository.insert(account, collectionId, name, format.get(), content.length,
                         request.idempotencyKey(), clock.instant());
                 repository.insertFile(row.id(), content);
-                if (replaced) event(AuditAction.CONNECTOR_DOCUMENT_DELETED, request.replaces(), "SOURCE_CHANGED");
+                if (replaced) {
+                    event(AuditAction.CONNECTOR_DOCUMENT_DELETED, request.replaces(), "SOURCE_CHANGED");
+                    // Verified answers citing the old version go stale (ADR-0049), in the same commit.
+                    changes.append(request.replaces(), DocumentChange.Kind.REPLACED);
+                }
                 event(AuditAction.CONNECTOR_DOCUMENT_ADDED, row.id(), request.replaces() != null ? "SOURCE_CHANGED" : "SOURCE_NEW");
                 return row;
             });
@@ -147,7 +156,10 @@ public class DocumentIngestionServiceImpl implements DocumentIngestion {
             if (!collections.lock(collectionId, LockMode.SHARE)) return false;
             repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
             boolean gone = repository.deleteFromCollection(collectionId, documentId);
-            if (gone) audit.appendSystem(AUDIT_COMPONENT, event);
+            if (gone) {
+                audit.appendSystem(AUDIT_COMPONENT, event);
+                changes.append(documentId, DocumentChange.Kind.DELETED);
+            }
             return gone;
         });
         boolean removed = Boolean.TRUE.equals(deleted);

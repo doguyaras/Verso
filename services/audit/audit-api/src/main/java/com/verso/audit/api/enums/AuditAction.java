@@ -65,5 +65,17 @@ public enum AuditAction {
     /** A file of a connector became a document (new or changed at the source); the target is the document id. */
     CONNECTOR_DOCUMENT_ADDED,
     /** A connector's document was deleted because its file left the source (or the connector was deleted). */
-    CONNECTOR_DOCUMENT_DELETED
+    CONNECTOR_DOCUMENT_DELETED,
+    /** A verso-admin created a verified answer card from one of their answers (ADR-0049); never its text. */
+    KNOWLEDGE_CARD_CREATED,
+    /** A verso-admin verified a card; the detail is VERIFIED or VERIFICATION_ADDED (two-person rule pending). */
+    KNOWLEDGE_CARD_VERIFIED,
+    /** A card went stale (system actor); the detail is the KnowledgeStaleReason. */
+    KNOWLEDGE_CARD_STALE,
+    /** A card passed the dispute threshold and is no longer served (system actor). */
+    KNOWLEDGE_CARD_DISPUTED,
+    /** A verso-admin archived a card. */
+    KNOWLEDGE_CARD_ARCHIVED,
+    /** The golden-set check ran; the detail is SCHEDULED or MANUAL, the target is the run. */
+    KNOWLEDGE_EVAL_RUN
 }

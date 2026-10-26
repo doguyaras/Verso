@@ -76,6 +76,19 @@ groups:
           summary: The reranker sidecar reranked nothing for 30 minutes; questions use the fused order.
           runbook: docs/runbooks/reranker-fallback.md
 
+      # The nightly golden-set check of the answer memory (ADR-0049): recall@k of the verified answers fell by more
+      # than alert-drop against the previous run, or too many verified answers lost their cited text. Every instance
+      # reports the latest run from the database, hence max().
+      - alert: KnowledgeRecallDropped
+        expr: |
+          max(verso_qa_knowledge_eval_alert{job="verso"}) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: The golden-set check of the verified answers found a recall drop or source drift.
+          runbook: docs/runbooks/knowledge-recall-dropped.md
+
       # A model fails and nothing succeeds: questions end as model_unavailable/circuit_open with no answer, or the
       # worker hands documents back (released) with none finished. Whatever the traffic and however slow the failure.
       - alert: ModelUnavailable

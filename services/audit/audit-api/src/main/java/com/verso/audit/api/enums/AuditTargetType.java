@@ -22,5 +22,9 @@ public enum AuditTargetType {
      */
     SUBJECT,
     /** A passage (chunk) of a document, read through the MCP server (ADR-0031); the id is the chunk's. */
-    PASSAGE
+    PASSAGE,
+    /** A verified answer card of the answer memory (ADR-0049). */
+    KNOWLEDGE_CARD,
+    /** A run of the golden-set check (ADR-0049). */
+    KNOWLEDGE_EVAL
 }

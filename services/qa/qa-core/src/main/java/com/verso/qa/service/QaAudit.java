@@ -121,13 +121,59 @@ public class QaAudit {
                 .answeredBy(answer.model(), answer.mode(), cited);
     }
 
+    // ---------------------------------------------------------------- answer memory (ADR-0049): ids and fixed words
+
+    /** The audit actor of the answer memory's own transitions (stale, disputed, the nightly check). */
+    public static final String KNOWLEDGE_COMPONENT = "knowledge-memory";
+
+    public void cardCreatedInTransaction(UUID cardId) {
+        append(() -> AuditEvent.success(AuditAction.KNOWLEDGE_CARD_CREATED, AuditTargetType.KNOWLEDGE_CARD, cardId));
+    }
+
+    /** @param detail VERIFIED, or VERIFICATION_ADDED while the two-person rule waits for a second admin */
+    public void cardVerifiedInTransaction(UUID cardId, String detail) {
+        append(() -> AuditEvent.success(AuditAction.KNOWLEDGE_CARD_VERIFIED, AuditTargetType.KNOWLEDGE_CARD, cardId)
+                .withDetail(detail));
+    }
+
+    public void cardArchivedInTransaction(UUID cardId) {
+        append(() -> AuditEvent.success(AuditAction.KNOWLEDGE_CARD_ARCHIVED, AuditTargetType.KNOWLEDGE_CARD, cardId));
+    }
+
+    /** A system transition: the actor is {@code system:knowledge-memory}. */
+    public void cardStaleInTransaction(UUID cardId, String reason) {
+        appendSystem(() -> AuditEvent.success(AuditAction.KNOWLEDGE_CARD_STALE, AuditTargetType.KNOWLEDGE_CARD, cardId)
+                .withDetail(reason));
+    }
+
+    /** A system transition caused by user ratings: no user is named, the actor is the system. */
+    public void cardDisputedInTransaction(UUID cardId) {
+        appendSystem(() -> AuditEvent.success(AuditAction.KNOWLEDGE_CARD_DISPUTED, AuditTargetType.KNOWLEDGE_CARD, cardId));
+    }
+
+    /** A golden-set run: a MANUAL one is the admin's, a SCHEDULED one the system's. */
+    public void evalRunInTransaction(UUID runId, String trigger) {
+        Supplier<AuditEvent> event = () -> AuditEvent.success(AuditAction.KNOWLEDGE_EVAL_RUN,
+                AuditTargetType.KNOWLEDGE_EVAL, runId).withDetail(trigger);
+        if ("MANUAL".equals(trigger)) append(event);
+        else appendSystem(event);
+    }
+
+    private void appendSystem(Supplier<AuditEvent> build) {
+        write(build, KNOWLEDGE_COMPONENT);
+    }
+
     private void append(Supplier<AuditEvent> build) {
+        write(build, null);
+    }
+
+    private void write(Supplier<AuditEvent> build, String systemComponent) {
         AuditEvent event = null;
         AuditRecord record;
         String payload;
         try {
             event = build.get();
-            record = trail.capture(event);
+            record = systemComponent == null ? trail.capture(event) : trail.captureSystem(systemComponent, event);
             payload = json.writeValueAsString(record);
         } catch (RuntimeException e) {
             captureFailed.increment();

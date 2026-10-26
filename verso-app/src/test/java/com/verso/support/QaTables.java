@@ -19,7 +19,11 @@ public final class QaTables {
     public static void reset() {
         try (Connection admin = admin(); Statement st = admin.createStatement()) {
             st.execute("TRUNCATE qa.conversation, qa.turn, qa.turn_citation, qa.turn_feedback, qa.usage_daily, "
-                    + "qa.usage_daily_latency, qa.usage_daily_document, qa.usage_daily_feedback, qa.active_account_day");
+                    + "qa.usage_daily_latency, qa.usage_daily_document, qa.usage_daily_feedback, qa.active_account_day, "
+                    // ADR-0049: the answer memory and its golden set.
+                    + "qa.knowledge_card, qa.knowledge_card_citation, qa.knowledge_card_source, "
+                    + "qa.knowledge_card_verification, qa.knowledge_card_dispute, qa.knowledge_card_event, "
+                    + "qa.turn_knowledge_card, qa.golden_case, qa.eval_run, qa.eval_case_result");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the qa schema", e);
         }

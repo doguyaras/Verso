@@ -23,7 +23,26 @@ public enum QaErrorCode implements ErrorCode {
     FEEDBACK_CITATION_UNKNOWN(11023, "The answer has no source with this number.", HttpStatus.BAD_REQUEST),
 
     // --- admin metrics (11030-11039, ADR-0023)
-    METRICS_RANGE_INVALID(11030, "The date range is invalid or too long.", HttpStatus.BAD_REQUEST);
+    METRICS_RANGE_INVALID(11030, "The date range is invalid or too long.", HttpStatus.BAD_REQUEST),
+
+    // --- answer memory and golden set (11040-11059, ADR-0049); an unknown or foreign id is "not found"
+    KNOWLEDGE_CARD_NOT_FOUND(11040, "Verified answer not found.", HttpStatus.NOT_FOUND),
+    /** The answer has no sources, or a cited document is gone or no longer readable by the admin. */
+    KNOWLEDGE_CARD_SOURCE_UNAVAILABLE(11041, "The answer's sources are not available.", HttpStatus.CONFLICT),
+    /** Only a sourced answer (ANSWERED, with citations, not redacted) can be verified. */
+    KNOWLEDGE_CARD_NOT_ANSWERED(11042, "Only an answer with sources can be verified.", HttpStatus.CONFLICT),
+    /** The transition is not allowed in the card's state (or another admin changed it first). */
+    KNOWLEDGE_CARD_STATE_CONFLICT(11043, "The verified answer's state does not allow this.", HttpStatus.CONFLICT),
+    /** The text of a cited page changed since the card was made: a new card from a new answer is needed. */
+    KNOWLEDGE_CARD_SOURCE_CHANGED(11044, "A source of this answer has changed.", HttpStatus.CONFLICT),
+    /** The two-person rule: the second verification must come from another admin. */
+    KNOWLEDGE_CARD_ALREADY_VERIFIED_BY_YOU(11045, "You have already verified this answer.", HttpStatus.CONFLICT),
+    /** Verified knowledge is shared knowledge: a personal document cannot back a card. */
+    KNOWLEDGE_CARD_PERSONAL_SOURCE(11046, "An answer citing a personal document cannot be verified.", HttpStatus.CONFLICT),
+    /** A card for the same (normalised) question exists and is not archived. */
+    KNOWLEDGE_CARD_DUPLICATE(11047, "A verified answer for this question already exists.", HttpStatus.CONFLICT),
+    /** A golden-set check is already running (or today's scheduled run exists). */
+    KNOWLEDGE_EVAL_RUNNING(11048, "A golden-set check is already running.", HttpStatus.CONFLICT);
 
     private final int code;
     private final String message;

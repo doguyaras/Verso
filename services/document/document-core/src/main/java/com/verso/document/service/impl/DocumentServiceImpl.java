@@ -32,7 +32,9 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.verso.document.api.dto.DocumentChange;
 import com.verso.document.outbox.DocumentAuditOutbox;
+import com.verso.document.outbox.DocumentChangeOutbox;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -63,10 +65,13 @@ public class DocumentServiceImpl implements DocumentService {
     private final TransactionTemplate transaction;
     private final Clock clock;
     private final DocumentAuditOutbox audit;
+    private final DocumentChangeOutbox changes;
 
     public DocumentServiceImpl(DocumentRepository repository, CollectionRepository collections,
                                DocumentProperties properties, CollectionProperties collectionProperties,
-                               TransactionTemplate transaction, Clock clock, DocumentAuditOutbox audit) {
+                               TransactionTemplate transaction, Clock clock, DocumentAuditOutbox audit,
+            DocumentChangeOutbox changes) {
+        this.changes = changes;
         this.repository = repository;
         this.collections = collections;
         this.properties = properties;
@@ -168,7 +173,10 @@ public class DocumentServiceImpl implements DocumentService {
         Boolean deleted = transaction.execute(status -> {
             repository.waitForLocksUpTo(DELETE_LOCK_WAIT);
             boolean gone = repository.delete(account, documentId);
-            if (gone) audit.append(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
+            if (gone) {
+                audit.append(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
+                changes.append(documentId, DocumentChange.Kind.DELETED);
+            }
             return gone;
         });
         if (!Boolean.TRUE.equals(deleted)) {
@@ -184,6 +192,8 @@ public class DocumentServiceImpl implements DocumentService {
                 boolean gone = repository.deleteFromCollection(collectionId, documentId);
                 if (gone) {
                     audit.append(AuditEvent.success(AuditAction.DOCUMENT_DELETED, AuditTargetType.DOCUMENT, documentId));
+                    // Verified answers citing it go stale (ADR-0049), in the same commit.
+                    changes.append(documentId, DocumentChange.Kind.DELETED);
                 }
                 return gone;
             });
@@ -226,6 +236,8 @@ public class DocumentServiceImpl implements DocumentService {
             repository.move(documentId, collectionId, clock.instant());
             audit.append(AuditEvent.success(AuditAction.DOCUMENT_MOVED, AuditTargetType.DOCUMENT, documentId)
                     .withDetail(collectionId == null ? "TO_PERSONAL" : "TO_COLLECTION"));
+            // Its readers changed: a verified answer citing it was approved for another audience (ADR-0049).
+            changes.append(documentId, DocumentChange.Kind.MOVED);
             return repository.find(locked.accountId(), documentId).orElseThrow();
         });
         log.info("Document moved: documentId={} to={} operation=move outcome=moved", documentId,

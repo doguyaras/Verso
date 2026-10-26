@@ -36,6 +36,10 @@ Bir soru birden fazla türde olabilir. Sürüm 1 sorularının etiketi yoktur.
 
 Konuşma bağlamı isteyen takip soruları bu sette yok; ayrı bir sette ölçülür (aşağıda "Takip soruları").
 
+### Müşteriye özel altın set (ADR-0049)
+
+Bu klasördeki set **ürünün** regresyon setidir: Verso'nun kendisi değişince koşulur. Her kurulumun ayrıca **kendi** altın seti vardır ve veritabanında durur (`qa.golden_case`): yöneticinin onayladığı her bilgi kartı bir vakadır (soru ve vektörü, beklenen belge, sayfa ve parça özetleri, ana bilgiler). Bu set her gece kurulumun kendi belgelerinde, model çağırmadan koşulur: kaynak metin hâlâ duruyor mu (kaynak kayması), hibrit arama bağlı parçayı ilk 5'te buluyor mu (recall@5). Sonuçlar `qa.eval_run` ve panelde Yönetim → "Onaylı bilgiler"dedir; recall 0,02'den fazla düşerse ya da kayma %10'u geçerse `KnowledgeRecallDropped` uyarısı açılır. Bu set kurumun verisidir, repoya girmez; buradaki 140 soru kuruluma girmez.
+
 ## Takip soruları (2026-10-25, ADR-0046)
 
 **[`followup-set.json`](followup-set.json):** 32 iki turlu konuşma. İlk soru bu setin cevaplanabilir bir sorusu (`first`), takip sorusu ancak onunla anlaşılır ("Peki P2 için?", "Bunun çözüm hedefi kaç saat?"). Türler: `ellipsis` 16, `pronoun` 9, `implicit` 7 (işaret sözcüğü yok), `disambiguation` 7. Her beklenen sayfa PDF metninden doğrulandı. Yöntem ve bütün tablolar: [`docs/evidence/takip-sorulari-olcumu.md`](../docs/evidence/takip-sorulari-olcumu.md).

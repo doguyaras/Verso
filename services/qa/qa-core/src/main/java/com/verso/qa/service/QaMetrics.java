@@ -22,7 +22,9 @@ public class QaMetrics {
 
     /** How a question ended; CANCELLED: a streamed answer the client left before its end (ADR-0035). */
     public enum Outcome {
-        ANSWERED, UNCITED, NOT_FOUND, MODEL_UNAVAILABLE, MODEL_BUSY, CIRCUIT_OPEN, RETRIEVAL_FAILED, CANCELLED
+        ANSWERED, UNCITED, NOT_FOUND, MODEL_UNAVAILABLE, MODEL_BUSY, CIRCUIT_OPEN, RETRIEVAL_FAILED, CANCELLED,
+        /** Answered from a verified answer card (ADR-0049): no model wrote it. */
+        MEMORY
     }
 
     private final Map<Outcome, Counter> outcomes = new EnumMap<>(Outcome.class);

@@ -102,6 +102,17 @@ class McpUnitTest {
             }
 
             @Override
+            public com.verso.document.api.dto.QuestionEmbedding embed(String question) {
+                throw new IllegalStateException(leak);
+            }
+
+            @Override
+            public List<RetrievedPassage> search(Reader reader, String question,
+                                                 com.verso.document.api.dto.QuestionEmbedding embedding, int topK) {
+                throw new IllegalStateException(leak);
+            }
+
+            @Override
             public Optional<Passage> passage(Reader reader, UUID passageId) {
                 throw new IllegalStateException(leak);
             }

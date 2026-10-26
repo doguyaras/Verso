@@ -142,6 +142,35 @@ public class TurnRepository {
                 .optional();
     }
 
+    /** A stored question and answer of the caller (ADR-0049: what a verified answer card is made from). */
+    public record OwnedAnswer(UUID id, String question, String answer, String outcome) {
+
+        @Override
+        public String toString() {
+            return "OwnedAnswer[id=" + id + ", outcome=" + outcome + "]";
+        }
+    }
+
+    /** The turn with its texts when it belongs to this conversation of this account; otherwise nothing. */
+    public Optional<OwnedAnswer> findOwnedAnswer(String accountId, UUID conversationId, UUID turnId) {
+        return db.jdbc().sql("SELECT id, question, answer, outcome FROM qa.turn WHERE id = :turn "
+                        + "AND conversation_id = :conversation AND account_id = :account")
+                .param("turn", turnId).param("conversation", conversationId).param("account", accountId)
+                .query((rs, n) -> new OwnedAnswer(rs.getObject("id", UUID.class), rs.getString("question"),
+                        rs.getString("answer"), rs.getString("outcome")))
+                .optional();
+    }
+
+    /** The citations of one turn, by number. */
+    public List<CitationRow> citationsOf(UUID turnId) {
+        return db.jdbc().sql("SELECT turn_id, citation_number, document_id, page, unit FROM qa.turn_citation "
+                        + "WHERE turn_id = :turn ORDER BY citation_number")
+                .param("turn", turnId)
+                .query((rs, n) -> new CitationRow(rs.getObject("turn_id", UUID.class), rs.getInt("citation_number"),
+                        rs.getObject("document_id", UUID.class), rs.getInt("page"), rs.getString("unit")))
+                .list();
+    }
+
     public boolean hasCitation(UUID turnId, int number) {
         return db.jdbc().sql("SELECT count(*) FROM qa.turn_citation WHERE turn_id = :turn AND citation_number = :number")
                 .param("turn", turnId).param("number", number).query(Integer.class).single() > 0;
