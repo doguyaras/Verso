@@ -1,6 +1,6 @@
 # ADR-0051: Paylaşımlı kademe için sohbet sunucusu (tek sohbet yuvası darboğazı)
 
-- **Durum:** Önerildi. Uygulama tarafı (sağlayıcı seçimi, yapılandırma denetimi, iç ağ kuralı, akış ve iptal) uygulandı; birim testleri yerelde geçti, Spring bağlamlı `LocalOpenAiModeTest` (Testcontainers) CI'da koşar. **Canlı ölçüm ve kalite karşılaştırması yapılmadı:** 2026-10-26'da Docker Desktop açılışta çöktü (aşağıda "Ölçüm durumu"). Varsayılanlar bu yüzden değişmedi.
+- **Durum:** Önerildi. Uygulama tarafı (sağlayıcı seçimi, yapılandırma denetimi, iç ağ kuralı, akış ve iptal) uygulandı; birim testleri yerelde geçti, Spring bağlamlı `LocalOpenAiModeTest` (Testcontainers) CI'da koşar. **Ollama paralelliği ölçüldü** (aşağıda "Ölçüm sonucu"): GPU kurulumu için `OLLAMA_NUM_PARALLEL=4` + `VERSO_QA_CHAT_CONCURRENCY=4` önerilir; CPU'yu hedefleyen varsayılan 1'de kalır. llama-server canlıda yüklendi ve cevap verdi, ama karşılaştırma ölçümü ve kalite (eval) yarıda kaldı (Docker Desktop kapatıldı).
 - **Tarih:** 2026-10-26
 - **Karar verenler:** doguyaras
 - **İlgili eşik (referans Bölüm 24):** `verso.qa.chat-concurrency` (başlangıç ayarı, 1); `OLLAMA_NUM_PARALLEL` (1); `LLAMA_PARALLEL` (4, yalnız overlay)
@@ -52,6 +52,15 @@
 5. Canlıda: llama-server'ın Ollama blob'unu (Ollama'nın `gemma4:e2b` GGUF'u) yükleyip yüklemediği, sohbet şablonu ve `--reasoning-budget 0` davranışı, kapanan bağlantıda üretimi bırakması, root'suz kullanıcıyla anahtar dosyasını okuyabilmesi.
 
 Kabul ölçütü: 4 istemcide `503 11002` ≈ 0 ve p99 ≤ 15 sn (ADR-0008), eval metrikleri tabanın gürültü payı içinde. Hangisi kazanırsa paylaşımlı kademe odur; sonuç `docs/capacity.md`'ye, varsayılanlar ancak o zaman değişir.
+
+## Ölçüm sonucu (2026-10-26, ikinci oturum)
+
+Kayıt: `docs/evidence/paylasimli-kademe-olcumu.md` bölüm 3; ham sonuçlar `eval/results/paylasimli-ollama-p{1,2,4}.json`.
+
+- **Ollama, 4 eşzamanlı istemci:** N=1 → 4 ile verim 0,89 → 1,60 cevap/sn, p50 3,9 → 2,0 sn, p99 7,3 → 10,4 sn, `503` 6 → 0. 8 istemcide N=4: 1,45 cevap/sn, p99 13,2 sn, 7 `503` (4'ü soru embedding bulkhead'i, `10030`). Kabul ölçütü (4 istemcide 503 ≈ 0, p99 ≤ 15 sn) N=4'te karşılanıyor.
+- **GPU belleği:** N ile ölçülebilir artış yok (bütün GPU 6,3–7,5 GB, masaüstü dahil).
+- **Karar (A için):** GPU kurulumlarında N=4 önerilir, `.env` ile. Varsayılan 1'de kalır: varsayılan kurulum CPU makinesini hedefler, orada ikinci eşzamanlı cevap yalnız bekleyişleri uzatır (faz 8).
+- **llama-server (B):** `b11561` imajı Ollama'nın `gemma4:e2b` blob'unu SHA-256 ile doğrulayıp yükledi (2 yuva × 4096), uygulama `openai` sağlayıcısıyla healthy oldu ve cevap aldı. Yük ölçümü tek istemcili ilk koşuda kesildi (Docker Desktop tepsi menüsünden kapatıldı). A ile B arasındaki seçim, eval ve b11889 taraması açık kaldı. Yukarıdaki plan (madde 2–5) geçerli.
 
 ## Kademeler (öneri; donanım araştırmadan, Verso'da ölçülmedi)
 

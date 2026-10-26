@@ -113,7 +113,7 @@ docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.llam
 ```
 
 - `LLAMA_PARALLEL` (varsayılan 4) aynı anda cevaplanan soru sayısıdır; uygulamanın sohbet sınırı da buna eşitlenir. `LLAMA_CTX_PER_SLOT` (4096) yuva başına bağlamdır.
-- **Durum:** uygulama tarafı (sağlayıcı seçimi, iç ağ kuralı, akış ve iptal) birim testleriyle doğrulandı; uçtan uca testi CI'da koşar. Bu makinedeki karşılaştırmalı ölçüm (verim, p95/p99, VRAM) ve kalite kontrolü Docker açılamadığı için henüz yapılmadı; kademe önerisi ve sayılar ölçümden sonra [`docs/capacity.md`](docs/capacity.md)'ye yazılacak. O zamana kadar varsayılanlar değişmez (1 yuva).
+- **Ölçüm (RTX 4070 Ti SUPER):** Ollama'da `OLLAMA_NUM_PARALLEL=4` ve `VERSO_QA_CHAT_CONCURRENCY=4` ile 4 eşzamanlı kullanıcıda dakikada ~96 cevap (tek yuvada ~53), medyan 2,0 sn, p99 10,4 sn, "meşgul" yanıtı yok. GPU'lu kurulumda bu ayar önerilir; varsayılan CPU kurulumu için 1'de kalır. llama-server'ın karşılaştırmalı ölçümü ve kalite kontrolü henüz yapılmadı. Ayrıntı: [`docs/capacity.md`](docs/capacity.md) "Paylaşımlı kademe".
 
 Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde (sürüm 2, GPU) doğru sayfaya atıf yapılan 97 cevabın 3'ünde bilgi yanlış ya da eksikti. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
@@ -376,7 +376,7 @@ Kurulum ekibi için (Entra uygulama kaydı ve en az yetki):
 | Dayanak kontrolü (192 etiketli cümle; ADR-0047) | desteklenmeyen cümlede kesinlik 1,00, duyarlılık 0,46 (sayı ve kodda 0,76); gerçek 238 atıflı cümlede 2 işaret, ikisi de doğru | `eval/grounding-set.json`, `docs/evidence/dayanaklilik-olcumu.md` |
 | Cevap süresi (CPU, 2 çekirdek; sürüm 1, 33 soru) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | `eval/results/e2e-gemma4_e2b.json` |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
-| Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır); paylaşımlı kademe (ADR-0051) ölçüm bekliyor | `docs/capacity.md` |
+| Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır); GPU'da `OLLAMA_NUM_PARALLEL=4` ile 4 (4 kullanıcıda 1,6 cevap/sn, 503 yok; ADR-0051) | `docs/capacity.md` |
 
 Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 belge yönetmelik, yeni 5 belge şirket sistemlerinin kılavuzu. Hâlâ küçüktür; kapının eşikleri bu setle seçildi, belge grubuna göre çapraz doğrulaması ADR-0022'dedir. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
 
