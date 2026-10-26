@@ -321,7 +321,9 @@ class SkillApiTest {
     @Test
     void mcpTools_listAndReadApprovedSkills_asTheCaller_withTheSameAccessMatrix() throws Exception {
         UUID skill = approvedSkill("izin-sureci");
-        UUID card = UUID.fromString(jdbc.queryForObject("select id::text from qa.knowledge_card limit 1", String.class));
+        // Through the API: the default JdbcTemplate is the document role, which cannot read the qa schema (by design).
+        UUID card = UUID.fromString(JsonPath.read(get(admin, "/v1/admin/knowledge-cards?state=VERIFIED").body(),
+                "$.data[0].id"));
         HttpResponse<String> draft = send(admin, "POST", "/v1/admin/skills", "{\"cardIds\":[\"" + card
                 + "\"],\"name\":\"taslak-surec\"}");
         assertThat(draft.statusCode()).as(draft.body()).isEqualTo(201);
