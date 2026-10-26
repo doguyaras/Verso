@@ -20,7 +20,7 @@ Bu yüzden yığın (uygulama, Ollama) çalışmıyordu; GPU'da yalnız masaüst
 | Kanıt | Sonuç |
 |---|---|
 | `AiModeCheckTest` (qa-core) | 12/12: local + iç ağdaki OpenAI uyumlu sunucu açılır; genel IP, URL'siz, anahtarsız, anahtarı ortam değişkeninden ya da `OPENAI_LOG` açık olan açılmaz; mesajda adres yok |
-| `LocalModelEgressTest` (qa-core) | 5/5: iç adresler geçer; 203.0.113.9, 8.8.8.8, 2001:db8::1 ve çözülmeyen ad istek gönderilmeden reddedilir; local modda müşteri (customizer) koruyucuyu ekler, cloud modda eklemez |
+| `LocalModelEgressTest` (qa-core) | 7/7: iç adresler geçer; 203.0.113.9, 8.8.8.8, 2001:db8::1 ve çözülmeyen ad istek gönderilmeden reddedilir; Spring AI'ın gerçek istemcisi (customizer ile) genel adrese bağlanmadan reddeder; yönlendiren sunucunun cevabı reddedilir; cloud modda koruyucu eklenmez |
 | `OpenAiCompatibleCancellationTest` (verso-app, Spring'siz) | 2/2: akış aboneliği bırakılınca ve JSON çağrısını bekleyen sanal iş parçacığı kesilince sahte sunucu bağlantının kapandığını görür (yazma hata verir) — llama-server'ın üretimi bırakmasının ön koşulu |
 | `ComposeConfigTest` (21), `ConfigDriftTest` (3), `ConfigProfilesTest` (6), `ModuleConsistencyTest` (3) | Geçti; yeni overlay testi dahil (`llamacppOverlay_whenComposed_staysLocalInternalVerifiedAndMatchesTheSlots`) |
 | `scripts/llamacpp-serve.test.js` (3), `scripts/ollama-serve.test.js` (4 + 1 Windows'ta atlanır) | Geçti: doğru digest'te sunucu yuva, bağlam, anahtar dosyası ve web arayüzsüz başlar; yanlış dosya, bozuk digest, eksik anahtar başlatmaz; `OLLAMA_WARM_CHAT=none` yalnız embedding'i ısıtır |

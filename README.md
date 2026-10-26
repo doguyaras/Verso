@@ -111,7 +111,7 @@ docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.llam
 ```
 
 - `LLAMA_PARALLEL` (varsayılan 4) aynı anda cevaplanan soru sayısıdır; uygulamanın sohbet sınırı da buna eşitlenir. `LLAMA_CTX_PER_SLOT` (4096) yuva başına bağlamdır.
-- **Durum:** uygulama tarafı (sağlayıcı seçimi, iç ağ kuralı, akış ve iptal) testlidir. Bu makinedeki karşılaştırmalı ölçüm (verim, p95/p99, VRAM) ve kalite kontrolü Docker açılamadığı için henüz yapılmadı; kademe önerisi ve sayılar ölçümden sonra [`docs/capacity.md`](docs/capacity.md)'ye yazılacak. O zamana kadar varsayılanlar değişmez (1 yuva).
+- **Durum:** uygulama tarafı (sağlayıcı seçimi, iç ağ kuralı, akış ve iptal) birim testleriyle doğrulandı; uçtan uca testi CI'da koşar. Bu makinedeki karşılaştırmalı ölçüm (verim, p95/p99, VRAM) ve kalite kontrolü Docker açılamadığı için henüz yapılmadı; kademe önerisi ve sayılar ölçümden sonra [`docs/capacity.md`](docs/capacity.md)'ye yazılacak. O zamana kadar varsayılanlar değişmez (1 yuva).
 
 Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde (sürüm 2, GPU) doğru sayfaya atıf yapılan 97 cevabın 3'ünde bilgi yanlış ya da eksikti. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 

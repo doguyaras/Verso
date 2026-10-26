@@ -21,8 +21,15 @@ function matchAll(re, text) {
   return [...text.matchAll(re)].map((m) => m[1]);
 }
 
+/**
+ * Opt-in overlays whose images are scanned too (security review, ADR-0051). Only this one so far; the other overlays
+ * (rerank: an 8.2 GB image) are an open item, not a decision.
+ */
+const OVERLAYS = ['deploy/compose.llamacpp.yaml'];
+
 function collect(root) {
-  const compose = fs.readFileSync(path.join(root, 'compose.yaml'), 'utf8');
+  const compose = [fs.readFileSync(path.join(root, 'compose.yaml'), 'utf8'),
+    ...OVERLAYS.map((file) => fs.readFileSync(path.join(root, file), 'utf8'))].join('\n');
   const dockerfile = fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8');
   const froms = matchAll(DOCKERFILE_FROM, dockerfile);
   const images = [...matchAll(COMPOSE_IMAGE, compose), froms[froms.length - 1]]

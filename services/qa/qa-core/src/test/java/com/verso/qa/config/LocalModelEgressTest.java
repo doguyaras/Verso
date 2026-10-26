@@ -7,13 +7,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
 
 /**
@@ -21,6 +28,47 @@ import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
  * one is refused before a byte is sent, and the message names neither the host nor the address.
  */
 class LocalModelEgressTest {
+
+    /** The customizer reaches the real client Spring AI builds (SpringAiOpenAiHttpClient): no connection is tried. */
+    @Test
+    void realClient_inLocalMode_refusesAPublicServerBeforeConnecting() {
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .options(OpenAiChatOptions.builder().baseUrl("http://203.0.113.9:8080/v1").apiKey("k").model("m")
+                        .maxRetries(0).timeout(Duration.ofSeconds(30)).build())
+                .httpClientBuilderCustomizer(new QaConfiguration.LocalOpenAiEgressConfiguration()
+                        .localModelEgress(new VersoAiProperties(AiMode.LOCAL, "m", "e")))
+                .build();
+        long started = System.nanoTime();
+        assertThatThrownBy(() -> model.call(new Prompt("soru"))).hasRootCauseMessage(
+                "Local model server refused: an address is outside the internal network (verso.ai.mode=local, ADR-0006)");
+        assertThat(Duration.ofNanos(System.nanoTime() - started)).as("refused, not timed out").isLessThan(Duration.ofSeconds(10));
+    }
+
+    /** A model server never redirects; a redirect is refused and its answer is not used (security review, ADR-0051). */
+    @Test
+    void intercept_whenTheServerRedirects_refusesTheAnswer() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/chat/completions", exchange -> {
+            exchange.getResponseHeaders().set("Location", "/v1/elsewhere");
+            exchange.sendResponseHeaders(307, -1);
+            exchange.close();
+        });
+        server.createContext("/v1/elsewhere", exchange -> {
+            byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new LocalModelEgress()).build();
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/chat/completions";
+            assertThatThrownBy(() -> client.newCall(new Request.Builder().url(url).build()).execute())
+                    .isInstanceOf(IOException.class).hasMessageContaining("redirect");
+        } finally {
+            server.stop(0);
+        }
+    }
 
     @Test
     void requireInternal_whenTheServerIsOnTheInternalNetwork_letsTheRequestThrough() {

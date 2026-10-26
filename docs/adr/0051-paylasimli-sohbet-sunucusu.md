@@ -1,6 +1,6 @@
 # ADR-0051: Paylaşımlı kademe için sohbet sunucusu (tek sohbet yuvası darboğazı)
 
-- **Durum:** Önerildi. Uygulama tarafı (sağlayıcı seçimi, yapılandırma denetimi, iç ağ kuralı, akış ve iptal) uygulandı ve testli. **Canlı ölçüm ve kalite karşılaştırması yapılmadı:** 2026-10-26'da Docker Desktop açılışta çöktü (aşağıda "Ölçüm durumu"). Varsayılanlar bu yüzden değişmedi.
+- **Durum:** Önerildi. Uygulama tarafı (sağlayıcı seçimi, yapılandırma denetimi, iç ağ kuralı, akış ve iptal) uygulandı; birim testleri yerelde geçti, Spring bağlamlı `LocalOpenAiModeTest` (Testcontainers) CI'da koşar. **Canlı ölçüm ve kalite karşılaştırması yapılmadı:** 2026-10-26'da Docker Desktop açılışta çöktü (aşağıda "Ölçüm durumu"). Varsayılanlar bu yüzden değişmedi.
 - **Tarih:** 2026-10-26
 - **Karar verenler:** doguyaras
 - **İlgili eşik (referans Bölüm 24):** `verso.qa.chat-concurrency` (başlangıç ayarı, 1); `OLLAMA_NUM_PARALLEL` (1); `LLAMA_PARALLEL` (4, yalnız overlay)
@@ -38,7 +38,7 @@
 | Local modda model çağrısı makineden çıkmaz (ADR-0006) | Sunucu `models` (iç) ağında; uygulama overlay'de yeni ağ almaz; `AiModeCheck` IP literalini, `LocalModelEgress` her istekte çözülen adresi denetler; mesajlarda adres yok |
 | Model sabit digest ile doğrulanır (ADR-0033) | Aynı pin; `serve.sh` dosya içeriğinin SHA-256'sını karşılaştırır; çalışan sunucu depoyu yazamaz (`:ro`) |
 | Anahtar yalnız `/run/secrets` (llm-rules 1.4) | `AiModeCheck.requireSecretKey`; `--api-key-file` (argümanda anahtar yok) |
-| Tek çağrı, sınır, iptal (ADR-0008, ADR-0035) | Zaman aşımında çağrıyı bekleyen sanal iş parçacığı kesilir, OkHttp soketi kapanır; akışta abonelik bırakılır, bağlantı kapanır. İkisi de sahte sunucuyla test edildi (`OpenAiCompatibleCancellationTest`, `LocalOpenAiModeTest`); llama-server'ın kapanan bağlantıda üretimi bıraktığı canlı ölçülmedi |
+| Tek çağrı, sınır, iptal (ADR-0008, ADR-0035) | Zaman aşımında çağrıyı bekleyen sanal iş parçacığı kesilir, OkHttp soketi kapanır; akışta abonelik bırakılır, bağlantı kapanır. İkisi de sahte sunucuyla test edildi (`OpenAiCompatibleCancellationTest` yerelde geçti; `LocalOpenAiModeTest` CI'da); llama-server'ın kapanan bağlantıda üretimi bıraktığı canlı ölçülmedi |
 | İçerik log'a gitmez (llm-rules 2.1) | Değişmedi: yalnız istisna türü loglanır; llama-server varsayılan ayrıntı düzeyinde istem içeriği yazmaz (canlı doğrulanmadı) |
 
 ## Ölçüm durumu ve plan
@@ -48,7 +48,8 @@
 1. Ollama, `gemma4:e2b`, `OLLAMA_NUM_PARALLEL` = `chat-concurrency` = 2 / 4 / 8: `SCENARIOS=qa QA_CLIENTS=1,2,4,8 QA_INGEST=0 QA_SECONDS=120 node scripts/load-test.mjs` (en çok 8 istemci, koşu başına ≤ 5 dk); verim, p50/p95/p99, 503 sayısı, `nvidia-smi` VRAM.
 2. Aynısı `deploy/compose.llamacpp.yaml` ile `LLAMA_PARALLEL` = 2 / 4 / 8.
 3. Seçilen yapılandırma ile taban arasında `scripts/eval.mjs` alt kümesi (atıf, bilgi, "bulunamadı").
-4. Canlıda: llama-server'ın Ollama blob'unu (Ollama'nın `gemma4:e2b` GGUF'u) yükleyip yüklemediği, sohbet şablonu ve `--reasoning-budget 0` davranışı, kapanan bağlantıda üretimi bırakması, root'suz kullanıcıyla anahtar dosyasını okuyabilmesi.
+4. Overlay'de Ollama yalnız embedding'i tutar ve `OLLAMA_NUM_PARALLEL` 1 kalır: N sohbet yuvasının soru embedding'leri ve ingestion embedding'leri Ollama'da sıraya girer. Embedding süresi (`verso_qa_retrieval_duration_seconds`) ve `503 10030` sayısı ayrıca izlenir; gerekirse overlay'de `OLLAMA_NUM_PARALLEL` da artırılır.
+5. Canlıda: llama-server'ın Ollama blob'unu (Ollama'nın `gemma4:e2b` GGUF'u) yükleyip yüklemediği, sohbet şablonu ve `--reasoning-budget 0` davranışı, kapanan bağlantıda üretimi bırakması, root'suz kullanıcıyla anahtar dosyasını okuyabilmesi.
 
 Kabul ölçütü: 4 istemcide `503 11002` ≈ 0 ve p99 ≤ 15 sn (ADR-0008), eval metrikleri tabanın gürültü payı içinde. Hangisi kazanırsa paylaşımlı kademe odur; sonuç `docs/capacity.md`'ye, varsayılanlar ancak o zaman değişir.
 
@@ -66,7 +67,8 @@ Kabul ölçütü: 4 istemcide `503 11002` ≈ 0 ve p99 ≤ 15 sn (ADR-0008), eva
 - Yeni yüzeyler: `deploy/compose.llamacpp.yaml`, `deploy/llamacpp/serve.sh`, `SECRET_LOCAL_MODEL_API_KEY` (`scripts/dev-secrets.sh`), `OLLAMA_NUM_PARALLEL`, `VERSO_QA_CHAT_CONCURRENCY`, `OPENAI_CHAT_TIMEOUT`, `LLAMA_PARALLEL`, `LLAMA_CTX_PER_SLOT`, `LLAMA_MEM_LIMIT`.
 - Overlay'siz kurulumun davranışı değişmez (aynı değerler, aynı sağlayıcı).
 - Geri dönüş: overlay'i çıkarmak; Ollama sohbet modelini yeniden ısıtır.
-- llama.cpp imajı Syft/Grype ile taranmadı (ADR-0030 geçidi); overlay ölçümden önce taranacak.
+- llama.cpp imajı yerelde taranmadı; overlay artık aylık SBOM/Grype taramasının kapsamında (`scripts/sbom-images.js`, `supply-chain-scan.yml`), CI overlay'in birleşimini `docker compose config` ile doğrular.
+- `LocalModelEgress`'in sınırları (güvenlik review'u): Spring AI'ın builder'ı DNS kancası ve yönlendirme anahtarı vermez, koruma uygulama interceptor'ıdır. OkHttp bağlanırken adı yeniden çözer (arada değişen DNS cevabı görülmez); yönlendirmeyi `proceed` içinde izler. Model sunucusu yönlendirme yapmaz: herhangi bir yönlendirme sonradan reddedilir ve cevabı kullanılmaz, ama yönlendirilen istek denenmiş olur. İkisinde de asıl güvence dışarı yolu olmayan ağdır.
 
 ## Yeniden değerlendirme koşulu
 

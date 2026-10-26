@@ -64,8 +64,12 @@ class OpenAiCompatibleCancellationTest {
                 // the interrupted call fails; only the server's side is asserted
             }
         });
-        Thread.sleep(1000);
-        assertThat(server.requests()).as("the request reached the server").hasSize(1);
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        while (server.requests().isEmpty()) {
+            assertThat(System.nanoTime()).as("the request reached the server").isLessThan(deadline);
+            Thread.sleep(20);
+        }
+        Thread.sleep(300); // the answer has started trickling: the caller is blocked reading it
         caller.interrupt();
 
         awaitAbandoned("interrupting the call closes the model server's connection");

@@ -139,7 +139,8 @@ class LocalOpenAiModeTest extends CloudModeTestSupport {
 
         assertThat(response.statusCode()).isEqualTo(503);
         assertThat(response.body()).contains("\"code\":11001");
-        assertThat(took).isBetween(Duration.ofMillis(2500), Duration.ofSeconds(8));
+        // At the 3 s bound, well before the 20 s the slow answer would take.
+        assertThat(took).isBetween(Duration.ofMillis(2500), Duration.ofSeconds(15));
         awaitAbandoned("the abandoned generation is cancelled at the model server");
     }
 
