@@ -15,6 +15,14 @@ public interface AnswerStream {
     /** False once the client is gone. {@code retrieved} and {@code relevant} matter for PASSAGES_FOUND only. */
     boolean stage(AnswerStage stage, int retrieved, int relevant);
 
+    /**
+     * ADR-0055: sub-question {@code step} of {@code steps} is being searched (the SUB_QUESTION stage with its
+     * position, never its text); false once the client is gone.
+     */
+    default boolean subQuestion(int step, int steps) {
+        return stage(AnswerStage.SUB_QUESTION, 0, 0);
+    }
+
     /** The next piece of model text, unvalidated; false once the client is gone. */
     boolean delta(String text);
 

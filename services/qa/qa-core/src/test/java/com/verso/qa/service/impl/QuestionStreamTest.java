@@ -80,7 +80,8 @@ class QuestionStreamTest {
                 new FollowUpRewriter(FollowUpQuestionTest.FOLLOW_UP), FollowUpQuestionTest.FOLLOW_UP,
                 new GroundingCheck(new QaGroundingProperties(true), properties),
                 org.mockito.Mockito.mock(com.verso.qa.service.AnswerMemory.class),
-                org.mockito.Mockito.mock(com.verso.qa.service.SkillMatcher.class));
+                org.mockito.Mockito.mock(com.verso.qa.service.SkillMatcher.class),
+                org.mockito.Mockito.mock(com.verso.qa.service.MultiStepReasoning.class));
         when(groups.current()).thenReturn(List.of());
         when(retrieval.search(any(Reader.class), anyString(), anyInt())).thenReturn(List.of(
                 new RetrievedPassage(UUID.randomUUID(), "izin.pdf", 3, SourceUnit.PAGE, "Yıllık izin yirmi gündür.", 0.9, 0)));

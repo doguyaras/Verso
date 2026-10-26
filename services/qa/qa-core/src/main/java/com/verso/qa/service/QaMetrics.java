@@ -31,6 +31,8 @@ public class QaMetrics {
     private final Timer retrieval;
     private final Timer chat;
     private final Timer rewrite;
+    private final Timer decompose;
+    private final Map<String, Counter> reasoning = new java.util.concurrent.ConcurrentHashMap<>();
     private final MeterRegistry registry;
     private final Map<String, Counter> followUps = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> notStored = new java.util.concurrent.ConcurrentHashMap<>();
@@ -50,6 +52,9 @@ public class QaMetrics {
         chat = Timer.builder("verso.qa.chat.duration").description("One chat model call")
                 .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(120)).register(registry);
         rewrite = Timer.builder("verso.qa.followup.duration").description("One follow-up rewrite call (ADR-0046)")
+                .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(30)).register(registry);
+        decompose = Timer.builder("verso.qa.reasoning.decompose.duration")
+                .description("One multi-step decomposition call (ADR-0055)")
                 .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(30)).register(registry);
         Gauge.builder("verso.qa.circuit.open", circuit, c -> c.isOpen() ? 1 : 0)
                 .description("1 while the chat model circuit is open").register(registry);
@@ -109,5 +114,20 @@ public class QaMetrics {
 
     public void chatTook(long millis) {
         chat.record(Duration.ofMillis(millis));
+    }
+
+    /**
+     * ADR-0055: what multi-step reasoning did with a question while it is on ("not_triggered", "decomposed",
+     * "fallback_invalid", "fallback_timeout", "fallback_busy", "fallback_failed", "fallback_retrieval",
+     * "fallback_no_passages"). A fixed set of words, no content.
+     */
+    public void reasoning(String result) {
+        reasoning.computeIfAbsent(result, r -> Counter.builder("verso.qa.reasoning").tag("result", r)
+                .description("Questions by multi-step reasoning handling (ADR-0055)").register(registry)).increment();
+    }
+
+    /** One decomposition call, whatever its result (it holds the chat slot for that long). */
+    public void decomposeTook(long millis) {
+        decompose.record(Duration.ofMillis(millis));
     }
 }

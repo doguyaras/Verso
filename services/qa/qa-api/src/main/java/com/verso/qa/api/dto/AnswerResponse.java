@@ -29,10 +29,24 @@ import java.util.UUID;
  * <p>{@code procedure} (ADR-0053, added last): an approved skill whose example questions match the question, shown
  * above the answer as "Bu bir prosedür" with its steps and citations; only when the serving flag is on and the caller
  * reads every source of the skill. It never replaces the answer. Not stored: an answer opened from the history has none.
+ *
+ * <p>{@code reasoning} (ADR-0055, added last): set when the question was answered in several steps (bounded
+ * decomposition into at most three sub-questions, {@code verso.qa.reasoning.enabled}): the sub-questions, which of
+ * them found nothing in the caller's documents, and known contradictions between cited passages. Null for a
+ * single-pass answer. Not stored and not logged: an answer opened from the history has none.
  */
 public record AnswerResponse(String answer, boolean found, AnswerOutcome outcome, List<Citation> citations, String mode,
                              String model, UUID conversationId, UUID turnId, String contextQuery,
-                             List<UnverifiedSentence> unverified, KnowledgeMemory memory, ProcedureMatch procedure) {
+                             List<UnverifiedSentence> unverified, KnowledgeMemory memory, ProcedureMatch procedure,
+                             ReasoningTrace reasoning) {
+
+    /** A single-pass answer (ADR-0055: no reasoning trace). */
+    public AnswerResponse(String answer, boolean found, AnswerOutcome outcome, List<Citation> citations, String mode,
+                          String model, UUID conversationId, UUID turnId, String contextQuery,
+                          List<UnverifiedSentence> unverified, KnowledgeMemory memory, ProcedureMatch procedure) {
+        this(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery, unverified, memory,
+                procedure, null);
+    }
 
     /** The {@code model} of an answer served from the answer memory (ADR-0049): no model wrote it. */
     public static final String MEMORY_MODEL = "verified-answer";
@@ -61,12 +75,18 @@ public record AnswerResponse(String answer, boolean found, AnswerOutcome outcome
     /** The same answer, stored in the history as {@code turnId} of {@code conversationId}. */
     public AnswerResponse stored(UUID conversationId, UUID turnId) {
         return new AnswerResponse(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery,
-                unverified, memory, procedure);
+                unverified, memory, procedure, reasoning);
     }
 
     /** The same answer with the procedure that matched its question (ADR-0053). */
     public AnswerResponse withProcedure(ProcedureMatch match) {
         return new AnswerResponse(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery,
-                unverified, memory, match);
+                unverified, memory, match, reasoning);
+    }
+
+    /** The same answer with how it was researched in several steps (ADR-0055). */
+    public AnswerResponse withReasoning(ReasoningTrace trace) {
+        return new AnswerResponse(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery,
+                unverified, memory, procedure, trace);
     }
 }

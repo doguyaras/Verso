@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "description": "Verso çok adımlı (ADR-0055) değerlendirme seti; karşılaştırma ve iki belgeyi birleştiren sorular; her kaynak için beklenen belge, sayfa(lar) ve cevapta geçmesi beklenen ifade (küçük harf, eşanlamlılar | ile); partial=true sorularda bir parçanın cevabı belgelerde yoktur ve 'bulunamadı' beklenir; olgular samples/src metninden (PDF'lerin kaynağı) sayfa sayfa doğrulandı, scripts/multihop-set.test.js",
+  "questions": [
+    {"id": "mh-01", "question": "Kritik (P1) bir olayda BT Service Desk ile müşteri destek ekibinin ilk yanıt süreleri arasındaki fark nedir?", "kind": "comparison",
+     "sources": [
+       {"document": "bt-operasyon-runbook.pdf", "pages": [1], "expect": "15 dakika|on beş dakika"},
+       {"document": "musteri-destek-sureci.pdf", "pages": [3], "expect": "1 saat|bir saat"}
+     ], "tags": ["two-documents", "number", "sla"]},
+    {"id": "mh-02", "question": "P1 olaylarında iç BT tarafındaki çözüm hedefi ile müşteri kayıtlarındaki çözüm hedefini karşılaştır.", "kind": "comparison",
+     "sources": [
+       {"document": "bt-operasyon-runbook.pdf", "pages": [1], "expect": "4 saat|dört saat"},
+       {"document": "musteri-destek-sureci.pdf", "pages": [3], "expect": "8 saat|sekiz saat"}
+     ], "tags": ["two-documents", "number", "sla"]},
+    {"id": "mh-03", "question": "Yaklaşık 500.000 TL'lik bir alım için satın alma prosedüründeki onay ile ERP'deki onay basamakları arasında nasıl bir uyum var, hangi üst düzey yönetici devreye giriyor?", "kind": "comparison",
+     "sources": [
+       {"document": "satin-alma-proseduru.pdf", "pages": [2], "expect": "finans direktörü"},
+       {"document": "erp-satin-alma-kilavuzu.pdf", "pages": [3], "expect": "finans direktörü"}
+     ], "tags": ["two-documents", "role", "approval"]},
+    {"id": "mh-04", "question": "Depoda sayılan miktar ile ön bildirim arasındaki fark yüzde kaça kadar kabul edilir ve ERP tarafında siparişe göre fazla teslimat toleransı nedir?", "kind": "bridge",
+     "sources": [
+       {"document": "depo-yonetim-kilavuzu.pdf", "pages": [2], "expect": "yüzde 2|%2"},
+       {"document": "erp-satin-alma-kilavuzu.pdf", "pages": [4], "expect": "yüzde 5|%5"}
+     ], "tags": ["two-documents", "number", "tolerance"]},
+    {"id": "mh-05", "question": "Onaylanan müşteri siparişleri WMS'e, gönderilmiş satın alma siparişlerinin beklenen teslimat kayıtları ise yine WMS'e hangi aralıklarla aktarılır?", "kind": "bridge",
+     "sources": [
+       {"document": "depo-yonetim-kilavuzu.pdf", "pages": [3], "expect": "her 5 dakikada|5 dakikada"},
+       {"document": "erp-satin-alma-kilavuzu.pdf", "pages": [4], "expect": "her 15 dakikada|15 dakikada"}
+     ], "tags": ["two-documents", "number", "integration"]},
+    {"id": "mh-06", "question": "Kurumsal parolalar en az kaç karakter olmalı ve bir kullanıcı art arda hatalı deneme yaparsa hesabı ne kadar süre kilitli kalır?", "kind": "bridge",
+     "sources": [
+       {"document": "bilgi-guvenligi.pdf", "pages": [1], "expect": "on iki|12"},
+       {"document": "bt-operasyon-runbook.pdf", "pages": [3], "expect": "30 dakika|otuz dakika"}
+     ], "tags": ["two-documents", "number", "password"]},
+    {"id": "mh-07", "question": "Şirket dizüstü bilgisayarı kaybolursa çalışan en geç ne kadar sürede bildirim yapmalı ve cihaz bulunamazsa Service Desk ne zaman uzaktan silme komutu gönderir?", "kind": "bridge",
+     "sources": [
+       {"document": "bilgi-guvenligi.pdf", "pages": [2], "expect": "iki saat|2 saat"},
+       {"document": "bt-operasyon-runbook.pdf", "pages": [5], "expect": "7 gün|yedi gün"}
+     ], "tags": ["two-documents", "number", "device-loss"]},
+    {"id": "mh-08", "question": "25.000 TL'yi aşan bir masrafı kim onaylar ve 1.000.000 TL'yi aşan bir satın alma kimin kararıyla yapılır; iki üst onay makamı birbirinden nasıl ayrılır?", "kind": "comparison",
+     "sources": [
+       {"document": "masraf-politikasi.pdf", "pages": [3], "expect": "genel müdür"},
+       {"document": "satin-alma-proseduru.pdf", "pages": [2], "expect": "yönetim kurulu"}
+     ], "tags": ["two-documents", "role", "approval"]},
+    {"id": "mh-09", "question": "Bir rafta kırmızı sınıf hasar bulunursa WMS'te ne yapılır ve bu bloke durumunu hangi rol kaldırabilir?", "kind": "bridge",
+     "sources": [
+       {"document": "isg-depo-proseduru.pdf", "pages": [3], "expect": "lokasyonlar bloke"},
+       {"document": "depo-yonetim-kilavuzu.pdf", "pages": [4], "expect": "stok kontrol uzmanı"}
+     ], "tags": ["two-documents", "role", "shelf-damage"]},
+    {"id": "mh-10", "question": "A sınıfı ürünlerin sayımı hangi sıklıkla yapılır ve İSG ile kalite göstergelerinde sayım doğruluğu için hedef nedir?", "kind": "bridge",
+     "sources": [
+       {"document": "depo-yonetim-kilavuzu.pdf", "pages": [4], "expect": "ayda bir"},
+       {"document": "isg-depo-proseduru.pdf", "pages": [5], "expect": "yüzde 99,5|%99,5"}
+     ], "tags": ["two-documents", "number", "count"]},
+    {"id": "mh-11", "question": "Müşteriden iade edilen ürün depoya ulaşınca hangi alana alınır ve kalite birimi karantinadaki ürünü en geç ne kadar sürede inceler?", "kind": "bridge",
+     "sources": [
+       {"document": "musteri-destek-sureci.pdf", "pages": [4], "expect": "karantina"},
+       {"document": "depo-yonetim-kilavuzu.pdf", "pages": [2], "expect": "3 iş günü|üç iş günü"}
+     ], "tags": ["two-documents", "number", "returns"]},
+    {"id": "mh-12", "question": "Çözülen bir BT kaydı ile çözüldü durumuna geçen bir müşteri destek kaydı kendiliğinden kaç iş günü sonra kapanır, aradaki fark nedir?", "kind": "comparison",
+     "sources": [
+       {"document": "bt-operasyon-runbook.pdf", "pages": [6], "expect": "3 iş günü|üç iş günü"},
+       {"document": "musteri-destek-sureci.pdf", "pages": [2], "expect": "5 iş günü|beş iş günü"}
+     ], "tags": ["two-documents", "number", "closing"]},
+    {"id": "mh-13", "question": "BT Service Desk'in telefon hattı ile müşteri çağrı merkezi hangi saatlerde hizmet verir, hangisi cumartesi de açıktır?", "kind": "comparison",
+     "sources": [
+       {"document": "bt-operasyon-runbook.pdf", "pages": [1], "expect": "08.00–20.00"},
+       {"document": "musteri-destek-sureci.pdf", "pages": [1], "expect": "09.00–17.00"}
+     ], "tags": ["two-documents", "hours", "channels"]},
+    {"id": "mh-14", "question": "Çalışanın özlük dosyası ile kapatılmış müşteri destek kayıtları arasında saklama süresi bakımından ne fark vardır?", "kind": "comparison",
+     "sources": [
+       {"document": "kvkk-aydinlatma.pdf", "pages": [2], "expect": "on yıl|10 yıl"},
+       {"document": "musteri-destek-sureci.pdf", "pages": [5], "expect": "3 yıl|üç yıl"}
+     ], "tags": ["two-documents", "number", "retention"]},
+    {"id": "mh-15", "question": "Evden çalışan bir kişi VPN ile aynı anda en fazla kaç cihazdan bağlanabilir ve haftada en çok kaç gün uzaktan çalışabilir?", "kind": "multi-part",
+     "sources": [
+       {"document": "bt-operasyon-runbook.pdf", "pages": [2], "expect": "iki cihazdan|2 cihazdan"},
+       {"document": "uzaktan-calisma.pdf", "pages": [1], "expect": "iki gün|2 gün"}
+     ], "tags": ["two-documents", "number", "vpn", "remote-work"]},
+    {"id": "mh-16", "question": "Yıllık puanlamada yüz üzerinden altmışın altında kalan tedarikçiye ne olur ve ERP'de bloke edilmiş bir tedarikçinin blokesini kim kaldırabilir?", "kind": "bridge",
+     "sources": [
+       {"document": "satin-alma-proseduru.pdf", "pages": [2], "expect": "altmışın altında|sözleşme yenilenmez"},
+       {"document": "erp-satin-alma-kilavuzu.pdf", "pages": [5], "expect": "satın alma müdürü"}
+     ], "tags": ["two-documents", "role", "supplier"]},
+    {"id": "mh-17", "question": "200.000 TL'lik bir bilgi teknolojisi donanımı alınacaksa kaç tedarikçiden teklif gerekir ve ERP'de onay akışına ilk basamak olarak hangi ekip eklenir?", "kind": "bridge",
+     "sources": [
+       {"document": "satin-alma-proseduru.pdf", "pages": [1], "expect": "üç tedarikçiden|3 tedarikçiden"},
+       {"document": "erp-satin-alma-kilavuzu.pdf", "pages": [3], "expect": "bt mimari"}
+     ], "tags": ["two-documents", "approval", "it-hardware"]},
+    {"id": "mh-18", "question": "Yıllık izin talebi başlangıçtan en az kaç gün önce yapılmalı ve doğum yapan çalışana toplam kaç hafta ücretli izin verilir?", "kind": "multi-part",
+     "sources": [
+       {"document": "izin-yonetmeligi.pdf", "pages": [3], "expect": "on beş gün|15 gün"},
+       {"document": "izin-yonetmeligi.pdf", "pages": [2], "expect": "on altı hafta|16 hafta"}
+     ], "tags": ["single-document", "number", "leave"]},
+    {"id": "mh-19", "question": "Uzaktan çalışana ev interneti için aylık ne kadar destek ödenir ve kıdem tazminatı nasıl hesaplanır?", "kind": "multi-part",
+     "sources": [
+       {"document": "uzaktan-calisma.pdf", "pages": [2], "expect": "500 tl"}
+     ], "missing": "Kıdem tazminatının hesaplanma yöntemi hiçbir belgede yer almıyor.", "partial": true,
+     "tags": ["single-document", "number", "partial"]},
+    {"id": "mh-20", "question": "İstanbul'da gecelik otel limiti kaç TL ve çalışanların yıllık maaş zammı oranı nedir?", "kind": "multi-part",
+     "sources": [
+       {"document": "masraf-politikasi.pdf", "pages": [2], "expect": "4.000 tl"}
+     ], "missing": "Yıllık maaş zammı oranı hiçbir belgede yer almıyor.", "partial": true,
+     "tags": ["single-document", "number", "partial"]}
+  ]
+}

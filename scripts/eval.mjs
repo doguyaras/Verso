@@ -17,6 +17,14 @@
 //
 //   node scripts/eval.mjs        # after: docker compose up -d --build --wait (CPU: about 30-40 min for 33 questions)
 //
+// Multi-hop set (ADR-0055, eval/multihop-set.json, 20 comparison and two-document questions): every expected source
+// (document and page) and fact is scored on its own, partial questions must state the missing part ("bulunamadı"),
+// and the answer's "reasoning" field tells whether it was decomposed. With --compare the app container is recreated
+// twice (VERSO_QA_REASONING_ENABLED=false, then true; the uploads stay) and both arms are written next to a comparison:
+//
+//   node scripts/eval.mjs --set multihop             # against the stack as it runs
+//   node scripts/eval.mjs --set multihop --compare   # off vs on: eval/results/multihop-compare-<model>.json
+//
 // No dependencies (Node 24 fetch). Tokens come from the bundled Keycloak's CI client (client credentials).
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
@@ -84,7 +92,61 @@ const percentile = (values, p) => {
 };
 const ratio = (part, whole) => (whole ? Math.round((part / whole) * 1000) / 1000 : 0);
 
-const set = JSON.parse(readFileSync(join(ROOT, 'eval/eval-set.json'), 'utf8'));
+const args = process.argv.slice(2);
+const SET = args.includes('--set') ? args[args.indexOf('--set') + 1] : 'default';
+const COMPARE = args.includes('--compare');
+if (!['default', 'multihop'].includes(SET)) throw new Error(`unknown --set ${SET} (default | multihop)`);
+if (COMPARE && SET !== 'multihop') throw new Error('--compare needs --set multihop');
+const set = JSON.parse(readFileSync(join(ROOT, SET === 'multihop' ? 'eval/multihop-set.json' : 'eval/eval-set.json'), 'utf8'));
+/** An explicit "not in the documents" for one part of the answer (ADR-0055 writes "… için belgelerde bilgi bulunamadı"). */
+const statesMissing = (answer) => /bulunamad|bulunmamakta|yer alm(a|ı)m/.test(tr(answer));
+
+/** ADR-0055 --compare: recreates the app container with the reasoning flag; the database and the uploads stay. */
+async function restartWithReasoning(on) {
+  console.log(`eval: recreating verso-app with VERSO_QA_REASONING_ENABLED=${on}`);
+  execFileSync('docker', ['compose', 'up', '-d', '--wait', '--force-recreate', '--no-deps', 'verso-app'],
+    { cwd: ROOT, stdio: 'inherit', env: { ...process.env, VERSO_QA_REASONING_ENABLED: String(on) } });
+  const deadline = Date.now() + 5 * 60_000;
+  while (Date.now() < deadline) {
+    try {
+      if ((await api('/v1/documents?size=1')).ok) return;
+    } catch { /* starting */ }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error('verso-app not answering 5 minutes after the restart');
+}
+
+/** One multi-hop question scored per expected source and fact (eval/multihop-set.json). */
+function scoreMultihop(q, row, body) {
+  row.partial = Boolean(q.partial);
+  row.sources = q.sources.length;
+  row.sourceHits = q.sources.filter((s) => body.citations.some((c) => c.fileName === s.document && s.pages.includes(c.page))).length;
+  row.factHits = q.sources.filter((s) => s.expect.split('|').some((e) => containsFact(body.answer, e))).length;
+  row.steps = body.reasoning?.steps?.length ?? 0;
+  row.notFoundSteps = body.reasoning?.steps?.filter((s) => !s.found).length ?? 0;
+  row.contradictions = body.reasoning?.contradictions?.length ?? 0;
+  if (row.partial) row.statesMissing = statesMissing(body.answer);
+}
+
+function multihopSummary(rows, arm) {
+  const ok = rows.filter((r) => r.status === 200);
+  const partial = rows.filter((r) => r.partial);
+  const sources = ok.reduce((n, r) => n + r.sources, 0);
+  return {
+    mode, chatModel: model, arm, questions: rows.length, samples: SAMPLES,
+    errors: rows.length - ok.length,
+    decomposedRate: ratio(ok.filter((r) => r.steps > 0).length, rows.length),
+    sourceHitRate: ratio(ok.reduce((n, r) => n + r.sourceHits, 0), sources),
+    allSourcesCitedRate: ratio(ok.filter((r) => r.sourceHits === r.sources).length, rows.length),
+    factRate: ratio(ok.reduce((n, r) => n + r.factHits, 0), sources),
+    allFactsRate: ratio(ok.filter((r) => r.factHits === r.sources).length, rows.length),
+    partialStatesMissing: ratio(partial.filter((r) => r.statesMissing).length, partial.length),
+    contradictionNotes: ok.reduce((n, r) => n + r.contradictions, 0),
+    latencyMs: { p50: percentile(rows.map((r) => r.ms), 50), p95: percentile(rows.map((r) => r.ms), 95),
+      max: Math.max(...rows.map((r) => r.ms)) },
+  };
+}
+
 const files = readdirSync(SAMPLES_DIR).filter((f) => f.endsWith('.pdf')).sort();
 // Leftovers of an earlier run would be cited too: this account starts empty.
 for (const doc of (await (await api("/v1/documents?size=100")).json()).data ?? []) {
@@ -98,10 +160,14 @@ await waitReady(ids);
 // Upload to READY for all samples (parse + chunk + embed), to the 3 s polling step (ADR-0032 ingestion cost).
 const ingestionWallMs = Math.round(performance.now() - ingestionStarted);
 
-const rows = [];
+let rows = [];
 let model = 'unknown';
 let mode = 'unknown';
+const arms = {};
 try {
+  for (const arm of COMPARE ? ['off', 'on'] : [null]) {
+  if (arm) await restartWithReasoning(arm === 'on');
+  rows = [];
   for (const q of set.questions) {
     const started = performance.now();
     const res = await api('/v1/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -114,7 +180,9 @@ try {
       row.found = body.found;
       row.citations = body.citations.map((c) => `${c.fileName}#${c.page}`);
       row.answer = body.answer;
-      if (q.answerable) {
+      if (SET === 'multihop') {
+        scoreMultihop(q, row, body);
+      } else if (q.answerable) {
         row.citationHit = body.citations.some((c) => c.fileName === q.document && q.pages.includes(c.page));
         row.citationsOnPage = body.citations.filter((c) => c.fileName === q.document && q.pages.includes(c.page)).length;
         row.factFound = q.expect.split('|').some((e) => containsFact(body.answer, e));
@@ -126,10 +194,50 @@ try {
       row.error = body?.error?.code;
     }
     rows.push(row);
-    console.log(`eval: ${q.id} ${res.status} ${ms} ms found=${row.found} hit=${row.citationHit ?? '-'} fact=${row.factFound ?? '-'}`);
+    console.log(SET === 'multihop'
+      ? `eval: ${arm ?? ''} ${q.id} ${res.status} ${ms} ms steps=${row.steps ?? '-'} sources=${row.sourceHits ?? '-'}/${q.sources.length} facts=${row.factHits ?? '-'}/${q.sources.length}`
+      : `eval: ${q.id} ${res.status} ${ms} ms found=${row.found} hit=${row.citationHit ?? '-'} fact=${row.factFound ?? '-'}`);
+  }
+  arms[arm ?? 'current'] = rows;
   }
 } finally {
   for (const id of ids) await api(`/v1/documents/${id}`, { method: 'DELETE' });
+  // --compare leaves the stack as it found it: the flag back to its default (off).
+  if (COMPARE) await restartWithReasoning(false);
+}
+
+if (SET === 'multihop') {
+  // ADR-0055: one file per arm, and with --compare the two summaries side by side with per-question differences.
+  let head = 'unknown';
+  try {
+    head = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd: ROOT }).toString().trim();
+  } catch { /* not a git checkout */ }
+  mkdirSync(join(ROOT, 'eval/results'), { recursive: true });
+  const name = model.replace(/[^A-Za-z0-9.-]/g, '_');
+  const summaries = {};
+  for (const [arm, armRows] of Object.entries(arms)) {
+    summaries[arm] = multihopSummary(armRows, arm);
+    const file = join(ROOT, 'eval/results', `multihop-${name}-${arm}.json`);
+    writeFileSync(file, JSON.stringify({ measuredAt: new Date().toISOString(), commit: head, summary: summaries[arm],
+      questions: armRows }, null, 2) + '\n');
+    console.log(`eval: ${arm} summary`, JSON.stringify(summaries[arm]));
+    console.log(`eval: written ${file}`);
+  }
+  if (COMPARE) {
+    const byId = (armRows) => new Map(armRows.map((r) => [r.id, r]));
+    const off = byId(arms.off);
+    const on = byId(arms.on);
+    const changed = set.questions.map((q) => ({ id: q.id,
+      sourceHits: [off.get(q.id)?.sourceHits ?? null, on.get(q.id)?.sourceHits ?? null],
+      factHits: [off.get(q.id)?.factHits ?? null, on.get(q.id)?.factHits ?? null],
+      ms: [off.get(q.id)?.ms ?? null, on.get(q.id)?.ms ?? null] }))
+      .filter((d) => d.sourceHits[0] !== d.sourceHits[1] || d.factHits[0] !== d.factHits[1]);
+    const file = join(ROOT, 'eval/results', `multihop-compare-${name}.json`);
+    writeFileSync(file, JSON.stringify({ measuredAt: new Date().toISOString(), commit: head, off: summaries.off,
+      on: summaries.on, changed }, null, 2) + '\n');
+    console.log(`eval: written ${file}`);
+  }
+  process.exit(0);
 }
 
 const answerable = rows.filter((r) => r.answerable);

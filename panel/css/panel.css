@@ -1150,6 +1150,14 @@ dialog.palette::backdrop { background: var(--scrim); }
 .card-body h3 { font-size: var(--text-md); font-weight: 600; margin: 4px 0 0; }
 .steps-list { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
 .notice ul { margin: 4px 0 8px; padding-left: 18px; }
+/* ADR-0055: a multi-step answer's "Nasıl araştırıldı", its not-found parts and known contradictions. */
+.reasoning { display: grid; gap: 8px; margin: 8px 0; }
+.reasoning-list { overflow-wrap: anywhere; }
+.reasoning-steps { border: 1px solid var(--border-muted); border-radius: 8px; padding: 6px 10px; font-size: var(--text-sm); }
+.reasoning-steps > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--fg-muted); font-weight: 600; }
+.reasoning-steps > .sub { margin: 6px 0; color: var(--fg-muted); }
+.reasoning-steps .steps-list { margin: 0 0 4px; overflow-wrap: anywhere; }
+.reasoning-steps li.missing { color: var(--fg-muted); }
 .subject-result:empty { display: none; }
 .chunk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .chunk { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--border-muted); border-radius: var(--r-md); background: var(--bg-surface); }

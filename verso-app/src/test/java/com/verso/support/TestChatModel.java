@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import com.verso.qa.service.FollowUpRewriter;
+import com.verso.qa.service.QuestionDecomposer;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -44,6 +45,9 @@ public final class TestChatModel implements ChatModel {
     private volatile Duration tokenDelay = Duration.ZERO;
     private final AtomicInteger emittedTokens = new AtomicInteger();
     private final AtomicBoolean streamCancelled = new AtomicBoolean();
+    private final AtomicInteger decomposeCalls = new AtomicInteger();
+    private volatile Function<Prompt, String> decompose = prompt -> "";
+    private volatile Duration decomposeDelay = Duration.ZERO;
 
     private static final Pattern WORD = Pattern.compile("\\s*\\S+\\s*");
 
@@ -70,6 +74,28 @@ public final class TestChatModel implements ChatModel {
         tokenDelay = Duration.ZERO;
         emittedTokens.set(0);
         streamCancelled.set(false);
+        decomposeCalls.set(0);
+        decompose = prompt -> "";
+        decomposeDelay = Duration.ZERO;
+    }
+
+    /** What multi-step decompositions return (ADR-0055); the default is no valid decomposition (single pass). */
+    public void decompose(Function<Prompt, String> function) {
+        decompose = function;
+    }
+
+    /** A decomposition that takes this long (the time-out fallback, ADR-0055). */
+    public void decomposeAfter(Duration delay) {
+        decomposeDelay = delay;
+    }
+
+    public int decomposeCalls() {
+        return decomposeCalls.get();
+    }
+
+    private static boolean isDecomposition(Prompt prompt) {
+        return !prompt.getInstructions().isEmpty()
+                && QuestionDecomposer.SYSTEM.equals(prompt.getInstructions().getFirst().getText());
     }
 
     /** A streamed answer emits one word every {@code delay} (ADR-0035 tests: cancellation, time bound). */
@@ -155,6 +181,18 @@ public final class TestChatModel implements ChatModel {
 
     @Override
     public ChatResponse call(Prompt prompt) {
+        if (isDecomposition(prompt)) {
+            decomposeCalls.incrementAndGet();
+            if (!decomposeDelay.isZero()) {
+                try {
+                    Thread.sleep(decomposeDelay);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("interrupted");
+                }
+            }
+            return new ChatResponse(List.of(new Generation(new AssistantMessage(decompose.apply(prompt)))));
+        }
         if (isRewrite(prompt)) {
             rewriteCalls.incrementAndGet();
             lastRewritePrompt = prompt;

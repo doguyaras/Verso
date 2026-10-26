@@ -215,6 +215,22 @@ verso:
       max-query-chars: 300
       timeout: 10s
       answer-with-context: false
+    # Bounded multi-step reasoning (ADR-0055, ADR-0048 phase 5): a comparison or multi-part question the cheap gate
+    # picks ("fark", "karşılaştır", "hem … hem", "X ile Y arasında", two question words, or two systems/codes of the
+    # system model) is split by one chat call into at most 3 standalone sub-questions; each is searched like a
+    # question (hybrid, access filter, gate); one synthesis call answers over the passages grouped per sub-question
+    # (two chat calls whatever N, not N + 1). A sub-question without passages is stated as "bulunamadı"; contradiction notes come only from
+    # stored offline checks. Busy slot, time-out or invalid output: the single-pass answer. Off until measured on
+    # eval/multihop-set.json (VERSO_QA_REASONING_ENABLED, docs/evidence/cok-adimli-akil-yurutme.md).
+    reasoning:
+      enabled: ${VERSO_QA_REASONING_ENABLED:false}
+      max-sub-questions: 3
+      max-sub-question-chars: 200
+      passages-per-step: 3
+      max-passages: 6
+      entity-gate: true
+      decompose-timeout: 10s
+      timeout: 20s
     # Answer groundedness (ADR-0047): after the citations are validated, each cited answer sentence that states a
     # number, a number word or a code is compared with its cited passages (in-process, lexical, a fraction of a
     # millisecond). Unsupported sentences go to "unverified" in the answer and the citations event; the text is never

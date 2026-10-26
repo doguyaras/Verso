@@ -1,6 +1,6 @@
 # ADR-0048: Öğrenen bilgi katmanı (mimari)
 
-- **Durum:** Kabul edildi. Faz 1 uygulandı (ADR-0049), faz 2 teşhis ve kancalar uygulandı (ADR-0052; geri bildirim ağırlığı ayrı karara kaldı); faz 3 onaylı prosedürler (SKILL.md) uygulandı (ADR-0053; cevabın üstünde gösterme varsayılan kapalı); faz 4 hafif tipli sistem modeli uygulandı (ADR-0054; arama zenginleştirme ve öneri geçişi varsayılan kapalı); faz 5 planlı, kendi ADR'siyle açılır.
+- **Durum:** Kabul edildi. Faz 1 uygulandı (ADR-0049), faz 2 teşhis ve kancalar uygulandı (ADR-0052; geri bildirim ağırlığı ayrı karara kaldı); faz 3 onaylı prosedürler (SKILL.md) uygulandı (ADR-0053; cevabın üstünde gösterme varsayılan kapalı); faz 4 hafif tipli sistem modeli uygulandı (ADR-0054; arama zenginleştirme ve öneri geçişi varsayılan kapalı); faz 5 sınırlı çok adımlı akıl yürütme uygulandı (ADR-0055; varsayılan kapalı, gerçek modelle ölçüm bekliyor).
 - **Tarih:** 2026-10-26
 - **Karar verenler:** doguyaras. İstek: kurucunun ürün yönü ("dümdüz döküman atalım öğrenilsin cevap versin olarak bakma; sektörde bir farkımız olmalı").
 - **Dayanak:** araştırma notu `research_notes/Verso öğrenen bilgi katmanı/research.md` (repo dışında, 29 kaynak; Glean, Guru, Kapa, Copilot Studio, Stack Overflow, Self-RAG/CRAG, ExpeL, Mem0, PoisonedRAG, Agent Skills, LazyGraphRAG, KAG, BetrVG §87).

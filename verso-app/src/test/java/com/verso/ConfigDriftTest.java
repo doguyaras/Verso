@@ -60,6 +60,8 @@ class ConfigDriftTest {
             "verso.qa.followup.enabled",
             // The groundedness check switch (ADR-0047).
             "verso.qa.grounding.enabled",
+            // The multi-step reasoning switch (ADR-0055).
+            "verso.qa.reasoning.enabled",
             // The audit schema's own connection and Flyway (ADR-0026): same database, its own roles.
             "verso.audit.datasource.url",
             "verso.audit.datasource.username",

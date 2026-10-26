@@ -72,6 +72,11 @@ final class QuestionEventStream implements AnswerStream {
     }
 
     @Override
+    public boolean subQuestion(int step, int steps) {
+        return send(STAGE, new StreamStageEvent(AnswerStage.SUB_QUESTION, null, null, step, steps));
+    }
+
+    @Override
     public boolean delta(String text) {
         return send(DELTA, new StreamDeltaEvent(text));
     }

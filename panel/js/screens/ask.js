@@ -16,6 +16,7 @@ import { markUnverified, prune, tintSentences, writeMarked } from '../highlight.
 import { icon, logo } from '../icons.js';
 import { canApprove, memoryBadge } from '../knowledge.js';
 import { procedureModel } from '../skills.js';
+import { reasoningModel } from '../reasoning.js';
 import { ROLES } from '../roles.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { ratingControls } from '../rating.js';
@@ -114,6 +115,30 @@ function procedureBox(result) {
       model.description ? el('div', {}, model.description) : null,
       el('ol', { class: 'steps-list' }, model.steps.map((step) => el('li', {}, step.text,
         step.sources.length ? el('span', { class: 'sub' }, ` (${step.sources.join('; ')})`) : null)))));
+}
+
+/**
+ * ADR-0055: a multi-step answer's parts the documents held nothing for, the contradictions Verso already knew between
+ * two cited sources, and the collapsible "Nasıl araştırıldı" with the sub-questions. Null for a single-pass answer.
+ * Sub-questions are model text: text content only.
+ */
+function reasoningBox(result) {
+  const model = reasoningModel(result);
+  if (!model) return null;
+  return el('div', { class: 'reasoning' },
+    model.missing.length ? el('div', { class: 'notice neutral reasoning-missing', role: 'note' }, icon('search', 'sm'),
+      el('div', { class: 'grow' }, el('strong', {}, 'Belgelerde bulunamayan kısım'),
+        el('ul', { class: 'reasoning-list' }, model.missing.map((line) => el('li', {}, line))))) : null,
+    model.contradictions.map((note) => el('div', { class: 'notice wait reasoning-conflict', role: 'note' }, icon('alert', 'sm'),
+      el('div', { class: 'grow' }, el('strong', {}, 'Belgeler arasında çelişki'), el('div', {}, note.text),
+        el('ul', { class: 'reasoning-list' }, note.sources.map((source) => el('li', {}, source))),
+        el('div', { class: 'sub' }, note.origin)))),
+    el('details', { class: 'reasoning-steps' },
+      el('summary', {}, icon('layers', 'sm'), model.title),
+      el('p', { class: 'sub' }, model.summary),
+      el('ol', { class: 'steps-list' }, model.steps.map((step) => el('li', { class: step.found ? null : 'missing' },
+        step.text,
+        el('span', { class: 'sub' }, step.found ? (step.sources ? ` (${step.sources})` : ' (kaynak gösterilmedi)') : ' (bulunamadı)'))))));
 }
 
 function outcomeBadge(result) {
@@ -351,6 +376,8 @@ function answerView(entry, actions) {
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.edit(entry.question) }, icon('edit', 'sm'), 'Soruyu düzenle'),
           el('button', { class: 'button secondary sm', type: 'button', onclick: () => actions.navigate('documents', { upload: true }) }, icon('upload', 'sm'), 'Belge yükle'))))
       : text.box,
+    // ADR-0055: how a multi-step answer was researched, what was not found, known contradictions.
+    reasoningBox(result),
     result.outcome === 'UNCITED' && !unverified
       ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), el('div', { class: 'grow' },
         // A turn from the history keeps its outcome but not the sentences (ADR-0047): with citations, say why.

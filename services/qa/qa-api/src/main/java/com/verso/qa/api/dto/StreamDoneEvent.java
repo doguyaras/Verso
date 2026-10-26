@@ -8,12 +8,15 @@ import java.util.UUID;
  * (ADR-0023); the answer stands. {@code contextQuery} (ADR-0046, added last) as in {@link AnswerResponse}.
  * {@code memory} (ADR-0049, added last) as in {@link AnswerResponse}: set when a verified answer card was served.
  * {@code procedure} (ADR-0053, added last) as in {@link AnswerResponse}: an approved skill that matched the question.
+ * {@code reasoning} (ADR-0055, added last) as in {@link AnswerResponse}: the sub-questions of a multi-step answer.
  */
 public record StreamDoneEvent(AnswerOutcome outcome, boolean found, String mode, String model, UUID conversationId,
-                              UUID turnId, String contextQuery, KnowledgeMemory memory, ProcedureMatch procedure) {
+                              UUID turnId, String contextQuery, KnowledgeMemory memory, ProcedureMatch procedure,
+                              ReasoningTrace reasoning) {
 
     public static StreamDoneEvent of(AnswerResponse answer) {
         return new StreamDoneEvent(answer.outcome(), answer.found(), answer.mode(), answer.model(),
-                answer.conversationId(), answer.turnId(), answer.contextQuery(), answer.memory(), answer.procedure());
+                answer.conversationId(), answer.turnId(), answer.contextQuery(), answer.memory(), answer.procedure(),
+                answer.reasoning());
     }
 }

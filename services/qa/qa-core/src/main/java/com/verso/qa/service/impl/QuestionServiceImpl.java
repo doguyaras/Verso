@@ -38,7 +38,16 @@ import com.verso.qa.service.PromptBuilder.BuiltPrompt;
 import com.verso.qa.service.QaMetrics;
 import com.verso.qa.service.QaMetrics.Outcome;
 import com.verso.qa.service.QuestionService;
+import com.verso.qa.api.dto.ReasoningTrace;
+import com.verso.qa.api.dto.ReasoningTrace.ContradictionNote;
+import com.verso.qa.config.QaReasoningProperties;
+import com.verso.qa.service.MultiStepReasoning;
+import com.verso.qa.service.MultiStepReasoning.Merged;
+import com.verso.qa.service.MultiStepReasoning.Step;
+import com.verso.qa.service.MultiStepReasoning.Trigger;
+import com.verso.qa.service.ReasoningGate.Reason;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -90,6 +99,14 @@ import reactor.core.scheduler.Schedulers;
  * short time bound, skipped by a cheap heuristic for standalone questions. Retrieval uses the rewritten query; the
  * answer prompt keeps the question as asked. Any rewrite failure searches the question as asked.
  *
+ * With multi-step reasoning on (ADR-0055, off by default), a comparison or multi-part question that the cheap gate
+ * picks is split by one chat call (same slot, own short bound) into at most three standalone sub-questions; each is
+ * searched like a question with the caller's reader, and one synthesis call answers over the passages grouped per
+ * sub-question, so N sub-questions cost two chat calls (one decomposition, one answer), not the N + 1 of answering
+ * each sub-question.
+ * A busy slot, a time-out, an invalid decomposition or a failed sub-search falls back to the single pass over the
+ * passages already retrieved for the whole question.
+ *
  * The streamed variant (ADR-0035) runs the same steps with the same bulkhead, circuit and time bound; only the chat
  * call is a token stream, and citations are still mapped once, on the whole text, at the end. A client that leaves
  * cancels the provider request and nothing is stored.
@@ -126,13 +143,15 @@ public class QuestionServiceImpl implements QuestionService {
     private final GroundingCheck grounding;
     private final AnswerMemory memory;
     private final SkillMatcher procedures;
+    private final MultiStepReasoning reasoning;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
                                QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory,
-                               SkillMatcher procedures) {
+                               SkillMatcher procedures, MultiStepReasoning reasoning) {
+        this.reasoning = reasoning;
         this.memory = memory;
         this.procedures = procedures;
         this.grounding = grounding;
@@ -164,8 +183,11 @@ public class QuestionServiceImpl implements QuestionService {
         Found found = find(reader, search.query());
         Retrieved retrieved = found.retrieved();
         Answered answered;
+        Plan plan = found.served() == null ? plan(reader, search, found, null) : null;
         if (found.served() != null) {
             answered = fromMemory(found, search, started, ANSWERED);
+        } else if (plan != null) {
+            answered = multiStep(reader, question, plan, retrieved, search, started, ANSWERED, null);
         } else if (retrieved.relevant().isEmpty()) {
             answered = notFound(retrieved, search, started, ANSWERED);
         } else {
@@ -195,10 +217,17 @@ public class QuestionServiceImpl implements QuestionService {
             Found found = find(reader, search.query());
             Retrieved retrieved = found.retrieved();
             Answered answered;
+            Plan plan;
             if (found.served() != null) {
                 // ADR-0049: "Onaylı bilgi bulundu"; the verified text follows in the citations event, no delta.
                 if (!out.stage(AnswerStage.MEMORY_FOUND, 0, 0)) throw new Cancelled();
                 answered = fromMemory(found, search, started, STREAMED);
+            } else if ((plan = plan(reader, search, found, out)) != null) {
+                // ADR-0055: the merged passages of the sub-questions are what goes to the model.
+                if (!out.stage(AnswerStage.PASSAGES_FOUND, plan.merged().retrieved(), plan.merged().passages().size())) {
+                    throw new Cancelled();
+                }
+                answered = multiStep(reader, question, plan, retrieved, search, started, STREAMED, out);
             } else if (!out.stage(AnswerStage.PASSAGES_FOUND, retrieved.passages().size(), retrieved.relevant().size())) {
                 // A client that left during retrieval costs no model call.
                 throw new Cancelled();
@@ -291,6 +320,97 @@ public class QuestionServiceImpl implements QuestionService {
     /** The answer prompt gets the rewritten query only when configured (measured, ADR-0046). */
     private String answerContext(Search search) {
         return followUp.answerWithContext() ? search.contextQuery() : null;
+    }
+
+    /**
+     * A multi-step answer ready for synthesis (ADR-0055): why the gate fired, the merged passages of the sub-questions,
+     * the whole question's gate decision (for the log), the retrieval time (whole question and sub-questions) and the
+     * decomposition time.
+     */
+    private record Plan(Trigger trigger, Merged merged, Decision decision, long retrievalMs, long decomposeMs) {
+    }
+
+    /**
+     * ADR-0055: the gate, the decomposition call and one search per sub-question, within the overall bound. Null means
+     * the single pass: reasoning off, a verified card served, the gate not firing, or a fallback (busy slot, time-out,
+     * invalid decomposition, failed sub-search, or sub-questions finding nothing where the whole question found
+     * something). The question searched and decomposed is the one retrieval used (a follow-up's standalone rewrite).
+     */
+    private Plan plan(Reader reader, Search search, Found found, AnswerStream out) {
+        if (!reasoning.enabled() || found.served() != null) return null;
+        Trigger trigger = reasoning.trigger(reader, search.query());
+        if (trigger.reason() == Reason.NONE) {
+            metrics.reasoning("not_triggered");
+            return null;
+        }
+        QaReasoningProperties limits = reasoning.properties();
+        long begun = System.nanoTime();
+        long deadline = begun + limits.timeout().toNanos();
+        if (out != null && !out.stage(AnswerStage.DECOMPOSING, 0, 0)) throw new Cancelled();
+        Optional<List<String>> subQuestions;
+        try {
+            String output = textOf(call(request(reasoning.decompositionPrompt(search.query(), trigger)),
+                    limits.decomposeTimeout(), true));
+            subQuestions = reasoning.subQuestions(output, search.query());
+        } catch (CallFailed e) {
+            metrics.decomposeTook(elapsedMs(begun));
+            return fallback(switch (e.reason) {
+                case "TIMEOUT" -> "fallback_timeout";
+                case "NO_CHAT_SLOT" -> "fallback_busy";
+                default -> "fallback_failed";
+            }, trigger, begun);
+        }
+        long decomposeMs = elapsedMs(begun);
+        metrics.decomposeTook(decomposeMs);
+        if (subQuestions.isEmpty()) return fallback("fallback_invalid", trigger, begun);
+        List<String> questions = subQuestions.get();
+        List<Step> steps = new ArrayList<>(questions.size());
+        long searchStarted = System.nanoTime();
+        for (int i = 0; i < questions.size(); i++) {
+            if (System.nanoTime() - deadline > 0) return fallback("fallback_timeout", trigger, begun);
+            if (out != null && !out.subQuestion(i + 1, questions.size())) throw new Cancelled();
+            try {
+                // The caller's reader: a sub-question reaches exactly the passages the question could (ADR-0028).
+                steps.add(reasoning.search(reader, questions.get(i)));
+            } catch (ServiceException e) {
+                return fallback("fallback_retrieval", trigger, begun);
+            }
+        }
+        if (System.nanoTime() - deadline > 0) return fallback("fallback_timeout", trigger, begun);
+        Merged merged = reasoning.merge(steps);
+        if (!merged.anyFound() && !found.retrieved().relevant().isEmpty()) {
+            return fallback("fallback_no_passages", trigger, begun);
+        }
+        metrics.reasoning("decomposed");
+        return new Plan(trigger, merged, found.retrieved().decision(),
+                found.retrieved().retrievalMs() + elapsedMs(searchStarted), decomposeMs);
+    }
+
+    private Plan fallback(String result, Trigger trigger, long begun) {
+        metrics.reasoning(result);
+        log.info("Multi-step reasoning fell back: result={} trigger={} elapsedMs={}", result,
+                trigger.reason().name().toLowerCase(Locale.ROOT), elapsedMs(begun));
+        return null;
+    }
+
+    /**
+     * ADR-0055: the synthesis call over the passages grouped per sub-question, validated like any answer (citations on
+     * the one merged list, groundedness against the question as asked). Nothing found for any sub-question nor for
+     * the whole question: the fixed "not found" answer with no model call, and the trace.
+     */
+    private Answered multiStep(Reader reader, String question, Plan plan, Retrieved whole, Search search, long started,
+                               String event, AnswerStream out) {
+        if (!plan.merged().anyFound()) {
+            Answered none = notFound(whole, search, started, event);
+            return new Answered(none.response().withReasoning(MultiStepReasoning.trace(plan.merged(), List.of(),
+                    List.of())), plan.retrievalMs(), 0);
+        }
+        Retrieved merged = new Retrieved(plan.merged().passages(), plan.merged().passages(), plan.decision(),
+                plan.retrievalMs());
+        BuiltPrompt prompt = promptBuilder.buildMultiStep(question, plan.merged(), answerContext(search));
+        long chatStarted = System.nanoTime();
+        String raw = out == null ? chat(prompt) : streamChat(prompt, out);
+        return cited(question, raw, prompt, merged, search, elapsedMs(chatStarted), started, event, reader, plan);
     }
 
     /** The answer and where its time went (stored with the turn, ADR-0023). */
@@ -392,6 +512,16 @@ public class QuestionServiceImpl implements QuestionService {
     /** Maps the markers of the whole model text to the retrieved passages (llm-rules 3.3), the same for both paths. */
     private Answered cited(String question, String raw, BuiltPrompt prompt, Retrieved retrieved, Search search,
                            long chatMs, long started, String event) {
+        return cited(question, raw, prompt, retrieved, search, chatMs, started, event, null, null);
+    }
+
+    /**
+     * With a {@code plan} (ADR-0055): the explicit "not found" sentence of every sub-question without passages is
+     * appended after the model text (so the groundedness offsets stay valid), and the trace with the stored
+     * contradictions between cited passages is attached.
+     */
+    private Answered cited(String question, String raw, BuiltPrompt prompt, Retrieved retrieved, Search search,
+                           long chatMs, long started, String event, Reader reader, Plan plan) {
         metrics.chatTook(chatMs);
         Extracted extracted = citations.extract(raw, retrieved.relevant());
         // ADR-0047: after the citations are validated, on the same numbering. The answer text is never changed.
@@ -404,18 +534,32 @@ public class QuestionServiceImpl implements QuestionService {
         if (grounding.unverified() != null) {
             metrics.grounding(grounding.cited(), grounding.checked(), grounding.unverified().size());
         }
+        String answer = extracted.answer();
+        ReasoningTrace trace = null;
+        if (plan != null) {
+            String missing = MultiStepReasoning.notFoundSentences(plan.merged());
+            if (!missing.isEmpty() && outcome != AnswerOutcome.NOT_FOUND) answer = answer + "\n\n" + missing;
+            List<ContradictionNote> notes = reasoning.contradictions(reader, search.query(), plan.trigger(),
+                    extracted.citations(), retrieved.relevant());
+            trace = MultiStepReasoning.trace(plan.merged(), extracted.citations(), notes);
+        }
         log.info("{}: passages={} relevant={} answerability={} citations={} promptChars={} answerChars={} "
-                        + "followUp={} rewriteMs={} retrievalMs={} chatMs={} totalMs={} unverified={} outcome={}",
+                        + "followUp={} rewriteMs={} retrievalMs={} chatMs={} totalMs={} unverified={} reasoning={} "
+                        + "steps={} notFoundSteps={} decomposeMs={} contradictions={} outcome={}",
                 event, retrieved.passages().size(), retrieved.relevant().size(),
                 retrieved.decision().name().toLowerCase(Locale.ROOT), extracted.citations().size(),
-                prompt.system().length() + prompt.user().length(), extracted.answer().length(), search.result(),
+                prompt.system().length() + prompt.user().length(), answer.length(), search.result(),
                 search.rewriteMs(), retrieved.retrievalMs(), chatMs, elapsedMs(started),
                 grounding.unverified() == null ? "off" : grounding.unverified().size(),
+                plan != null ? "multi_step" : reasoning.enabled() ? "single" : "off",
+                plan == null ? 0 : plan.merged().questions().size(), plan == null ? 0 : plan.merged().notFound(),
+                plan == null ? 0 : plan.decomposeMs(), trace == null ? 0 : trace.contradictions().size(),
                 outcome.name().toLowerCase(Locale.ROOT));
         metrics.record(Outcome.valueOf(outcome.name()));
-        return new Answered(new AnswerResponse(extracted.answer(), outcome == AnswerOutcome.ANSWERED, outcome,
+        AnswerResponse response = new AnswerResponse(answer, outcome == AnswerOutcome.ANSWERED, outcome,
                 extracted.citations(), ai.mode().header(), ai.chatModel(), null, null, search.contextQuery(),
-                grounding.unverified()), retrieved.retrievalMs(), chatMs);
+                grounding.unverified());
+        return new Answered(trace == null ? response : response.withReasoning(trace), retrieved.retrievalMs(), chatMs);
     }
 
     /** After the answer, outside any model call: one short transaction in the qa schema (llm-rules 5.1). */
@@ -440,6 +584,16 @@ public class QuestionServiceImpl implements QuestionService {
         if (!acquired) {
             metrics.record(Outcome.MODEL_BUSY);
             throw new QaServiceException(QaErrorCode.MODEL_BUSY, "NO_CHAT_SLOT");
+        }
+    }
+
+    /** A chat slot within the usual wait, or false; nothing counted (the optional decomposition call, ADR-0055). */
+    private boolean tryAcquireSlot() {
+        try {
+            return chatSlots.tryAcquire(properties.chatWait().toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 
@@ -469,7 +623,19 @@ public class QuestionServiceImpl implements QuestionService {
      * reason, which the caller turns into a 503 (the answer) or a fallback (the follow-up rewrite, ADR-0046).
      */
     private ChatResponse call(Prompt request, Duration timeout) {
-        acquireSlot();
+        return call(request, timeout, false);
+    }
+
+    /**
+     * {@code optional} (ADR-0055 decomposition): a busy slot is a {@link CallFailed} "NO_CHAT_SLOT" the caller falls
+     * back from, not a 503 and not a MODEL_BUSY outcome (the question itself still gets its answer call).
+     */
+    private ChatResponse call(Prompt request, Duration timeout, boolean optional) {
+        if (!optional) {
+            acquireSlot();
+        } else if (!tryAcquireSlot()) {
+            throw new CallFailed("NO_CHAT_SLOT");
+        }
         Future<ChatResponse> call;
         // The slot is freed when the call really ends, not when the question gives up (bulkhead). Whoever claims
         // "started" owns the release: the task when it runs, the caller when it cancels a task that never started

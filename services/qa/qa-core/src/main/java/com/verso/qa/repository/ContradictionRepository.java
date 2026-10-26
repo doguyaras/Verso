@@ -84,6 +84,17 @@ public class ContradictionRepository {
                 .query(ContradictionRepository::candidate).optional();
     }
 
+    /**
+     * ADR-0055: the stored candidates whose two chunks are both among {@code chunkIds} (the passages one answer cited).
+     * Ids and hashes only; the caller compares the hashes with the passages it holds. Empty for fewer than two ids.
+     */
+    public List<Candidate> between(java.util.Collection<UUID> chunkIds) {
+        if (chunkIds.size() < 2) return List.of();
+        return db.jdbc().sql("SELECT * FROM qa.contradiction_candidate WHERE chunk_a IN (:ids) AND chunk_b IN (:ids) "
+                        + "ORDER BY id")
+                .param("ids", List.copyOf(chunkIds)).query(ContradictionRepository::candidate).list();
+    }
+
     /** Live cards (DRAFT, VERIFIED, DISPUTED) bound to either chunk of a candidate. */
     public List<UUID> liveCardsBoundTo(UUID chunkA, UUID chunkB) {
         return db.jdbc().sql("SELECT DISTINCT s.card_id FROM qa.knowledge_card_source s "

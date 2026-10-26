@@ -52,7 +52,10 @@ class QaApiContractTest {
                 com.verso.qa.api.dto.SkillSummary.class, com.verso.qa.api.dto.SkillResponse.class,
                 com.verso.qa.api.dto.SkillVersionDiff.class, com.verso.qa.api.dto.SkillSuggestion.class,
                 com.verso.qa.api.dto.ProcedureMatch.class, com.verso.qa.api.dto.SkillListing.class,
-                com.verso.qa.api.dto.SkillDocument.class)) {
+                com.verso.qa.api.dto.SkillDocument.class,
+                // ADR-0055: the multi-step trace
+                com.verso.qa.api.dto.ReasoningTrace.class, com.verso.qa.api.dto.ReasoningTrace.Step.class,
+                com.verso.qa.api.dto.ReasoningTrace.ContradictionNote.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
     }
@@ -72,13 +75,15 @@ class QaApiContractTest {
         assertThat(stored.unverified()).as("the nine-argument constructor: no groundedness check").isNull();
         // ADR-0046 added contextQuery after them, ADR-0047 unverified after that: the JSON still only grows.
         var components = AnswerResponse.class.getRecordComponents();
-        assertThat(components[components.length - 6].getName()).isEqualTo("conversationId");
-        assertThat(components[components.length - 5].getName()).isEqualTo("turnId");
-        assertThat(components[components.length - 4].getName()).isEqualTo("contextQuery");
-        assertThat(components[components.length - 3].getName()).isEqualTo("unverified");
+        assertThat(components[components.length - 7].getName()).isEqualTo("conversationId");
+        assertThat(components[components.length - 6].getName()).isEqualTo("turnId");
+        assertThat(components[components.length - 5].getName()).isEqualTo("contextQuery");
+        assertThat(components[components.length - 4].getName()).isEqualTo("unverified");
         // ADR-0049: the answer memory's field after all of them; ADR-0053: the matching procedure after that.
-        assertThat(components[components.length - 2].getName()).isEqualTo("memory");
-        assertThat(components[components.length - 1].getName()).isEqualTo("procedure");
+        assertThat(components[components.length - 3].getName()).isEqualTo("memory");
+        assertThat(components[components.length - 2].getName()).isEqualTo("procedure");
+        // ADR-0055: the multi-step trace after all of them.
+        assertThat(components[components.length - 1].getName()).isEqualTo("reasoning");
         assertThat(stored.memory()).as("a model answer has no memory field").isNull();
         assertThat(stored.procedure()).as("no procedure unless one matched").isNull();
         var procedure = new com.verso.qa.api.dto.ProcedureMatch(java.util.UUID.randomUUID(), "izin-talebi", "d",
@@ -87,9 +92,16 @@ class QaApiContractTest {
         assertThat(com.verso.qa.api.dto.StreamDoneEvent.of(answer.withProcedure(procedure)).procedure())
                 .isEqualTo(procedure);
         var done = com.verso.qa.api.dto.StreamDoneEvent.class.getRecordComponents();
-        assertThat(done[done.length - 3].getName()).isEqualTo("contextQuery");
-        assertThat(done[done.length - 2].getName()).isEqualTo("memory");
-        assertThat(done[done.length - 1].getName()).isEqualTo("procedure");
+        assertThat(done[done.length - 4].getName()).isEqualTo("contextQuery");
+        assertThat(done[done.length - 3].getName()).isEqualTo("memory");
+        assertThat(done[done.length - 2].getName()).isEqualTo("procedure");
+        assertThat(done[done.length - 1].getName()).isEqualTo("reasoning");
+        // ADR-0055: the sub-question position comes after the ADR-0035 counts; a stage without one leaves it null.
+        assertThat(com.verso.qa.api.dto.StreamStageEvent.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .containsExactly("stage", "retrieved", "relevant", "step", "steps");
+        assertThat(new com.verso.qa.api.dto.StreamStageEvent(com.verso.qa.api.dto.AnswerStage.RETRIEVING, null, null)
+                .step()).isNull();
         var citations = com.verso.qa.api.dto.StreamCitationsEvent.class.getRecordComponents();
         assertThat(citations).extracting(java.lang.reflect.RecordComponent::getName)
                 .containsExactly("answer", "citations", "unverified");
@@ -114,7 +126,8 @@ class QaApiContractTest {
     @Test
     void answerStage_whenListed_putsRewritingBeforeRetrieval() {
         assertThat(com.verso.qa.api.dto.AnswerStage.values()).extracting(Enum::name)
-                .containsExactly("REWRITING", "RETRIEVING", "MEMORY_FOUND", "PASSAGES_FOUND", "WRITING");
+                .containsExactly("REWRITING", "RETRIEVING", "MEMORY_FOUND", "DECOMPOSING", "SUB_QUESTION", "PASSAGES_FOUND",
+                        "WRITING");
     }
 
     /** The feedback rules a client can break before the server looks at the turn (ADR-0023). */

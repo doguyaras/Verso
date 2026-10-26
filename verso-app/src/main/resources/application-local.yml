@@ -40,6 +40,9 @@ verso:
     # Follow-up rewrite switch (ADR-0046), the same variable as the deploy; the rest of verso.qa.followup is shared.
     followup:
       enabled: ${VERSO_QA_FOLLOWUP_ENABLED:true}
+    # Multi-step reasoning switch (ADR-0055), the same variable as the deploy; the rest of verso.qa.reasoning is shared.
+    reasoning:
+      enabled: ${VERSO_QA_REASONING_ENABLED:false}
     # Groundedness check switch (ADR-0047), the same variable as the deploy.
     grounding:
       enabled: ${VERSO_QA_GROUNDING_ENABLED:true}

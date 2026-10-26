@@ -81,6 +81,17 @@ Kol, çalışan uygulamanın ayarıdır (`VERSO_QA_FOLLOWUP_ENABLED`, `verso.qa.
 
 `GroundingEvalTest` bu seti her build'de koşar: yanlış alarm 0, en az 26 doğru işaret.
 
+## Çok adımlı sorular (2026-10-27, ADR-0055)
+
+[`multihop-set.json`](multihop-set.json) 20 soru içerir: 7 karşılaştırma, 9 köprü (bir belgedeki bilgi diğerindeki adımı tamamlar), 4 çok parçalı.
+
+- **Kaynaklar:** 17 soru iki ayrı belge ister (örnek: BT ile müşteri desteğinin P1 ilk yanıt süreleri, satın alma prosedürü ile ERP onay basamakları). Her sorunun `sources` listesinde belge, sayfa(lar) ve cevapta geçmesi beklenen ifade (`expect`, eşanlamlılar `|` ile) vardır.
+- **Kısmi sorular:** `partial: true` olan 2 soruda bir parça hiçbir belgede yoktur (`missing`: kıdem tazminatı, maaş zammı); cevabın o parçayı "bulunamadı" diye açıkça söylemesi beklenir.
+- **Doğrulama:** her `expect` ifadesi belirtilen sayfanın `samples/src` metninde (PDF'lerin kaynağı, sayfalar `---` ile ayrılmış) bütün sözcük olarak geçer; `missing` konuları 11 belgenin hiçbirinde geçmez. `node --test scripts/multihop-set.test.js` bunu her koşuda denetler.
+- **Sözcüksel kapı:** `ReasoningGateEvalTest` her build'de koşar. Kapı çok adımlı 20 sorunun 19'unda ateşler (kaçan `mh-05`: karşılaştırma sözcüğü yok, iki sistem adı var; varlık kapısı gerçek belgelerle ölçülecek). Tek adımlı 140 sorunun 3'ünde ateşler (`depo-5`, `depo-11`: "fark" ad olarak; `erp-18`: "ERP ile WMS arasında").
+- **Uçtan uca ölçüm (bekliyor, gerçek model ve Docker ister):** `node scripts/eval.mjs --set multihop --compare`. Uygulama kapsayıcısı önce `VERSO_QA_REASONING_ENABLED=false`, sonra `true` ile yeniden oluşturulur; belgeler bir kez yüklenir. Sonuç: `results/multihop-<model>-off.json`, `-on.json` ve `multihop-compare-<model>.json`. Metrikler: kaynak isabeti (beklenen her belge ve sayfa atıfta mı), tüm kaynaklar atıfta oranı, olgu oranı, kısmi sorularda "bulunamadı" oranı, ayrıştırılan soru oranı, gecikme p50/p95. Ayrıntı: [`docs/evidence/cok-adimli-akil-yurutme.md`](../docs/evidence/cok-adimli-akil-yurutme.md).
+- **Önyargı:** set ve kapı sözcükleri aynı oturumda yazıldı; kapının setteki isabeti iyimserdir. Gerçek kullanıcı sorularında yeniden ölçülür.
+
 ## İki ölçüm
 
 | Ölçüm | Ne ölçer | Nasıl koşulur |

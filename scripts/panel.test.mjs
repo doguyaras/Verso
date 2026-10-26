@@ -1502,7 +1502,7 @@ test('stream: stages say only what the server did; the draft hides markers until
   assert.deepEqual(resultOf({ answer: 'A [1].', citations: [{ number: 1 }] },
     { outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' }),
   { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't',
-    contextQuery: null, unverified: null, memory: null, procedure: null });
+    contextQuery: null, unverified: null, memory: null, procedure: null, reasoning: null });
 });
 
 test('groundedness (ADR-0047): unverified sentences come from the citations event and are quoted as plain text', () => {
@@ -2768,4 +2768,41 @@ test('system map: the API paths encode types, keys and prefixes and never send w
     ['POST', '/v1/admin/system-map/suggestions/a%2Fb/reject', null]]);
   for (const code of [10050, 10051, 11080, 11081, 11082, 11083]) assert.ok(MESSAGES[code], String(code));
   signOut();
+});
+
+test('reasoning (ADR-0055): stages, the trace as plain text, the not-found parts and stored contradictions only', async () => {
+  const { reasoningModel, missingText, MAX_SUB_QUESTION } = await import('../panel/js/reasoning.js');
+  assert.equal(stageText({ stage: 'DECOMPOSING' }), 'Soru alt sorulara ayrılıyor');
+  assert.equal(stageText({ stage: 'SUB_QUESTION', step: 1, steps: 3 }), 'Alt soru 1/3 aranıyor');
+  assert.equal(stageText({ stage: 'SUB_QUESTION', step: null, steps: null }), 'Alt soru aranıyor');
+  // The done event carries the trace into the result; an older server's done has none.
+  const trace = { steps: [], contradictions: [] };
+  assert.equal(resultOf({ answer: 'a', citations: [] }, { outcome: 'ANSWERED', reasoning: trace }).reasoning, trace);
+  assert.equal(resultOf({ answer: 'a', citations: [] }, { outcome: 'ANSWERED' }).reasoning, null);
+  assert.equal(reasoningModel({ citations: [] }), null);
+  assert.equal(reasoningModel({ reasoning: { steps: [], contradictions: [] }, citations: [] }), null);
+
+  const citations = [{ number: 1, fileName: 'bt.pdf', page: 1, unit: 'PAGE' }, { number: 2, fileName: 'destek.pdf', page: 2, unit: 'PAGE' }];
+  const model = reasoningModel({ citations, reasoning: {
+    steps: [
+      { number: 1, question: 'BT P1 ilk‮ yanıt\nsüresi nedir?', found: true, citations: [1, 9] },
+      { number: 2, question: 'Kıdem tazminatı nasıl hesaplanır?', found: false, citations: [] },
+      { number: 3, question: 'x'.repeat(400), found: true, citations: [2] },
+      { number: 4, question: 'fazladan', found: true, citations: [] }],
+    contradictions: [{ first: 1, second: 2, source: 'CONTRADICTION_SCAN' }, { first: 1, second: 7, source: 'SYSTEM_MODEL' }] } });
+  assert.equal(model.title, 'Nasıl araştırıldı');
+  assert.equal(model.steps.length, 3, 'never more than three steps');
+  assert.equal(model.steps[0].text, 'BT P1 ilk yanıt süresi nedir?', 'one line, no bidi override');
+  assert.equal(model.steps[0].sources, '[1]', 'a citation the answer does not list is left out');
+  assert.equal([...model.steps[2].text].length, MAX_SUB_QUESTION);
+  assert.deepEqual(model.missing, ['“Kıdem tazminatı nasıl hesaplanır” için belgelerde bilgi bulunamadı.']);
+  assert.equal(missingText('A b c?'), '“A b c” için belgelerde bilgi bulunamadı.');
+  assert.equal(model.contradictions.length, 1, 'only notes between two listed citations');
+  assert.deepEqual(model.contradictions[0].sources, ['[1] bt.pdf, sayfa 1', '[2] destek.pdf, sayfa 2']);
+  assert.match(model.summary, /3 alt soruya ayrıldı; 2 tanesi/);
+
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /el\('details', \{ class: 'reasoning-steps' \}/, 'collapsible "Nasıl araştırıldı"');
+  assert.match(ask, /'Belgeler arasında çelişki'/);
+  assert.doesNotMatch(readFileSync('panel/js/reasoning.js', 'utf8'), /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'/);
 });

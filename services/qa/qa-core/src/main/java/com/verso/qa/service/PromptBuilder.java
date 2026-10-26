@@ -79,6 +79,59 @@ public class PromptBuilder {
         return new BuiltPrompt(SYSTEM, user.toString());
     }
 
+    /**
+     * ADR-0055: the synthesis rules after the answer rules. The model answers each sub-question from its own group and
+     * then the question; it is not asked to judge contradictions (stored offline checks do, research §5), and it writes
+     * nothing for a sub-question without passages: the server states those explicitly.
+     */
+    static final String SYSTEM_MULTI_STEP = SYSTEM + """
+            6. Pasajlar alt sorulara göre gruplanmıştır. Önce her alt soruyu kendi grubundaki pasajlarla cevapla, sonra \
+            asıl soruyu bu cevapları birleştirerek kısaca cevapla. Karşılaştırmada iki tarafı da kaynağıyla yaz.
+            7. "Bilgi bulunamadı" diye işaretlenen alt soru için tahmin yürütme ve bir şey yazma; o kısım cevaba ayrıca \
+            eklenir.
+            """;
+
+    /**
+     * The synthesis prompt of a multi-step answer (ADR-0055): the passages grouped per sub-question, numbered in one
+     * list (citation numbers are validated against it as for any answer), a passage two sub-questions share listed
+     * once and referred to by number, "Bilgi bulunamadı" for a sub-question without passages, then the question as
+     * asked. Sub-questions are model text: defused like the question.
+     */
+    public BuiltPrompt buildMultiStep(String question, MultiStepReasoning.Merged merged, String contextQuery) {
+        StringBuilder user = new StringBuilder("Alt sorulara göre pasajlar:\n\n");
+        for (int step = 0; step < merged.questions().size(); step++) {
+            user.append("Alt soru ").append(step + 1).append(": ")
+                    .append(defuse(merged.questions().get(step).strip())).append('\n');
+            if (!merged.found().get(step)) {
+                user.append("Bilgi bulunamadı.\n\n");
+                continue;
+            }
+            for (int i = 0; i < merged.passages().size(); i++) {
+                List<Integer> steps = merged.stepsOf().get(i);
+                if (!steps.contains(step)) continue;
+                int number = i + 1;
+                if (steps.getFirst() != step) {
+                    user.append("(Bu alt soru için BELGE ").append(number).append(" de geçerlidir.)\n");
+                    continue;
+                }
+                appendPassage(user, number, merged.passages().get(i));
+            }
+            user.append('\n');
+        }
+        user.append("Soru: ").append(defuse(question.strip()));
+        if (contextQuery != null && !contextQuery.isBlank()) {
+            user.append("\nSorunun konuşmaya göre açık hali: ").append(defuse(contextQuery.strip()));
+        }
+        return new BuiltPrompt(SYSTEM_MULTI_STEP, user.toString());
+    }
+
+    private void appendPassage(StringBuilder user, int number, RetrievedPassage passage) {
+        String unit = passage.unit() == SourceUnit.SECTION ? "bölüm " : "sayfa ";
+        user.append("[[BELGE ").append(number).append("]] (").append(unit).append(passage.pageNumber()).append(")\n")
+                .append(defuse(truncate(passage.content())))
+                .append("\n[[/BELGE ").append(number).append("]]\n");
+    }
+
     private String truncate(String content) {
         return content.length() <= properties.maxPassageChars() ? content : content.substring(0, properties.maxPassageChars());
     }

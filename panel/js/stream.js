@@ -76,6 +76,12 @@ export function stageText(stage) {
     case 'MEMORY_FOUND':
       // ADR-0049: an expert-verified answer card matched; no passages are searched and no model writes.
       return 'Onaylı bilgi bulundu';
+    case 'DECOMPOSING':
+      // ADR-0055: a comparison or multi-part question is split into at most three sub-questions.
+      return 'Soru alt sorulara ayrılıyor';
+    case 'SUB_QUESTION':
+      return Number.isInteger(stage.step) && Number.isInteger(stage.steps)
+        ? `Alt soru ${stage.step}/${stage.steps} aranıyor` : 'Alt soru aranıyor';
     case 'PASSAGES_FOUND':
       return stage.relevant > 0 ? `${stage.relevant} ilgili pasaj bulundu` : 'İlgili pasaj bulunamadı';
     case 'WRITING':
@@ -106,7 +112,9 @@ export function resultOf(citations, done) {
     mode: done.mode ?? null, model: done.model ?? null, conversationId: done.conversationId ?? null, turnId: done.turnId ?? null,
     contextQuery: done.contextQuery ?? null, unverified: citations.unverified ?? null, memory: done.memory ?? null,
     // ADR-0053: an approved procedure that matched the question, shown above the answer.
-    procedure: done.procedure ?? null };
+    procedure: done.procedure ?? null,
+    // ADR-0055: how a multi-step answer was researched ("Nasıl araştırıldı").
+    reasoning: done.reasoning ?? null };
 }
 
 /** Thrown when the stream cannot be used at all (an old proxy or server): the JSON endpoint is asked instead. */
