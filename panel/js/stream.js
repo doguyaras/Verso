@@ -104,7 +104,9 @@ export function provisionalText(text) {
 export function resultOf(citations, done) {
   return { answer: citations.answer, citations: citations.citations ?? [], outcome: done.outcome, found: Boolean(done.found),
     mode: done.mode ?? null, model: done.model ?? null, conversationId: done.conversationId ?? null, turnId: done.turnId ?? null,
-    contextQuery: done.contextQuery ?? null, unverified: citations.unverified ?? null, memory: done.memory ?? null };
+    contextQuery: done.contextQuery ?? null, unverified: citations.unverified ?? null, memory: done.memory ?? null,
+    // ADR-0053: an approved procedure that matched the question, shown above the answer.
+    procedure: done.procedure ?? null };
 }
 
 /** Thrown when the stream cannot be used at all (an old proxy or server): the JSON endpoint is asked instead. */

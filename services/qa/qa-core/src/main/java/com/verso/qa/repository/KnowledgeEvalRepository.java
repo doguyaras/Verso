@@ -24,7 +24,8 @@ import org.springframework.stereotype.Repository;
 public class KnowledgeEvalRepository {
 
     private static final String RUN_COLUMNS = "id, run_trigger, status, started_at, finished_at, cases, found, missed, "
-            + "source_lost, skipped, top_k, recall_at_k, baseline_recall, source_drift, alert";
+            + "source_lost, skipped, top_k, recall_at_k, baseline_recall, source_drift, alert, skill_cases, skill_found, "
+            + "skill_missed, skill_source_lost";
 
     /** One active golden case. */
     public record GoldenCase(UUID cardId, String question, String state, String embeddingModel) {
@@ -83,6 +84,14 @@ public class KnowledgeEvalRepository {
         db.jdbc().sql("INSERT INTO qa.eval_case_result (run_id, card_id, outcome, rank) VALUES (:run, :card, :outcome, "
                         + ":rank) ON CONFLICT DO NOTHING")
                 .param("run", runId).param("card", cardId).param("outcome", outcome).param("rank", rank).update();
+    }
+
+    /** The skill cases of a run (ADR-0053), while the run is still held (before {@link #finish}). */
+    public boolean storeSkillCounts(UUID runId, UUID claimToken, int cases, int found, int missed, int lost) {
+        return db.jdbc().sql("UPDATE qa.eval_run SET skill_cases = :cases, skill_found = :found, skill_missed = :missed, "
+                        + "skill_source_lost = :lost WHERE id = :run AND claim_token = :token")
+                .param("run", runId).param("token", claimToken).param("cases", cases).param("found", found)
+                .param("missed", missed).param("lost", lost).update() == 1;
     }
 
     public boolean finish(UUID runId, UUID claimToken, Totals totals, Instant now) {
@@ -148,7 +157,9 @@ public class KnowledgeEvalRepository {
                 rs.getString("status"), rs.getTimestamp("started_at").toInstant(),
                 finished == null ? null : finished.toInstant(), rs.getInt("cases"), rs.getInt("found"),
                 rs.getInt("missed"), rs.getInt("source_lost"), rs.getInt("skipped"), rs.getInt("top_k"),
-                ratio(rs, "recall_at_k"), ratio(rs, "baseline_recall"), ratio(rs, "source_drift"), rs.getBoolean("alert"));
+                ratio(rs, "recall_at_k"), ratio(rs, "baseline_recall"), ratio(rs, "source_drift"), rs.getBoolean("alert"),
+                rs.getInt("skill_cases"), rs.getInt("skill_found"), rs.getInt("skill_missed"),
+                rs.getInt("skill_source_lost"));
     }
 
     private static Double ratio(ResultSet rs, String column) throws SQLException {

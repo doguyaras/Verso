@@ -50,7 +50,28 @@ public enum QaErrorCode implements ErrorCode {
     /** A diagnostics run is already running (or today's scheduled run exists). */
     KNOWLEDGE_HEALTH_RUNNING(11061, "A diagnostics run is already running.", HttpStatus.CONFLICT),
     KNOWLEDGE_HOOK_RULE_NOT_FOUND(11062, "Hook rule not found.", HttpStatus.NOT_FOUND),
-    KNOWLEDGE_NOTIFICATION_NOT_FOUND(11063, "Notification not found.", HttpStatus.NOT_FOUND);
+    KNOWLEDGE_NOTIFICATION_NOT_FOUND(11063, "Notification not found.", HttpStatus.NOT_FOUND),
+
+    // --- skills / procedures (11070-11079, ADR-0053); an unknown or foreign id is "not found"
+    SKILL_NOT_FOUND(11070, "Procedure not found.", HttpStatus.NOT_FOUND),
+    /** The transition is not allowed in the skill's state (or another admin changed it first). */
+    SKILL_STATE_CONFLICT(11071, "The procedure's state does not allow this.", HttpStatus.CONFLICT),
+    /** No verified card or sourced answer the admin can read now (or a source is personal): nothing to draft from. */
+    SKILL_NO_SOURCES(11072, "There are no verified sources to draft this procedure from.", HttpStatus.CONFLICT),
+    /** A bound source is gone, changed or no longer readable by the admin: a new draft is needed. */
+    SKILL_SOURCE_CHANGED(11073, "A source of this procedure has changed or is not readable.", HttpStatus.CONFLICT),
+    /** The draft or version breaks a rule (step positions, golden case page, 2-5 golden cases for approval). */
+    SKILL_INVALID(11074, "The procedure is not complete or not valid.", HttpStatus.BAD_REQUEST),
+    /** A step states a number or a code its sources do not give (ADR-0047): it must be fixed before approval. */
+    SKILL_STEP_UNGROUNDED(11075, "A step is not supported by its sources.", HttpStatus.CONFLICT),
+    /** The two-person rule: the second approval must come from another admin. */
+    SKILL_ALREADY_APPROVED_BY_YOU(11076, "You have already approved this procedure.", HttpStatus.CONFLICT),
+    /** Another live procedure has this name. */
+    SKILL_NAME_TAKEN(11077, "A procedure with this name already exists.", HttpStatus.CONFLICT),
+    /** The diagnostics cluster is unknown (or its run was deleted by the retention). */
+    SKILL_CLUSTER_NOT_FOUND(11078, "Question cluster not found.", HttpStatus.NOT_FOUND),
+    /** Only an approved procedure can be exported. */
+    SKILL_NOT_APPROVED(11079, "Only an approved procedure can be exported.", HttpStatus.CONFLICT);
 
     private final int code;
     private final String message;

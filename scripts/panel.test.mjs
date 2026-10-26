@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1502,7 +1502,7 @@ test('stream: stages say only what the server did; the draft hides markers until
   assert.deepEqual(resultOf({ answer: 'A [1].', citations: [{ number: 1 }] },
     { outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't' }),
   { answer: 'A [1].', citations: [{ number: 1 }], outcome: 'ANSWERED', found: true, mode: 'local', model: 'm', conversationId: 'c', turnId: 't',
-    contextQuery: null, unverified: null, memory: null });
+    contextQuery: null, unverified: null, memory: null, procedure: null });
 });
 
 test('groundedness (ADR-0047): unverified sentences come from the citations event and are quoted as plain text', () => {
@@ -1735,10 +1735,10 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
-    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health']) assert.equal(canOpen(id, roles), false, id);
+    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health']);
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
   for (const id of adminScreens(admin)) {
     assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
@@ -1749,7 +1749,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
   assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -2540,5 +2540,113 @@ test('health: the admin API paths carry only dates, ids, the format and page num
     ['GET', '/v1/admin/notifications?unread=false&page=0&size=20', null],
     ['POST', '/v1/admin/notifications/a%2Fb/read', null]]);
   for (const code of [11060, 11061, 11062, 11063]) assert.ok(MESSAGES[code], String(code));
+  signOut();
+});
+
+test('skills: states, stale reasons and the admin actions follow the server\'s state machine and approval rules', async () => {
+  const { approvalProblems, canApprove, canArchive, canEdit, canExport, diffText, exportFileName, STALE_REASONS, STATES,
+    stateLabel, suggestionText } = await import('../panel/js/skills.js');
+  const enumOf = (file) => [...readFileSync(`services/qa/qa-api/src/main/java/com/verso/qa/api/dto/${file}.java`, 'utf8')
+    .matchAll(/^    ([A-Z_]+)[,\n]/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(Object.keys(STATES).sort(), enumOf('SkillState'));
+  assert.deepEqual(Object.keys(STALE_REASONS).sort(), enumOf('SkillStaleReason'));
+  assert.equal(stateLabel('APPROVED'), 'Onaylı');
+  assert.equal(stateLabel('NOPE'), 'Bilinmiyor');
+  const complete = { state: 'DRAFT', readable: true, approvedByYou: false, triggers: ['q'], goldenCases: [{}, {}],
+    steps: [{ grounded: true }] };
+  assert.equal(canApprove(complete), true);
+  assert.equal(canApprove({ ...complete, approvedByYou: true }), false, 'two-person rule: not twice by one admin');
+  assert.equal(canApprove({ ...complete, state: 'STALE' }), false, 'a stale skill needs a new draft');
+  assert.match(approvalProblems({ ...complete, goldenCases: [{}] })[0], /2-5 kontrol sorusu/);
+  assert.match(approvalProblems({ ...complete, steps: [{ grounded: false }] })[0], /sayı ya da kod/);
+  assert.equal(approvalProblems({ ...complete, triggers: [] }).length, 1);
+  assert.equal(canEdit({ state: 'APPROVED', readable: true }), true);
+  assert.equal(canEdit({ state: 'STALE', readable: true }), false);
+  assert.equal(canEdit({ state: 'DRAFT', readable: false }), false, 'no text, nothing to edit');
+  assert.equal(canArchive({ state: 'STALE' }), true);
+  assert.equal(canArchive({ state: 'ARCHIVED' }), false);
+  assert.equal(canExport({ state: 'APPROVED', readable: true }), true);
+  assert.equal(canExport({ state: 'DRAFT', readable: true }), false);
+  assert.equal(exportFileName('vpn-kurulumu'), 'vpn-kurulumu.zip');
+  assert.equal(exportFileName('../../etc'), 'prosedur.zip', 'the download name is never a path');
+  assert.equal(diffText({ field: 'step', position: 2, kind: 'REMOVED' }), 'Adım 2 çıkarıldı');
+  assert.equal(diffText({ field: 'name', position: 0, kind: 'CHANGED' }), 'Ad değişti');
+  assert.equal(suggestionText({ keywords: ['izin', 'yıllık'], askers: 7, verifiedCards: 2 }), 'izin, yıllık · 7 kişi · 2 onaylı kart');
+});
+
+test('skills: a new version keeps step sources by position, one-line texts and the server\'s limits', async () => {
+  const { sourceLabel, sourcePages, versionBody } = await import('../panel/js/skills.js');
+  const body = versionBody({ name: ' vpn ', description: 'a\nb‮ c', steps: [{ from: 2, instruction: ' İkinci ' },
+    { from: 1, instruction: '' }, { from: 'x', instruction: 'y' }], triggers: ['Soru?', 'Soru?', '', ' Başka? '],
+  goldenCases: [{ question: 'q', documentId: 'd', page: '3', fact: ' ' }, { question: '', documentId: 'd', page: 1 }] });
+  assert.deepEqual(body, { name: 'vpn', description: 'a b c', steps: [{ from: 2, instruction: 'İkinci' }],
+    triggers: ['Soru?', 'Başka?'], goldenCases: [{ question: 'q', documentId: 'd', page: 3 }] });
+  const skill = { steps: [{ sources: [{ documentId: 'abcdef1234', page: 1, fileName: 'vpn.pdf' }] },
+    { sources: [{ documentId: 'abcdef1234', page: 1, fileName: 'vpn.pdf' }, { documentId: '99999999zz', page: 4, unit: 'SECTION' }] }] };
+  assert.equal(sourcePages(skill).length, 2, 'a golden case may expect only the skill\'s own pages, each once');
+  assert.equal(sourceLabel(sourcePages(skill)[0]), 'vpn.pdf, s. 1');
+  assert.equal(sourceLabel(sourcePages(skill)[1]), 'Belge 99999999…, bölüm 4');
+});
+
+test('skills: the "Bu bir prosedür" box of an answer and the stream\'s done event', async () => {
+  const { procedureModel } = await import('../panel/js/skills.js');
+  assert.equal(procedureModel({ procedure: null }), null);
+  assert.equal(procedureModel({ procedure: { skillId: 's', name: 'x', steps: [] } }), null);
+  const model = procedureModel({ procedure: { skillId: 's', name: 'izin-talebi', description: 'İzin.', steps: [
+    { position: 1, instruction: 'Formu doldurun.', sources: [{ documentId: 'abcdef1234', fileName: 'izin.pdf', page: 2 }] }] } });
+  assert.equal(model.title, 'Bu bir prosedür: izin-talebi');
+  assert.deepEqual(model.steps, [{ text: 'Formu doldurun.', sources: ['izin.pdf, s. 2'] }]);
+  assert.deepEqual(resultOf({ answer: 'a', citations: [] }, { outcome: 'ANSWERED', procedure: { skillId: 's' } }).procedure,
+    { skillId: 's' });
+  assert.equal(resultOf({ answer: 'a', citations: [] }, { outcome: 'ANSWERED' }).procedure, null);
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /procedureBox\(result\),/, 'above the answer text, never instead of it');
+});
+
+test('skills: the admin screen is text-only, admin-only and downloads only on the admin\'s click', () => {
+  const screen = readFileSync('panel/js/screens/skills.js', 'utf8');
+  assert.doesNotMatch(screen, /innerHTML|insertAdjacentHTML|outerHTML|style=|\.style\./, 'text only, no inline styles (CSP, Trusted Types)');
+  assert.equal((screen.match(/saveFile\(/g) ?? []).length, 1, 'one download, from the button handler');
+  assert.match(screen, /'SKILL\.md indir'/);
+  assert.match(screen, /canExport\(full\)/);
+  assert.equal(SCREENS.skills.group, 'admin');
+  assert.deepEqual(SCREENS.skills.roles, [ROLES.ADMIN]);
+  assert.equal(SCREENS.skills.tab, false);
+});
+
+test('skills: the admin API paths carry only ids, the state filter, versions and page numbers', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push([init.method ?? 'GET', url, init.body ?? null]);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}), blob: async () => ({ size: 9 }) };
+  };
+  await api.listSkills('APPROVED');
+  await api.listSkills('x&state=DRAFT', 1, 50);
+  await api.skillSuggestions();
+  await api.getSkill('a/b');
+  await api.draftSkill({ cardIds: ['c'], condense: false });
+  await api.updateSkill('a/b', { name: 'n' });
+  await api.approveSkill('a/b');
+  await api.archiveSkill('a/b');
+  await api.skillDiff('a/b', 1, 2);
+  await api.skillDiff('a/b', 'x', '2&to=9');
+  const file = await api.exportSkill('a/b');
+  assert.deepEqual(file, { size: 9 }, 'a Blob for saveFile; nothing is saved here');
+  assert.deepEqual(sent, [
+    ['GET', '/v1/admin/skills?state=APPROVED&page=0&size=20', null],
+    ['GET', '/v1/admin/skills?page=1&size=50', null],
+    ['GET', '/v1/admin/skills/suggestions', null],
+    ['GET', '/v1/admin/skills/a%2Fb', null],
+    ['POST', '/v1/admin/skills', '{"cardIds":["c"],"condense":false}'],
+    ['PUT', '/v1/admin/skills/a%2Fb', '{"name":"n"}'],
+    ['POST', '/v1/admin/skills/a%2Fb/approve', null],
+    ['POST', '/v1/admin/skills/a%2Fb/archive', null],
+    ['GET', '/v1/admin/skills/a%2Fb/diff?from=1&to=2', null],
+    ['GET', '/v1/admin/skills/a%2Fb/diff?from=1&to=1', null],
+    ['GET', '/v1/admin/skills/a%2Fb/export', null]]);
+  for (let code = 11070; code <= 11079; code++) assert.ok(MESSAGES[code], String(code));
   signOut();
 });

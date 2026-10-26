@@ -14,6 +14,7 @@ Bu doküman **26 Ekim 2026** tarihli `feature/doguyaras-ogrenen-katman-1` branch
 - **Faz 2 ([ADR-0052](adr/0052-bilgi-sagligi-ve-kancalar.md)), ekleyici:** `/v1/admin/knowledge-health` (rapor, dışa aktarım, teşhis koşuları), `/v1/admin/knowledge-hooks` (kanca kuralları), `/v1/admin/notifications` (kanca bildirimleri); hata kodları 11060–11063; `KnowledgeEvalRunResponse.trigger` için yeni değer `HOOK`, `staleReason` için yeni değer `CONTRADICTION` (istemciler bilmedikleri değeri göstermeden geçmeli); denetim eylemleri `KNOWLEDGE_DIAGNOSTICS_RUN`, `KNOWLEDGE_HEALTH_VIEWED`, `KNOWLEDGE_HOOK_FIRED`, `KNOWLEDGE_HOOK_RULE_CHANGED`, `KNOWLEDGE_NOTIFICATION_READ`; hedef türleri `KNOWLEDGE_HEALTH`, `KNOWLEDGE_HOOK`, `QUESTION_CLUSTER`, `CONTRADICTION`.
 - Yeni denetim eylemleri: `KNOWLEDGE_CARD_CREATED`, `KNOWLEDGE_CARD_VERIFIED`, `KNOWLEDGE_CARD_STALE`, `KNOWLEDGE_CARD_DISPUTED`, `KNOWLEDGE_CARD_ARCHIVED`, `KNOWLEDGE_EVAL_RUN`; yeni hedef türleri `KNOWLEDGE_CARD`, `KNOWLEDGE_EVAL`. Sistem geçişlerinin aktörü `system:knowledge-memory`'dir.
 - Mobil için etki yok (yönetici ekranı yalnız panelde). Mobil istemci `memory` alanını görmezden gelebilir; gösterirse "Uzman onaylı" rozeti önerilir.
+- **Faz 3 ([ADR-0053](adr/0053-onayli-prosedurler-skill.md)), ekleyici:** `/v1/admin/skills` (taslak, liste, öneriler, okuma, yeni sürüm, onay, arşiv, sürüm farkı, SKILL.md dışa aktarımı); soru yanıtında `procedure`; MCP `verso_skills`/`verso_skill`; hata kodları 11070–11079; kanca tetikleyicisi `SKILL_STALE`, bildirim konusu `SKILL`; değerlendirme koşusunda `skill*` sayaçları. Mobil istemci `procedure` alanını görmezden gelebilir; gösterirse cevabın üstünde "Bu bir prosedür" kutusu önerilir.
 
 ## Kimlik ve yetki
 
@@ -107,7 +108,43 @@ Sabit kural kümesi: `key`, `trigger`, `action` (yalnız `NOTIFY`, `FLAG`, `DEMO
 
 ### `GET /v1/admin/notifications?unread=false&page&size` · `POST /v1/admin/notifications/{id}/read`
 
-Kanca bildirimleri, en yenisi önce: `ruleKey`, `action` (`NOTIFY`/`FLAG`), `trigger`, `subjectType` (`DOCUMENT`, `KNOWLEDGE_CARD`, `QUESTION_CLUSTER`, `CONTRADICTION`, `EVAL_RUN`), `subjectId`, `detail` (sabit sözcük), `severity`, Türkçe `title`, `createdAt`, `readAt`. Bildirimler bütün yöneticilerin ortak kutusudur; okundu işareti herkes için geçerlidir. Bilinmeyen kimlik `404 11063`. E-posta ve webhook bu sürümde yoktur.
+Kanca bildirimleri, en yenisi önce: `ruleKey`, `action` (`NOTIFY`/`FLAG`), `trigger`, `subjectType` (`DOCUMENT`, `KNOWLEDGE_CARD`, `QUESTION_CLUSTER`, `CONTRADICTION`, `EVAL_RUN`), `subjectId`, `detail` (sabit sözcük), `severity`, Türkçe `title`, `createdAt`, `readAt`. Bildirimler bütün yöneticilerin ortak kutusudur; okundu işareti herkes için geçerlidir. Bilinmeyen kimlik `404 11063`. E-posta ve webhook bu sürümde yoktur. ADR-0053 ile `subjectType` için `SKILL` ve `trigger` için `SKILL_STALE` eklendi (kural `SKILL_STALE_NOTIFY`, varsayılan açık).
+
+## Prosedürler (faz 3, ADR-0053)
+
+Onaylı prosedür (beceri): ad (agentskills.io: küçük harf, rakam, tire, ≤ 64), tek satır açıklama (≤ 1024), sıralı adımlar (≤ 12; her biri kaynak sayfalarına özetle bağlı), örnek sorular (tetikleyiciler, ≤ 10) ve 2-5 kontrol sorusu (altın vaka). Durumlar `DRAFT`, `APPROVED`, `STALE` (`staleReason`: `SOURCE_DELETED`, `SOURCE_REPLACED`, `SOURCE_MOVED`, `SOURCE_CHANGED`), `ARCHIVED`. Yalnız `APPROVED` sunulur, dışa aktarılır ve MCP'de listelenir. Kaynaklarından birini okuyamayan yönetici durumu, sayıları ve geçmişi görür, metinleri görmez (`readable: false`, metin alanları `null`, listeler boş).
+
+### `POST /v1/admin/skills`
+
+Gövde `{clusterId?, cardIds?: [uuid ≤ 12], turns?: [{conversationId, turnId} ≤ 12], name?, condense: false}`: ya `clusterId` ya da kart/tur listesi (ikisi birden ya da hiçbiri `400 11074`). Kart `VERIFIED` olmalı; tur yöneticinin **kendi** kaynaklı cevabı (başkasınınki `404 11021`). Yöneticinin okuyamadığı ya da metni değişmiş kaynak `409 11072`; kişisel belge `409 11072`. Taslak şablonla kurulur; `condense: true` yalnız local modda yerel modeli sıralama ve kısaltma için çağırır, her adım kaynağına karşı yeniden denetlenir. Ad verilmezse üretilir (çakışırsa `-2`); verilen ad canlı bir prosedürde varsa `409 11077`. `201` ve `SkillResponse`.
+
+### `GET /v1/admin/skills?state=&page=&size=` · `GET /v1/admin/skills/suggestions`
+
+Liste (`SkillSummary`: `id`, `name`, `description` ya da `null`, `state`, `staleReason`, `version`, `origin` `CLUSTER`/`MANUAL`, `steps`, `goldenCases`, `approvals`, `requiredApprovals`, `approvedAt`, `updatedAt`, `readable`), en son değişen önce. Öneriler: son başarılı teşhis koşusunun kümeleri (`clusterId`, `runId`, k-anonim `keywords`, `turns`, `askers`, `trend`, çevresindeki `verifiedCards`, `procedural`); kişi ve soru metni yok, "nasıl yaparım" olanlar önce.
+
+### `GET /v1/admin/skills/{id}`
+
+`SkillResponse`: güncel sürümün `name`, `description`, `steps[]` (`position`, `instruction`, `grounded`, `sources[]`: `documentId`, `fileName` yalnız yönetici okuyabiliyorsa, `page`, `unit`, `accessible`), `triggers[]`, `goldenCases[]` (`question`, `documentId`, `page`, `fact`), `approvals`, `requiredApprovals`, `approvedByYou`, `createdByYou`, `events[]` (`version`, `from`, `to`, `reason`, `at`), `versions[]` (`version`, `reason` `DRAFTED`/`EDITED`, `condensed`, `createdAt`), `origin`, `originClusterId`, `condensed`, `approvedAt`, `createdAt`, `updatedAt`, `readable`. Yok `404 11070`.
+
+### `PUT /v1/admin/skills/{id}`
+
+Yeni sürüm (yalnız `DRAFT` ya da `APPROVED`; onaylı olan `DRAFT`'a döner, yeni onay döngüsü): `{name, description, steps: [{from, instruction}] 1..12, triggers: [..] 1..10, goldenCases: [{question, documentId, page, fact?}] 0..5}`. `from` güncel sürümdeki adım numarasıdır: adım o adımın kaynaklarını taşır (yeni kaynak eklenemez; aynı `from` iki kez `400 11074`). Kontrol sorusunun sayfası prosedürün kaynak sayfalarından biri olmalı (`400 11074`). Düzenleyen bütün kaynakları özetleri tutarak okuyabilmeli (`409 11073`); adımlar bu metne karşı yeniden denetlenir ve `grounded` olarak saklanır. `STALE`/`ARCHIVED` `409 11071`. Metinler tek satır, kontrol/biçim karakteri `400`.
+
+### `POST /v1/admin/skills/{id}/approve` · `POST /v1/admin/skills/{id}/archive`
+
+Onay yalnız `DRAFT`'ta (`409 11071`); onaylayan bütün kaynakları özetleri tutarak okumalı (`409 11073`); 2-5 kontrol sorusu, en az bir örnek soru, kontrol sorusunun beklenen bilgisi sayfada geçmeli (`400 11074`); her adım dayanaklı olmalı (`409 11075`). İki kişi kuralı açıkken aynı yöneticinin ikinci onayı `409 11076`. Arşiv arşiv dışı her durumda; arşivdeki `409 11071`.
+
+### `GET /v1/admin/skills/{id}/diff?from=&to=`
+
+İki sürümün alan alan farkı: `{from, to, changes: [{field (name, description, step, trigger, goldenCase), position, kind (ADDED, REMOVED, CHANGED), before, after}]}`; `1 ≤ from < to ≤ güncel` değilse `400 11074`. Metinler yalnız bütün kaynakları okuyan yöneticiye (ad her zaman).
+
+### `GET /v1/admin/skills/{id}/export`
+
+Yalnız `APPROVED` (`409 11079`) ve bütün kaynakları özetleri tutarak okuyan yöneticiye (`409 11073`): `application/zip`, `Content-Disposition: attachment; filename="<ad>.zip"`, içinde tek dosya `<ad>/SKILL.md`. Frontmatter `name`, `description` (çift tırnaklı tek satır), `metadata` (`verso-skill-id`, `verso-version`, `verso-approved-at`); gövde "Ne zaman kullanılır", numaralı adımlar ve `verso://passages/<id>` kaynak bağlantıları (MCP `verso_fetch` kimlikleri), "Kaynaklar" listesi (yalnız "Belge 0199abcd, s. 3"; dosya adı ve belge metni yok). < 500 satır. Denetim `SKILL_EXPORTED`.
+
+### Soru ucu ve MCP
+
+`POST /v1/questions` yanıtına ve `done` olayına `procedure` (ekleyici; [api-questions-integration-v1.md](api-questions-integration-v1.md)); MCP araçları `verso_skills`, `verso_skill` ([api-mcp-integration-v1.md](api-mcp-integration-v1.md)). Denetim eylemleri `SKILL_DRAFTED`, `SKILL_EDITED`, `SKILL_APPROVED`, `SKILL_ARCHIVED`, `SKILL_STALE` (aktör `system:knowledge-skills`), `SKILL_EXPORTED`, `MCP_SKILLS`, `MCP_SKILL`; hedef türü `SKILL`. `KnowledgeEvalRunResponse`'a ekleyici `skillCases`, `skillFound`, `skillMissed`, `skillSourceLost` (kart recall'u ve uyarısı değişmedi).
 
 ## Hata kodları
 
@@ -127,6 +164,16 @@ Kanca bildirimleri, en yenisi önce: `ruleKey`, `action` (`NOTIFY`/`FLAG`), `tri
 | 11061 | 409 | Teşhis zaten çalışıyor (ya da bugünün gece koşusu sürüyor) | biraz sonra | evet |
 | 11062 | 404 | Kanca kuralı yok | listeyi yenile | hayır |
 | 11063 | 404 | Bildirim yok (saklama süresi doldu) | listeyi yenile | hayır |
+| 11070 | 404 | Prosedür yok | listeyi yenile | hayır |
+| 11071 | 409 | Prosedürün durumu işleme izin vermiyor (onaylı, eskimiş, arşivde ya da başka yönetici değiştirdi) | prosedürü yeniden oku | hayır |
+| 11072 | 409 | Taslak için okunabilen onaylı kaynak yok (kart onaylı değil, kaynak kapalı/değişmiş, kişisel belge) | kart seçimini göster | hayır |
+| 11073 | 409 | Bir kaynak değişmiş ya da yöneticiye kapalı | "yeni taslak gerekir" | hayır |
+| 11074 | 400 | Prosedür eksik/geçersiz (kaynak seçimi, adım numarası, kontrol sorusu sayfası/bilgisi, 2-5 kontrol sorusu, sürüm aralığı) | formu düzelt | hayır |
+| 11075 | 409 | Bir adım kaynaklarında olmayan sayı ya da kod içeriyor | adımı düzelt | hayır |
+| 11076 | 409 | Bu yönetici bu döngüde zaten onayladı (iki kişi kuralı) | ikinci yöneticiyi bekle | hayır |
+| 11077 | 409 | Bu adla canlı bir prosedür var | başka ad | hayır |
+| 11078 | 404 | Soru kümesi yok (koşu saklama süresiyle silinmiş) | önerileri yenile | hayır |
+| 11079 | 409 | Yalnız onaylı prosedür indirilebilir | düğmeyi gösterme | hayır |
 | 90101 | 403 | `verso-admin` değil | yönetici ekranını gösterme | hayır |
 
 ## Gizlilik

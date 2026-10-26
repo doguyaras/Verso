@@ -86,13 +86,23 @@ Boş `results`: okuyabildiğiniz belgelerde yeterince benzer pasaj yok. Hata met
 
 `text` pasajın tamamıdır (en çok 4000 karakter; satır sonları korunur). Okuyamadığınız, silinmiş ya da hiç olmamış kimlik için **aynı** hata döner: "Passage not found. Use an id returned by verso_search." Varlık sızmaz.
 
+### `verso_skills` (ADR-0053)
+
+Girdi yok (`{}`). Çağıranın okuyabildiği **onaylı prosedürler**: `{"skills":[{"name":"vpn-kurulumu","description":"VPN kurulumu: 4 adımlı onaylı prosedür. Şu tür sorularda kullanın: …"}],"notice":"…"}`, ada göre, en çok 100. Bir prosedür yalnız bütün kaynak belgelerini okuyabiliyorsanız listelenir; taslak, eskimiş ve arşivdeki prosedür hiç görünmez. `name` ve `description` SKILL.md frontmatter'ının alanlarıdır; istemcinin "hangi beceri bu işe uyar" kararı için yeterlidir.
+
+### `verso_skill` (ADR-0053)
+
+Girdi `{"name": string 1..64}` (bir `verso_skills` sonucu). Çıktı `{"name","version","skill_md","notice"}`: `skill_md` prosedürün SKILL.md'sidir (frontmatter `name`, `description`, `metadata`; gövdede "Ne zaman kullanılır", numaralı adımlar ve her adımda `verso://passages/<id>` kaynak bağlantıları). Belge metni taşımaz: kaynağı okumak için bağlantıdaki kimliği `verso_fetch`'e verin (aynı yetkiyle). Sunulmadan önce prosedürün bütün bağlı parçaları sizin yetkinizle yeniden okunur ve metin özetleri tutmalıdır. Bilinmeyen, onaysız, eskimiş ya da okuyamadığınız ad için **aynı** hata: "Procedure not found. Use a name returned by verso_skills."
+
+Claude/Copilot'ta kullanım: istemci "nasıl yaparım" türü bir görevde `verso_skills` ile uygun prosedürü seçer, `verso_skill` ile adımları alır, adımları sırayla izler ve gerektiğinde kaynakları `verso_fetch` ile okuyup atıf yapar. Aynı prosedür panelden SKILL.md zip'i olarak da indirilebilir (Claude Code / Codex `.agents/skills` dizinine kopyalanabilir); ama dosya kaynak değişince güncellenmez, MCP her zaman günceldir.
+
 ### Ertelenen: `verso_ask`
 
 Üretilmiş cevap aracı yoktur (ADR-0031 "Ertelenen"): istemcinin kendi modeli `search` + `fetch` ile atıflı cevabı kurar; Verso'nun chat havuzu instance başına 1'dir.
 
 ## Denetim
 
-Her okuma bir denetim satırıdır: `MCP_SEARCH` (sonuç sözcüğü `RESULTS`/`NO_RESULTS`, dönen belge kimlikleri) ya da `MCP_FETCH` (pasaj kimliği, `FOUND`/`NOT_FOUND`). Sorgu ve metin yazılmaz ve loglanmaz. `verso-admin` `GET /v1/admin/audit?action=MCP_SEARCH` ile görür ([api-audit-integration-v1.md](api-audit-integration-v1.md)).
+Her okuma bir denetim satırıdır: `MCP_SEARCH` (sonuç sözcüğü `RESULTS`/`NO_RESULTS`, dönen belge kimlikleri) ya da `MCP_FETCH` (pasaj kimliği, `FOUND`/`NOT_FOUND`), `MCP_SKILLS` (`RESULTS`/`NO_RESULTS`; ad yok) ya da `MCP_SKILL` (prosedür kimliği ve kaynak belge kimlikleri, `FOUND`/`NOT_FOUND`). Sorgu, ad ve metin yazılmaz ve loglanmaz. `verso-admin` `GET /v1/admin/audit?action=MCP_SEARCH` ile görür ([api-audit-integration-v1.md](api-audit-integration-v1.md)).
 
 ## Kurulum: IdP
 

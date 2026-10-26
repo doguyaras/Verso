@@ -39,6 +39,19 @@ public class McpAudit {
                 .answeredBy(null, null, documentId == null ? List.of() : List.of(documentId)));
     }
 
+    /** RESULTS or NO_RESULTS (ADR-0053): the listing of the caller's approved skills; never a name. */
+    public void skillsListed(int count) {
+        publish(() -> AuditEvent.success(AuditAction.MCP_SKILLS, AuditTargetType.SKILL)
+                .withDetail(count == 0 ? "NO_RESULTS" : "RESULTS"));
+    }
+
+    /** FOUND with the skill and its source documents, or NOT_FOUND (unknown and unreadable alike, no id). */
+    public void skillRead(UUID skillId, List<UUID> documentIds) {
+        publish(() -> AuditEvent.success(AuditAction.MCP_SKILL, AuditTargetType.SKILL, skillId)
+                .withDetail(skillId == null ? "NOT_FOUND" : "FOUND")
+                .answeredBy(null, null, documentIds));
+    }
+
     private void publish(Supplier<AuditEvent> event) {
         try {
             events.publishEvent(event.get());

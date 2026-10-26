@@ -172,7 +172,8 @@ public class HookEngine implements QaHookOutboxHandler.Consumer {
         return switch (trigger) {
             case GOLDEN_RECALL_DROP -> KnowledgeHealthSeverity.CRITICAL;
             case CARD_DISPUTED, CONTRADICTION_FOUND, CLUSTER_GROWING -> KnowledgeHealthSeverity.WARNING;
-            case DOCUMENT_CHANGED, CLUSTER_EMERGED, CARD_STALE, VERIFICATION_DUE -> KnowledgeHealthSeverity.INFO;
+            case DOCUMENT_CHANGED, CLUSTER_EMERGED, CARD_STALE, VERIFICATION_DUE, SKILL_STALE ->
+                    KnowledgeHealthSeverity.INFO;
         };
     }
 }

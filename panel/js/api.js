@@ -49,6 +49,17 @@ export const MESSAGES = Object.freeze({
   11061: 'Bir teşhis zaten çalışıyor; biraz sonra yeniden deneyin.',
   11062: 'Kanca kuralı bulunamadı.',
   11063: 'Bildirim bulunamadı.',
+  // ADR-0053: procedures (skills).
+  11070: 'Prosedür bulunamadı.',
+  11071: 'Prosedürün durumu bu işleme izin vermiyor; sayfayı yenileyin.',
+  11072: 'Taslak için okuyabildiğiniz onaylı bir kaynak yok (onaylı kart ya da kendi kaynaklı cevabınız).',
+  11073: 'Prosedürün bir kaynağı değişmiş ya da size kapalı; yeni bir taslak gerekir.',
+  11074: 'Prosedür eksik ya da geçersiz: onay için 2-5 kontrol sorusu, en az bir örnek soru ve kaynak sayfaları gerekir.',
+  11075: 'Bir adım, kaynaklarında olmayan bir sayı ya da kod içeriyor; adımı düzeltin.',
+  11076: 'Bu prosedürü zaten onayladınız; ikinci onay başka bir yöneticiden gelmeli.',
+  11077: 'Bu adla bir prosedür zaten var.',
+  11078: 'Soru kümesi bulunamadı; teşhis yeniden çalışmış olabilir.',
+  11079: 'Yalnız onaylı bir prosedür indirilebilir.',
   13001: 'Hesap kimliği (sub) geçersiz: yalnız harf, rakam ve . _ @ : - içerebilir.',
   13002: 'Onay, hesap kimliğiyle birebir aynı değil; hiçbir şey silinmedi.',
   13020: 'Onay, belge kimliğiyle birebir aynı değil; hiçbir cevap değişmedi.',
@@ -340,6 +351,22 @@ export const api = {
   listNotifications: (unread = false, page = 0, size = 20) =>
     request(`/v1/admin/notifications?unread=${unread === true}&page=${page}&size=${size}`),
   readNotification: (id) => request(`/v1/admin/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' }),
+  // Procedures / skills (ADR-0053), verso-admin only. Only ids, the state filter, version numbers and page numbers go
+  // into a URL; drafts and versions travel in the JSON body.
+  /** state: DRAFT, APPROVED, STALE, ARCHIVED, or anything else for every skill. */
+  listSkills: (state = '', page = 0, size = 20) => request(`/v1/admin/skills?${
+    ['DRAFT', 'APPROVED', 'STALE', 'ARCHIVED'].includes(state) ? `state=${state}&` : ''}page=${page}&size=${size}`),
+  skillSuggestions: () => request('/v1/admin/skills/suggestions'),
+  getSkill: (id) => request(`/v1/admin/skills/${encodeURIComponent(id)}`),
+  /** { clusterId } or { cardIds, turns }; name optional; condense asks the local model to order and shorten. */
+  draftSkill: (draft) => request('/v1/admin/skills', json('POST', draft)),
+  updateSkill: (id, version) => request(`/v1/admin/skills/${encodeURIComponent(id)}`, json('PUT', version)),
+  approveSkill: (id) => request(`/v1/admin/skills/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
+  archiveSkill: (id) => request(`/v1/admin/skills/${encodeURIComponent(id)}/archive`, { method: 'POST' }),
+  skillDiff: (id, from, to) => request(`/v1/admin/skills/${encodeURIComponent(id)}/diff?from=${
+    Math.max(1, Math.trunc(Number(from)) || 1)}&to=${Math.max(1, Math.trunc(Number(to)) || 1)}`),
+  /** The SKILL.md bundle (zip) as a Blob for the admin's own download click. */
+  exportSkill: (id) => getFile(`/v1/admin/skills/${encodeURIComponent(id)}/export`),
   // SMB connectors (ADR-0038, ADR-0042), verso-admin only. No call carries a password: credentialRef is the name of a
   // secret file on the server, and the API never returns a password. Only ids, page numbers and the state filter go
   // into a URL; everything else travels in the JSON body.

@@ -19,6 +19,7 @@ import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.exception.QaErrorCode;
 import com.verso.qa.exception.QaServiceException;
 import com.verso.qa.service.AnswerMemory;
+import com.verso.qa.service.SkillMatcher;
 import com.verso.qa.service.AnswerMemory.Served;
 import com.verso.qa.service.AnswerStream;
 import com.verso.qa.service.AnswerabilityGate;
@@ -124,13 +125,16 @@ public class QuestionServiceImpl implements QuestionService {
     private final QaFollowUpProperties followUp;
     private final GroundingCheck grounding;
     private final AnswerMemory memory;
+    private final SkillMatcher procedures;
 
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
-                               QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory) {
+                               QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory,
+                               SkillMatcher procedures) {
         this.memory = memory;
+        this.procedures = procedures;
         this.grounding = grounding;
         this.groups = groups;
         this.rewriter = rewriter;
@@ -156,7 +160,8 @@ public class QuestionServiceImpl implements QuestionService {
         // A foreign, deleted or full conversation is refused before any model call (ADR-0023).
         if (conversationId != null) history.checkWritable(account, conversationId);
         Search search = search(account, question, conversationId, null);
-        Found found = find(readerOf(account), search.query());
+        Reader reader = readerOf(account);
+        Found found = find(reader, search.query());
         Retrieved retrieved = found.retrieved();
         Answered answered;
         if (found.served() != null) {
@@ -169,7 +174,7 @@ public class QuestionServiceImpl implements QuestionService {
             String raw = chat(prompt);
             answered = cited(question, raw, prompt, retrieved, search, elapsedMs(chatStarted), started, ANSWERED);
         }
-        return store(account, conversationId, question, answered, started);
+        return store(account, conversationId, question, withProcedure(reader, found, answered), started);
     }
 
     @Override
@@ -205,7 +210,7 @@ public class QuestionServiceImpl implements QuestionService {
                 String raw = streamChat(prompt, out);
                 answered = cited(question, raw, prompt, retrieved, search, elapsedMs(chatStarted), started, STREAMED);
             }
-            out.completed(store(account, conversationId, question, answered, started));
+            out.completed(store(account, conversationId, question, withProcedure(reader, found, answered), started));
         } catch (Cancelled e) {
             // Nothing is stored: the text was never validated, and the user chose not to wait for it (ADR-0035).
             metrics.record(Outcome.CANCELLED);
@@ -306,16 +311,19 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     /** What the search found: a verified answer card that may answer this caller (ADR-0049), or retrieved passages. */
-    private record Found(Retrieved retrieved, Served served, long lookupMs) {
+    private record Found(Retrieved retrieved, Served served, long lookupMs, QuestionEmbedding embedding) {
     }
 
     /**
      * ADR-0049: with the answer memory on, the question is embedded once; the vector first looks up the verified answer
      * cards (qa schema, no remote call) and, when none may answer this caller, searches the documents. With it off,
-     * the search embeds the question itself, exactly as before.
+     * the search embeds the question itself, exactly as before. ADR-0053: the procedure lookup reuses the same vector,
+     * so with procedures on the question is embedded once here too.
      */
     private Found find(Reader reader, String question) {
-        if (!memory.enabled()) return new Found(retrieve(reader, question, null, System.nanoTime()), null, 0);
+        if (!memory.enabled() && !procedures.enabled()) {
+            return new Found(retrieve(reader, question, null, System.nanoTime()), null, 0, null);
+        }
         long started = System.nanoTime();
         QuestionEmbedding embedding;
         try {
@@ -324,9 +332,23 @@ public class QuestionServiceImpl implements QuestionService {
             metrics.record(Outcome.RETRIEVAL_FAILED);
             throw e;
         }
-        Optional<Served> served = memory.lookup(reader, embedding);
-        if (served.isPresent()) return new Found(null, served.get(), elapsedMs(started));
-        return new Found(retrieve(reader, question, embedding, started), null, 0);
+        if (memory.enabled()) {
+            Optional<Served> served = memory.lookup(reader, embedding);
+            if (served.isPresent()) return new Found(null, served.get(), elapsedMs(started), embedding);
+        }
+        return new Found(retrieve(reader, question, embedding, started), null, 0, embedding);
+    }
+
+    /**
+     * ADR-0053: an approved skill whose triggers match the question is shown above the answer (never instead of it),
+     * only for a caller who reads every one of its sources. Off by default; the same vector as the search.
+     */
+    private Answered withProcedure(Reader reader, Found found, Answered answered) {
+        if (!procedures.enabled() || found.embedding() == null) return answered;
+        return procedures.match(reader, found.embedding())
+                .map(match -> new Answered(answered.response().withProcedure(match), answered.retrievalMs(),
+                        answered.chatMs()))
+                .orElse(answered);
     }
 
     /** The verified text of the card, its server-mapped citations and the {@code memory} field (ADR-0049). */

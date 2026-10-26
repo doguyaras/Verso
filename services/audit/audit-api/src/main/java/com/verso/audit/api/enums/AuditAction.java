@@ -90,5 +90,23 @@ public enum AuditAction {
     /** A verso-admin switched a hook rule on or off; the detail is the rule key with _ON or _OFF. */
     KNOWLEDGE_HOOK_RULE_CHANGED,
     /** A verso-admin marked a hook notification read; the target is the notification. */
-    KNOWLEDGE_NOTIFICATION_READ
+    KNOWLEDGE_NOTIFICATION_READ,
+    /** A verso-admin drafted a skill (procedure, ADR-0053); the detail is CLUSTER or MANUAL. Never its text. */
+    SKILL_DRAFTED,
+    /** A verso-admin made a new version of a skill (it is a draft again until approved). */
+    SKILL_EDITED,
+    /** A verso-admin approved a skill; the detail is APPROVED or APPROVAL_ADDED (two-person rule pending). */
+    SKILL_APPROVED,
+    /** A verso-admin archived a skill. */
+    SKILL_ARCHIVED,
+    /** A skill went stale (system actor); the detail is the SkillStaleReason. */
+    SKILL_STALE,
+    /** A verso-admin downloaded a skill as a SKILL.md bundle. */
+    SKILL_EXPORTED,
+    /**
+     * An MCP client listed the caller's approved skills (ADR-0053); the detail is RESULTS or NO_RESULTS. Never a name.
+     */
+    MCP_SKILLS,
+    /** An MCP client read one approved skill; the target is the skill, the outcome FOUND or NOT_FOUND. */
+    MCP_SKILL
 }

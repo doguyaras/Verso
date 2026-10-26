@@ -24,6 +24,7 @@ import { renderSubjects } from './screens/subjects.js';
 import { renderConnectors } from './screens/connectors.js';
 import { renderKnowledge } from './screens/knowledge.js';
 import { notificationBell, renderHealth } from './screens/health.js';
+import { renderSkills } from './screens/skills.js';
 import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
@@ -34,7 +35,7 @@ import { renderTrust } from './screens/trust.js';
 const AUTO_SIGN_IN = 'verso.panel.auto';
 const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
   insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects,
-  connectors: renderConnectors, trust: renderTrust, knowledge: renderKnowledge, health: renderHealth };
+  connectors: renderConnectors, trust: renderTrust, knowledge: renderKnowledge, health: renderHealth, skills: renderSkills };
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
@@ -214,6 +215,7 @@ function adminItems() {
     ...(canOpen('trust', roles) ? [{ label: 'Güven', glyph: 'lock', onSelect: () => navigate('trust') }] : []),
     ...(canOpen('knowledge', roles) ? [{ label: 'Onaylı bilgiler', glyph: 'checkCircle', onSelect: () => navigate('knowledge') }] : []),
     ...(canOpen('health', roles) ? [{ label: 'Bilgi sağlığı', glyph: 'pulse', onSelect: () => navigate('health') }] : []),
+    ...(canOpen('skills', roles) ? [{ label: 'Prosedürler', glyph: 'flag', onSelect: () => navigate('skills') }] : []),
   ];
   return items.length ? [{ group: ADMIN_GROUP }, ...items] : [];
 }

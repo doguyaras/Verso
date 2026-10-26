@@ -308,6 +308,20 @@ public class KnowledgeDiagnosticsRepository {
                 .param("run", runId).query(KnowledgeDiagnosticsRepository::cluster).list();
     }
 
+    /** One cluster by id (a skill draft from it, ADR-0053). */
+    public Optional<ClusterRow> cluster(UUID clusterId) {
+        return db.jdbc().sql("SELECT id, position, centroid::text, embedding_model, turns, askers, previous_turns, trend, "
+                        + "keywords, representative_hashes FROM qa.question_cluster WHERE id = :cluster")
+                .param("cluster", clusterId).query(KnowledgeDiagnosticsRepository::cluster).optional();
+    }
+
+    /** The latest successful run, whatever its window (the skill suggestions, ADR-0053). */
+    public Optional<UUID> latestSucceededRun() {
+        return db.jdbc().sql("SELECT id FROM qa.diagnostic_run WHERE status = 'SUCCEEDED' "
+                        + "ORDER BY finished_at DESC NULLS LAST, id DESC LIMIT 1")
+                .query(UUID.class).optional();
+    }
+
     // ---------------------------------------------------------------- citations, coverage, feedback
 
     /** Documents cited in the window by at least {@code minAskers} distinct accounts, most cited first. */

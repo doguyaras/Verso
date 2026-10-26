@@ -10,6 +10,8 @@ import com.verso.qa.api.dto.KnowledgeCardState;
 import com.verso.qa.api.dto.KnowledgeEvalRunResponse;
 import com.verso.qa.api.dto.KnowledgeStaleReason;
 import com.verso.qa.config.QaKnowledgeProperties;
+import com.verso.qa.config.QaSkillProperties;
+import com.verso.qa.repository.SkillRepository;
 import com.verso.qa.repository.KnowledgeCardRepository;
 import com.verso.qa.repository.KnowledgeEvalRepository;
 import com.verso.qa.repository.KnowledgeEvalRepository.GoldenCase;
@@ -72,6 +74,9 @@ public class KnowledgeEval {
     private final QaKnowledgeProperties properties;
     private final Clock clock;
     private final HookTriggers hooks;
+    private final SkillEval skillEval;
+    private final SkillRepository skills;
+    private final QaSkillProperties skillProperties;
     private final Map<KnowledgeCardState, AtomicReference<Double>> cardCounts = new EnumMap<>(KnowledgeCardState.class);
     private final AtomicReference<Double> recall = new AtomicReference<>(Double.NaN);
     private final AtomicReference<Double> drift = new AtomicReference<>(Double.NaN);
@@ -79,7 +84,11 @@ public class KnowledgeEval {
 
     public KnowledgeEval(QaDatabase db, KnowledgeEvalRepository runs, KnowledgeCardRepository cards,
                          DocumentProvenance provenance, KnowledgeTransitions transitions, QaAudit audit,
-                         QaKnowledgeProperties properties, Clock clock, MeterRegistry registry, HookTriggers hooks) {
+                         QaKnowledgeProperties properties, Clock clock, MeterRegistry registry, HookTriggers hooks,
+                         SkillEval skillEval, SkillRepository skills, QaSkillProperties skillProperties) {
+        this.skillEval = skillEval;
+        this.skills = skills;
+        this.skillProperties = skillProperties;
         this.db = db;
         this.runs = runs;
         this.cards = cards;
@@ -126,13 +135,21 @@ public class KnowledgeEval {
         UUID runId = claimed.get();
         try {
             Totals totals = evaluate(runId, token);
-            if (!db.inTransaction(status -> finished(runId, token, totals))) {
+            // ADR-0053: the APPROVED skills' golden cases in the same run, counted apart from the cards.
+            SkillEval.Counts skillCounts = skillEval.evaluate(runId, properties.eval().topK(),
+                    properties.eval().maxCases(),
+                    () -> runs.renew(runId, token, clock.instant().plus(properties.eval().lease())));
+            if (!db.inTransaction(status -> runs.storeSkillCounts(runId, token, skillCounts.cases(),
+                    skillCounts.found(), skillCounts.missed(), skillCounts.sourceLost())
+                    && finished(runId, token, totals))) {
                 log.warn("Golden-set check result not stored: runId={} reason=LEASE_LOST", runId);
             }
             log.info("Golden-set check finished: runId={} trigger={} cases={} found={} missed={} sourceLost={} skipped={} "
-                            + "recall={} baseline={} drift={} alert={}", runId, trigger, totals.cases(), totals.found(),
+                            + "recall={} baseline={} drift={} alert={} skillCases={} skillFound={} skillMissed={} "
+                            + "skillSourceLost={}", runId, trigger, totals.cases(), totals.found(),
                     totals.missed(), totals.sourceLost(), totals.skipped(), totals.recall(), totals.baseline(),
-                    totals.drift(), totals.alert());
+                    totals.drift(), totals.alert(), skillCounts.cases(), skillCounts.found(), skillCounts.missed(),
+                    skillCounts.sourceLost());
         } catch (RuntimeException e) {
             // Type only: a driver message could quote a question (llm-rules 2.1).
             log.error("Golden-set check failed: runId={} exceptionType={}", runId, e.getClass().getSimpleName());
@@ -272,9 +289,12 @@ public class KnowledgeEval {
         Instant now = clock.instant();
         int purgedCards = db.inTransaction(status -> cards.purgeArchived(now.minus(properties.archivedRetention()), 500));
         int purgedRuns = db.inTransaction(status -> runs.purge(now.minus(properties.eval().runRetention()), 500));
-        if (expired + purgedCards + purgedRuns > 0) {
-            log.info("Answer memory housekeeping: expired={} archivedDeleted={} runsDeleted={}", expired, purgedCards,
-                    purgedRuns);
+        // ADR-0053: archived skills follow the cards' rule (their own retention).
+        int purgedSkills = db.inTransaction(status ->
+                skills.purgeArchived(now.minus(skillProperties.archivedRetention()), 500));
+        if (expired + purgedCards + purgedRuns + purgedSkills > 0) {
+            log.info("Answer memory housekeeping: expired={} archivedDeleted={} runsDeleted={} archivedSkillsDeleted={}",
+                    expired, purgedCards, purgedRuns, purgedSkills);
         }
     }
 }

@@ -17,5 +17,7 @@ public enum HookTrigger {
     /** The golden-set check raised its alert (recall drop or source drift). */
     GOLDEN_RECALL_DROP,
     /** A verified answer card's verification runs out soon (scheduled check). */
-    VERIFICATION_DUE
+    VERIFICATION_DUE,
+    /** A skill (procedure) went STALE: a bound source was deleted, replaced, moved or changed (ADR-0053). */
+    SKILL_STALE
 }

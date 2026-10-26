@@ -109,7 +109,7 @@ class McpServerTest {
     // --- protocol --------------------------------------------------------------------------------------------------
 
     @Test
-    void listTools_whenCalledWithAnMcpToken_offersTwoReadOnlyToolsThatCallTheirContentUntrusted() {
+    void listTools_whenCalledWithAnMcpToken_offersFourReadOnlyToolsThatCallTheirContentUntrusted() {
         McpSyncClient client = client(mcpToken(aliceSub));
         McpSchema.InitializeResult init = client.initialize();
         assertThat(init.protocolVersion()).isEqualTo("2025-11-25");
@@ -120,7 +120,8 @@ class McpServerTest {
         assertThat(init.instructions()).contains("untrusted");
 
         List<McpSchema.Tool> tools = client.listTools().tools();
-        assertThat(tools).extracting(McpSchema.Tool::name).containsExactlyInAnyOrder("verso_search", "verso_fetch");
+        assertThat(tools).extracting(McpSchema.Tool::name).containsExactlyInAnyOrder("verso_search", "verso_fetch",
+                "verso_skills", "verso_skill");
         assertThat(tools).allSatisfy(tool -> {
             assertThat(tool.annotations().readOnlyHint()).isTrue();
             assertThat(tool.annotations().destructiveHint()).isFalse();

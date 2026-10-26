@@ -35,6 +35,8 @@ export const SCREENS = Object.freeze({
   knowledge: { title: 'Onaylı bilgiler', short: 'Onaylı', icon: 'checkCircle', key: 'n', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
   // ADR-0052: the company diagnostics ("bilgi sağlığı"), its quarterly report and the hook rules.
   health: { title: 'Bilgi sağlığı', short: 'Sağlık', icon: 'pulse', key: 'h', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  // ADR-0053: the approved procedures (skills): drafts from recurring questions, approval, SKILL.md export.
+  skills: { title: 'Prosedürler', short: 'Prosedür', icon: 'flag', key: 'r', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
 });
 
 /** The heading of the admin group (ADR-0036). */

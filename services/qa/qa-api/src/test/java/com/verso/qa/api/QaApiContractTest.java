@@ -46,7 +46,13 @@ class QaApiContractTest {
                 // ADR-0049: the answer memory
                 com.verso.qa.api.dto.KnowledgeMemory.class, com.verso.qa.api.dto.KnowledgeCardRequest.class,
                 com.verso.qa.api.dto.KnowledgeCardSummary.class, com.verso.qa.api.dto.KnowledgeCardResponse.class,
-                com.verso.qa.api.dto.KnowledgeEvalRunResponse.class)) {
+                com.verso.qa.api.dto.KnowledgeEvalRunResponse.class,
+                // ADR-0053: skills (procedures)
+                com.verso.qa.api.dto.SkillDraftRequest.class, com.verso.qa.api.dto.SkillUpdateRequest.class,
+                com.verso.qa.api.dto.SkillSummary.class, com.verso.qa.api.dto.SkillResponse.class,
+                com.verso.qa.api.dto.SkillVersionDiff.class, com.verso.qa.api.dto.SkillSuggestion.class,
+                com.verso.qa.api.dto.ProcedureMatch.class, com.verso.qa.api.dto.SkillListing.class,
+                com.verso.qa.api.dto.SkillDocument.class)) {
             assertThat(type.isRecord()).as(type.getSimpleName()).isTrue();
         }
     }
@@ -66,16 +72,24 @@ class QaApiContractTest {
         assertThat(stored.unverified()).as("the nine-argument constructor: no groundedness check").isNull();
         // ADR-0046 added contextQuery after them, ADR-0047 unverified after that: the JSON still only grows.
         var components = AnswerResponse.class.getRecordComponents();
-        assertThat(components[components.length - 5].getName()).isEqualTo("conversationId");
-        assertThat(components[components.length - 4].getName()).isEqualTo("turnId");
-        assertThat(components[components.length - 3].getName()).isEqualTo("contextQuery");
-        assertThat(components[components.length - 2].getName()).isEqualTo("unverified");
-        // ADR-0049: the answer memory's field after all of them.
-        assertThat(components[components.length - 1].getName()).isEqualTo("memory");
+        assertThat(components[components.length - 6].getName()).isEqualTo("conversationId");
+        assertThat(components[components.length - 5].getName()).isEqualTo("turnId");
+        assertThat(components[components.length - 4].getName()).isEqualTo("contextQuery");
+        assertThat(components[components.length - 3].getName()).isEqualTo("unverified");
+        // ADR-0049: the answer memory's field after all of them; ADR-0053: the matching procedure after that.
+        assertThat(components[components.length - 2].getName()).isEqualTo("memory");
+        assertThat(components[components.length - 1].getName()).isEqualTo("procedure");
         assertThat(stored.memory()).as("a model answer has no memory field").isNull();
+        assertThat(stored.procedure()).as("no procedure unless one matched").isNull();
+        var procedure = new com.verso.qa.api.dto.ProcedureMatch(java.util.UUID.randomUUID(), "izin-talebi", "d",
+                List.of());
+        assertThat(answer.withProcedure(procedure).stored(conversation, turn).procedure()).isEqualTo(procedure);
+        assertThat(com.verso.qa.api.dto.StreamDoneEvent.of(answer.withProcedure(procedure)).procedure())
+                .isEqualTo(procedure);
         var done = com.verso.qa.api.dto.StreamDoneEvent.class.getRecordComponents();
-        assertThat(done[done.length - 2].getName()).isEqualTo("contextQuery");
-        assertThat(done[done.length - 1].getName()).isEqualTo("memory");
+        assertThat(done[done.length - 3].getName()).isEqualTo("contextQuery");
+        assertThat(done[done.length - 2].getName()).isEqualTo("memory");
+        assertThat(done[done.length - 1].getName()).isEqualTo("procedure");
         var citations = com.verso.qa.api.dto.StreamCitationsEvent.class.getRecordComponents();
         assertThat(citations).extracting(java.lang.reflect.RecordComponent::getName)
                 .containsExactly("answer", "citations", "unverified");

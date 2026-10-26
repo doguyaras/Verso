@@ -15,6 +15,7 @@ import { citingSpans, citingText, excerptParts, matchRanges } from '../excerpt.j
 import { markUnverified, prune, tintSentences, writeMarked } from '../highlight.js';
 import { icon, logo } from '../icons.js';
 import { canApprove, memoryBadge } from '../knowledge.js';
+import { procedureModel } from '../skills.js';
 import { ROLES } from '../roles.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { ratingControls } from '../rating.js';
@@ -102,6 +103,17 @@ function place(button) {
   const column = button.closest('.answer-text')?.getBoundingClientRect() ?? { left: 0, right: innerWidth };
   button.classList.toggle('pop-left', box.left - column.left < 170);
   button.classList.toggle('pop-right', column.right - box.right < 170 && box.left - column.left >= 170);
+}
+
+/** "Bu bir prosedür: <ad>" with its steps and their sources (ADR-0053); null when no approved procedure matched. */
+function procedureBox(result) {
+  const model = procedureModel(result);
+  if (!model) return null;
+  return el('section', { class: 'notice info procedure', 'aria-label': model.title }, icon('flag', 'sm'),
+    el('div', { class: 'grow' }, el('strong', {}, model.title),
+      model.description ? el('div', {}, model.description) : null,
+      el('ol', { class: 'steps-list' }, model.steps.map((step) => el('li', {}, step.text,
+        step.sources.length ? el('span', { class: 'sub' }, ` (${step.sources.join('; ')})`) : null)))));
 }
 
 function outcomeBadge(result) {
@@ -328,6 +340,8 @@ function answerView(entry, actions) {
       restored ? el('span', { class: 'pill neutral', title: 'Geçmişten açıldı; alıntılar saklanmaz.' }, icon('history', 'sm'), 'Geçmişten') : null,
       contextNote ? el('p', { class: 'context-query', title: 'Soru, konuşmanın önceki sorularıyla birlikte bu sorguyla arandı.' },
         icon('search', 'sm'), contextNote) : null),
+    // ADR-0053: an approved procedure matching the question, above the answer (never instead of it).
+    procedureBox(result),
     entry.notice ? el('div', { class: 'notice info start-over' }, icon('info', 'sm'), el('div', { class: 'grow' }, entry.notice)) : null,
     notFound
       ? el('div', { class: 'notice neutral answer-empty' }, icon('search', 'sm'), el('div', { class: 'grow' },

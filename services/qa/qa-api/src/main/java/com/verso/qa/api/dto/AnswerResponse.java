@@ -25,13 +25,25 @@ import java.util.UUID;
  * <p>{@code memory} (ADR-0049, added last): set when the answer is an expert-verified answer card ("uzman onaylı")
  * served from the answer memory instead of the model; then {@code model} is {@value #MEMORY_MODEL}, the answer text is
  * the verified one and the citations point at the pages it was verified against. Null for every model answer.
+ *
+ * <p>{@code procedure} (ADR-0053, added last): an approved skill whose example questions match the question, shown
+ * above the answer as "Bu bir prosedür" with its steps and citations; only when the serving flag is on and the caller
+ * reads every source of the skill. It never replaces the answer. Not stored: an answer opened from the history has none.
  */
 public record AnswerResponse(String answer, boolean found, AnswerOutcome outcome, List<Citation> citations, String mode,
                              String model, UUID conversationId, UUID turnId, String contextQuery,
-                             List<UnverifiedSentence> unverified, KnowledgeMemory memory) {
+                             List<UnverifiedSentence> unverified, KnowledgeMemory memory, ProcedureMatch procedure) {
 
     /** The {@code model} of an answer served from the answer memory (ADR-0049): no model wrote it. */
     public static final String MEMORY_MODEL = "verified-answer";
+
+    /** An answer without a matching procedure (ADR-0053). */
+    public AnswerResponse(String answer, boolean found, AnswerOutcome outcome, List<Citation> citations, String mode,
+                          String model, UUID conversationId, UUID turnId, String contextQuery,
+                          List<UnverifiedSentence> unverified, KnowledgeMemory memory) {
+        this(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery, unverified, memory,
+                null);
+    }
 
     /** A model answer (not from the answer memory). */
     public AnswerResponse(String answer, boolean found, AnswerOutcome outcome, List<Citation> citations, String mode,
@@ -49,6 +61,12 @@ public record AnswerResponse(String answer, boolean found, AnswerOutcome outcome
     /** The same answer, stored in the history as {@code turnId} of {@code conversationId}. */
     public AnswerResponse stored(UUID conversationId, UUID turnId) {
         return new AnswerResponse(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery,
-                unverified, memory);
+                unverified, memory, procedure);
+    }
+
+    /** The same answer with the procedure that matched its question (ADR-0053). */
+    public AnswerResponse withProcedure(ProcedureMatch match) {
+        return new AnswerResponse(answer, found, outcome, citations, mode, model, conversationId, turnId, contextQuery,
+                unverified, memory, match);
     }
 }

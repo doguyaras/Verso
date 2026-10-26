@@ -34,5 +34,7 @@ public enum AuditTargetType {
     /** A cluster of uncertain questions of a diagnostics run (ADR-0052); counts only, no question. */
     QUESTION_CLUSTER,
     /** A contradiction candidate: two chunks of different documents (ADR-0052). */
-    CONTRADICTION
+    CONTRADICTION,
+    /** A skill (procedure) of the learning layer (ADR-0053). */
+    SKILL
 }

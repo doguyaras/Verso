@@ -17,8 +17,14 @@ import java.util.UUID;
  * @param baselineRecall the recall of the previous successful run, null for the first one
  * @param sourceDrift    sourceLost / cases; null without cases
  * @param alert          the recall fell by more than the configured drop, or the drift passed its limit
+ * @param skillCases     golden cases of APPROVED skills checked in the same run (ADR-0053, added last); they do not
+ *                       count in the card recall, the baseline or the alert above
+ * @param skillFound     skill cases whose expected page was in the top {@code topK}
+ * @param skillMissed    skill cases whose expected page exists but was not retrieved
+ * @param skillSourceLost skill cases of a skill that lost a bound hash (the skill went STALE)
  */
 public record KnowledgeEvalRunResponse(UUID id, String trigger, String status, Instant startedAt, Instant finishedAt,
                                        int cases, int found, int missed, int sourceLost, int skipped, int topK,
-                                       Double recallAtK, Double baselineRecall, Double sourceDrift, boolean alert) {
+                                       Double recallAtK, Double baselineRecall, Double sourceDrift, boolean alert,
+                                       int skillCases, int skillFound, int skillMissed, int skillSourceLost) {
 }

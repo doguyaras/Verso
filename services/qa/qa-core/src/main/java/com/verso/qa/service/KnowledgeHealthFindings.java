@@ -147,6 +147,8 @@ public final class KnowledgeHealthFindings {
             case "CARD_DISPUTED_FLAG" -> "Onaylı bir bilgi kartı itiraz eşiğini geçince incelemeye işaretler.";
             case "GOLDEN_RECALL_DROP_NOTIFY" -> "Gece kontrolünde isabet düşünce ya da kaynaklar kayınca bildirir.";
             case "VERIFICATION_DUE_NOTIFY" -> "Onay süresi yakında dolacak kartları bildirir.";
+            case "SKILL_STALE_NOTIFY" -> "Onaylı bir prosedürün kaynağı silinince, değişince ya da taşınınca sahiplerine "
+                    + "(yöneticilere) bildirir.";
             default -> key;
         };
     }
@@ -162,6 +164,7 @@ public final class KnowledgeHealthFindings {
             case CARD_DISPUTED -> "Onaylı bir bilgiye itiraz edildi";
             case GOLDEN_RECALL_DROP -> "Gece kontrolünde düşüş";
             case VERIFICATION_DUE -> "Onay süresi doluyor";
+            case SKILL_STALE -> "Bir prosedür eskidi";
         };
         String reason = detail == null ? null : switch (detail) {
             case "SOURCE_DELETED" -> "kaynak silindi";

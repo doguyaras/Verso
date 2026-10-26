@@ -47,6 +47,9 @@ verso:
     knowledge:
       enabled: ${VERSO_QA_KNOWLEDGE_ENABLED:true}
       two-person-rule: ${VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE:false}
+    # The procedure box switch (ADR-0053), the same variable as the deploy; the rest of verso.qa.skills is shared.
+    skills:
+      serving-enabled: ${VERSO_QA_SKILLS_SERVING_ENABLED:false}
   # The audit schema's own roles (ADR-0026), on the same local database; passwords from secrets/ like the others.
   audit:
     datasource:

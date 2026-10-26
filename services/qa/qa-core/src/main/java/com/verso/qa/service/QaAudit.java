@@ -186,6 +186,7 @@ public class QaAudit {
             case "QUESTION_CLUSTER" -> AuditTargetType.QUESTION_CLUSTER;
             case "CONTRADICTION" -> AuditTargetType.CONTRADICTION;
             case "EVAL_RUN" -> AuditTargetType.KNOWLEDGE_EVAL;
+            case "SKILL" -> AuditTargetType.SKILL;
             default -> AuditTargetType.KNOWLEDGE_HOOK;
         };
         write(() -> AuditEvent.success(AuditAction.KNOWLEDGE_HOOK_FIRED, type, subjectId).withDetail(ruleKey),
@@ -218,6 +219,53 @@ public class QaAudit {
         } catch (RuntimeException e) {
             writeFailed.increment();
             log.error("Audit event not stored: code=AUDIT_WRITE_FAILED reason=OUTBOX action=KNOWLEDGE_HEALTH_VIEWED "
+                    + "exceptionType={}", e.getClass().getSimpleName());
+        }
+    }
+
+    // ---------------------------------------------------------------- skills (ADR-0053): ids and fixed words
+
+    /** The audit actor of the skills' own transition (stale). */
+    public static final String SKILLS_COMPONENT = "knowledge-skills";
+
+    /** @param origin CLUSTER or MANUAL */
+    public void skillDraftedInTransaction(UUID skillId, String origin) {
+        append(() -> AuditEvent.success(AuditAction.SKILL_DRAFTED, AuditTargetType.SKILL, skillId).withDetail(origin));
+    }
+
+    public void skillEditedInTransaction(UUID skillId) {
+        append(() -> AuditEvent.success(AuditAction.SKILL_EDITED, AuditTargetType.SKILL, skillId));
+    }
+
+    /** @param detail APPROVED, or APPROVAL_ADDED while the two-person rule waits for a second admin */
+    public void skillApprovedInTransaction(UUID skillId, String detail) {
+        append(() -> AuditEvent.success(AuditAction.SKILL_APPROVED, AuditTargetType.SKILL, skillId).withDetail(detail));
+    }
+
+    public void skillArchivedInTransaction(UUID skillId) {
+        append(() -> AuditEvent.success(AuditAction.SKILL_ARCHIVED, AuditTargetType.SKILL, skillId));
+    }
+
+    /** A system transition: the actor is {@code system:knowledge-skills}. */
+    public void skillStaleInTransaction(UUID skillId, String reason) {
+        write(() -> AuditEvent.success(AuditAction.SKILL_STALE, AuditTargetType.SKILL, skillId).withDetail(reason),
+                SKILLS_COMPONENT);
+    }
+
+    /**
+     * A SKILL.md download: like {@link #metricsViewed()}, its own short transaction that never fails the download. The
+     * source documents are listed (ids), as for an answer.
+     */
+    public void skillExported(UUID skillId, List<UUID> documentIds) {
+        try {
+            db.inTransaction(status -> {
+                append(() -> AuditEvent.success(AuditAction.SKILL_EXPORTED, AuditTargetType.SKILL, skillId)
+                        .answeredBy(null, null, documentIds));
+                return null;
+            });
+        } catch (RuntimeException e) {
+            writeFailed.increment();
+            log.error("Audit event not stored: code=AUDIT_WRITE_FAILED reason=OUTBOX action=SKILL_EXPORTED "
                     + "exceptionType={}", e.getClass().getSimpleName());
         }
     }

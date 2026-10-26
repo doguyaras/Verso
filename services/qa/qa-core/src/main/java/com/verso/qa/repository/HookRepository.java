@@ -107,10 +107,15 @@ public class HookRepository {
                 .param("cutoff", Timestamp.from(cutoff)).param("limit", limit).update();
     }
 
-    /** Whether an active golden case cites this document (a change of it may move recall). */
+    /**
+     * Whether an active golden case cites this document (a change of it may move recall): a verified card's, or an
+     * APPROVED skill's current version (ADR-0053).
+     */
     public boolean goldenCaseCites(UUID documentId) {
         return db.jdbc().sql("SELECT EXISTS (SELECT 1 FROM qa.golden_case g JOIN qa.knowledge_card_citation k "
-                        + "ON k.card_id = g.card_id WHERE g.active AND k.document_id = :doc)")
+                        + "ON k.card_id = g.card_id WHERE g.active AND k.document_id = :doc) "
+                        + "OR EXISTS (SELECT 1 FROM qa.skill s JOIN qa.skill_step_source x ON x.skill_id = s.id "
+                        + "AND x.version = s.version WHERE s.state = 'APPROVED' AND x.document_id = :doc)")
                 .param("doc", documentId).query(Boolean.class).single();
     }
 
