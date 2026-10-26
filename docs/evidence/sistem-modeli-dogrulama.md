@@ -13,7 +13,7 @@
 | `./mvnw -B -ntp -T 1 test -pl verso-app -Dtest=ArchitectureRulesTest,ConfigDriftTest,ErrorCodeUniquenessTest,ModuleStructureTest,ComposeConfigTest,TransactionBoundaryRulesTest` | 36 test, 0 hata (`DeployConfigTest` Docker ister, CI) |
 | `MigrationConventionsTest` (document-core ve qa-core içinde) | yeşil |
 | `node scripts/flyway-immutability.js check --base origin/develop` | `flyway-immutability: OK (base=origin/develop, merge-base=c5e335f33e0e)` |
-| `node scripts/migration-contract.js check --base origin/develop` | commit sonrası; sonuç PR/commit notunda |
+| `node scripts/migration-contract.js check --base origin/develop` | `migration-contract: OK (2 yeni migration, base=origin/develop)` (document V6, qa V7; yalnız yeni tablolar) |
 | `GITLEAKS=/c/Users/doguy/.local/bin/gitleaks.exe node --test scripts/*.test.js scripts/panel.test.mjs` | 273 test, 272 geçti, 1 atlandı, 0 hata (panel: `systemmap` rol matrisinde yalnız yönetici, varlık/ilişki türleri sunucu enum'larıyla sözleşme (PERSON yok), adım sırası, kaynak etiketi, kodlanmış URL'ler, yeni hata kodu mesajları) |
 
 ## Ölçüm: çıkarım maliyeti
