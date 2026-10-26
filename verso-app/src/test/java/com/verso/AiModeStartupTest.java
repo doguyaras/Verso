@@ -18,8 +18,8 @@ class AiModeStartupTest {
     void start_whenLocalModeIsGivenACloudProvider_fails() {
         assertThatThrownBy(() -> start("--VERSO_AI_MODE=local", "--VERSO_CHAT_PROVIDER=anthropic",
                 "--spring.ai.anthropic.api-key=test-key"))
-                .hasRootCauseMessage("verso.ai.mode=local needs spring.ai.model.chat=ollama; a cloud provider is only "
-                        + "allowed with verso.ai.mode=cloud (ADR-0006)");
+                .hasRootCauseMessage("verso.ai.mode=local needs spring.ai.model.chat to be one of [ollama, openai]; "
+                        + "a cloud provider is only allowed with verso.ai.mode=cloud (ADR-0006)");
     }
 
     @Test

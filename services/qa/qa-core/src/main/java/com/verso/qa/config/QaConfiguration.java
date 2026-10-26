@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
 import org.springframework.boot.actuate.info.InfoContributor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -56,10 +57,17 @@ public class QaConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(OpenAiHttpClientBuilderCustomizer.class)
+    // Component scanning finds this nested class on its own: it needs the outer class's condition, which is where
+    // VersoAiProperties is enabled (a non-web context, such as the migrate run, has neither).
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     static class LocalOpenAiEgressConfiguration {
 
         @Bean
-        OpenAiHttpClientBuilderCustomizer localModelEgress(VersoAiProperties ai) {
+        OpenAiHttpClientBuilderCustomizer localModelEgress(ObjectProvider<VersoAiProperties> ai) {
+            return builder -> ai.ifAvailable(properties -> localModelEgress(properties).customize(builder));
+        }
+
+        static OpenAiHttpClientBuilderCustomizer localModelEgress(VersoAiProperties ai) {
             return builder -> {
                 if (ai.mode() == AiMode.LOCAL) builder.interceptor(new LocalModelEgress());
             };

@@ -35,7 +35,7 @@ class LocalModelEgressTest {
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .options(OpenAiChatOptions.builder().baseUrl("http://203.0.113.9:8080/v1").apiKey("k").model("m")
                         .maxRetries(0).timeout(Duration.ofSeconds(30)).build())
-                .httpClientBuilderCustomizer(new QaConfiguration.LocalOpenAiEgressConfiguration()
+                .httpClientBuilderCustomizer(QaConfiguration.LocalOpenAiEgressConfiguration
                         .localModelEgress(new VersoAiProperties(AiMode.LOCAL, "m", "e")))
                 .build();
         long started = System.nanoTime();
@@ -96,7 +96,7 @@ class LocalModelEgressTest {
     @Test
     void customizer_inLocalMode_addsTheGuardThatFailsBeforeConnecting() {
         SpringAiOpenAiHttpClient.Builder builder = mock(SpringAiOpenAiHttpClient.Builder.class);
-        new QaConfiguration.LocalOpenAiEgressConfiguration().localModelEgress(new VersoAiProperties(AiMode.LOCAL, "m", "e"))
+        QaConfiguration.LocalOpenAiEgressConfiguration.localModelEgress(new VersoAiProperties(AiMode.LOCAL, "m", "e"))
                 .customize(builder);
         ArgumentCaptor<Interceptor> added = ArgumentCaptor.forClass(Interceptor.class);
         verify(builder).interceptor(added.capture());
@@ -110,7 +110,7 @@ class LocalModelEgressTest {
     @Test
     void customizer_inCloudMode_addsNothing() {
         SpringAiOpenAiHttpClient.Builder builder = mock(SpringAiOpenAiHttpClient.Builder.class);
-        new QaConfiguration.LocalOpenAiEgressConfiguration().localModelEgress(new VersoAiProperties(AiMode.CLOUD, "m", "e"))
+        QaConfiguration.LocalOpenAiEgressConfiguration.localModelEgress(new VersoAiProperties(AiMode.CLOUD, "m", "e"))
                 .customize(builder);
         verifyNoInteractions(builder);
     }

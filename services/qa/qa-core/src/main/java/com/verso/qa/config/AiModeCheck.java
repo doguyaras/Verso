@@ -41,7 +41,7 @@ public final class AiModeCheck {
     /** Embeddings: Ollama only, in every mode (llm-rules 1.2). */
     static final Set<String> LOCAL_PROVIDERS = Set.of("ollama");
     /** Chat in local mode: Ollama, or an OpenAI-compatible model server on the internal network (ADR-0051). */
-    static final Set<String> LOCAL_CHAT_PROVIDERS = Set.of("ollama", "openai");
+    static final List<String> LOCAL_CHAT_PROVIDERS = List.of("ollama", "openai"); // a list: a stable order in messages
     /** Cloud provider → the setting that must hold its API key. */
     static final Map<String, String> CLOUD_PROVIDERS = Map.of(
             "anthropic", "spring.ai.anthropic.api-key",
