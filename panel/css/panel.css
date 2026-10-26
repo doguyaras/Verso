@@ -211,6 +211,10 @@ kbd {
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast);
 }
 .icon-button:hover { background: var(--bg-control-hover); color: var(--fg-default); }
+/* The admins' notification bell (ADR-0052): a small count on the icon, hidden at zero. */
+.icon-button.bell { position: relative; }
+.bell-count { position: absolute; top: 2px; right: 2px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger-solid); color: #fff; font-size: 10px; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.bell-count[hidden] { display: none; }
 
 /* ---------- inputs ---------- */
 .input, .textarea {

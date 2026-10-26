@@ -112,6 +112,53 @@ final class AnchorCheck {
         return new Result(checked, List.copyOf(missing));
     }
 
+    /**
+     * The contradiction scan's comparison (ADR-0052): pairs of anchors of the same kind (number with number, code with
+     * code) that stand next to the same describing terms in two texts but differ, where neither text also states the
+     * other's value. Both sides are read strictly (only what is surely a quantity), with the same folding as the
+     * groundedness check: "on dört gün" and "14 gün" are one value, so they never differ. In first-text order, each
+     * pair once; at most {@code limit}.
+     */
+    static List<Difference> differences(String first, String second, int limit) {
+        List<Token> a = tokens(first, true);
+        List<Token> b = tokens(second, true);
+        Set<String> inA = new HashSet<>();
+        Set<String> inB = new HashSet<>();
+        for (Token token : a) if (token.anchor() != null) inA.add(token.anchor());
+        for (Token token : b) if (token.anchor() != null) inB.add(token.anchor());
+        List<Difference> found = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (int k = 0; k < a.size() && found.size() < limit; k++) {
+            String mine = a.get(k).anchor();
+            if (mine == null || inB.contains(mine)) continue;
+            Set<String> context = neighbours(a, k, SENTENCE_CONTEXT);
+            if (context.size() < MIN_SHARED_TERMS) continue;
+            for (int m = 0; m < b.size(); m++) {
+                String theirs = b.get(m).anchor();
+                if (theirs == null || inA.contains(theirs) || theirs.charAt(0) != mine.charAt(0)) continue;
+                // At least two shared describing terms: "yıllık izin 14 gün" / "yıllık izin 16 gün", not a stray number.
+                if (sharedCount(context, neighbours(b, m, SENTENCE_CONTEXT)) < MIN_SHARED_TERMS) continue;
+                if (seen.add(mine + "|" + theirs)) found.add(new Difference(display(mine), display(theirs)));
+                break;
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    /** One differing value of each text, as shown ("14", "SAT-E058"). */
+    record Difference(String first, String second) {
+    }
+
+    private static int sharedCount(Set<String> own, Set<String> other) {
+        int shared = 0;
+        for (String term : own) if (meets(Set.of(term), other)) shared++;
+        return shared;
+    }
+
+    private static String display(String anchor) {
+        return anchor.substring(2);
+    }
+
     /** How many describing terms of the sentence any passage also uses. */
     private static int sharedTerms(List<Token> own, List<List<Token>> sources) {
         Set<String> theirs = new HashSet<>();

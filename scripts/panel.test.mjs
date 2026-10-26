@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1735,10 +1735,10 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
-    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge']) assert.equal(canOpen(id, roles), false, id);
+    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge']);
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
   for (const id of adminScreens(admin)) {
     assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
@@ -1749,7 +1749,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
   assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -2453,5 +2453,92 @@ test('knowledge: the admin API paths carry only ids, the state filter and page n
     ['GET', '/v1/admin/knowledge-eval/runs?page=0&size=10', null],
     ['POST', '/v1/admin/knowledge-eval/runs', null]]);
   for (const code of [11040, 11041, 11042, 11043, 11044, 11045, 11046, 11047, 11048]) assert.ok(MESSAGES[code], String(code));
+  signOut();
+});
+
+test('health: severities, trends, hook actions and the export name follow the server; ranges are calendar quarters', async () => {
+  const { ACTIONS, actionLabel, bellBadge, exportFileName, FEEDBACK_REASONS, notificationItem, percentText, quarterRange,
+    recentRange, SEVERITIES, severityLabel, sideLabel, TRENDS, trendLabel, valuesText } = await import('../panel/js/health.js');
+  const enumOf = (file) => [...readFileSync(`services/qa/qa-api/src/main/java/com/verso/qa/api/dto/${file}.java`, 'utf8')
+    .matchAll(/^    ([A-Z_]+)[,\n]/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(Object.keys(SEVERITIES).sort(), enumOf('KnowledgeHealthSeverity'));
+  assert.deepEqual(Object.keys(TRENDS).sort(), enumOf('ClusterTrend'));
+  assert.deepEqual(Object.keys(FEEDBACK_REASONS).sort(), enumOf('FeedbackReason'));
+  // ADR-0048 principle 5: the panel knows exactly the four allowed actions, the server's complete list.
+  assert.deepEqual(Object.keys(ACTIONS).sort(), enumOf('HookAction'));
+  assert.deepEqual(Object.keys(ACTIONS).sort(), ['DEMOTE', 'FLAG', 'NOTIFY', 'RUN_EVAL']);
+  assert.equal(actionLabel('PROMOTE'), 'Bilinmiyor');
+  assert.equal(severityLabel('CRITICAL'), 'Kritik');
+  assert.equal(trendLabel('GROWING'), 'Büyüyor');
+  assert.deepEqual(quarterRange(new Date(2026, 9, 26)), { from: '2026-10-01', to: '2026-12-31', label: '2026 Ç4' });
+  assert.deepEqual(quarterRange(new Date(2026, 9, 26), true), { from: '2026-07-01', to: '2026-09-30', label: '2026 Ç3' });
+  assert.deepEqual(quarterRange(new Date(2026, 1, 3), true), { from: '2025-10-01', to: '2025-12-31', label: '2025 Ç4' });
+  assert.deepEqual(recentRange(new Date(2026, 9, 26)), { from: '2026-09-27', to: '2026-10-26' });
+  assert.equal(exportFileName({ from: '2026-07-01', to: '2026-09-30' }), 'bilgi-sagligi-2026-07-01-2026-09-30.md');
+  assert.equal(exportFileName({ from: '2026-07-01', to: '2026-09-30' }, 'JSON'), 'bilgi-sagligi-2026-07-01-2026-09-30.json');
+  assert.equal(percentText(0.256), '%26');
+  assert.equal(percentText(null), 'gizli', 'a suppressed cell (k-anonymity) reads as hidden');
+  // A contradiction side is named only when the admin may read it; the values only when both sides are readable.
+  assert.equal(sideLabel({ documentId: 'abcdef1234', page: 3, readable: true, fileName: 'izin.pdf' }), 'izin.pdf, s. 3');
+  assert.equal(sideLabel({ documentId: 'abcdef1234', page: 3, readable: false, fileName: null }), 'Belge abcdef12…, s. 3');
+  assert.equal(valuesText({ values: [{ first: '14', second: '16' }] }), '14 ↔ 16');
+  assert.match(valuesText({ values: [] }), /gizli/);
+  assert.deepEqual(bellBadge(0), { show: false, text: '0', label: 'Bildirimler' });
+  assert.deepEqual(bellBadge(12), { show: true, text: '9+', label: 'Bildirimler, 12 okunmamış' });
+  assert.equal(notificationItem({ action: 'FLAG', severity: 'WARNING', title: 'İnceleme: x', readAt: null }).glyph, 'flag');
+  assert.equal(notificationItem({ action: 'NOTIFY', severity: 'INFO', title: 'x', readAt: '2026-10-26T10:00:00Z' }).unread, false);
+});
+
+test('health: the screen and the bell are text-only, admin-only and never download on their own', async () => {
+  const screen = readFileSync('panel/js/screens/health.js', 'utf8');
+  assert.doesNotMatch(screen, /innerHTML|insertAdjacentHTML|outerHTML|style=|\.style\./, 'text only, no inline styles (CSP, Trusted Types)');
+  assert.match(screen, /'Raporu indir'/);
+  // The only download is the admin's click: saveFile is declared once and called once, from the button handler.
+  assert.equal((screen.match(/saveFile\(/g) ?? []).length, 2);
+  assert.match(screen, /download\('MARKDOWN'\)/);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /bell = roles\.includes\(ROLES\.ADMIN\) \? notificationBell\(\{ guarded, navigate \}\) : null;/,
+    'the bell exists for verso-admin only');
+  assert.doesNotMatch(app, /bell\.buttons\[1\] : null/, 'replaceChildren(null) would print "null"');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.bell-count\[hidden\] \{ display: none; \}/);
+});
+
+test('health: the admin API paths carry only dates, ids, the format and page numbers; exports come back as files', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push([init.method ?? 'GET', url, init.body ?? null]);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}), blob: async () => ({ size: 3 }) };
+  };
+  await api.knowledgeHealth('2026-07-01', '2026-09-30');
+  const file = await api.exportKnowledgeHealth('2026-07-01', '2026-09-30');
+  await api.exportKnowledgeHealth('2026-07-01', '2026-09-30', 'JSON');
+  await api.exportKnowledgeHealth('2026-07-01', '2026-09-30', 'x&format=PDF');
+  await api.listKnowledgeHealthRuns();
+  await api.runKnowledgeHealth();
+  await api.listHookRules();
+  await api.setHookRule('CARD_STALE_NOTIFY', false);
+  await api.setHookRule('a/b', 'yes');
+  await api.listNotifications(true, 0, 10);
+  await api.listNotifications();
+  await api.readNotification('a/b');
+  assert.deepEqual(file, { size: 3 }, 'the export is a Blob for saveFile; nothing is saved here');
+  assert.deepEqual(sent, [
+    ['GET', '/v1/admin/knowledge-health?from=2026-07-01&to=2026-09-30', null],
+    ['GET', '/v1/admin/knowledge-health/export?from=2026-07-01&to=2026-09-30&format=MARKDOWN', null],
+    ['GET', '/v1/admin/knowledge-health/export?from=2026-07-01&to=2026-09-30&format=JSON', null],
+    ['GET', '/v1/admin/knowledge-health/export?from=2026-07-01&to=2026-09-30&format=MARKDOWN', null],
+    ['GET', '/v1/admin/knowledge-health/runs?page=0&size=5', null],
+    ['POST', '/v1/admin/knowledge-health/runs', null],
+    ['GET', '/v1/admin/knowledge-hooks', null],
+    ['PUT', '/v1/admin/knowledge-hooks/CARD_STALE_NOTIFY', '{"enabled":false}'],
+    ['PUT', '/v1/admin/knowledge-hooks/a%2Fb', '{"enabled":false}'],
+    ['GET', '/v1/admin/notifications?unread=true&page=0&size=10', null],
+    ['GET', '/v1/admin/notifications?unread=false&page=0&size=20', null],
+    ['POST', '/v1/admin/notifications/a%2Fb/read', null]]);
+  for (const code of [11060, 11061, 11062, 11063]) assert.ok(MESSAGES[code], String(code));
   signOut();
 });

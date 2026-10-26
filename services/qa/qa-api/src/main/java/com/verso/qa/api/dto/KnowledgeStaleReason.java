@@ -11,5 +11,10 @@ public enum KnowledgeStaleReason {
     /** The text of a cited page no longer has the bound hashes (found by the nightly check). */
     SOURCE_CHANGED,
     /** The verification is older than the re-verification cadence. */
-    EXPIRED
+    EXPIRED,
+    /**
+     * A bound chunk is part of a contradiction candidate and the admins switched on the demoting hook rule
+     * (ADR-0052, CONTRADICTION_DEMOTE_CARD; off by default).
+     */
+    CONTRADICTION
 }

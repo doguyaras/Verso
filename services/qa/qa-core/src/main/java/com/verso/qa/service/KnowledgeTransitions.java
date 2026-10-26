@@ -2,6 +2,7 @@ package com.verso.qa.service;
 
 import com.verso.document.api.DocumentChangeListener;
 import com.verso.document.api.dto.DocumentChange;
+import com.verso.qa.api.dto.HookTrigger;
 import com.verso.qa.api.dto.KnowledgeCardState;
 import com.verso.qa.api.dto.KnowledgeStaleReason;
 import com.verso.qa.config.QaKnowledgeProperties;
@@ -39,14 +40,16 @@ public class KnowledgeTransitions implements DocumentChangeListener {
     private final QaAudit audit;
     private final QaKnowledgeProperties properties;
     private final Clock clock;
+    private final HookTriggers hooks;
 
-    public KnowledgeTransitions(QaDatabase db, KnowledgeCardRepository cards, QaAudit audit,
+    public KnowledgeTransitions(QaDatabase db, KnowledgeCardRepository cards, QaAudit audit, HookTriggers hooks,
                                 QaKnowledgeProperties properties, Clock clock) {
         this.db = db;
         this.cards = cards;
         this.audit = audit;
         this.properties = properties;
         this.clock = clock;
+        this.hooks = hooks;
     }
 
     /** Called by the document outbox relay after the change committed (at least once). */
@@ -71,6 +74,8 @@ public class KnowledgeTransitions implements DocumentChangeListener {
         if (before.isEmpty()) return false;
         cards.insertEvent(cardId, before.get(), KnowledgeCardState.STALE, reason.name(), now);
         audit.cardStaleInTransaction(cardId, reason.name());
+        // ADR-0052: the hook rules hear of it when this commits (the qa outbox).
+        hooks.appendInTransaction(HookTrigger.CARD_STALE, "KNOWLEDGE_CARD", cardId, reason.name());
         return true;
     }
 
@@ -96,6 +101,7 @@ public class KnowledgeTransitions implements DocumentChangeListener {
                 && KnowledgeCardRules.disputed(disputes, properties.disputeThreshold()) && cards.markDisputed(cardId, now)) {
             cards.insertEvent(cardId, KnowledgeCardState.VERIFIED, KnowledgeCardState.DISPUTED, "DISPUTE_THRESHOLD", now);
             audit.cardDisputedInTransaction(cardId);
+            hooks.appendInTransaction(HookTrigger.CARD_DISPUTED, "KNOWLEDGE_CARD", cardId, null);
             log.info("Verified answer disputed: cardId={} disputes={} outcome=no_longer_served", cardId, disputes);
         }
     }

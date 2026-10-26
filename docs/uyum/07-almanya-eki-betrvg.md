@@ -23,6 +23,7 @@ Konsey ile konuşmada abartı yapılmaz. Verso'nun kayıtları ikiye ayrılır:
 | Yönetici panosu | `GET /v1/admin/metrics` | Yanıtta hesap kimliği hiç yoktur; aktif kullanıcı yalnız **sayı**dır |
 | Cevaplanamayan sorular | `verso.qa.metrics.show-unanswered-questions` **varsayılan kapalı** | Açıksa yalnız **k ≥ 3 farklı hesabın** sorduğu normalleştirilmiş soru; k, 3'ün altına indirilemez; eşik sorgunun içindedir |
 | Belge adları (en çok atıf alan belgeler) | `verso.qa.metrics.show-document-names` **varsayılan kapalı** | Açıksa belge adı görünür, **sahip hiçbir durumda görünmez** |
+| Bilgi sağlığı teşhisi (ADR-0052) | Yönetim → Bilgi sağlığı ve çeyrek raporu, gece işi | Toplu: her küme, sözcük, belge ve gerekçe hücresinde **k ≥ 5 farklı kişi** (3'e değil 5'e; ayarla düşmez, DB reddeder); kişi bazında döküm, kullanıcı listesi ve küme × birim × gün çapraz tablosu yok; soru metni yalnız politika açıksa. Konsey notu: teşhis davranış değil bilgi açığı ölçer, ancak BetrVG §87(1) 6 kapsamında "izlemeye elverişli" sayılabilir; BV'de amaç (bilgi tabanının iyileştirilmesi) ve kişi değerlendirmesinde kullanılmama açıkça yazılmalıdır |
 
 **Kullanıcıya bağlanabilen (konsey için kritik):**
 

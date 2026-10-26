@@ -23,6 +23,7 @@ import { renderInsights } from './screens/insights.js';
 import { renderSubjects } from './screens/subjects.js';
 import { renderConnectors } from './screens/connectors.js';
 import { renderKnowledge } from './screens/knowledge.js';
+import { notificationBell, renderHealth } from './screens/health.js';
 import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
@@ -33,7 +34,7 @@ import { renderTrust } from './screens/trust.js';
 const AUTO_SIGN_IN = 'verso.panel.auto';
 const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
   insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects,
-  connectors: renderConnectors, trust: renderTrust, knowledge: renderKnowledge };
+  connectors: renderConnectors, trust: renderTrust, knowledge: renderKnowledge, health: renderHealth };
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
@@ -46,6 +47,7 @@ let params = null;
 const counts = {};
 let moveIndicator = () => {};
 let routed = false; // the first screen appears without a transition
+let bell = null; // the admins' notification bell (ADR-0052)
 
 // ---------- theme: the ivory light theme unless the user picks dark or "follow the system" (ADR-0018) ----------
 function applyTheme() {
@@ -211,6 +213,7 @@ function adminItems() {
     ...(canOpen('connectors', roles) ? [{ label: 'Bağlayıcılar', glyph: 'plug', onSelect: () => navigate('connectors') }] : []),
     ...(canOpen('trust', roles) ? [{ label: 'Güven', glyph: 'lock', onSelect: () => navigate('trust') }] : []),
     ...(canOpen('knowledge', roles) ? [{ label: 'Onaylı bilgiler', glyph: 'checkCircle', onSelect: () => navigate('knowledge') }] : []),
+    ...(canOpen('health', roles) ? [{ label: 'Bilgi sağlığı', glyph: 'pulse', onSelect: () => navigate('health') }] : []),
   ];
   return items.length ? [{ group: ADMIN_GROUP }, ...items] : [];
 }
@@ -299,6 +302,10 @@ function buildShell() {
   }
   document.querySelector('.workspace').prepend(el('div', { class: 'toggles app-toggles' },
     themeSwitch({ dark: document.documentElement.dataset.theme === 'dark', label: 'Koyu tema', onChange: (dark) => setTheme(dark ? 'dark' : 'light') })));
+  // ADR-0052: the hook notifications, for verso-admin only (the server refuses everyone else anyway).
+  bell?.stop();
+  bell = roles.includes(ROLES.ADMIN) ? notificationBell({ guarded, navigate }) : null;
+  if (bell) document.querySelector('.app-toggles').prepend(bell.buttons[0]);
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 
@@ -334,6 +341,7 @@ function buildShell() {
       signature({ height: 26, ink: 'var(--signature-ink)' })),
     el('span', { class: 'spacer' }),
     el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Ara', onclick: () => openPalette(paletteSources()) }, icon('search')),
+    ...(bell ? [bell.buttons[1]] : []),
     mobileAccount);
 }
 

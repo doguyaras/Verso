@@ -11,6 +11,7 @@ Bu doküman **26 Ekim 2026** tarihli `feature/doguyaras-ogrenen-katman-1` branch
 - Yeni yönetici uçları: `/v1/admin/knowledge-cards` (oluşturma, liste, okuma, onay, arşiv) ve `/v1/admin/knowledge-eval/runs` (liste, şimdi çalıştır).
 - `POST /v1/questions` yanıtına ve akışın `done` olayına `memory` alanı; akışa `MEMORY_FOUND` aşaması; `model` için yeni değer `verified-answer` (ekleyici; ayrıntı: [api-questions-integration-v1.md](api-questions-integration-v1.md)).
 - Yeni hata kodları: 11040–11048 (`qa` bloğu).
+- **Faz 2 ([ADR-0052](adr/0052-bilgi-sagligi-ve-kancalar.md)), ekleyici:** `/v1/admin/knowledge-health` (rapor, dışa aktarım, teşhis koşuları), `/v1/admin/knowledge-hooks` (kanca kuralları), `/v1/admin/notifications` (kanca bildirimleri); hata kodları 11060–11063; `KnowledgeEvalRunResponse.trigger` için yeni değer `HOOK`, `staleReason` için yeni değer `CONTRADICTION` (istemciler bilmedikleri değeri göstermeden geçmeli); denetim eylemleri `KNOWLEDGE_DIAGNOSTICS_RUN`, `KNOWLEDGE_HEALTH_VIEWED`, `KNOWLEDGE_HOOK_FIRED`, `KNOWLEDGE_HOOK_RULE_CHANGED`, `KNOWLEDGE_NOTIFICATION_READ`; hedef türleri `KNOWLEDGE_HEALTH`, `KNOWLEDGE_HOOK`, `QUESTION_CLUSTER`, `CONTRADICTION`.
 - Yeni denetim eylemleri: `KNOWLEDGE_CARD_CREATED`, `KNOWLEDGE_CARD_VERIFIED`, `KNOWLEDGE_CARD_STALE`, `KNOWLEDGE_CARD_DISPUTED`, `KNOWLEDGE_CARD_ARCHIVED`, `KNOWLEDGE_EVAL_RUN`; yeni hedef türleri `KNOWLEDGE_CARD`, `KNOWLEDGE_EVAL`. Sistem geçişlerinin aktörü `system:knowledge-memory`'dir.
 - Mobil için etki yok (yönetici ekranı yalnız panelde). Mobil istemci `memory` alanını görmezden gelebilir; gösterirse "Uzman onaylı" rozeti önerilir.
 
@@ -68,6 +69,46 @@ Altın set kontrolleri, yeniden eskiye. Her koşu: `id`, `trigger` (`SCHEDULED` 
 
 Kontrolü hemen çalıştırır (model çağrılmaz; en çok 1 000 vaka, eşzamanlı). Yanıt `201` ve koşu. Başka bir koşu sürüyorsa `409 11048`.
 
+## Bilgi sağlığı ve kancalar (faz 2, ADR-0052)
+
+Bütün uçlar yalnız `verso-admin` içindir (`403 90101`, token'sız `401 90100`); yanıtlar `Cache-Control: no-store, private`. Yöneticinin adı ve grupları token'dan okunur: rapordaki belge adları ve çelişki değerleri **bu yöneticinin okuyabildiği** belgelerle sınırlıdır.
+
+### `GET /v1/admin/knowledge-health?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+Penceresi `from..to` içinde biten en son başarılı teşhis koşusundan rapor (aralık en çok 400 gün; ters ya da uzun aralık `400 11060`). Koşu yoksa `run: null`, listeler boş, tek bulgu `NO_RUN`.
+
+| Alan | Anlam |
+|---|---|
+| `run` | koşu kimliği, soru penceresi (`windowFrom`, `windowTo`), bitiş, belirsiz soru ve küme sayısı |
+| `minAskers` | k (en az 5): her toplam en az bu kadar farklı kişiye dayanır |
+| `questionTextShown` | kurulum politikası (`VERSO_SHOW_UNANSWERED_QUESTIONS`); `false` iken hiçbir soru metni dönmez |
+| `findings[]` | `code`, `severity` (`INFO`, `WARNING`, `CRITICAL`), `title`, `finding`, `recommendation`: sabit Türkçe şablonlar, en ağır önce |
+| `clusters[]` | `turns`, `askers` (≥ k), `previousTurns`, `trend` (`NEW`, `GROWING`, `STABLE`, `SHRINKING`), `keywords` (≥ k kişinin kullandığı sözcük kökleri), `representativeQuestions` (yalnız politika açıkken, ≥ k kişinin sorduğu normalleştirilmiş soru) |
+| `staleDocuments[]` | belge kimliği, `fileName` (yalnız yönetici okuyabiliyorsa), bilgi alanı, son değişiklik, atıf ve kişi sayısı (≥ k), eskiyen kart sayısı |
+| `coverage[]` | bilgi alanı başına belge, dönemde kaynak olan (`null`: < k kişi, gizli), `coverage` oranı, hiç kullanılmayan |
+| `neverCitedDocuments` | hiç atıf almamış paylaşılan belge sayısı |
+| `contradictions[]` | `first`/`second`: `documentId`, `page`, `readable`, `fileName` (okunabiliyorsa); `values[]` (`first`, `second`) yalnız iki taraf da okunabiliyorsa; `similarity`, `differences` |
+| `cards` | durum başına kart ve onayı yakında dolacaklar |
+| `downRatingReasons[]` | bilgi alanı × gerekçe (`null`: gerekçesiz) başına olumsuz puan ve kişi (≥ k) |
+| `trend[]` | aralıktaki koşular: pencere sonu, soru, küme |
+| `openFlags` | okunmamış `FLAG` bildirimleri |
+
+### `GET /v1/admin/knowledge-health/export?from&to&format=MARKDOWN|JSON`
+
+Aynı rapor ek dosya olarak (`Content-Disposition: attachment; filename="bilgi-sagligi-<from>-<to>.md|json"`, Markdown `text/markdown;charset=UTF-8`). Aynı süzgeçler; Markdown'da her ad ve metin kaçışlanır. Bilinmeyen `format` `400`.
+
+### `GET /v1/admin/knowledge-health/runs?page&size` · `POST /v1/admin/knowledge-health/runs`
+
+Koşular, en yenisi önce (`trigger` `SCHEDULED`/`MANUAL`, `status`, pencere, `questions`, `embedded`, `clusters`, `contradictionsChecked`). `POST` teşhisi hemen ve eşzamanlı çalıştırır (yalnız yerel embedding; sınırları `verso.qa.diagnostics.*`); başka koşu kilidi tutuyorsa `409 11061`.
+
+### `GET /v1/admin/knowledge-hooks` · `PUT /v1/admin/knowledge-hooks/{key}`
+
+Sabit kural kümesi: `key`, `trigger`, `action` (yalnız `NOTIFY`, `FLAG`, `DEMOTE`, `RUN_EVAL`), `enabled`, `defaultEnabled`, Türkçe `description`. `PUT` gövdesi `{"enabled": true|false}`; başka hiçbir alan değişmez. Bilinmeyen anahtar `404 11062`, biçimsiz anahtar ya da eksik `enabled` `400`.
+
+### `GET /v1/admin/notifications?unread=false&page&size` · `POST /v1/admin/notifications/{id}/read`
+
+Kanca bildirimleri, en yenisi önce: `ruleKey`, `action` (`NOTIFY`/`FLAG`), `trigger`, `subjectType` (`DOCUMENT`, `KNOWLEDGE_CARD`, `QUESTION_CLUSTER`, `CONTRADICTION`, `EVAL_RUN`), `subjectId`, `detail` (sabit sözcük), `severity`, Türkçe `title`, `createdAt`, `readAt`. Bildirimler bütün yöneticilerin ortak kutusudur; okundu işareti herkes için geçerlidir. Bilinmeyen kimlik `404 11063`. E-posta ve webhook bu sürümde yoktur.
+
 ## Hata kodları
 
 | Kod | HTTP | Anlam | İstemci davranışı | Yeniden dene |
@@ -82,6 +123,10 @@ Kontrolü hemen çalıştırır (model çağrılmaz; en çok 1 000 vaka, eşzama
 | 11046 | 409 | Kişisel belgeye dayanıyor | belgeyi bir bilgi alanına taşı | hayır |
 | 11047 | 409 | Aynı soru için canlı kart var | mevcut kartı göster | hayır |
 | 11048 | 409 | Kontrol zaten çalışıyor | biraz sonra | evet |
+| 11060 | 400 | Rapor aralığı ters ya da 400 günden uzun | aralığı düzelt | hayır |
+| 11061 | 409 | Teşhis zaten çalışıyor (ya da bugünün gece koşusu sürüyor) | biraz sonra | evet |
+| 11062 | 404 | Kanca kuralı yok | listeyi yenile | hayır |
+| 11063 | 404 | Bildirim yok (saklama süresi doldu) | listeyi yenile | hayır |
 | 90101 | 403 | `verso-admin` değil | yönetici ekranını gösterme | hayır |
 
 ## Gizlilik

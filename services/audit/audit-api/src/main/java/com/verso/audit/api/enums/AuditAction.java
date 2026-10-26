@@ -76,6 +76,19 @@ public enum AuditAction {
     KNOWLEDGE_CARD_DISPUTED,
     /** A verso-admin archived a card. */
     KNOWLEDGE_CARD_ARCHIVED,
-    /** The golden-set check ran; the detail is SCHEDULED or MANUAL, the target is the run. */
-    KNOWLEDGE_EVAL_RUN
+    /** The golden-set check ran; the detail is SCHEDULED, MANUAL or HOOK, the target is the run. */
+    KNOWLEDGE_EVAL_RUN,
+    /** The diagnostics job ran (ADR-0052); the detail is SCHEDULED or MANUAL, the target is the run. */
+    KNOWLEDGE_DIAGNOSTICS_RUN,
+    /** A verso-admin read or exported the knowledge-health report; the detail is VIEW, MARKDOWN or JSON. */
+    KNOWLEDGE_HEALTH_VIEWED,
+    /**
+     * A hook rule acted (system actor); the target is the subject (document, card, cluster, contradiction, eval run),
+     * the detail is the rule key. Never the subject's content.
+     */
+    KNOWLEDGE_HOOK_FIRED,
+    /** A verso-admin switched a hook rule on or off; the detail is the rule key with _ON or _OFF. */
+    KNOWLEDGE_HOOK_RULE_CHANGED,
+    /** A verso-admin marked a hook notification read; the target is the notification. */
+    KNOWLEDGE_NOTIFICATION_READ
 }

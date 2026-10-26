@@ -19,6 +19,7 @@ export const STALE_REASONS = Object.freeze({
   SOURCE_MOVED: 'Alıntılanan belge başka bir bilgi alanına taşındı',
   SOURCE_CHANGED: 'Alıntılanan sayfanın metni değişti',
   EXPIRED: 'Onay süresi doldu',
+  CONTRADICTION: 'Başka bir belgeyle çelişen bir parçaya dayanıyor',
 });
 
 /** What the event reasons of a card's history say. */
@@ -81,7 +82,7 @@ export function runModel(run) {
   const status = { RUNNING: 'Sürüyor', SUCCEEDED: 'Tamamlandı', FAILED: 'Başarısız' }[run?.status] ?? 'Bilinmiyor';
   return {
     status,
-    trigger: run?.trigger === 'MANUAL' ? 'Elle' : 'Gece',
+    trigger: { MANUAL: 'Elle', HOOK: 'Kanca' }[run?.trigger] ?? 'Gece',
     recall: percent(run?.recallAtK),
     baseline: percent(run?.baselineRecall),
     drift: percent(run?.sourceDrift),

@@ -177,7 +177,9 @@ public class ConversationServiceImpl implements ConversationService, Conversatio
         String outcome = answer.outcome().name();
         UUID turnId = turns.insert(new NewTurn(conversationId, account, question, QuestionNormalizer.hash(question),
                 bounded(storable(answer.answer())), outcome, answer.mode(), answer.model(), millis(timings.retrievalMs()),
-                millis(timings.chatMs()), millis(timings.totalMs()), day, now));
+                millis(timings.chatMs()), millis(timings.totalMs()), day, now,
+                // ADR-0052: a grounding-flagged answer is an uncertain one for the diagnostics (count only).
+                answer.unverified() == null ? null : answer.unverified().size()));
         for (Citation citation : answer.citations()) {
             turns.insertCitation(turnId, citation.number(), citation.documentId(), citation.page(), citation.unit().name());
         }

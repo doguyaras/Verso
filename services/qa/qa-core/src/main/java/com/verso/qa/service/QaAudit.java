@@ -159,6 +159,69 @@ public class QaAudit {
         else appendSystem(event);
     }
 
+    // ---------------------------------------------------------------- diagnostics and hooks (ADR-0052): ids only
+
+    /** The audit actor of the hook rule engine. */
+    public static final String HOOKS_COMPONENT = "knowledge-hooks";
+    /** The audit actor of the scheduled diagnostics job. */
+    public static final String DIAGNOSTICS_COMPONENT = "knowledge-diagnostics";
+
+    /** A diagnostics run: a MANUAL one is the admin's, a SCHEDULED one the system's. */
+    public void diagnosticsRunInTransaction(UUID runId, String trigger) {
+        Supplier<AuditEvent> event = () -> AuditEvent.success(AuditAction.KNOWLEDGE_DIAGNOSTICS_RUN,
+                AuditTargetType.KNOWLEDGE_HEALTH, runId).withDetail(trigger);
+        if ("MANUAL".equals(trigger)) append(event);
+        else write(event, DIAGNOSTICS_COMPONENT);
+    }
+
+    /**
+     * A hook rule acted on a subject (system actor): the subject's type and id and the rule key, nothing else.
+     *
+     * @param subjectType DOCUMENT, KNOWLEDGE_CARD, QUESTION_CLUSTER, CONTRADICTION or EVAL_RUN
+     */
+    public void hookFiredInTransaction(String subjectType, UUID subjectId, String ruleKey) {
+        AuditTargetType type = switch (subjectType) {
+            case "DOCUMENT" -> AuditTargetType.DOCUMENT;
+            case "KNOWLEDGE_CARD" -> AuditTargetType.KNOWLEDGE_CARD;
+            case "QUESTION_CLUSTER" -> AuditTargetType.QUESTION_CLUSTER;
+            case "CONTRADICTION" -> AuditTargetType.CONTRADICTION;
+            case "EVAL_RUN" -> AuditTargetType.KNOWLEDGE_EVAL;
+            default -> AuditTargetType.KNOWLEDGE_HOOK;
+        };
+        write(() -> AuditEvent.success(AuditAction.KNOWLEDGE_HOOK_FIRED, type, subjectId).withDetail(ruleKey),
+                HOOKS_COMPONENT);
+    }
+
+    public void hookRuleChangedInTransaction(String ruleKey, boolean enabled) {
+        append(() -> AuditEvent.success(AuditAction.KNOWLEDGE_HOOK_RULE_CHANGED, AuditTargetType.KNOWLEDGE_HOOK)
+                .withDetail(ruleKey + (enabled ? "_ON" : "_OFF")));
+    }
+
+    public void notificationReadInTransaction(UUID notificationId) {
+        append(() -> AuditEvent.success(AuditAction.KNOWLEDGE_NOTIFICATION_READ, AuditTargetType.KNOWLEDGE_HOOK,
+                notificationId));
+    }
+
+    /**
+     * A read or an export of the knowledge-health report: like {@link #metricsViewed()}, its own short transaction
+     * that never fails the read.
+     *
+     * @param detail VIEW, MARKDOWN or JSON
+     */
+    public void knowledgeHealthViewed(String detail) {
+        try {
+            db.inTransaction(status -> {
+                append(() -> AuditEvent.success(AuditAction.KNOWLEDGE_HEALTH_VIEWED, AuditTargetType.KNOWLEDGE_HEALTH)
+                        .withDetail(detail));
+                return null;
+            });
+        } catch (RuntimeException e) {
+            writeFailed.increment();
+            log.error("Audit event not stored: code=AUDIT_WRITE_FAILED reason=OUTBOX action=KNOWLEDGE_HEALTH_VIEWED "
+                    + "exceptionType={}", e.getClass().getSimpleName());
+        }
+    }
+
     private void appendSystem(Supplier<AuditEvent> build) {
         write(build, KNOWLEDGE_COMPONENT);
     }

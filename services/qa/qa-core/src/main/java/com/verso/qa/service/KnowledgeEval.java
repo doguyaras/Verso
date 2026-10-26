@@ -5,6 +5,7 @@ import com.verso.document.api.dto.PageResponse;
 import com.verso.document.api.dto.QuestionEmbedding;
 import com.verso.document.api.dto.SourceChunk;
 import com.verso.document.api.dto.SourcePage;
+import com.verso.qa.api.dto.HookTrigger;
 import com.verso.qa.api.dto.KnowledgeCardState;
 import com.verso.qa.api.dto.KnowledgeEvalRunResponse;
 import com.verso.qa.api.dto.KnowledgeStaleReason;
@@ -70,6 +71,7 @@ public class KnowledgeEval {
     private final QaAudit audit;
     private final QaKnowledgeProperties properties;
     private final Clock clock;
+    private final HookTriggers hooks;
     private final Map<KnowledgeCardState, AtomicReference<Double>> cardCounts = new EnumMap<>(KnowledgeCardState.class);
     private final AtomicReference<Double> recall = new AtomicReference<>(Double.NaN);
     private final AtomicReference<Double> drift = new AtomicReference<>(Double.NaN);
@@ -77,7 +79,7 @@ public class KnowledgeEval {
 
     public KnowledgeEval(QaDatabase db, KnowledgeEvalRepository runs, KnowledgeCardRepository cards,
                          DocumentProvenance provenance, KnowledgeTransitions transitions, QaAudit audit,
-                         QaKnowledgeProperties properties, Clock clock, MeterRegistry registry) {
+                         QaKnowledgeProperties properties, Clock clock, MeterRegistry registry, HookTriggers hooks) {
         this.db = db;
         this.runs = runs;
         this.cards = cards;
@@ -86,6 +88,7 @@ public class KnowledgeEval {
         this.audit = audit;
         this.properties = properties;
         this.clock = clock;
+        this.hooks = hooks;
         for (KnowledgeCardState state : KnowledgeCardState.values()) {
             AtomicReference<Double> value = new AtomicReference<>(0.0);
             cardCounts.put(state, value);
@@ -103,7 +106,7 @@ public class KnowledgeEval {
     /**
      * One run. Empty when another run holds the lock (or, for SCHEDULED, today's run exists already).
      *
-     * @param trigger SCHEDULED or MANUAL
+     * @param trigger SCHEDULED, MANUAL or HOOK (a hook rule asked, ADR-0052)
      */
     public Optional<KnowledgeEvalRunResponse> run(String trigger) {
         Instant now = clock.instant();
@@ -123,7 +126,7 @@ public class KnowledgeEval {
         UUID runId = claimed.get();
         try {
             Totals totals = evaluate(runId, token);
-            if (!db.inTransaction(status -> runs.finish(runId, token, totals, clock.instant()))) {
+            if (!db.inTransaction(status -> finished(runId, token, totals))) {
                 log.warn("Golden-set check result not stored: runId={} reason=LEASE_LOST", runId);
             }
             log.info("Golden-set check finished: runId={} trigger={} cases={} found={} missed={} sourceLost={} skipped={} "
@@ -140,6 +143,13 @@ public class KnowledgeEval {
         }
         refreshGauges();
         return runs.find(runId);
+    }
+
+    /** Stores the result; an alert also tells the hook rules (GOLDEN_RECALL_DROP), in the same transaction. */
+    private boolean finished(UUID runId, UUID token, Totals totals) {
+        boolean stored = runs.finish(runId, token, totals, clock.instant());
+        if (stored && totals.alert()) hooks.appendInTransaction(HookTrigger.GOLDEN_RECALL_DROP, "EVAL_RUN", runId, null);
+        return stored;
     }
 
     private Totals evaluate(UUID runId, UUID token) {

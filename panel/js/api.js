@@ -45,6 +45,10 @@ export const MESSAGES = Object.freeze({
   11046: 'Kişisel bir belgeye dayanan cevap onaylanamaz; belgeyi bir bilgi alanına taşıyın.',
   11047: 'Bu soru için onaylı bir kart zaten var.',
   11048: 'Bir kontrol zaten çalışıyor; biraz sonra yeniden deneyin.',
+  11060: 'Tarih aralığı geçersiz (en çok 400 gün).',
+  11061: 'Bir teşhis zaten çalışıyor; biraz sonra yeniden deneyin.',
+  11062: 'Kanca kuralı bulunamadı.',
+  11063: 'Bildirim bulunamadı.',
   13001: 'Hesap kimliği (sub) geçersiz: yalnız harf, rakam ve . _ @ : - içerebilir.',
   13002: 'Onay, hesap kimliğiyle birebir aynı değil; hiçbir şey silinmedi.',
   13020: 'Onay, belge kimliğiyle birebir aynı değil; hiçbir cevap değişmedi.',
@@ -154,6 +158,20 @@ async function streamQuestion(question, signal, conversationId, live) {
   // Nothing came through at all: something on the way does not pass the stream. After events it is a cut connection.
   if (count === 0) throw new StreamUnavailable('empty');
   throw new TypeError('stream ended early');
+}
+
+/**
+ * GET whose answer is a file (the knowledge-health export, ADR-0052): the body as a Blob. Errors are the usual envelope.
+ */
+async function getFile(path) {
+  const token = await accessToken();
+  if (!token) throw new ApiError(401, 90100);
+  const res = await fetch(CONFIG.api + path, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.error?.code, Number(res.headers.get('Retry-After')) || undefined);
+  }
+  return res.blob();
 }
 
 /**
@@ -308,6 +326,20 @@ export const api = {
   archiveKnowledgeCard: (id) => request(`/v1/admin/knowledge-cards/${encodeURIComponent(id)}/archive`, { method: 'POST' }),
   listKnowledgeRuns: (page = 0, size = 10) => request(`/v1/admin/knowledge-eval/runs?page=${page}&size=${size}`),
   runKnowledgeEval: () => request('/v1/admin/knowledge-eval/runs', { method: 'POST' }),
+  // Knowledge health and hooks (ADR-0052), verso-admin only. Only dates, ids, the format, page numbers and the unread
+  // switch go into a URL.
+  knowledgeHealth: (from, to) => request(`/v1/admin/knowledge-health?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  /** The report as a file (MARKDOWN or JSON) for the consulting team. */
+  exportKnowledgeHealth: (from, to, format = 'MARKDOWN') => getFile(`/v1/admin/knowledge-health/export?from=${
+    encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=${format === 'JSON' ? 'JSON' : 'MARKDOWN'}`),
+  listKnowledgeHealthRuns: (page = 0, size = 5) => request(`/v1/admin/knowledge-health/runs?page=${page}&size=${size}`),
+  runKnowledgeHealth: () => request('/v1/admin/knowledge-health/runs', { method: 'POST' }),
+  listHookRules: () => request('/v1/admin/knowledge-hooks'),
+  setHookRule: (key, enabled) => request(`/v1/admin/knowledge-hooks/${encodeURIComponent(key)}`,
+    json('PUT', { enabled: enabled === true })),
+  listNotifications: (unread = false, page = 0, size = 20) =>
+    request(`/v1/admin/notifications?unread=${unread === true}&page=${page}&size=${size}`),
+  readNotification: (id) => request(`/v1/admin/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' }),
   // SMB connectors (ADR-0038, ADR-0042), verso-admin only. No call carries a password: credentialRef is the name of a
   // secret file on the server, and the API never returns a password. Only ids, page numbers and the state filter go
   // into a URL; everything else travels in the JSON body.

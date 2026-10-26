@@ -42,7 +42,15 @@ public enum QaErrorCode implements ErrorCode {
     /** A card for the same (normalised) question exists and is not archived. */
     KNOWLEDGE_CARD_DUPLICATE(11047, "A verified answer for this question already exists.", HttpStatus.CONFLICT),
     /** A golden-set check is already running (or today's scheduled run exists). */
-    KNOWLEDGE_EVAL_RUNNING(11048, "A golden-set check is already running.", HttpStatus.CONFLICT);
+    KNOWLEDGE_EVAL_RUNNING(11048, "A golden-set check is already running.", HttpStatus.CONFLICT),
+
+    // --- knowledge health and hooks (11060-11069, ADR-0052)
+    /** from..to is reversed or longer than verso.qa.diagnostics.max-range-days. */
+    KNOWLEDGE_HEALTH_RANGE_INVALID(11060, "The date range is invalid or too long.", HttpStatus.BAD_REQUEST),
+    /** A diagnostics run is already running (or today's scheduled run exists). */
+    KNOWLEDGE_HEALTH_RUNNING(11061, "A diagnostics run is already running.", HttpStatus.CONFLICT),
+    KNOWLEDGE_HOOK_RULE_NOT_FOUND(11062, "Hook rule not found.", HttpStatus.NOT_FOUND),
+    KNOWLEDGE_NOTIFICATION_NOT_FOUND(11063, "Notification not found.", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

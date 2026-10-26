@@ -23,7 +23,7 @@ public class TurnRepository {
     /** What is stored for one answer. Question and answer are personal data: never logged, never in toString. */
     public record NewTurn(UUID conversationId, String accountId, String question, byte[] questionHash, String answer,
                           String outcome, String mode, String chatModel, int retrievalMs, int chatMs, int totalMs,
-                          LocalDate day, Instant createdAt) {
+                          LocalDate day, Instant createdAt, Integer unverifiedSentences) {
 
         @Override
         public String toString() {
@@ -67,14 +67,16 @@ public class TurnRepository {
     /** Stores the turn; the id comes from the database (uuidv7). */
     public UUID insert(NewTurn turn) {
         return db.jdbc().sql("INSERT INTO qa.turn (conversation_id, account_id, question, question_hash, answer, outcome, "
-                        + "mode, chat_model, retrieval_ms, chat_ms, total_ms, day, created_at) VALUES (:conversation, "
+                        + "mode, chat_model, retrieval_ms, chat_ms, total_ms, day, created_at, unverified_sentences) "
+                        + "VALUES (:conversation, "
                         + ":account, :question, :hash, :answer, :outcome, :mode, :model, :retrievalMs, :chatMs, :totalMs, "
-                        + ":day, :createdAt) RETURNING id")
+                        + ":day, :createdAt, :unverified) RETURNING id")
                 .param("conversation", turn.conversationId()).param("account", turn.accountId())
                 .param("question", turn.question()).param("hash", turn.questionHash()).param("answer", turn.answer())
                 .param("outcome", turn.outcome()).param("mode", turn.mode()).param("model", turn.chatModel())
                 .param("retrievalMs", turn.retrievalMs()).param("chatMs", turn.chatMs()).param("totalMs", turn.totalMs())
                 .param("day", turn.day()).param("createdAt", Timestamp.from(turn.createdAt()))
+                .param("unverified", turn.unverifiedSentences())
                 .query(UUID.class).single();
     }
 

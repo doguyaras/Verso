@@ -26,5 +26,13 @@ public enum AuditTargetType {
     /** A verified answer card of the answer memory (ADR-0049). */
     KNOWLEDGE_CARD,
     /** A run of the golden-set check (ADR-0049). */
-    KNOWLEDGE_EVAL
+    KNOWLEDGE_EVAL,
+    /** The knowledge-health report or a run of the diagnostics job (ADR-0052). */
+    KNOWLEDGE_HEALTH,
+    /** A hook rule or a hook notification (ADR-0052). */
+    KNOWLEDGE_HOOK,
+    /** A cluster of uncertain questions of a diagnostics run (ADR-0052); counts only, no question. */
+    QUESTION_CLUSTER,
+    /** A contradiction candidate: two chunks of different documents (ADR-0052). */
+    CONTRADICTION
 }

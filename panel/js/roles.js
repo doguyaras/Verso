@@ -33,6 +33,8 @@ export const SCREENS = Object.freeze({
   trust: { title: 'Güven', short: 'Güven', icon: 'lock', key: 'u', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
   // ADR-0049: the answer memory's expert-verified answers and their nightly golden-set check.
   knowledge: { title: 'Onaylı bilgiler', short: 'Onaylı', icon: 'checkCircle', key: 'n', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  // ADR-0052: the company diagnostics ("bilgi sağlığı"), its quarterly report and the hook rules.
+  health: { title: 'Bilgi sağlığı', short: 'Sağlık', icon: 'pulse', key: 'h', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
 });
 
 /** The heading of the admin group (ADR-0036). */

@@ -23,7 +23,11 @@ public final class QaTables {
                     // ADR-0049: the answer memory and its golden set.
                     + "qa.knowledge_card, qa.knowledge_card_citation, qa.knowledge_card_source, "
                     + "qa.knowledge_card_verification, qa.knowledge_card_dispute, qa.knowledge_card_event, "
-                    + "qa.turn_knowledge_card, qa.golden_case, qa.eval_run, qa.eval_case_result");
+                    + "qa.turn_knowledge_card, qa.golden_case, qa.eval_run, qa.eval_case_result, "
+                    // ADR-0052: diagnostics and hooks (the rule set stays; its switches go back to the defaults).
+                    + "qa.turn_question_vector, qa.diagnostic_run, qa.question_cluster, qa.contradiction_candidate, "
+                    + "qa.hook_notification, qa.hook_eval_request");
+            st.execute("UPDATE qa.hook_rule SET enabled = default_enabled");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the qa schema", e);
         }
