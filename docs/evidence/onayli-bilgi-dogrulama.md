@@ -31,6 +31,11 @@
 | Yedi ucun hepsi `verso-user`'a 403 90101, token'sıza 401; geçersiz parametre ve gövde 400 | `everyEndpoint_isAdminOnly` |
 | Alarm `KnowledgeRecallDropped` | `deploy/obs/prometheus/alerts.test.yml` (promtool, `scripts/obs-smoke.sh`) |
 
+## CI'nın ilk koşusunda düzeltilenler (30f78e2)
+
+- `KnowledgeCardApiTest`'te 9 test kırmızıydı. Nedeni test verisiydi: taklit modelin cevabı "on dört" diyordu, test PDF'leri ASCII'ye katlandığı için ("dort") dayanak kontrolü (ADR-0047) cümleyi desteksiz buldu ve tur `UNCITED` oldu. `UNCITED` tur onaylanamaz (11042), yani ürün davranışı doğruydu. Testlerin cevapları artık sayı ve kod içermiyor, yardımcı da önce `ANSWERED` olduğunu doğruluyor.
+- `AuditFailureIsolationTest`: silme artık aynı işlemde bir `document.changed` satırı da yazıyor. Denetim veritabanı yokken başarısız teslim, bütün outbox için hemen teslimi duraklatır, bu satır da poll'u bekler. Test denetim satırlarını `event_type` ile sayıyor ve bekleyen değişiklik bildirimini ayrıca doğruluyor; sonunda outbox yine boş.
+
 ## Review skill kararları
 
 | Skill | Karar | Not |

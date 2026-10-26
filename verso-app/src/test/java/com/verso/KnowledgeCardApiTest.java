@@ -53,7 +53,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class KnowledgeCardApiTest {
 
     private static final String QUESTION = "topic-leave MarkerKnowledgeQ yıllık izin kaç gündür?";
-    private static final String ANSWER = "MarkerKnowledgeA yıllık izin on dört gündür [1][2].";
+    /**
+     * The stub model's answer. No number, number word or code: the groundedness check (ADR-0047) would compare those with
+     * the ASCII-folded test PDFs and make the answer UNCITED, and an UNCITED turn cannot be verified (11042).
+     */
+    private static final String ANSWER = "MarkerKnowledgeA yıllık izin süresi bu belgelerde tanımlıdır [1][2].";
+    private static final String ANSWER_ONE = "MarkerKnowledgeA yıllık izin süresi bu belgede tanımlıdır [1].";
 
     @Value("${local.server.port}")
     int port;
@@ -207,7 +212,7 @@ class KnowledgeCardApiTest {
         String asked = "topic-moving MarkerSecond taşınma yardımı?";
         UUID moved = uploadInto(hukuk, "tasinma.pdf", "topic-moving Tasinma yardimi on dort gundur.");
         process();
-        UUID second = verifiedCard(Map.of(moved, true), asked, "MarkerKnowledgeA on dört gün [1].");
+        UUID second = verifiedCard(Map.of(moved, true), asked, ANSWER_ONE);
         assertThat(send(admin, "PUT", "/v1/documents/" + moved + "/collection",
                 "{\"collectionId\":\"" + ik + "\"}").statusCode()).isEqualTo(200);
         awaitState(second, "STALE");
@@ -320,7 +325,7 @@ class KnowledgeCardApiTest {
     void create_refusesForeignTurnsUnsourcedAnswersPersonalSourcesAndDuplicates() throws Exception {
         UUID document = uploadInto(hukuk, "izin.pdf", "topic-leave Yillik izin on dort gundur.");
         process();
-        TestChatModel.INSTANCE.answer("MarkerKnowledgeA on dört gün [1].");
+        TestChatModel.INSTANCE.answer(ANSWER_ONE);
         HttpResponse<String> alices = ask(alice, QUESTION);
         // Another account's answer does not exist for the admin.
         assertError(create(admin, alices, true), 404, 11021);
@@ -334,7 +339,7 @@ class KnowledgeCardApiTest {
         TestChatModel.INSTANCE.answer("Kişisel [1].");
         assertError(create(admin, ask(admin, "topic-personal Kişisel not?"), true), 409, 11046);
         // One live card per question.
-        TestChatModel.INSTANCE.answer("MarkerKnowledgeA on dört gün [1].");
+        TestChatModel.INSTANCE.answer(ANSWER_ONE);
         assertThat(create(admin, ask(admin, QUESTION), true).statusCode()).isEqualTo(201);
         assertError(create(admin, ask(admin, QUESTION), true), 409, 11047);
         assertThat(document).isNotNull();
@@ -344,7 +349,7 @@ class KnowledgeCardApiTest {
     void verifyAndArchive_followTheStateMachine_withAuditRowsOfIdsOnly() throws Exception {
         UUID document = uploadInto(hukuk, "izin.pdf", "topic-leave Yillik izin on dort gundur.");
         process();
-        TestChatModel.INSTANCE.answer("MarkerKnowledgeA on dört gün [1].");
+        TestChatModel.INSTANCE.answer(ANSWER_ONE);
         HttpResponse<String> draft = create(admin, ask(admin, QUESTION), false);
         assertThat((String) JsonPath.read(draft.body(), "$.state")).isEqualTo("DRAFT");
         UUID card = UUID.fromString(JsonPath.read(draft.body(), "$.id"));
@@ -415,7 +420,7 @@ class KnowledgeCardApiTest {
 
     /** The admin asks QUESTION, the model answers ANSWER citing the given documents, and the admin verifies it. */
     private UUID verifiedCard(Map<UUID, Boolean> cited) throws Exception {
-        String answer = cited.size() == 2 ? ANSWER : "MarkerKnowledgeA yıllık izin on dört gündür [1].";
+        String answer = cited.size() == 2 ? ANSWER : ANSWER_ONE;
         return verifiedCard(cited, QUESTION, answer);
     }
 
@@ -423,6 +428,7 @@ class KnowledgeCardApiTest {
         TestChatModel.INSTANCE.answer(answer);
         HttpResponse<String> asked = ask(admin, question);
         assertThat(asked.statusCode()).as(asked.body()).isEqualTo(200);
+        assertThat((String) JsonPath.read(asked.body(), "$.outcome")).as(asked.body()).isEqualTo("ANSWERED");
         assertThat((List<String>) JsonPath.read(asked.body(), "$.citations[*].documentId"))
                 .containsExactlyInAnyOrderElementsOf(cited.keySet().stream().map(UUID::toString).toList());
         HttpResponse<String> created = create(admin, asked, true);

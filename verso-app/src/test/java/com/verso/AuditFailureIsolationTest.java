@@ -136,7 +136,12 @@ class AuditFailureIsolationTest {
 
         // ADR-0039: nothing is lost any more. The four records wait in the modules' own outboxes.
         assertThat(AuditTables.count("select count(*) from audit.event")).isZero();
-        assertThat(AuditTables.count("select count(*) from document.outbox_event")).as("upload, delete").isEqualTo(2);
+        assertThat(AuditTables.count("select count(*) from document.outbox_event where event_type = 'audit.event.recorded'"))
+                .as("upload, delete").isEqualTo(2);
+        // ADR-0049: the delete also wrote its document.changed notice in the same transaction. It waits as well: the
+        // failed audit delivery paused eager delivery for the whole outbox, and the poll delivers it with the rest.
+        assertThat(AuditTables.count("select count(*) from document.outbox_event where event_type = 'document.changed'"))
+                .as("the delete's change notice").isEqualTo(1);
         assertThat(AuditTables.count("select count(*) from qa.outbox_event")).as("question, metrics").isEqualTo(2);
         assertThat(notStored("failed") + notStored("circuit_open") - failedBefore - openBefore).as("no loss").isZero();
         assertThat(appender.list).filteredOn(e -> e.getLoggerName().endsWith("OutboxRelay"))
