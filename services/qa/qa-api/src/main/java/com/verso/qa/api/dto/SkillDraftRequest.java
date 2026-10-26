@@ -21,10 +21,18 @@ public record SkillDraftRequest(UUID clusterId,
                                 @Size(max = 12) List<@NotNull UUID> cardIds,
                                 @Size(max = 12) List<@Valid @NotNull TurnRef> turns,
                                 @Size(min = 1, max = 64) @Pattern(regexp = NAME) String name,
-                                boolean condense) {
+                                Boolean condense) {
 
     /** agentskills.io: lower-case letters, digits and single hyphens. */
     public static final String NAME = "[a-z0-9]+(-[a-z0-9]+)*";
+
+    /**
+     * {@code condense} is optional: a wrapper, because Jackson 3 refuses a missing primitive creator argument
+     * (FAIL_ON_NULL_FOR_PRIMITIVES is on by default); absent means false.
+     */
+    public SkillDraftRequest {
+        condense = Boolean.TRUE.equals(condense);
+    }
 
     /** One of the admin's own stored answers. */
     public record TurnRef(@NotNull UUID conversationId, @NotNull UUID turnId) {

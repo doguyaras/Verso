@@ -113,7 +113,9 @@ public class SkillCondenser {
             return new Outcome(template, false, 0);
         } catch (Exception e) {
             // Type only: a client message could quote the prompt (llm-rules 2.1).
-            log.warn("Skill condensing skipped: reason=FAILED exceptionType={}", e.getClass().getSimpleName());
+            Throwable cause = e instanceof java.util.concurrent.ExecutionException && e.getCause() != null
+                    ? e.getCause() : e;
+            log.warn("Skill condensing skipped: reason=FAILED exceptionType={}", cause.getClass().getSimpleName());
             return new Outcome(template, false, 0);
         } finally {
             slot.release();
