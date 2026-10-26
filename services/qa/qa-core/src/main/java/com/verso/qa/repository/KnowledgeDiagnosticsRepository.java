@@ -236,16 +236,30 @@ public class KnowledgeDiagnosticsRepository {
     }
 
     /**
-     * The words (Turkish text search lexemes, ADR-0022's configuration) that at least {@code minAskers} distinct accounts
-     * among these turns used, most askers first. Numbers and words shorter than 3 letters are left out.
+     * The keywords of a cluster, as people wrote them (lower case), most askers first. A word is shown only when at least
+     * {@code minAskers} distinct accounts among these turns typed exactly that word (k-anonymity on the shown string).
+     * Words of one Turkish stem ("bağlantı", "bağlantısı") count as one keyword, shown by their most used form; a word
+     * without a stem (a stop word: "neden", "nasıl") is left out, as are numbers and words shorter than 3 letters.
+     * Tokens are split on spaces, ASCII punctuation and digits only, so Turkish letters stay inside their word whatever
+     * the database locale.
      */
     public List<String> keywords(Collection<UUID> turnIds, int minAskers, int limit) {
         if (turnIds.isEmpty() || limit < 1) return List.of();
-        return db.jdbc().sql("SELECT w.word FROM qa.turn t "
-                        + "CROSS JOIN LATERAL unnest(tsvector_to_array(to_tsvector('turkish', t.question))) AS w(word) "
-                        + "WHERE t.id = ANY(CAST(:turns AS uuid[])) AND char_length(w.word) >= 3 AND w.word !~ '[0-9]' "
-                        + "GROUP BY w.word HAVING count(DISTINCT t.account_id) >= :k "
-                        + "ORDER BY count(DISTINCT t.account_id) DESC, count(*) DESC, w.word LIMIT :limit")
+        return db.jdbc().sql("""
+                        WITH words AS (
+                            SELECT t.account_id, w.token FROM qa.turn t
+                            CROSS JOIN LATERAL regexp_split_to_table(lower(t.question), '[[:space:][:punct:][:digit:]]+')
+                                AS w(token)
+                            WHERE t.id = ANY(CAST(:turns AS uuid[])) AND char_length(w.token) >= 3),
+                        tokens AS (
+                            SELECT token, count(DISTINCT account_id) AS askers, count(*) AS uses,
+                                   array_to_string(tsvector_to_array(to_tsvector('turkish', token)), ' ') AS stem
+                            FROM words GROUP BY token HAVING count(DISTINCT account_id) >= :k),
+                        best AS (
+                            SELECT DISTINCT ON (stem) token, askers, uses FROM tokens WHERE stem <> ''
+                            ORDER BY stem, askers DESC, uses DESC, token)
+                        SELECT token FROM best ORDER BY askers DESC, uses DESC, token LIMIT :limit
+                        """)
                 .param("turns", ids(turnIds)).param("k", minAskers).param("limit", limit).query(String.class).list();
     }
 

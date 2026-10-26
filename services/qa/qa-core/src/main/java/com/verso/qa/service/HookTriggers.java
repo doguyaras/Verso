@@ -31,10 +31,9 @@ public class HookTriggers {
     public void appendInTransaction(HookTrigger trigger, String subjectType, UUID subjectId, String detail) {
         HookEvent event = HookEvent.of(trigger, subjectType, subjectId, detail);
         String payload = json.writeValueAsString(event);
-        // Poll only (verso.outbox.poll-interval, 1 s), no eager delivery: the engine writes to the qa pool itself, and an
-        // eager delivery would ask that small pool for a second connection while the writer still holds its own; a
-        // failing action would also pause eager delivery of the audit records. Hooks can wait a second.
         outbox.store().append(event.id(), QaHookOutboxHandler.AGGREGATE_TYPE, subjectId, QaHookOutboxHandler.EVENT_TYPE,
                 payload);
+        // Delivered right after the commit when it can be (the poll is the safety net).
+        outbox.relay().deliverAfterCommit(event.id(), QaHookOutboxHandler.EVENT_TYPE, payload);
     }
 }

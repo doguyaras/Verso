@@ -24,6 +24,11 @@
 - `hooks_fireOnADocumentChangeAndADispute_andAdminsSwitchRules`: itiraz → CARD_DISPUTED_FLAG (kullanıcı adı yok); kural kapatma denetlenir; belge silme → kart STALE (kural kapalıyken bildirim yok) ve birleştirilmiş eval isteği; sessiz dönemden sonra `HOOK` koşusu sistem aktörüyle.
 - `everyEndpoint_isAdminOnly_andBindingIsChecked`: 8 uç × (kullanıcı 403 `90101`, token'sız 401); 11060 (ters ve 400 günden uzun aralık), 11062, 11063, biçimsiz anahtar, eksik `enabled`, bilinmeyen format 400; koşu yokken `NO_RUN`.
 
+## CI düzeltmesi (6a646b5 sonrası)
+
+- CI'da `KnowledgeHealthApiTest` 3 hata verdi. (1) Anahtar sözcükler Türkçe snowball kökleriydi ("baglantis", ASCII "topic" → "topiç"): artık insanların yazdığı biçim gösterilir (kökün en çok kullanılan biçimi), yalnız tam o sözcüğü ≥ k kişi yazdıysa. (2, 3) Kanca olayları yalnız poll ile teslim ediliyordu; testlerde poll kapalı olduğundan satırlar bekledi ve paylaşılan veritabanında başka bir test bağlamının relay'i onları kendi bağlamında işledi (CI'daki `IllegalStateException`). Kanca olayları artık denetim kayıtları gibi commit sonrası eager teslim edilir, poll emniyet ağıdır.
+- Docker açıkken yerelde: `./mvnw -B -ntp -T 1 -pl verso-app test -Dtest=KnowledgeHealthApiTest` 6/6 geçti; `-Dtest=KnowledgeCardApiTest` 9/9 geçti.
+
 ## Review skill'leri (her biri bir kez)
 
 | Skill | Karar |

@@ -148,8 +148,9 @@ class KnowledgeHealthApiTest {
         assertThat((Integer) JsonPath.read(report.body(), "$.clusters[0].askers")).isEqualTo(5);
         assertThat((Integer) JsonPath.read(report.body(), "$.clusters[0].turns")).isEqualTo(5);
         assertThat((String) JsonPath.read(report.body(), "$.clusters[0].trend")).isEqualTo("NEW");
-        assertThat((List<String>) JsonPath.read(report.body(), "$.clusters[0].keywords")).isNotEmpty()
-                .allMatch(word -> VPN.toLowerCase(java.util.Locale.ROOT).contains(word));
+        assertThat((List<String>) JsonPath.read(report.body(), "$.clusters[0].keywords")).contains("vpn", "baglantisi")
+                // Readable words as typed (not stems such as "baglantis"), each typed by at least 5 askers.
+                .allMatch(word -> List.of(VPN.toLowerCase(java.util.Locale.ROOT).split("[^a-z]+")).contains(word));
         assertThat((List<String>) JsonPath.read(report.body(), "$.clusters[0].representativeQuestions")).isEmpty();
         assertThat((List<String>) JsonPath.read(report.body(), "$.findings[*].code")).contains("UNANSWERED_CLUSTER");
         // Policy off: no question text, and nothing of the 4-asker topic at all.
