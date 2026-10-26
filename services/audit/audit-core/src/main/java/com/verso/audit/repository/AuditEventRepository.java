@@ -80,6 +80,12 @@ public class AuditEventRepository {
                 .update() == 1;
     }
 
+    /** Time of the newest event (the trust report, ADR-0050); empty when the log is empty. */
+    public java.util.Optional<Instant> latestOccurredAt() {
+        Timestamp latest = db.jdbc().sql("SELECT max(occurred_at) FROM audit.event").query(Timestamp.class).single();
+        return java.util.Optional.ofNullable(latest).map(Timestamp::toInstant);
+    }
+
     /** Newest first; {@code to} is exclusive. */
     public List<AuditEntryResponse> page(Instant from, Instant to, AuditAction action, int offset, int limit) {
         String sql = "SELECT " + COLUMNS + RANGE + actionClause(action)

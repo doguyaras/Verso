@@ -27,7 +27,7 @@ Kurulum ekibi sırayla; her satır için çıktı/ekran görüntüsü `{{KANIT_K
 
 | # | Kontrol | Beklenen sonuç | Nasıl | Sonuç / tarih |
 |---|---|---|---|---|
-| 1 | Betik kanıtı | `prove-local-mode: OK`; ağların hepsi "internal" | `bash scripts/prove-local-mode.sh` (yığın ayaktayken; `scripts/dev-secrets.sh` ve `docker compose up -d --build --wait` sonrası; betiğin başındaki açıklamaya bakın) | {{SONUC_1}} |
+| 1 | Betik kanıtı | `prove-local-mode: OK`; ağların hepsi "internal" | `bash scripts/prove-local-mode.sh` (JSON kanıt dosyası için `--report <dosya>` ekleyin; ADR-0050) (yığın ayaktayken; `scripts/dev-secrets.sh` ve `docker compose up -d --build --wait` sonrası; betiğin başındaki açıklamaya bakın) | {{SONUC_1}} |
 | 2 | Mod başlığı | Her yanıtta `X-Rag-Mode: local`: başarı, 4xx ve 5xx yanıtlarında, kenar proxy'nin kendi yanıtlarında da | Betiğin 3. adımı; ayrıca herhangi bir yanıtın başlıkları | {{SONUC_2}} |
 | 3 | Mod bilgi ucu | `/actuator/info` yönetim portunda (8081, compose ağı içinde) modu söyler | Yönetim portuna ağ içinden istek | {{SONUC_3}} |
 | 4 | Ağ tanımı | `models` ve `backend` ağları `internal: true`; Ollama'nın host portu yok; `deploy/compose.local.yaml` (IDE geliştirme için, portu `127.0.0.1`'e açar) üretimde kullanılmıyor | `compose.yaml` incelemesi, `docker network inspect` | {{SONUC_4}} |
@@ -36,6 +36,7 @@ Kurulum ekibi sırayla; her satır için çıktı/ekran görüntüsü `{{KANIT_K
 | 7 | Bağımsız ağ gözlemi | Verso sunucusunun/ağ segmentinin dışa giden trafiği kurum güvenlik duvarında incelenir; soru sorulurken dışarıya (model/Verso adı altında) trafik yok | Kurumun güvenlik duvarı / akış kayıtları: {{GUVENLIK_DUVARI_KANITI}} | {{SONUC_7}} |
 | 8 | Hata yanıtı | Model kapalıyken 503 `MODEL_UNAVAILABLE`; sağlayıcı metni yanıtta ve log'da yok | Betik dışı; `docs/runbooks/model-unavailable.md` | {{SONUC_8}} |
 | 9 | Bağlayıcı dış bağlantısı kapalı | `/actuator/info` `connectors.externalEgress: false`; `VERSO_CONNECTOR_EXTERNAL_EGRESS` tanımsız ya da `false` (local modda açıksa uygulama zaten açılmaz, ADR-0044); Confluence Data Center bağlayıcısı varsa adresi `VERSO_CONNECTOR_ALLOWED_NETWORKS` içinde ve `deploy/compose.confluence.yaml` ağı için güvenlik duvarı kuralı yalnız o sunucunun 443 portuna izin veriyor | Yönetim portuna istek; `.env` incelemesi; `ConnectorEgressConfigurationTest`, `ConfluenceSyncTest` (CI) | {{SONUC_9}} |
+| 10 | Panelde Güven ekranı ve betik raporu | Panelde Yönetim → Güven ekranı (`GET /v1/admin/trust`, [ADR-0050](../adr/0050-guven-ekrani.md)) modu, açık dış yolları (yerelde hiçbiri), son denetim olayını gösterir; "Güven raporu indir" ile alınan dosya ve `bash scripts/prove-local-mode.sh --report guven-kaniti.json` çıktısı (`result: pass`) kanıt klasörüne konur | Panel (yönetici); betik yığın ayaktayken. Ekran uygulamanın kendi beyanıdır, madde 1 ve 7 yerine geçmez | {{SONUC_10}} |
 
 Madde 7 Verso'nun kendi kanıtı değil, **kurumun bağımsız gözlemidir**; en ikna edici kanıt budur ve kurum güvenlik ekibi yürütür.
 

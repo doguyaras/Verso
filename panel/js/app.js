@@ -25,13 +25,14 @@ import { renderConnectors } from './screens/connectors.js';
 import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
+import { renderTrust } from './screens/trust.js';
 
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
 const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
   insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects,
-  connectors: renderConnectors };
+  connectors: renderConnectors, trust: renderTrust };
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
@@ -207,6 +208,7 @@ function adminItems() {
     ...(canOpen('chunks', roles) ? [{ label: 'Parçaları incele', glyph: 'search', onSelect: () => navigate('chunks') }] : []),
     ...(canOpen('subjects', roles) ? [{ label: 'KVKK başvuruları', glyph: 'shield', onSelect: () => navigate('subjects') }] : []),
     ...(canOpen('connectors', roles) ? [{ label: 'Bağlayıcılar', glyph: 'plug', onSelect: () => navigate('connectors') }] : []),
+    ...(canOpen('trust', roles) ? [{ label: 'Güven', glyph: 'lock', onSelect: () => navigate('trust') }] : []),
   ];
   return items.length ? [{ group: ADMIN_GROUP }, ...items] : [];
 }

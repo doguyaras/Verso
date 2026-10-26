@@ -10,6 +10,11 @@
 # address filter are proven by AiModeCheckTest and OllamaChatClientTest.
 #
 #   bash scripts/prove-local-mode.sh      # after: bash scripts/dev-secrets.sh && docker compose up -d --build --wait
+#   bash scripts/prove-local-mode.sh --report guven-kaniti.json   # also writes the result as JSON (ADR-0050)
+#
+# --report <file> writes {"tool","timestamp","result":"pass"|"fail"|"error","checks":[{"name","status"}],"counts"} when
+# the script ends (also when a check fails or the stack is not running). The file holds check names and PASS/FAIL only:
+# no address, token or content. Keep it with the installation evidence (docs/uyum/05-egress-kaniti.md).
 #
 # The probe runs in a throwaway container from the stack's own Ollama image (bash, getent), joined to the network
 # namespace of the container under test; nothing is installed and nothing is pulled.
@@ -18,9 +23,33 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 export MSYS_NO_PATHCONV=1   # Git Bash on Windows would rewrite /dev/tcp in the probe's arguments
 API="http://localhost:${VERSO_HTTP_PORT:-8080}"
+REPORT=""
+if [ "${1:-}" = --report ]; then
+  REPORT="${2:-}"
+  [ -n "$REPORT" ] || { echo "prove-local-mode: --report needs a file name" >&2; exit 2; }
+elif [ $# -gt 0 ]; then
+  echo "usage: bash scripts/prove-local-mode.sh [--report <file>]" >&2; exit 2
+fi
 failed=0
-pass() { echo "prove-local-mode: PASS $1"; }
-fail() { echo "prove-local-mode: FAIL $1" >&2; failed=1; }
+body=""   # the 413 probe's file, removed on exit
+checks=""; passes=0; fails=0
+# A JSON string body: backslash and quote escaped, control characters dropped (check names are fixed text).
+json() { printf '%s' "$1" | tr -d '\000-\037' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+record() { checks="${checks:+$checks,}{\"name\":\"$(json "$2")\",\"status\":\"$1\"}"; }
+pass() { echo "prove-local-mode: PASS $1"; record pass "$1"; passes=$((passes + 1)); }
+fail() { echo "prove-local-mode: FAIL $1" >&2; record fail "$1"; fails=$((fails + 1)); failed=1; }
+# Runs on every exit, so the evidence file exists even when a check failed or the stack was not running (result
+# "error": the proof could not be made, which is not a pass).
+write_report() {
+  local code=$?
+  [ -z "$body" ] || rm -f "$body"
+  [ -n "$REPORT" ] || return 0
+  local result=pass
+  if [ "$failed" != 0 ]; then result=fail; elif [ "$code" != 0 ]; then result=error; fi
+  printf '{"tool":"prove-local-mode","timestamp":"%s","result":"%s","counts":{"pass":%s,"fail":%s},"checks":[%s]}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$result" "$passes" "$fails" "$checks" > "$REPORT"
+}
+trap write_report EXIT
 
 container() { docker compose ps -q "$1" | head -n 1; }
 app="$(container verso-app)"; ollama="$(container ollama)"
@@ -71,7 +100,6 @@ check() { # check <label> <expected status> <expected code or -> <curl arguments
 check "application 401" 401 -
 # A 23 MB file in the working directory: a native Windows curl (Git Bash) can read neither /c/... nor <(...) paths.
 body=prove-local-mode-413.tmp
-trap 'rm -f "$body"' EXIT
 head -c 24117248 /dev/zero > "$body"
 check "edge proxy 413 (23 MB body)" 413 90014 -X POST -H "Content-Type: application/octet-stream" --data-binary "@$body"
 rm -f "$body"

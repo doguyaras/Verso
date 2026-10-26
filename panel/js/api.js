@@ -258,6 +258,8 @@ export const api = {
   /** The stored text of one page or section of a readable document (ADR-0035, docs/api-documents-integration-v1.md). */
   getPage: (id, number) => request(`/v1/documents/${encodeURIComponent(id)}/pages/${encodeURIComponent(number)}`),
   info: () => request('/v1/info'),
+  // The trust report (ADR-0050), verso-admin only.
+  trust: () => request('/v1/admin/trust'),
   listConversations: (page = 0, size = HISTORY_PAGE_SIZE) => request(`/v1/conversations?page=${page}&size=${size}`),
   getConversation: (id) => request(`/v1/conversations/${encodeURIComponent(id)}`),
   renameConversation: (id, title) => request(`/v1/conversations/${encodeURIComponent(id)}`, { method: 'PATCH',

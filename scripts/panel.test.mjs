@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1737,7 +1737,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
     for (const id of ['subjects', 'chunks', 'connectors']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors']);
+  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
   for (const id of adminScreens(admin)) {
     assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
@@ -1748,7 +1748,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
   assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects', 'connectors']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  for (const id of ['chunks', 'subjects', 'connectors', 'trust']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {

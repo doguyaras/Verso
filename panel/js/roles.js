@@ -30,6 +30,7 @@ export const SCREENS = Object.freeze({
   chunks: { title: 'Parçaları incele', short: 'Parçalar', icon: 'search', key: 'p', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
   subjects: { title: 'KVKK başvuruları', short: 'KVKK', icon: 'shield', key: 'v', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
   connectors: { title: 'Bağlayıcılar', short: 'Bağlayıcı', icon: 'plug', key: 'e', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
+  trust: { title: 'Güven', short: 'Güven', icon: 'lock', key: 'u', roles: [ROLES.ADMIN], tab: false, group: 'admin' },
 });
 
 /** The heading of the admin group (ADR-0036). */

@@ -86,6 +86,21 @@ class AnthropicCloudModeTest extends CloudModeTestSupport {
         assertThat(chatModel).isNotInstanceOf(OllamaChatModel.class);
     }
 
+    /** ADR-0050: the trust report in cloud mode says so, names the provider and model, and never the API key. */
+    @Test
+    void trust_inCloudMode_statesWhatLeavesAndNeverTheApiKey() throws Exception {
+        String admin = TestIdp.IDP.token().subject("acct-trust-cloud-admin").realmRoles("verso-admin").build();
+        HttpResponse<String> response = http.send(HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + port + "/v1/admin/trust"))
+                .header("Authorization", "Bearer " + admin).GET().build(), HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Cache-Control").orElse("")).contains("no-store");
+        assertThat(response.body()).contains("\"mode\":\"cloud\"", "\"chatProvider\":\"anthropic\"",
+                "\"chatModel\":\"claude-test\"", "Bulut modu:", "en çok 5 pasaj");
+        assertThat(response.body()).doesNotContain("test-anthropic-key").doesNotContain("Yerel mod:");
+    }
+
     /**
      * ADR-0035: the streamed endpoint in cloud mode asks the provider for a stream, relays its text, and still maps the
      * citations on the server; the same data leaves as for the JSON endpoint (no file name).

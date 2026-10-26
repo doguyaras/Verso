@@ -185,6 +185,8 @@
         <executions>
           <execution>
             <goals>
+              <!-- META-INF/build-info.properties: the version and build time the trust report shows (ADR-0050). -->
+              <goal>build-info</goal>
               <goal>repackage</goal>
             </goals>
           </execution>
