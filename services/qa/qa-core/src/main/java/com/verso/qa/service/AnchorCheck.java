@@ -59,12 +59,14 @@ final class AnchorCheck {
     // sentence they count only bare inside a compound ("yirmi bir") or as an ordinal ("onuncu").
     private static final Set<String> AMBIGUOUS = Set.of("bir", "on", "yüz", "bin", "altı", "yedi");
     // Case, ordinal and distributive endings, after a vowel and after a consonant; nothing else makes a number word.
+    // Matched on the folded word (ExcerptSelector.fold: no diacritics, dotless i folded), so "dördüncü", "dorduncu"
+    // and "DÖRDÜNCÜ" read alike: documents lose their diacritics (badly encoded PDFs, OCR, ASCII exports).
     private static final Pattern AFTER_VOWEL =
-            Pattern.compile("nc[ıiuü](?:s[ıiuü])?|y[ae]|d[ae]n?|n[ıiuü]n|s[ıiuü]|y[ıiuü]|ş[ae]r|l[ae]r");
+            Pattern.compile("nc[iu](?:s[iu])?|y[ae]|d[ae]n?|n[iu]n|s[iu]|y[iu]|s[ae]r|l[ae]r");
     private static final Pattern AFTER_CONSONANT =
-            Pattern.compile("[ıiuü]nc[ıiuü](?:s[ıiuü])?|[ae]|[dt][ae]n?|[ıiuü]n|[ıiuü]|ş[ae]r|l[ae]r");
-    private static final Pattern ORDINAL = Pattern.compile("[ıiuü]?nc[ıiuü](?:s[ıiuü])?");
-    private static final String VOWELS = "aeıioöuü";
+            Pattern.compile("[iu]nc[iu](?:s[iu])?|[ae]|[dt][ae]n?|[iu]n|[iu]|s[ae]r|l[ae]r");
+    private static final Pattern ORDINAL = Pattern.compile("[iu]?nc[iu](?:s[iu])?");
+    private static final String VOWELS = "aeiou";
 
     // Folded to the first five letters like ExcerptSelector's keys; these words describe nothing about a quantity.
     private static final Set<String> STOP_WORDS = Set.of(
@@ -166,7 +168,8 @@ final class AnchorCheck {
                     continue;
                 }
                 case "code" -> {
-                    out.add(new Token("C:" + token.toUpperCase(TURKISH), null, false));
+                    // Folded like the words: "SAT-Ü1" and "SAT-U1", "İK-3" and "IK-3" are one code.
+                    out.add(new Token("C:" + ExcerptSelector.fold(token).toUpperCase(Locale.ROOT), null, false));
                     i++;
                     continue;
                 }
@@ -202,7 +205,7 @@ final class AnchorCheck {
                 if (!value.bare()) break;
             }
             if (parts > 0) {
-                boolean lone = parts == 1 && AMBIGUOUS.contains(first.stem()) && first.bare();
+                boolean lone = parts == 1 && first.ambiguous() && first.bare();
                 if (!(strict && lone)) {
                     // A lone "altı" in a passage may be "below" ("3 ve altı puan"): it also stays a describing word,
                     // and takes a neighbour's place even when it is "bir" (as measured).
@@ -217,7 +220,8 @@ final class AnchorCheck {
         return out;
     }
 
-    private record Value(int value, String stem, boolean bare, boolean scale) {
+    /** {@code ambiguous}: the stem is also an ordinary word, or (in a sentence) it was written without its diacritics. */
+    private record Value(int value, boolean ambiguous, boolean bare, boolean scale) {
     }
 
     /**
@@ -225,23 +229,28 @@ final class AnchorCheck {
      * dropped by the caller unless it is part of a compound) or as an ordinal.
      */
     private static Value value(String word, boolean strict) {
+        String folded = ExcerptSelector.fold(word);
         for (Map<String, Integer> table : List.of(UNITS, TENS, SCALES)) {
             for (Map.Entry<String, Integer> entry : table.entrySet()) {
-                String stem = entry.getKey();
-                if (!word.startsWith(stem)) continue;
-                String rest = word.substring(stem.length());
-                if (rest.isEmpty()) return new Value(entry.getValue(), stem, true, table == SCALES);
+                String stem = ExcerptSelector.fold(entry.getKey());
+                if (!folded.startsWith(stem)) continue;
+                String rest = folded.substring(stem.length());
+                // Precision (ADR-0047): written without its diacritics, a stem may be another word ("ucu", the tip, is
+                // not "üçü"). In a sentence such a word counts like an ambiguous one: inside a compound ("on dort") or
+                // as an ordinal only. A passage stays generous: it can only spare a flag.
+                boolean ambiguous = AMBIGUOUS.contains(entry.getKey()) || (strict && !word.startsWith(entry.getKey()));
+                if (rest.isEmpty()) return new Value(entry.getValue(), ambiguous, true, table == SCALES);
                 boolean vowel = VOWELS.indexOf(stem.charAt(stem.length() - 1)) >= 0;
                 if (!(vowel ? AFTER_VOWEL : AFTER_CONSONANT).matcher(rest).matches()) continue;
-                if (strict && AMBIGUOUS.contains(stem) && !ORDINAL.matcher(rest).matches()) continue;
-                return new Value(entry.getValue(), stem, false, table == SCALES);
+                if (strict && ambiguous && !ORDINAL.matcher(rest).matches()) continue;
+                return new Value(entry.getValue(), ambiguous, false, table == SCALES);
             }
         }
         if (!strict) {
             Integer english = ENGLISH.get(word);
-            if (english != null) return new Value(english, word, true, false);
+            if (english != null) return new Value(english, false, true, false);
             Integer scale = ENGLISH_SCALES.get(word);
-            if (scale != null) return new Value(scale, word, true, true);
+            if (scale != null) return new Value(scale, false, true, true);
         }
         return null;
     }

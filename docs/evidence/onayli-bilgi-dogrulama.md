@@ -36,6 +36,13 @@
 - `KnowledgeCardApiTest`'te 9 test kırmızıydı. Nedeni test verisiydi: taklit modelin cevabı "on dört" diyordu, test PDF'leri ASCII'ye katlandığı için ("dort") dayanak kontrolü (ADR-0047) cümleyi desteksiz buldu ve tur `UNCITED` oldu. `UNCITED` tur onaylanamaz (11042), yani ürün davranışı doğruydu. Testlerin cevapları artık sayı ve kod içermiyor, yardımcı da önce `ANSWERED` olduğunu doğruluyor.
 - `AuditFailureIsolationTest`: silme artık aynı işlemde bir `document.changed` satırı da yazıyor. Denetim veritabanı yokken başarısız teslim, bütün outbox için hemen teslimi duraklatır, bu satır da poll'u bekler. Test denetim satırlarını `event_type` ile sayıyor ve bekleyen değişiklik bildirimini ayrıca doğruluyor; sonunda outbox yine boş.
 
+## Dayanak kontrolünde Türkçe katlama (ADR-0047 düzeltmesi)
+
+- Bulgu ürün hatasıydı: aksanını yitirmiş belgede (bozuk kodlanmış PDF, OCR, ASCII dışa aktarım) "on dort", cevaptaki "on dört"ü desteklemiyordu.
+- `AnchorCheck` artık sayı sözcüklerini ve ekleri `ExcerptSelector.fold` ile katlanmış biçimde okur (ı/i, ş/s, ğ/g, ç/c, ö/o, ü/u, Türkçe küçük harf). Kodlar da katlanır (`SAT-Ü1` = `SAT-U1`, `İK-3` = `IK-3`). Komşu terimler zaten katlanıyordu.
+- Kesinlik için: cevap cümlesinde aksansız yazılmış bir kök ("ucu" = uç, "dort" tek başına) belirsiz sayılır. Yalnız bileşik sayıda ("on dort") ya da sıra sayısında çapa olur. Pasaj tarafı cömert kalır.
+- Testler: `AnchorCheckTest`'e üç yeni test (dört/dort, altı/alti, üç/uc, değişen sayı yine işaretlenir, "ucu" çapa değil, Ü/U ve İ/I kodları). `GroundingEvalTest` (`eval/grounding-set.json`, 192 etiketli cümle, Docker'sız) yeşil: yanlış işaret 0 (kesinlik 1,00 korundu), bulunan desteksiz cümle ≥ 26/57 ve sayıda ≥ 18 eşikleri tuttu. Uçtan uca gerçek model ölçümü (`docs/evidence/dayanaklilik-olcumu.md`) GPU ve Ollama ister, yeniden koşulmadı.
+
 ## Review skill kararları
 
 | Skill | Karar | Not |

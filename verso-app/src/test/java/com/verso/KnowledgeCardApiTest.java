@@ -54,8 +54,8 @@ class KnowledgeCardApiTest {
 
     private static final String QUESTION = "topic-leave MarkerKnowledgeQ yıllık izin kaç gündür?";
     /**
-     * The stub model's answer. No number, number word or code: the groundedness check (ADR-0047) would compare those with
-     * the ASCII-folded test PDFs and make the answer UNCITED, and an UNCITED turn cannot be verified (11042).
+     * The stub model's answer. No number, number word or code, so the groundedness check (ADR-0047) has nothing to
+     * compare and the turn is ANSWERED whatever the test PDF says; an UNCITED turn could not be verified (11042).
      */
     private static final String ANSWER = "MarkerKnowledgeA yıllık izin süresi bu belgelerde tanımlıdır [1][2].";
     private static final String ANSWER_ONE = "MarkerKnowledgeA yıllık izin süresi bu belgede tanımlıdır [1].";

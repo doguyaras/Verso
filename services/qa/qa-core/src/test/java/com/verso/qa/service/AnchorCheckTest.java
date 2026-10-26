@@ -123,4 +123,44 @@ class AnchorCheckTest {
         assertThat(check("Yılda １４ iş günü izin verilir.", LEAVE).unverified()).isFalse();
         assertThat(check("YILDA ON DÖRT İŞ GÜNÜ İZİN VERİLİR.", LEAVE).unverified()).isFalse();
     }
+
+    /** A passage that lost its diacritics (badly encoded PDF, OCR, ASCII export) still supports the answer. */
+    @Test
+    void check_whenThePassageLostItsDiacritics_foldsNumberWordsLikeTheExcerpt() {
+        String ascii = """
+                Hizmet suresi bir yildan bes yila kadar olan calisanlara yilda on dort is gunu yillik izin verilir.
+                Dogum yapan calisana toplam on alti hafta ucretli dogum izni verilir.
+                Evlenen calisana uc is gunu, esi dogum yapan calisana bes is gunu babalik izni verilir.""";
+        assertThat(check("Yılda on dört iş günü yıllık izin verilir.", ascii).unverified()).as("dört/dort").isFalse();
+        assertThat(check("Doğum izni toplam on altı haftadır.", ascii).unverified()).as("altı/alti").isFalse();
+        assertThat(check("Evlenen çalışana üç iş günü izin verilir.", ascii).unverified()).as("üç/uc").isFalse();
+        assertThat(check("Doğum izni toplam on dördüncü haftada başlar.", ascii).missing()).as("still compared")
+                .containsExactly("N:14");
+        // Precision: a changed quantity is still flagged against the folded passage.
+        assertThat(check("Yılda yirmi iş günü yıllık izin verilir.", ascii).missing()).containsExactly("N:20");
+        assertThat(check("Doğum izni toplam on dört haftadır.", ascii).missing()).containsExactly("N:14");
+    }
+
+    /** The answer written without diacritics compares the same; a lone ASCII stem stays an ordinary word. */
+    @Test
+    void check_whenTheAnswerLostItsDiacritics_readsCompoundsAndKeepsOrdinaryWords() {
+        assertThat(check("Yilda on dort is gunu yillik izin verilir.", LEAVE).unverified()).isFalse();
+        assertThat(check("Doğum izni toplam on alti haftadir.", LEAVE).unverified()).isFalse();
+        // "ucu" (the tip) and a lone "dort" are not quantities in a sentence: nothing to check, nothing flagged.
+        AnchorCheck.Result tip = check("Kalemin ucu kırıldı, dort kenarı da.", LEAVE);
+        assertThat(tip.checked()).isZero();
+        assertThat(tip.unverified()).isFalse();
+    }
+
+    /** Codes fold like words: Ü/U, İ/I, Ç/C are one code on both sides. */
+    @Test
+    void check_whenACodeLostItsDiacritics_matchesTheSameCode() {
+        String table = """
+                Kod | Anlamı | Ne yapılır
+                SAT-Ü1 | Onay bekliyor | Onaycıya hatırlatın.
+                İK-3 | İzin onayı | İnsan kaynaklarına iletin.""";
+        assertThat(check("SAT-U1 kodu onay bekliyor demektir.", table).unverified()).isFalse();
+        assertThat(check("IK-3 kodu izin onayı demektir.", table).unverified()).isFalse();
+        assertThat(check("SAT-U2 kodu onay bekliyor demektir.", table).missing()).containsExactly("C:SAT-U2");
+    }
 }
