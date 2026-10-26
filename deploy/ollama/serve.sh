@@ -53,7 +53,10 @@ done
 
 # keep_alive -1 on the request as well: the model stays loaded even if the server default changes.
 warm "$OLLAMA_WARM_EMBEDDING" /api/embed "{\"model\":\"$OLLAMA_WARM_EMBEDDING\",\"input\":\"warm\",\"keep_alive\":-1}"
-# An empty prompt loads the chat model without generating anything (Ollama API: /api/generate).
-warm "$OLLAMA_WARM_CHAT" /api/generate "{\"model\":\"$OLLAMA_WARM_CHAT\",\"prompt\":\"\",\"keep_alive\":-1}"
+# An empty prompt loads the chat model without generating anything (Ollama API: /api/generate). "none": another model
+# server answers the chat (deploy/compose.llamacpp.yaml, ADR-0051); Ollama keeps the embedding model only.
+if [ "$OLLAMA_WARM_CHAT" != none ]; then
+  warm "$OLLAMA_WARM_CHAT" /api/generate "{\"model\":\"$OLLAMA_WARM_CHAT\",\"prompt\":\"\",\"keep_alive\":-1}"
+fi
 
 wait "$server"

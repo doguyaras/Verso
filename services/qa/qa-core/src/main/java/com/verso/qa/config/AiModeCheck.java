@@ -20,9 +20,10 @@ import org.springframework.core.env.StandardEnvironment;
  *
  * <ul>
  *   <li>embeddings come from Ollama in both modes (llm-rules 1.2);</li>
- *   <li>local: the chat model is Ollama too, and an Ollama address given as an IP literal is an internal one (a host
- *       name is checked on every connection by the outbound address filter instead: at startup the model server may
- *       not be resolvable yet);</li>
+ *   <li>local: the chat model is Ollama too, or an OpenAI-compatible model server on the internal network (the shared
+ *       tier, ADR-0051: llama.cpp's llama-server); a model server address given as an IP literal is an internal one (a
+ *       host name is checked on every connection by the outbound address filter and {@link LocalModelEgress} instead:
+ *       at startup the model server may not be resolvable yet). The local server's key follows the cloud key's rules;</li>
  *   <li>cloud: the chat model is a cloud provider and its API key is present, from /run/secrets: a key in an environment
  *       variable or a system property is refused (llm-rules 1.4), and so is the SDKs' own HTTP logging switch
  *       (ANTHROPIC_LOG, OPENAI_LOG), which would write request metadata to the log (llm-rules 2.1).</li>
@@ -35,7 +36,12 @@ public final class AiModeCheck {
     static final String CHAT_PROVIDER = "spring.ai.model.chat";
     static final String EMBEDDING_PROVIDER = "spring.ai.model.embedding";
     static final String OLLAMA_BASE_URL = "spring.ai.ollama.base-url";
+    static final String OPENAI_BASE_URL = "spring.ai.openai.base-url";
+    static final String OPENAI_API_KEY = "spring.ai.openai.api-key";
+    /** Embeddings: Ollama only, in every mode (llm-rules 1.2). */
     static final Set<String> LOCAL_PROVIDERS = Set.of("ollama");
+    /** Chat in local mode: Ollama, or an OpenAI-compatible model server on the internal network (ADR-0051). */
+    static final Set<String> LOCAL_CHAT_PROVIDERS = Set.of("ollama", "openai");
     /** Cloud provider → the setting that must hold its API key. */
     static final Map<String, String> CLOUD_PROVIDERS = Map.of(
             "anthropic", "spring.ai.anthropic.api-key",
@@ -68,13 +74,20 @@ public final class AiModeCheck {
             throw new IllegalStateException(EMBEDDING_PROVIDER + " must be ollama in every mode (llm-rules 1.2)");
         }
         // Documents and questions are embedded by Ollama in both modes: its address is checked in both (review F4).
-        requireInternalIfLiteral(environment.getProperty(OLLAMA_BASE_URL, ""));
+        requireInternalIfLiteral(OLLAMA_BASE_URL, environment.getProperty(OLLAMA_BASE_URL, ""));
         String chat = environment.getProperty(CHAT_PROVIDER, "");
         switch (mode) {
             case LOCAL -> {
-                if (!LOCAL_PROVIDERS.contains(chat)) {
-                    throw new IllegalStateException("verso.ai.mode=local needs " + CHAT_PROVIDER
-                            + "=ollama; a cloud provider is only allowed with verso.ai.mode=cloud (ADR-0006)");
+                if (!LOCAL_CHAT_PROVIDERS.contains(chat)) {
+                    throw new IllegalStateException("verso.ai.mode=local needs " + CHAT_PROVIDER + " to be one of "
+                            + LOCAL_CHAT_PROVIDERS + "; a cloud provider is only allowed with verso.ai.mode=cloud "
+                            + "(ADR-0006)");
+                }
+                if (chat.equals("openai")) {
+                    // The shared tier (ADR-0051): the same client as the cloud provider, aimed at a model server on
+                    // the internal network. Its address must stay internal, like Ollama's.
+                    requireInternalIfLiteral(OPENAI_BASE_URL, environment.getProperty(OPENAI_BASE_URL, ""));
+                    requireSecretKey(environment, OPENAI_API_KEY, "deploy/compose.llamacpp.yaml");
                 }
             }
             case CLOUD -> {
@@ -83,47 +96,55 @@ public final class AiModeCheck {
                     throw new IllegalStateException("verso.ai.mode=cloud needs " + CHAT_PROVIDER + " to be one of "
                             + CLOUD_PROVIDERS.keySet() + " (ADR-0013)");
                 }
-                String key = environment.getProperty(keySetting, "");
-                if (key.isBlank()) {
-                    throw new IllegalStateException(keySetting + " is missing: in cloud mode it comes from "
-                            + "/run/secrets (deploy/compose.cloud.yaml), never from an environment variable");
-                }
-                if (environment instanceof ConfigurableEnvironment configurable && (definedIn(configurable,
-                        StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, keySetting)
-                        || definedIn(configurable, StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME, keySetting))) {
-                    throw new IllegalStateException(keySetting + " must come from /run/secrets, not from an environment "
-                            + "variable or a system property (llm-rules 1.4)");
-                }
-                for (String logSwitch : SDK_LOG_SWITCHES) {
-                    if (!environment.getProperty(logSwitch, "").isBlank()) {
-                        throw new IllegalStateException(logSwitch + " is set: the provider SDK would log requests "
-                                + "(llm-rules 2.1); unset it");
-                    }
-                }
+                requireSecretKey(environment, keySetting, "deploy/compose.cloud.yaml");
             }
         }
     }
 
-    private static void requireInternalIfLiteral(String baseUrl) {
+    /**
+     * The key of the chat client comes from /run/secrets, never from an environment variable or a system property
+     * (llm-rules 1.4), and the SDKs' own request logging stays off (llm-rules 2.1).
+     */
+    private static void requireSecretKey(Environment environment, String keySetting, String overlay) {
+        String key = environment.getProperty(keySetting, "");
+        if (key.isBlank()) {
+            throw new IllegalStateException(keySetting + " is missing: it comes from /run/secrets (" + overlay
+                    + "), never from an environment variable");
+        }
+        if (environment instanceof ConfigurableEnvironment configurable && (definedIn(configurable,
+                StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, keySetting)
+                || definedIn(configurable, StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME, keySetting))) {
+            throw new IllegalStateException(keySetting + " must come from /run/secrets, not from an environment "
+                    + "variable or a system property (llm-rules 1.4)");
+        }
+        for (String logSwitch : SDK_LOG_SWITCHES) {
+            if (!environment.getProperty(logSwitch, "").isBlank()) {
+                throw new IllegalStateException(logSwitch + " is set: the provider SDK would log requests "
+                        + "(llm-rules 2.1); unset it");
+            }
+        }
+    }
+
+    private static void requireInternalIfLiteral(String setting, String baseUrl) {
         String host;
         try {
             URI uri = URI.create(baseUrl);
             // getHost() is null for names java.net.URI does not accept, such as Docker's "my_ollama" (review F10).
             host = uri.getHost() != null ? uri.getHost() : hostOf(uri.getRawAuthority());
         } catch (IllegalArgumentException e) {
-            throw new IllegalStateException(OLLAMA_BASE_URL + " is not a valid URL");
+            throw new IllegalStateException(setting + " is not a valid URL");
         }
-        if (host == null || host.isBlank()) throw new IllegalStateException(OLLAMA_BASE_URL + " has no host");
+        if (host == null || host.isBlank()) throw new IllegalStateException(setting + " has no host");
         String literal = host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
         if (!isIpLiteral(literal)) return;
         try {
             // An IP literal is parsed, not looked up.
             if (!InetAddressFilter.internalAddresses().matches(InetAddress.getByName(literal))) {
-                throw new IllegalStateException(OLLAMA_BASE_URL + " points outside the internal network; "
+                throw new IllegalStateException(setting + " points outside the internal network; "
                         + "verso.ai.mode=local keeps every model call on this host (ADR-0006)");
             }
         } catch (java.net.UnknownHostException e) {
-            throw new IllegalStateException(OLLAMA_BASE_URL + " is not a valid address");
+            throw new IllegalStateException(setting + " is not a valid address");
         }
     }
 

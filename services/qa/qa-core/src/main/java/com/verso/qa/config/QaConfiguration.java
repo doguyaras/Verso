@@ -7,7 +7,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
 import org.springframework.boot.actuate.info.InfoContributor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.http.client.InetAddressFilter;
@@ -40,11 +42,28 @@ public class QaConfiguration {
      * Every HTTP client Boot builds (the Ollama client among them) connects to internal addresses only: loopback,
      * link-local and private ranges (ADR-0006 decision 1.2). A model server that resolves to a public address is
      * refused on connect, in both modes. The cloud providers' SDKs bring their own HTTP stack and are not affected;
-     * in local mode they are not created at all (AiModeCheck, spring.ai.model.chat=ollama).
+     * in local mode only the OpenAI-compatible one may exist (AiModeCheck), with the guard below.
      */
     @Bean
     InetAddressFilter outboundAddressFilter() {
         return InetAddressFilter.internalAddresses();
+    }
+
+    /**
+     * The OpenAI-compatible client in local mode talks to a model server on this host's internal network (ADR-0051):
+     * its own HTTP stack gets the same internal-addresses-only rule. In cloud mode it reaches the provider and is left
+     * alone (ADR-0013).
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(OpenAiHttpClientBuilderCustomizer.class)
+    static class LocalOpenAiEgressConfiguration {
+
+        @Bean
+        OpenAiHttpClientBuilderCustomizer localModelEgress(VersoAiProperties ai) {
+            return builder -> {
+                if (ai.mode() == AiMode.LOCAL) builder.interceptor(new LocalModelEgress());
+            };
+        }
     }
 
     /**

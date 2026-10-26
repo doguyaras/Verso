@@ -423,8 +423,9 @@ public class QuestionServiceImpl implements QuestionService {
         } catch (TimeoutException e) {
             // Interrupt the call: the Ollama client (Reactor Netty) cancels the request and Ollama stops generating
             // (measured). An abandoned generation kept a CPU host busy for minutes and starved every question after it
-            // (phase 8, docs/capacity.md). The cloud SDKs (OkHttp) are interrupted too; that the provider stops is
-            // not verified.
+            // (phase 8, docs/capacity.md). The OpenAI client (OkHttp) closes its socket on the interrupt of this
+            // virtual thread, so a local llama-server stops too (OpenAiCompatibleCancellationTest, ADR-0051); that a
+            // cloud provider stops is not verified.
             cancel(call, started);
             throw new CallFailed("TIMEOUT");
         } catch (ExecutionException e) {
@@ -455,7 +456,8 @@ public class QuestionServiceImpl implements QuestionService {
         Disposable call;
         try {
             // The slot is freed when the generation ends: completed, failed or cancelled (bulkhead). On a cancel that is
-            // when the connection closes; Ollama then stops (measured), a cloud provider's stop is not verified (ADR-0035).
+            // when the connection closes; Ollama then stops (measured), so does an OpenAI-compatible local server (the
+            // connection closes, ADR-0051); a cloud provider's stop is not verified (ADR-0035).
             // Subscribed on another thread: a provider that blocks while subscribing cannot hold up the time bound or the
             // keep-alive check below.
             call = chatModel.stream(request(prompt))

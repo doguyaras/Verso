@@ -1,12 +1,16 @@
 package com.verso.support;
 
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A model provider's HTTP API on 127.0.0.1 for tests of the real, auto-configured clients (Ollama, Anthropic, OpenAI):
@@ -28,6 +32,8 @@ public final class FakeModelServer implements AutoCloseable {
     private volatile String body = "{}";
     private volatile String contentType = "application/json";
     private volatile long delayMillis;
+    private volatile long trickleMillis;
+    private final AtomicInteger abandoned = new AtomicInteger();
 
     public FakeModelServer() {
         try {
@@ -45,6 +51,10 @@ public final class FakeModelServer implements AutoCloseable {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
+            }
+            if (trickleMillis > 0) {
+                trickle(exchange);
+                return;
             }
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", contentType);
@@ -77,6 +87,44 @@ public final class FakeModelServer implements AutoCloseable {
         this.delayMillis = delay.toMillis();
     }
 
+    /**
+     * Sends the answer slowly, piece by piece, flushing each: the events of a server-sent stream one by one, or a JSON
+     * body after a long run of leading blanks. A client that closes the connection makes a write fail: counted in
+     * {@link #abandoned()}, the way a model server notices a cancelled request and stops generating.
+     */
+    public void trickle(java.time.Duration gap) {
+        this.trickleMillis = gap.toMillis();
+    }
+
+    /** Answers the server could not finish because the client closed the connection. */
+    public int abandoned() {
+        return abandoned.get();
+    }
+
+    private void trickle(HttpExchange exchange) {
+        List<String> pieces = new ArrayList<>();
+        if (contentType.startsWith("text/event-stream")) {
+            for (String event : body.split("\n\n")) if (!event.isBlank()) pieces.add(event + "\n\n");
+        } else {
+            for (int i = 0; i < 200; i++) pieces.add(" ");
+            pieces.add(body);
+        }
+        try (exchange) {
+            exchange.getResponseHeaders().set("Content-Type", contentType);
+            exchange.sendResponseHeaders(status, 0);
+            OutputStream out = exchange.getResponseBody();
+            for (String piece : pieces) {
+                out.write(piece.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                Thread.sleep(trickleMillis);
+            }
+        } catch (IOException e) {
+            abandoned.incrementAndGet();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     public List<Recorded> requests() {
         return List.copyOf(requests);
     }
@@ -87,6 +135,8 @@ public final class FakeModelServer implements AutoCloseable {
         body = "{}";
         contentType = "application/json";
         delayMillis = 0;
+        trickleMillis = 0;
+        abandoned.set(0);
     }
 
     @Override

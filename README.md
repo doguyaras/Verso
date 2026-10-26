@@ -100,6 +100,19 @@ docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.rera
 - Yan konteyner düşerse ya da 2 sn'de cevap vermezse sorular rerank'siz cevaplanır. "Bulunamadı" kararı rerank'ten etkilenmez.
 - Kapatmak: overlay'i çıkarın (`VERSO_RERANKER_ENABLED=false`); `reranker-models` volume'ü silinebilir.
 
+**Çok kullanıcılı kurulum (paylaşımlı kademe; [ADR-0051](docs/adr/0051-paylasimli-sohbet-sunucusu.md)).** Varsayılan kurulum aynı anda tek soru cevaplar; ikinci soru `503` "meşgul" alır. Tek kullanıcı ve küçük ekip için bu yeterlidir. Birkaç kişinin aynı anda soru sorduğu bir şirket kurulumunda iki yol var:
+
+- **Ollama'nın kendi paralelliği** (GPU'lu makinede): `.env` içinde `OLLAMA_NUM_PARALLEL` ve `VERSO_QA_CHAT_CONCURRENCY` aynı değere (ör. 4) çıkarılır. Her ek yuva, sohbet modelinin bağlamı için VRAM ayırır.
+- **llama.cpp `llama-server`** (MIT; sürekli toplu işleme, OpenAI uyumlu API): sohbeti Ollama yerine o cevaplar, Ollama yalnız embedding'i tutar. Mod yine `local`'dir: sunucu internetsiz iç ağdadır, aynı model dosyasını (Ollama'nın indirip digest ile doğruladığı GGUF) salt okunur okur ve açılışta SHA-256'sını yeniden denetler.
+
+```bash
+bash scripts/dev-secrets.sh   # bir kez: secrets/SECRET_LOCAL_MODEL_API_KEY
+docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.llamacpp.yaml up -d --wait
+```
+
+- `LLAMA_PARALLEL` (varsayılan 4) aynı anda cevaplanan soru sayısıdır; uygulamanın sohbet sınırı da buna eşitlenir. `LLAMA_CTX_PER_SLOT` (4096) yuva başına bağlamdır.
+- **Durum:** uygulama tarafı (sağlayıcı seçimi, iç ağ kuralı, akış ve iptal) testlidir. Bu makinedeki karşılaştırmalı ölçüm (verim, p95/p99, VRAM) ve kalite kontrolü Docker açılamadığı için henüz yapılmadı; kademe önerisi ve sayılar ölçümden sonra [`docs/capacity.md`](docs/capacity.md)'ye yazılacak. O zamana kadar varsayılanlar değişmez (1 yuva).
+
 Küçük yerel model kaynağı doğru gösterse de bazen bilgiyi yanlış okur. Aynı koşuda "beş yıldan az hizmeti olan" sorusuna doğru sayfayı göstererek "yirmi gün" dedi; belgede "on dört gün" yazıyor. Eval setinde (sürüm 2, GPU) doğru sayfaya atıf yapılan 97 cevabın 3'ünde bilgi yanlış ya da eksikti. Atıflar kullanıcının cevabı kaynağından kontrol etmesi içindir. Ölçümler: [`docs/capacity.md`](docs/capacity.md), [`eval/README.md`](eval/README.md).
 
 ## Panel
@@ -358,7 +371,7 @@ Kurulum ekibi için (Entra uygulama kaydı ve en az yetki):
 | Dayanak kontrolü (192 etiketli cümle; ADR-0047) | desteklenmeyen cümlede kesinlik 1,00, duyarlılık 0,46 (sayı ve kodda 0,76); gerçek 238 atıflı cümlede 2 işaret, ikisi de doğru | `eval/grounding-set.json`, `docs/evidence/dayanaklilik-olcumu.md` |
 | Cevap süresi (CPU, 2 çekirdek; sürüm 1, 33 soru) | iki koşu: p50 28 / 21 sn, p95 45 / 37 sn | `eval/results/e2e-gemma4_e2b.json` |
 | Belge listesi | 841 istek/sn, p95 49 ms | `docs/capacity.md` |
-| Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır) | `docs/capacity.md` |
+| Eşzamanlı soru | 1 (ikincisi `503` ve `Retry-After` ile "meşgul" alır); paylaşımlı kademe (ADR-0051) ölçüm bekliyor | `docs/capacity.md` |
 
 Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 belge yönetmelik, yeni 5 belge şirket sistemlerinin kılavuzu. Hâlâ küçüktür; kapının eşikleri bu setle seçildi, belge grubuna göre çapraz doğrulaması ADR-0022'dedir. Sonuçlar yön gösterir, istatistiksel güvence vermez. Metrik tanımları, sınırlar ve komutlar: [`eval/README.md`](eval/README.md).
 

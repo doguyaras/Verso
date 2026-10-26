@@ -125,6 +125,23 @@ test('ollama-serve: a stop signal reaches the model server and the script exits 
   }
 });
 
+test('ollama-serve: OLLAMA_WARM_CHAT=none warms the embedding model only (ADR-0051 shared tier)', async () => {
+  const env = setup();
+  const { server, requests, port } = await api();
+  const run = start(env, port, { OLLAMA_WARM_CHAT: 'none' });
+  try {
+    await until(() => /bge-m3:567m loaded in \d+ ms/.test(run.stderr()));
+    await new Promise((r) => setTimeout(r, 300));
+    assert.deepEqual(requests.map((r) => r.path), ['/api/embed']);
+    assert.equal(run.child.exitCode, null, 'the server keeps running');
+  } finally {
+    run.child.kill('SIGTERM');
+    await run.exited;
+    run.release();
+    server.close();
+  }
+});
+
 test('ollama-serve: the models to warm are required', async () => {
   const env = setup();
   const run = start(env, 1, { OLLAMA_WARM_CHAT: '' });

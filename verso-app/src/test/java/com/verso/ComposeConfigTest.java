@@ -69,7 +69,7 @@ class ComposeConfigTest {
         Set<String> used = new TreeSet<>();
         for (String file : List.of("compose.yaml", "deploy/compose.local.yaml", "deploy/compose.cloud.yaml",
                 "deploy/compose.gpu.yaml", "deploy/compose.smb.yaml", "deploy/compose.confluence.yaml",
-                "deploy/compose.sharepoint.yaml")) {
+                "deploy/compose.sharepoint.yaml", "deploy/compose.llamacpp.yaml")) {
             Matcher m = COMPOSE_VAR.matcher(read(file));
             while (m.find()) used.add(m.group(1));
         }
@@ -311,6 +311,58 @@ class ComposeConfigTest {
         assertThat((List<String>) app.get("networks")).containsExactly("parsers");
         assertThat((Map<String, Object>) app.get("environment")).containsEntry("VERSO_DOCLING_ENABLED", "true")
                 .containsEntry("VERSO_DOCLING_URL", "http://docling:5001");
+    }
+
+    /**
+     * ADR-0051: the shared-tier overlay adds llama-server on the internal "models" network only (no route out, nothing
+     * published), hardened and limited, reading the verified model store read-only; it keeps local mode, points the
+     * application's OpenAI client at it with a key file, matches the chat bulkhead to the server's slots, and leaves
+     * Ollama with the embedding model only. The base stack keeps one slot everywhere.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void llamacppOverlay_whenComposed_staysLocalInternalVerifiedAndMatchesTheSlots() throws IOException {
+        Map<String, Object> base = new Yaml().load(read("compose.yaml"));
+        assertThat(((Map<String, Object>) base.get("services"))).doesNotContainKey("llama");
+        assertThat((Map<String, Object>) base.get("x-db-env")).containsEntry("VERSO_QA_CHAT_CONCURRENCY",
+                "${VERSO_QA_CHAT_CONCURRENCY:-1}").containsEntry("OPENAI_CHAT_TIMEOUT", "30s");
+        assertThat(environment("ollama")).containsEntry("OLLAMA_NUM_PARALLEL", "${OLLAMA_NUM_PARALLEL:-1}");
+
+        Map<String, Object> overlay = new Yaml().load(read("deploy/compose.llamacpp.yaml"));
+        assertThat(overlay.keySet()).containsExactlyInAnyOrder("services", "secrets");
+        Map<String, Object> services = (Map<String, Object>) overlay.get("services");
+        assertThat(services.keySet()).containsExactlyInAnyOrder("llama", "ollama", "verso-app");
+
+        Map<String, Object> llama = (Map<String, Object>) services.get("llama");
+        assertThat(String.valueOf(llama.get("image"))).matches("ghcr\\.io/ggml-org/llama\\.cpp:server-cuda-b\\d+@sha256:[0-9a-f]{64}");
+        assertThat(llama).doesNotContainKey("ports").containsEntry("read_only", true)
+                .containsEntry("networks", List.of("models")).containsKeys("mem_limit", "pids_limit", "healthcheck", "user");
+        assertThat((List<String>) llama.get("cap_drop")).containsExactly("ALL");
+        assertThat((List<String>) llama.get("security_opt")).contains("no-new-privileges:true");
+        assertThat((List<String>) llama.get("volumes")).containsExactly("ollama-models:/models:ro",
+                "./deploy/llamacpp/serve.sh:/opt/verso/serve.sh:ro");
+        assertThat(String.valueOf(llama.get("depends_on"))).contains("ollama-pull").contains("service_completed_successfully");
+        Map<String, Object> env = (Map<String, Object>) llama.get("environment");
+        // The same pin ollama-pull verified (ADR-0033); serve.sh checks the file's SHA-256 against it.
+        assertThat(String.valueOf(environment("ollama-pull").get("OLLAMA_PULL")))
+                .contains(String.valueOf(env.get("LLAMA_MODEL_DIGEST")));
+        assertThat(env).containsEntry("LLAMA_PARALLEL", "${LLAMA_PARALLEL:-4}");
+        assertThat((List<String>) llama.get("secrets")).containsExactly("SECRET_LOCAL_MODEL_API_KEY");
+
+        Map<String, Object> ollama = (Map<String, Object>) services.get("ollama");
+        assertThat(ollama.keySet()).containsExactlyInAnyOrder("environment", "healthcheck");
+        assertThat((Map<String, Object>) ollama.get("environment")).containsExactly(Map.entry("OLLAMA_WARM_CHAT", "none"));
+
+        Map<String, Object> app = (Map<String, Object>) services.get("verso-app");
+        assertThat(app.keySet()).as("no new network: the application already reaches 'models'")
+                .containsExactlyInAnyOrder("environment", "secrets");
+        assertThat((Map<String, Object>) app.get("environment")).doesNotContainKey("VERSO_AI_MODE")
+                .containsEntry("VERSO_CHAT_PROVIDER", "openai").containsEntry("OPENAI_BASE_URL", "http://llama:8080/v1")
+                .containsEntry("OPENAI_CHAT_TIMEOUT", "90s")
+                .containsEntry("VERSO_QA_CHAT_CONCURRENCY", "${LLAMA_PARALLEL:-4}");
+        assertThat(String.valueOf(app.get("secrets"))).contains("source=SECRET_LOCAL_MODEL_API_KEY")
+                .contains("target=spring.ai.openai.api-key");
+        assertThat(read("scripts/dev-secrets.sh")).contains("SECRET_LOCAL_MODEL_API_KEY");
     }
 
     /**

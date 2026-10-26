@@ -3,6 +3,7 @@ package com.verso.qa.config;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.MapPropertySource;
@@ -25,7 +26,8 @@ class AiModeCheckTest {
     @Test
     void local_whenTheChatProviderIsACloudOne_refusesToStart() {
         MockEnvironment env = local("http://ollama:11434").withProperty("spring.ai.model.chat", "anthropic");
-        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, env)).hasMessageContaining("spring.ai.model.chat=ollama");
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, env)).hasMessageContaining("spring.ai.model.chat")
+                .hasMessageContaining("only allowed with verso.ai.mode=cloud");
     }
 
     @Test
@@ -89,6 +91,44 @@ class AiModeCheckTest {
 
         MockEnvironment logging = cloud("openai", "spring.ai.openai.api-key", "k").withProperty("OPENAI_LOG", "debug");
         assertThatThrownBy(() -> AiModeCheck.verify(AiMode.CLOUD, logging)).hasMessageContaining("OPENAI_LOG is set");
+    }
+
+    /** ADR-0051: the shared tier keeps local mode with an OpenAI-compatible server on the internal network. */
+    @Test
+    void local_whenTheChatIsAnInternalOpenAiCompatibleServerWithItsKey_starts() {
+        for (String url : List.of("http://llama:8080/v1", "http://127.0.0.1:8080/v1", "http://10.0.3.7:8080/v1",
+                "http://[::1]:8080/v1", "http://my_llama:8080/v1")) {
+            assertThatCode(() -> AiModeCheck.verify(AiMode.LOCAL, localOpenAi(url, "k"))).as(url)
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    void local_whenTheOpenAiCompatibleServerIsPublicOrHasNoUrl_refusesToStartWithoutTheAddress() {
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, localOpenAi("https://203.0.113.9/v1", "k")))
+                .hasMessageContaining("spring.ai.openai.base-url points outside the internal network")
+                .hasMessageNotContaining("203.0.113.9");
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, localOpenAi("http://[2001:db8::1]/v1", "k")))
+                .hasMessageContaining("outside the internal network");
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, localOpenAi("", "k")))
+                .hasMessageContaining("spring.ai.openai.base-url has no host");
+    }
+
+    @Test
+    void local_whenTheOpenAiCompatibleServersKeyIsMissingOrFromTheEnvironment_refusesToStart() {
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, localOpenAi("http://llama:8080/v1", " ")))
+                .hasMessageContaining("spring.ai.openai.api-key is missing").hasMessageContaining("compose.llamacpp.yaml");
+        MockEnvironment fromEnv = localOpenAi("http://llama:8080/v1", "k");
+        fromEnv.getPropertySources().addLast(new MapPropertySource(
+                StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, Map.of("SPRING_AI_OPENAI_API_KEY", "k")));
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, fromEnv)).hasMessageContaining("must come from /run/secrets");
+        MockEnvironment logging = localOpenAi("http://llama:8080/v1", "k").withProperty("OPENAI_LOG", "debug");
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, logging)).hasMessageContaining("OPENAI_LOG is set");
+    }
+
+    private static MockEnvironment localOpenAi(String url, String key) {
+        return local("http://ollama:11434").withProperty("spring.ai.model.chat", "openai")
+                .withProperty("spring.ai.openai.base-url", url).withProperty("spring.ai.openai.api-key", key);
     }
 
     private static MockEnvironment local(String ollama) {

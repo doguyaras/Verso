@@ -129,6 +129,26 @@ Yeniden ölçüm: `SCENARIOS=qa node scripts/load-test.mjs` (`QA_CLIENTS`, `QA_I
 - **CPU desteklenmez:** `cpu-1.9` 3 GB sınırında ilk istekte belleği aştı; CPU gecikmesi ölçülemedi.
 - Yan konteyner düşerse ya da 2 sn'de cevap vermezse soru füzyon sırasıyla cevaplanır; arka arkaya 3 hatada 1 dk atlanır (`verso_retrieval_rerank_total{outcome}`).
 
+## Paylaşımlı kademe (2026-10-26, ADR-0051): ölçüm bekliyor
+
+Tek sohbet yuvasını kaldırmanın iki yolu artık yapılandırmayla seçilebilir; hangisinin kazandığı bu makinede **henüz ölçülmedi** (Docker Desktop açılışta çöktü; kayıt: `docs/evidence/paylasimli-kademe-olcumu.md`). Bu yüzden varsayılanlar değişmedi: `VERSO_QA_CHAT_CONCURRENCY=1`, `OLLAMA_NUM_PARALLEL=1`.
+
+| Seçenek | Ayar | Ne değişir |
+|---|---|---|
+| Ollama paralelliği | `.env`: `OLLAMA_NUM_PARALLEL=N`, `VERSO_QA_CHAT_CONCURRENCY=N` | Ollama aynı modelde N isteği birlikte işler; her yuva bağlam için VRAM ayırır |
+| llama.cpp `llama-server` | `deploy/compose.llamacpp.yaml`, `LLAMA_PARALLEL=N` (varsayılan 4), `LLAMA_CTX_PER_SLOT` (4096) | Sohbet sürekli toplu işlemeyle llama-server'da; Ollama yalnız embedding; uygulama sınırı otomatik N |
+
+Ölçüm planı (ADR-0051 "Ölçüm durumu ve plan"): her iki seçenekte N = 2 / 4 / 8, `SCENARIOS=qa QA_CLIENTS=1,2,4,8 QA_INGEST=0`; verim, p50/p95/p99, `503 11002` sayısı, `nvidia-smi` VRAM; seçilenle taban arasında eval alt kümesi. Kabul: 4 istemcide 503 ≈ 0, p99 ≤ 15 sn, eval metrikleri gürültü payında.
+
+**Kademeler** (eşzamanlılık kullanıcıların %1–3'ü, katı %5; donanım araştırma notundan, Verso'da ölçülmedi):
+
+| Kademe | Eşzamanlı soru | Sunucu | Donanım |
+|---|---|---|---|
+| Tek kullanıcı / küçük ekip | 1 | Ollama (varsayılan) | CPU ya da tek tüketici GPU'su; bu makinede (RTX 4070 Ti SUPER) 4 istemci p99 ≤ 11 sn, %0–10 `503` (yukarıdaki yük ölçümü) |
+| 50 kullanıcı | 1–2 (3) | Ollama 2–4 yuva ya da llama-server (ölçümle seçilecek) | 16 GB tüketici GPU'su ya da birleşik bellekli kutu |
+| 200 kullanıcı | 4–6 (10) | llama-server ya da vLLM | 96 GB GPU (RTX PRO 6000) ya da 2× RTX 5090; 14–32B FP8/INT4 |
+| 1.000 kullanıcı | 15–30 (50) | vLLM | İki 96 GB GPU'lu sunucu ya da H100/H200 düğümü |
+
 ## Ölçümün sınırları
 
 - Yük kapalı döngüdür: her istemci cevabını bekleyip sonraki isteği gönderir. Aşırı yükte gecikmeler, açık bir geliş hızının göstereceğinden iyi görünür.
@@ -154,7 +174,7 @@ RTX 4070 Ti SUPER'lı makinede ingestion sürerken bile 4 eşzamanlı istemci p9
 
 | Seçenek | Ne değişir | Bedeli |
 |---|---|---|
-| GPU'lu host (`deploy/compose.gpu.yaml`) | Ölçüldü: chat p50 1,3 sn, p95 5,4 sn; kalite aynı (yukarıdaki GPU bölümü). Sonraki adım: `chat-concurrency` ve Ollama'nın `OLLAMA_NUM_PARALLEL` değerini birlikte artırıp ölçmek | Donanım; NVIDIA sürücüsü ve Docker GPU desteği |
+| GPU'lu host (`deploy/compose.gpu.yaml`) | Ölçüldü: chat p50 1,3 sn, p95 5,4 sn; kalite aynı (yukarıdaki GPU bölümü). Sonraki adım: `VERSO_QA_CHAT_CONCURRENCY` ile `OLLAMA_NUM_PARALLEL`'i ya da llama-server overlay'ini ölçmek ("Paylaşımlı kademe", ADR-0051) | Donanım; NVIDIA sürücüsü ve Docker GPU desteği |
 | Embedding için ayrı Ollama | Soru embedding'leri chat üretimiyle CPU paylaşmaz; 10030'lar kalkar | Bir container daha, bellek |
 | Ollama'ya daha çok CPU (`OLLAMA_CPUS`) | Tek cevabın süresi kısalır; eşzamanlılık değişmez | Uygulama ve veritabanıyla CPU paylaşımı |
 | Daha küçük chat modeli (`VERSO_CHAT_MODEL`) | Süre kısalır | Türkçe kalite düşer; eval setiyle yeniden ölçülmeli |

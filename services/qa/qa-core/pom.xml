@@ -96,6 +96,13 @@
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-model</artifactId>
     </dependency>
+    <!-- Only for the egress guard on the OpenAI-compatible client's OkHttp stack (a local model server, ADR-0051).
+         Optional: the assembly (verso-app) brings the starter and chooses the provider. -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-openai</artifactId>
+      <optional>true</optional>
+    </dependency>
     <!-- Metrics for Prometheus (ADR-0014): Micrometer, the registry comes with the assembly (verso-app). -->
     <dependency>
       <groupId>io.micrometer</groupId>

@@ -1,0 +1,79 @@
+# Shared-tier chat server (ADR-0051): llama.cpp's llama-server (MIT) answers the chat through its OpenAI-compatible API
+# with parallel slots and continuous batching; Ollama keeps the embedding model only. Still local mode: the model server
+# sits on the internal "models" network, the application reaches it with the OpenAI client and the same egress rules
+# (AiModeCheck, LocalModelEgress). GPU installs only; add it after deploy/compose.gpu.yaml:
+#
+#   bash scripts/dev-secrets.sh        # once: secrets/SECRET_LOCAL_MODEL_API_KEY (never committed)
+#   docker compose -f compose.yaml -f deploy/compose.gpu.yaml -f deploy/compose.llamacpp.yaml up -d --wait
+#
+# The model is the GGUF file ollama-pull already fetched and verified (VERSO_CHAT_MODEL_DIGEST); deploy/llamacpp/serve.sh
+# checks its SHA-256 again before the server starts. Nothing is downloaded at run time.
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda-b11561@sha256:20c6e722e2fcc5ca9c15401d3fd8e35408aaf8f9c54a12f32920f637c57959bb
+    restart: always
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    # The image runs as root by default; the model volume and the key file are world-readable (dev-secrets.sh: 0644).
+    user: "65534:65534"
+    mem_limit: ${LLAMA_MEM_LIMIT:-6g}
+    pids_limit: 256
+    networks: [models]
+    entrypoint: ["sh", "/opt/verso/serve.sh"]
+    environment:
+      LLAMA_MODEL_DIGEST: ${VERSO_CHAT_MODEL_DIGEST:-sha256:6dd7ac24fe13a238898e16e253ebc7a72fa27fb83f2658c2f6c241df3af5937d}
+      LLAMA_ALIAS: ${VERSO_CHAT_MODEL:-gemma4:e2b}
+      LLAMA_PARALLEL: ${LLAMA_PARALLEL:-4}
+      LLAMA_CTX_PER_SLOT: ${LLAMA_CTX_PER_SLOT:-4096}
+    secrets: [SECRET_LOCAL_MODEL_API_KEY]
+    volumes:
+      - ollama-models:/models:ro
+      - ./deploy/llamacpp/serve.sh:/opt/verso/serve.sh:ro
+    tmpfs:
+      - /tmp:size=64m
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    healthcheck:
+      # /health answers 200 once the model is loaded (503 while loading); it needs no key.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Ollama serves the embeddings only: the chat model is not loaded twice (VRAM).
+  ollama:
+    environment:
+      OLLAMA_WARM_CHAT: none
+    healthcheck:
+      test: ["CMD-SHELL", "ollama ps | grep -q '^bge-m3:567m '"]
+
+  verso-app:
+    # No depends_on, as with ollama (review E1): uploads and retrieval work while the chat server loads; questions get
+    # 503 until it answers.
+    environment:
+      VERSO_CHAT_PROVIDER: openai
+      OPENAI_BASE_URL: http://llama:8080/v1
+      CLOUD_CHAT_MODEL: ${VERSO_CHAT_MODEL:-gemma4:e2b}
+      # The local bound (ADR-0008: 90 s), not the cloud one.
+      OPENAI_CHAT_TIMEOUT: 90s
+      # As many chat calls as the server has slots: a 5th question gets 503 11002 instead of queueing unseen.
+      VERSO_QA_CHAT_CONCURRENCY: ${LLAMA_PARALLEL:-4}
+    secrets:
+      - SECRET_DB_DOCUMENT_PASSWORD
+      # The config tree turns the file name into the setting: no placeholder in config/verso.yml, so no fallback.
+      - source: SECRET_LOCAL_MODEL_API_KEY
+        target: spring.ai.openai.api-key
+
+secrets:
+  SECRET_LOCAL_MODEL_API_KEY:
+    file: ./secrets/SECRET_LOCAL_MODEL_API_KEY

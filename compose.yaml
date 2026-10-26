@@ -59,9 +59,12 @@ x-db-env: &db-env
   # Local mode, fixed here: only the cloud overlay switches it, together with the network and the key (ADR-0013).
   VERSO_AI_MODE: local
   VERSO_CHAT_PROVIDER: ollama
-  # Read in cloud mode only (deploy/compose.cloud.yaml).
+  # Read in cloud mode (deploy/compose.cloud.yaml) or with the shared-tier model server (deploy/compose.llamacpp.yaml).
   CLOUD_CHAT_MODEL: ${VERSO_CLOUD_CHAT_MODEL:-claude-sonnet-5-5}
   OPENAI_BASE_URL: ${VERSO_OPENAI_BASE_URL:-https://api.openai.com/v1}
+  OPENAI_CHAT_TIMEOUT: 30s
+  # Chat calls in flight per instance (ADR-0008, ADR-0051): no more than the model server answers at once.
+  VERSO_QA_CHAT_CONCURRENCY: ${VERSO_QA_CHAT_CONCURRENCY:-1}
   # Conversation history retention and the unanswered-questions policy (ADR-0023); the data controller decides.
   VERSO_HISTORY_RETENTION_DAYS: ${VERSO_HISTORY_RETENTION_DAYS:-90}
   VERSO_SHOW_UNANSWERED_QUESTIONS: ${VERSO_SHOW_UNANSWERED_QUESTIONS:-false}
@@ -289,6 +292,9 @@ services:
       # question-embedding budget failed (docs/capacity.md). The memory limit already counts both models loaded.
       OLLAMA_KEEP_ALIVE: "-1"
       OLLAMA_MAX_LOADED_MODELS: "2"
+      # Requests one model answers at once (ADR-0051): 1 by default, one answer at a time; a GPU host can raise it with
+      # VERSO_QA_CHAT_CONCURRENCY. Every extra slot reserves KV cache (VRAM or RAM) for the chat model's context.
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
       OLLAMA_WARM_EMBEDDING: bge-m3:567m
       OLLAMA_WARM_CHAT: ${VERSO_CHAT_MODEL:-gemma4:e2b}
     volumes:
