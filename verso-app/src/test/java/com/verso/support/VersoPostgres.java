@@ -129,6 +129,12 @@ public final class VersoPostgres {
                 .withDatabaseName(DATABASE)
                 .withUsername("postgres")
                 .withPassword(randomPassword())
+                // Every cached Spring test context holds its own module pools (document, qa, audit, connector) on this
+                // one server; the default max_connections (100) ran out in CI once the context count grew ("remaining
+                // connection slots are reserved", ADR-0056 run). 400 slots, with the pools capped below and the context
+                // cache capped (src/test/resources/spring.properties). fsync=off as Testcontainers' default command.
+                .withCommand("postgres", "-c", "fsync=off", "-c", "max_connections=400", "-c", "shared_buffers=128MB")
+                .withSharedMemorySize(256L * 1024 * 1024)
                 // A busy Docker Desktop can take minutes to start a container; the default 60 s failed whole runs.
                 .withStartupTimeout(java.time.Duration.ofMinutes(5));
         Path initdb = repoRoot().resolve("deploy/postgres/initdb");

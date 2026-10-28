@@ -37,6 +37,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 
 /**
  * The model gateway end to end in cloud mode (ADR-0056), against stub provider servers on 127.0.0.1: an
@@ -48,6 +49,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
         "management.server.port=0", "VERSO_AI_MODE=cloud", "VERSO_CHAT_PROVIDER=anthropic",
         "CLOUD_CHAT_MODEL=claude-test", "spring.ai.anthropic.api-key=test-anthropic-key"})
 @VersoTestEnvironment
+// No other class shares this configuration (cloud mode with the test chat model as the built-in one): its context is
+// closed after the class, so its pools do not hold connections of the shared test database while others run.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ModelGatewayApiTest {
 
     /** Synthetic keys: never real, and distinctive so a leak is found by a plain search. */
