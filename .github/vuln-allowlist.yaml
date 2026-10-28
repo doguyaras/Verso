@@ -610,3 +610,25 @@ entries:
     package: libcurl
     reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6. Not invoked by Verso: the edge and obs-edge services define no curl healthcheck and nginx does not link libcurl; the proxies only forward to verso-app and Grafana. The next digest refresh picks up the Alpine fix."
     expires: 2026-12-15
+
+  # --- 2026-10-28 scan: advisories inside upstream images (no newer upstream digest that drops them) ---------------
+  - id: GHSA-xxph-c9ww-hj94
+    scope: keycloak
+    package: guava
+    reason: "Guava bundled inside the Keycloak 26.8.1 distribution; Verso cannot replace a jar in the upstream image. Keycloak exposes no Guava API to callers and the flaw needs attacker-controlled input to the affected Guava routine. Re-check on the next Keycloak patch."
+    expires: 2026-12-15
+  - id: GHSA-xxph-c9ww-hj94
+    scope: flyway
+    package: guava
+    reason: "Guava bundled inside the Flyway CLI image used only by the one-shot migrate service, which reads the repository's own migration files and never processes untrusted input. Re-check on the next Flyway release."
+    expires: 2026-12-15
+  - id: GHSA-mgcc-cww5-fp2q
+    scope: grafana-grafana
+    package: github.com/go-jose/go-jose/v4
+    reason: "go-jose compiled into the Grafana binary; Grafana is reachable only through obs-edge on 127.0.0.1 behind its own login, and Verso configures no external OAuth/JWT provider in Grafana. Re-check on the next Grafana patch."
+    expires: 2026-12-15
+  - id: GHSA-mgcc-cww5-fp2q
+    scope: grafana-alloy
+    package: github.com/go-jose/go-jose/v4
+    reason: "go-jose compiled into the Alloy log shipper, which only reads container logs on the internal obs network and validates no externally supplied JWTs. Re-check on the next Alloy release."
+    expires: 2026-12-15
