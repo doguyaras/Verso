@@ -39,7 +39,7 @@ export async function renderSetup(ctx) {
   const current = Math.max(0, PHASES.findIndex((p) => p.id === deployment.phase));
   // The product's name without a Turkish case ending: the suffix of an installation's name cannot be known.
   const intro = `Kurumunuzdaki ${deployment.productName} kurulumunda nerede olduğumuz, neyin hazır olduğu ve sırada ne olduğu.`;
-  fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Kurulum durumu'),
+  fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Kurulum'),
     el('p', {}, intro))),
   el('div', { class: 'skeleton block' }));
   const [docs, info] = await Promise.all([guarded(() => api.listAllDocuments()), guarded(() => api.info())]);
@@ -54,7 +54,7 @@ export async function renderSetup(ctx) {
   const done = steps.filter((s) => s.done).length;
 
   fill(main,
-    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Kurulum durumu'),
+    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Kurulum'),
       el('p', {}, deployment.client
         ? `${deployment.client} için ${deployment.productName} kurulumunun aşamaları ve kontrol listesi.`
         : intro))),

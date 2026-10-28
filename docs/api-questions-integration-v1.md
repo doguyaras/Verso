@@ -11,7 +11,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 - Her yanıtta (hatalar dahil) `X-Rag-Mode: local|cloud` başlığı.
 - Yeni hata kodları: 11001, 11002, 11010, 11011, 10030, 10031.
 - Her 503 yanıtı `Retry-After` (saniye) taşır.
-- Sonradan eklenen, geriye uyumlu alan: `GET /v1/info` yanıtında `roles` (ADR-0019).
+- Sonradan eklenen, geriye uyumlu alanlar: `GET /v1/info` yanıtında `roles` (ADR-0019) ve `staleAfterDays` (ADR-0058: bilgi sağlığının eskime eşiği, gün; panelin "Bu kaynak eskimiş" kartı için).
 - Sonradan eklenen, geriye uyumlu alan: `citations[].excerpt` (alıntılanan pasajdan cevabın dayandığı kısım, ≤ 280 karakter). Eski istemciler bilinmeyen alanı yok sayar; sürüm değişmez.
 - 24 Ekim 2026: `excerpt` artık pasajın başı değil, atfı taşıyan cevap cümlesiyle en çok örtüşen pencere (ADR-0020). Alan, tip ve sınır aynı; istemci değişikliği gerekmez.
 - Sonradan eklenen, geriye uyumlu alanlar (ADR-0023, 24 Ekim 2026): istekte isteğe bağlı `conversationId`, yanıtta `conversationId` ve `turnId`. Her cevap kullanıcının geçmişine yazılır; geçmiş, puanlama ve yeni hata kodları (11020, 11022): [`docs/api-conversations-integration-v1.md`](api-conversations-integration-v1.md).
@@ -154,7 +154,7 @@ const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
 ```
 
 ### Servis bilgisi (faz 10)
-`GET /v1/info` (token gerekir): `{"mode":"local","chatModel":"gemma4:e2b","embeddingModel":"bge-m3:567m","roles":["verso-user"]}`, `Cache-Control: no-store, private`. Panelin sistem ekranı ve "hangi model cevaplıyor" göstergeleri içindir. `roles` (ADR-0019, geriye uyumlu ek alan): çağıranın Verso rolleri, yüksekten alçağa (`verso-admin`, `verso-user`); her kimlikli çağıranda `verso-user` vardır. İstemci bunu yalnız arayüzü gizlemek için kullanır ve bilmediği değeri yok sayar; asıl kontrol sunucudadır (yalnız-admin uçta 403 `ACCESS_DENIED` 90101).
+`GET /v1/info` (token gerekir): `{"mode":"local","chatModel":"gemma4:e2b","embeddingModel":"bge-m3:567m","roles":["verso-user"],"staleAfterDays":180}`, `Cache-Control: no-store, private`. Panelin sistem ekranı ve "hangi model cevaplıyor" göstergeleri içindir. `roles` (ADR-0019, geriye uyumlu ek alan): çağıranın Verso rolleri, yüksekten alçağa (`verso-admin`, `verso-user`); her kimlikli çağıranda `verso-user` vardır. İstemci bunu yalnız arayüzü gizlemek için kullanır ve bilmediği değeri yok sayar; asıl kontrol sunucudadır (yalnız-admin uçta 403 `ACCESS_DENIED` 90101).
 
 ## Hata kodları ve ekran davranışı
 | code | HTTP | Anlam | Ekran aksiyonu | Retry? |

@@ -432,7 +432,7 @@ class QuestionApiTest {
                 .header("Authorization", TestIdp.bearer(account)).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertThat(info.statusCode()).isEqualTo(200);
         assertThat(info.body()).isEqualTo("{\"mode\":\"local\",\"chatModel\":\"test-chat\",\"embeddingModel\":\"test-embedding\","
-                + "\"roles\":[\"verso-user\"]}");
+                + "\"roles\":[\"verso-user\"],\"staleAfterDays\":180}");
         assertThat(info.headers().firstValue("Cache-Control")).hasValue("no-store, private");
     }
 
@@ -447,7 +447,7 @@ class QuestionApiTest {
         HttpResponse<String> info = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v1/info"))
                 .header("Authorization", "Bearer " + admin).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertThat(info.statusCode()).isEqualTo(200);
-        assertThat(info.body()).endsWith("\"roles\":[\"verso-admin\",\"verso-user\"]}")
+        assertThat(info.body()).endsWith("\"roles\":[\"verso-admin\",\"verso-user\"],\"staleAfterDays\":180}")
                 .doesNotContain("offline_access").doesNotContain("/hukuk");
     }
 

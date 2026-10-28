@@ -8,6 +8,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor, withServerRoles } from '../panel/js/roles.js';
+import { MORE, moreModel, NAV, navModel, REDIRECTS, resolveRoute, shortcutTarget, slotId, TABS, tabModel } from '../panel/js/nav.js';
 import { askBody, continueWith, DELETE_ALL_WORD, deleteAllConfirmed, DELETED_DOCUMENT, filterConversations, hasMore, historyCitation,
   restoreEntries, startOverNote, startsOver, TITLE_MAX, titleProblem, turnCountLabel } from '../panel/js/conversations.js';
 import { initialFeedback, rate, reasonLabel, REASONS, reasonsFor, thanks } from '../panel/js/feedback.js';
@@ -38,18 +39,18 @@ import { CITED as CITED_HIGHLIGHT, MATCH, prune, tintSentences, writeMarked } fr
 import { createSseParser, noStream, provisionalText, readEvents, resultOf, stageText } from '../panel/js/stream.js';
 import { collapse, excerptRange, pageHeading, pageNav } from '../panel/js/pageview.js';
 
-test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
+test('roles: a user without Verso roles is a verso-user and sees Ana sayfa, Çalış and Bilgi only (ADR-0058)', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
   assert.deepEqual(roles, [ROLES.USER]);
-  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'beceriler', 'documents', 'setup']);
+  assert.deepEqual(screensFor(roles), ['home', 'ask', 'beceriler', 'documents']);
   assert.equal(canOpen('system', roles), false);
+  assert.equal(canOpen('setup', roles), false, 'the setup status is a "Yönetim" screen since ADR-0058');
 });
 
-test('roles: an operator also sees the system screen; unknown screens are closed', () => {
+test('roles: an operator also sees the system screen and the setup status; unknown screens are closed', () => {
   const roles = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'beceriler', 'documents', 'setup', 'system']);
+  assert.deepEqual(screensFor(roles), ['home', 'ask', 'beceriler', 'documents', 'system', 'setup']);
   assert.ok(screensFor(roles).length <= 6, 'at most five screens (ADR-0015) plus Beceriler (ADR-0057)');
-  assert.ok(screensFor(roles).filter((id) => SCREENS[id].tab !== false).length <= 4, 'four tabs at most on mobile');
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
 });
@@ -406,7 +407,7 @@ test('motion: every animation stops under "reduce motion" and styles are set thr
   const intro = css.slice(css.indexOf('/* The intro before sign-in'), css.indexOf('/* ---------- the switches at the top right'));
   assert.ok(intro.length > 500, 'the intro block');
   assert.doesNotMatch(intro, /infinite/, 'the intro animates once and stands still');
-  for (const file of ['motion.js', 'signature.js', 'app.js', 'screens/ask.js', 'screens/overview.js']) {
+  for (const file of ['motion.js', 'signature.js', 'app.js', 'screens/ask.js', 'screens/home.js', 'screens/activity.js', 'screens/dashboard.js']) {
     const code = readFileSync(`panel/js/${file}`, 'utf8');
     assert.doesNotMatch(code, /setAttribute\(\s*'style'|\.cssText|style:\s*'/, `${file}: no style attributes`);
   }
@@ -685,7 +686,7 @@ test('branding: loaded before the first screen, read at render time, served read
   const app = readFileSync('panel/js/app.js', 'utf8');
   const start = app.slice(app.indexOf('async function start()'));
   assert.ok(start.indexOf('await branding;') > 0 && start.indexOf('await branding;') < start.indexOf('showSignIn()'), 'before the intro');
-  assert.ok(start.indexOf('await branding;') < start.indexOf('buildShell()'), 'before the shell');
+  assert.ok(start.indexOf('await branding;') < start.indexOf('buildShell('), 'before the shell');
   for (const file of ['app.js', ...readdirSync('panel/js/screens').map((f) => `screens/${f}`)]) {
     assert.doesNotMatch(readFileSync(`panel/js/${file}`, 'utf8'), /^const \w+ = CONFIG\.deployment/m, `${file}: read at module load, before the file arrived`);
   }
@@ -1021,24 +1022,24 @@ test('answer screen: keyboard and focus (turn keys, Esc, focus back to the box a
 test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm role in the token alone does not open it', () => {
   const user = rolesOf({ realm_access: { roles: [] } });
   assert.deepEqual(withServerRoles(user, { roles: ['verso-user'] }), [ROLES.USER]);
-  assert.equal(canOpen('insights', withServerRoles(user, { roles: ['verso-user'] })), false);
+  assert.equal(canOpen('dashboard', withServerRoles(user, { roles: ['verso-user'] })), false);
   const fromToken = rolesOf({ realm_access: { roles: ['verso-admin'] } });
   assert.deepEqual(fromToken, [ROLES.USER], 'the token is not the source of the admin role');
-  assert.equal(canOpen('insights', fromToken), false);
+  assert.equal(canOpen('dashboard', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'beceriler', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'providers', 'knowledge', 'health', 'skills', 'systemmap']);
-  assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
+  assert.deepEqual(screensFor(admin), ['home', 'ask', 'beceriler', 'documents', 'knowledge', 'skills', 'systemmap', 'activity', 'dashboard', 'health',
+    'connectors', 'collections', 'subjects', 'trust', 'providers', 'setup', 'chunks']);
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
-  assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
+  assert.ok(tabModel(both, new Set(Object.keys(SCREENS))).length <= 3, 'three tabs and "Daha" on phones');
   for (const info of [null, undefined, {}, { roles: 'verso-admin' }, { roles: [{ name: 'verso-admin' }] }, { roles: ['VERSO-ADMIN'] }]) {
-    assert.equal(canOpen('insights', withServerRoles(user, info)), false, JSON.stringify(info));
+    assert.equal(canOpen('dashboard', withServerRoles(user, info)), false, JSON.stringify(info));
   }
   assert.deepEqual(withServerRoles(admin, { roles: ['verso-admin'] }), admin, 'no duplicate role');
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /roles = withServerRoles\(rolesOf\(currentClaims\(\)\), info\);/);
   assert.match(app, /setTimeout\(\(\) => resolve\(null\), INFO_WAIT_MS\)/, 'a slow /v1/info does not hold the panel');
-  assert.match(app, /canOpen\('insights', roles\) \? \[\{ label: 'Değer panosu'/, 'the account menu leads to the dashboard');
+  assert.match(app, /navModel\(roles, AVAILABLE\)/, 'the menu is nav.js\'s model for these roles');
 });
 
 test('conversation ids: a follow-up carries the id, the answer\'s own id wins, a refused conversation starts over once', () => {
@@ -1419,8 +1420,9 @@ test('collections: admin-only screen, grant input, history states and the collec
   const user = rolesOf({ realm_access: { roles: ['verso-operator'] } });
   assert.equal(canOpen('collections', user), false, 'only verso-admin manages collections');
   assert.equal(canOpen('collections', withServerRoles(user, { roles: ['verso-admin'] })), true);
-  assert.equal(SCREENS.collections.tab, false);
-  assert.match(readFileSync('panel/js/app.js', 'utf8'), /canOpen\('collections', roles\) \? \[\{ label: 'Bilgi alanları'/);
+  assert.equal(SCREENS.collections.group, 'admin');
+  assert.equal(SCREENS.collections.title, 'Erişim ve roller', 'ADR-0058: the collections and grants admin');
+  assert.match(readFileSync('panel/js/screens/documents.js', 'utf8'), /href: '#\/collections' \}, icon\('key'\), 'Erişim ve roller'/);
 
   assert.deepEqual(grantInput('GROUP', '/hukuk/sozlesmeler'), { principalType: 'GROUP', principal: '/hukuk/sozlesmeler' });
   assert.deepEqual(grantInput('USER', ' sub-1'), { principalType: 'USER', principal: ' sub-1' }, 'sent as typed: the server compares exactly');
@@ -1732,25 +1734,25 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const { ADMIN_GROUP, adminScreens } = await import('../panel/js/roles.js');
   const user = rolesOf({ realm_access: { roles: [] } });
   const operator = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(user), ['overview', 'ask', 'beceriler', 'documents', 'setup']);
-  assert.deepEqual(screensFor(operator), ['overview', 'ask', 'beceriler', 'documents', 'setup', 'system']);
+  assert.deepEqual(screensFor(user), ['home', 'ask', 'beceriler', 'documents']);
+  assert.deepEqual(screensFor(operator), ['home', 'ask', 'beceriler', 'documents', 'system', 'setup']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
-    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills', 'systemmap']) assert.equal(canOpen(id, roles), false, id);
+    for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills', 'systemmap', 'activity', 'dashboard']) assert.equal(canOpen(id, roles), false, id);
   }
   const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(adminScreens(admin), ['insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'providers', 'knowledge', 'health', 'skills', 'systemmap']);
+  assert.deepEqual(adminScreens(admin), ['knowledge', 'skills', 'systemmap', 'activity', 'dashboard', 'health', 'connectors', 'collections', 'subjects', 'trust', 'providers', 'chunks']);
   assert.equal(ADMIN_GROUP, 'Yönetim');
+  const available = new Set(Object.keys(SCREENS));
   for (const id of adminScreens(admin)) {
-    assert.equal(SCREENS[id].tab, false, `${id}: the tab bar keeps the user's four tabs`);
+    assert.ok(!TABS.some((t) => t.id === id), `${id}: the tab bar keeps the user's tabs`);
     assert.deepEqual(SCREENS[id].roles, [ROLES.ADMIN], id);
   }
+  assert.deepEqual(navModel(user, available).map((g) => g.id), ['home', 'work', 'knowledge'], 'a user: no İçgörü, no Yönetim');
   const keys = Object.values(SCREENS).map((s) => s.key);
   assert.equal(new Set(keys).size, keys.length, 'every "g" shortcut key is unique');
   const app = readFileSync('panel/js/app.js', 'utf8');
-  assert.match(app, /return items\.length \? \[\{ group: ADMIN_GROUP \}, \.\.\.items\] : \[\];/, 'no empty "Yönetim" heading in the account menu');
-  assert.match(app, /\.\.\.\(s\.id === firstAdmin \? \[adminHeading\] : \[\]\)/, 'the menu column heading only before the first admin screen');
-  for (const id of ['chunks', 'subjects', 'connectors', 'trust', 'providers', 'knowledge', 'health', 'skills', 'systemmap']) assert.match(app, new RegExp(`canOpen\\('${id}', roles\\) \\? \\[\\{ label: '${SCREENS[id].title}'`));
+  assert.match(app, /\.\.\.\(group\.title \? \[el\('div', \{ class: 'nav-label nav-group'/, 'a heading only for a titled group; navModel drops empty groups');
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -1932,7 +1934,7 @@ test('admin screens: 403 is a calm admin-only state, touch targets and reduced m
   }
   const css = readFileSync('panel/css/panel.css', 'utf8');
   assert.match(css, /@media \(pointer: coarse\) \{[\s\S]*?\.main\[data-group="admin"\] :is\(\.input, \.button, \.icon-button\), \.menu button \{ min-height: 44px; \}/);
-  assert.match(readFileSync('panel/js/app.js', 'utf8'), /\$\('#main'\)\.dataset\.group = SCREENS\[screen\]\.group \?\? '';/);
+  assert.match(readFileSync('panel/js/app.js', 'utf8'), /\$\('#main'\)\.dataset\.group = adminScreens\(roles\)\.includes\(screen\) \? 'admin' : '';/);
   const block = css.slice(css.indexOf('/* ---------- the "Yönetim" group'), css.indexOf('/* screens cross-fade'));
   assert.ok(block.length > 200, 'the admin block');
   assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, 'only design tokens: the contrast pairs stay the tested ones');
@@ -1952,7 +1954,7 @@ test('connectors: only verso-admin (from /v1/info) opens the screen; it sits in 
   assert.ok(adminScreens(admin).includes('connectors'));
   assert.deepEqual(SCREENS.connectors.roles, [ROLES.ADMIN]);
   assert.equal(SCREENS.connectors.group, 'admin');
-  assert.equal(SCREENS.connectors.tab, false);
+  assert.ok(!TABS.some((t) => t.id === 'connectors'));
   assert.equal(SCREENS.connectors.title, 'Bağlayıcılar');
   assert.match(readFileSync('panel/js/app.js', 'utf8'), /connectors: renderConnectors/);
 });
@@ -2611,9 +2613,8 @@ test('skills: the admin screen is text-only, admin-only and downloads only on th
   assert.equal((screen.match(/saveFile\(/g) ?? []).length, 1, 'one download, from the button handler');
   assert.match(screen, /'SKILL\.md indir'/);
   assert.match(screen, /canExport\(full\)/);
-  assert.equal(SCREENS.skills.group, 'admin');
+  assert.equal(SCREENS.skills.group, 'knowledge', 'ADR-0058: "Prosedürler" sits in "Bilgi", still admin-only');
   assert.deepEqual(SCREENS.skills.roles, [ROLES.ADMIN]);
-  assert.equal(SCREENS.skills.tab, false);
 });
 
 test('skills: the admin API paths carry only ids, the state filter, versions and page numbers', async () => {
@@ -2718,9 +2719,8 @@ test('system map: the admin screen is text-only and admin-only', () => {
   assert.match(screen, /'Kod ya da terim ara'/);
   assert.match(screen, /Yerel modelin önerdiği ilişkiler; onaylanmadan hiçbir yerde kullanılmaz\./);
   assert.match(screen, /VERSO_QA_SYSTEM_MODEL_SUGGESTIONS_ENABLED/);
-  assert.equal(SCREENS.systemmap.group, 'admin');
+  assert.equal(SCREENS.systemmap.group, 'knowledge', 'ADR-0058: "Sistem haritası" sits in "Bilgi", still admin-only');
   assert.deepEqual(SCREENS.systemmap.roles, [ROLES.ADMIN]);
-  assert.equal(SCREENS.systemmap.tab, false);
   assert.ok(ICON_NAMES.includes(SCREENS.systemmap.icon));
   const user = rolesOf({ realm_access: { roles: ['verso-user', 'verso-operator', 'verso-admin'] } });
   assert.equal(canOpen('systemmap', user), false, 'the token alone never opens it');
@@ -2805,7 +2805,7 @@ test('reasoning (ADR-0055): stages, the trace as plain text, the not-found parts
 
   const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
   assert.match(ask, /el\('details', \{ class: 'reasoning-steps' \}/, 'collapsible "Nasıl araştırıldı"');
-  assert.match(ask, /'Belgeler arasında çelişki'/);
+  assert.match(readFileSync('panel/js/insight.js', 'utf8'), /'Belgeler arasında çelişki'/, 'ADR-0058: an insight card now');
   assert.doesNotMatch(readFileSync('panel/js/reasoning.js', 'utf8'), /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'/);
 });
 
@@ -2824,13 +2824,17 @@ test('beceriler: the screen is for every user, apart from "Prosedürler", with i
   assert.equal(SCREENS.beceriler.title, 'Beceriler');
   assert.equal(SCREENS.skills.title, 'Prosedürler', 'the procedures keep their name');
   assert.deepEqual(SCREENS.skills.roles, [ROLES.ADMIN]);
-  assert.equal(SCREENS.beceriler.tab, false, 'the tab bar keeps its four tabs');
+  assert.ok(!TABS.some((t) => t.id === 'beceriler'), 'the tab bar keeps Ana sayfa, Asistan, Bilgi (and "Daha")');
+  assert.equal(SCREENS.beceriler.group, 'work', 'ADR-0058: Çalış → Beceriler');
   const keys = Object.values(SCREENS).map((s) => s.key);
   assert.equal(new Set(keys).size, keys.length);
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /beceriler: renderBeceriler/);
-  assert.match(app, /canOpen\('beceriler', roles\) \? \[\{ label: 'Beceriler'/, 'phones reach it from the account menu');
-  assert.match(app, /canOpen\('skills', roles\) \? \[\{ label: 'Prosedürler'/);
+  // ADR-0058: phones reach it from "Daha" (nav.js moreModel); the account menu no longer lists screens.
+  const admin = withServerRoles(rolesOf({}), { roles: ['verso-admin'] });
+  assert.ok(moreModel(rolesOf({}), new Set(Object.keys(SCREENS))).flatMap((g) => g.entries).some((e) => e.id === 'beceriler'));
+  const titles = navModel(admin, new Set(Object.keys(SCREENS))).flatMap((g) => g.entries).map((e) => e.title);
+  assert.ok(titles.includes('Beceriler') && titles.includes('Prosedürler'), 'both, under their own names');
 });
 
 test('beceriler: the gallery filters by category and searches name, description and /command in Turkish case', async () => {
@@ -3116,4 +3120,306 @@ test('beceriler screen: no markup, inline style, eval or browser storage; the ad
   assert.match(screen, /return \(\) => disposeRun\(\);/, 'leaving the screen stops the stream and the polling');
   const css = readFileSync('panel/css/panel.css', 'utf8');
   for (const name of ['.skill-lib-cards', '.skill-lib-table', '.slash-picker', '.skill-lib-disclaimer']) assert.ok(css.includes(name), name);
+});
+// ---------- the platform (ADR-0058): information architecture, home, activity centre, dashboard, insight cards ----------
+const ALL = new Set(Object.keys(SCREENS));
+
+test('platform IA: Ana sayfa alone, then Çalış · Bilgi for everyone, İçgörü · Yönetim for verso-admin only', () => {
+  const user = rolesOf({ realm_access: { roles: [] } });
+  const operator = rolesOf({ realm_access: { roles: ['verso-operator'] } });
+  const admin = withServerRoles(user, { roles: ['verso-admin'] });
+  const shape = (roles) => navModel(roles, ALL).map((g) => [g.id, g.title, g.entries.map((e) => e.id)]);
+  assert.deepEqual(shape(user), [['home', null, ['home']], ['work', 'Çalış', ['ask', 'beceriler', 'history']], ['knowledge', 'Bilgi', ['documents']]]);
+  assert.deepEqual(shape(operator).map((g) => g[0]), ['home', 'work', 'knowledge', 'admin']);
+  assert.deepEqual(shape(operator).at(-1)[2], ['system', 'setup'], 'the operator keeps its own screens, nothing of the admin');
+  assert.deepEqual(shape(admin), [
+    ['home', null, ['home']],
+    ['work', 'Çalış', ['ask', 'beceriler', 'history']],
+    ['knowledge', 'Bilgi', ['documents', 'knowledge', 'skills', 'systemmap']],
+    ['insight', 'İçgörü', ['activity', 'dashboard', 'health']],
+    ['admin', 'Yönetim', ['providers', 'connectors', 'collections', 'subjects', 'trust', 'setup']],
+  ]);
+  assert.equal(SCREENS.dashboard.title, 'Komuta panosu');
+  assert.equal(SCREENS.activity.title, 'Etkinlik merkezi');
+  assert.equal(navModel(admin, ALL)[1].entries[1].title, 'Beceriler');
+  assert.equal(navModel(admin, ALL)[1].entries[2].title, 'Geçmiş ve çıktılar');
+  assert.ok(!navModel(admin, ALL).flatMap((g) => g.entries).some((e) => e.id === 'chunks'), '"Parçaları incele" has no menu entry');
+  const keys = Object.values(SCREENS).map((s) => s.key);
+  assert.equal(new Set(keys).size, keys.length, 'every "g" shortcut key is unique');
+  assert.equal(shortcutTarget('i', admin, ALL), 'activity');
+  assert.equal(shortcutTarget('p', admin, ALL), 'chunks', 'a hidden screen keeps its shortcut');
+  assert.equal(shortcutTarget('i', user, ALL), null, 'a user has no shortcut into İçgörü');
+  for (const id of Object.keys(SCREENS)) assert.ok(ICON_NAMES.includes(SCREENS[id].icon), `${id}: icon drawn`);
+});
+
+test('platform IA: other branches slot in by feature detection (screen entry and renderer both present)', () => {
+  const admin = withServerRoles(rolesOf({ realm_access: { roles: [] } }), { roles: ['verso-admin'] });
+  const user = rolesOf({ realm_access: { roles: [] } });
+  // Without the gallery and the providers screen nothing changes.
+  const without = new Set([...ALL].filter((id) => id !== 'beceriler' && id !== 'providers'));
+  assert.equal(slotId(NAV[4].items[0], ALL), 'providers', 'the model gateway of ADR-0056 is the Yönetim slot\'s screen');
+  assert.equal(slotId(NAV[1].items[1], without), null);
+  assert.equal(slotId(NAV[1].items[1], ALL), 'beceriler', 'the skill library of ADR-0057 is the slot\'s screen');
+  const screens = { ...SCREENS,
+    saglayicilar: { title: 'Yapay zekâ sağlayıcıları', icon: 'cpu', key: 'z', roles: [ROLES.ADMIN], group: 'admin' },
+    yeni: { title: 'Bir başka ekran', icon: 'info', key: 'q', roles: [ROLES.ADMIN], group: 'insight' } };
+  const ids = (roles, available) => navModel(roles, available, screens).map((g) => g.entries.map((e) => e.id));
+  // A SCREENS entry without a renderer is not shown (the module is missing).
+  assert.deepEqual(ids(admin, without)[1], ['ask', 'history']);
+  const available = new Set([...without, 'beceriler', 'saglayicilar', 'yeni']);
+  assert.deepEqual(ids(admin, available)[1], ['ask', 'beceriler', 'history'], 'Çalış → Beceriler, right after Asistan');
+  assert.deepEqual(ids(admin, available)[4][0], 'saglayicilar', 'Yönetim → Yapay zekâ sağlayıcıları first');
+  assert.deepEqual(ids(admin, available)[3], ['activity', 'dashboard', 'health', 'yeni'], 'an unplaced screen joins its group');
+  assert.deepEqual(ids(user, available)[1], ['ask', 'beceriler', 'history'], 'the gallery is for everyone');
+  assert.ok(!ids(user, available).flat().includes('saglayicilar'));
+  assert.equal(slotId(NAV[1].items[1], available, screens), 'beceriler');
+  // The other ids the branches might pick are recognised too.
+  assert.equal(slotId(NAV[1].items[1], new Set(['gallery']), { gallery: SCREENS.beceriler }), 'gallery');
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /const AVAILABLE = new Set\(Object\.keys\(RENDER\)\);/);
+  assert.match(app, /skillsAvailable: SKILL_GALLERY/);
+});
+
+test('platform IA: old routes redirect with their parameters; a closed route falls back to the first screen', () => {
+  const user = rolesOf({ realm_access: { roles: [] } });
+  const admin = withServerRoles(user, { roles: ['verso-admin'] });
+  assert.deepEqual(resolveRoute('#/overview', user, ALL), { screen: 'home', params: null, redirected: true });
+  assert.deepEqual(resolveRoute('#/insights', admin, ALL), { screen: 'dashboard', params: { tab: 'value' }, redirected: true });
+  assert.deepEqual(resolveRoute('#/insights', user, ALL), { screen: 'home', params: null, redirected: true }, 'no tab param for a closed target');
+  assert.deepEqual(resolveRoute('', user, ALL), { screen: 'home', params: null, redirected: false });
+  assert.deepEqual(resolveRoute('#/activity', admin, ALL), { screen: 'activity', params: null, redirected: false });
+  assert.deepEqual(resolveRoute('#/activity', user, ALL), { screen: 'home', params: null, redirected: true });
+  assert.deepEqual(resolveRoute('#/setup', user, ALL).screen, 'home', 'setup moved to Yönetim');
+  assert.deepEqual(resolveRoute('#/nothing?x=1', admin, ALL).screen, 'home');
+  assert.equal(REDIRECTS.overview.to, 'home');
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /location\.replace\(`#\/\$\{screen\}`\);/, 'a redirect replaces the history entry');
+});
+
+test('platform IA: the phone tab bar is Ana sayfa, Asistan, Bilgi and "Daha" with the rest grouped', () => {
+  const user = rolesOf({ realm_access: { roles: [] } });
+  const admin = withServerRoles(user, { roles: ['verso-admin'] });
+  assert.deepEqual(TABS.map((t) => t.label), ['Ana sayfa', 'Asistan', 'Bilgi']);
+  assert.equal(MORE.label, 'Daha');
+  assert.deepEqual(tabModel(user, ALL).map((t) => t.id), ['home', 'ask', 'documents']);
+  assert.deepEqual(moreModel(user, ALL).map((g) => [g.id, g.entries.map((e) => e.id)]), [['work', ['beceriler', 'history']]]);
+  const more = moreModel(admin, ALL);
+  assert.deepEqual(more.map((g) => g.title), ['Çalış', 'Bilgi', 'İçgörü', 'Yönetim']);
+  assert.ok(!more.flatMap((g) => g.entries).some((e) => ['home', 'ask', 'documents'].includes(e.id)), 'no tab twice');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.tab-more \{\s*display: grid;[^}]*min-height: 44px;/, '"Daha" is a 44 px target');
+  assert.match(css, /\.shell\.rail \.nav \.nav-group \{ display: block; height: 0;/, 'group headings become dividers in the rail');
+});
+
+test('home: the greeting, the "/" entry only with skills, quick starts, outputs and the five admin figures', async () => {
+  const { composerHint, composerIntent, firstName, homeTitle, knowledgeActions, newKnowledge, outputsModel, quickStarts,
+    setupProgress, skillCards, weekFigures } = await import('../panel/js/home.js');
+  assert.equal(homeTitle({ given_name: 'Deniz Arslan' }), 'Bugün ne yapalım, Deniz?');
+  assert.equal(firstName({ preferred_username: 'deniz.arslan@ilgaz.com.tr' }), 'Deniz', 'never the e-mail address');
+  assert.equal(homeTitle({}), 'Bugün ne yapalım?');
+  assert.match(composerHint('beceriler'), / \/ ile bir beceri/);
+  assert.doesNotMatch(composerHint(null), /\//, 'no slash promise without the skills module');
+  assert.deepEqual(composerIntent('/toplanti-notu'), { kind: 'question', question: '/toplanti-notu' },
+    'what the picker did not take is asked, as in Asistan');
+  assert.equal(composerIntent('   '), null);
+  assert.equal(composerIntent('x'.repeat(1200)).question.length, 1000);
+  const skills = [{ id: 'a', name: 'A', slash: 'a' }, { id: 'b', name: 'B', description: 'bb' }, { id: 'c', name: 'C' },
+    { id: 'd', name: 'D' }, { id: 'e', name: 'E' }, { name: 'nope' }];
+  const runs = [{ skillId: 'c' }, { skillId: 'c' }, { skillId: 'e' }, { skillId: 'zz' }];
+  assert.deepEqual(skillCards(skills, runs).map((s) => [s.id, s.uses]), [['c', 2], ['e', 1], ['a', 0], ['b', 0]],
+    'most used first, then the library order; at most four');
+  assert.deepEqual(skillCards(null, null), []);
+  const own = outputsModel({ outputs: [] }, 5, [{ id: 'r1', status: 'APPROVED', skillName: 'Toplantı notu', finishedAt: '2026-10-28T10:00:00Z' },
+    { id: 'r2', status: 'DRAFT', skillName: 'Taslak', finishedAt: '2026-10-28T11:00:00Z' }]);
+  assert.deepEqual(own.map((o) => [o.kind, o.screen, o.params?.runId]), [['Beceri çıktısı', 'beceriler', 'r1']], 'approved runs only');
+  assert.deepEqual(quickStarts(['a', '', 2, 'b', 'c', 'd', 'e', 'f', 'g']), ['a', 'b', 'c', 'd', 'e', 'f']);
+  assert.deepEqual(knowledgeActions((id) => ['documents', 'ask'].includes(id)).map((a) => a.id), ['documents', 'ask'],
+    'a user is not offered admin screens');
+  const outputs = outputsModel({ outputs: [
+    { kind: 'CARD', id: '1', title: 'Kısmi sevkiyat', at: '2026-10-27T10:00:00Z' },
+    { kind: 'PROCEDURE', id: '2', title: 'sayim-farki', description: 'Sayım farkı', at: '2026-10-28T10:00:00Z' },
+    { kind: 'CARD', id: '3', title: null, at: '2026-10-28T11:00:00Z' }] });
+  assert.deepEqual(outputs.map((o) => [o.kind, o.title, o.screen]), [['Prosedür', 'sayim-farki', 'skills'], ['Onaylı bilgi', 'Kısmi sevkiyat', 'knowledge']]);
+  assert.deepEqual(newKnowledge([{ id: 'a', fileName: 'a.pdf', createdAt: '2026-10-01T00:00:00Z' },
+    { id: 'b', fileName: 'b.pdf', createdAt: '2026-10-20T00:00:00Z', collectionName: 'BT' }]).map((d) => [d.id, d.collection]), [['b', 'BT'], ['a', null]]);
+  const figures = weekFigures({
+    report: { clusters: [{}, {}, {}], staleDocuments: Array(11).fill({}), contradictions: [{}] },
+    summary: { pendingApprovals: 4 },
+    metrics: { totals: { questions: 412, outcomeRates: { answered: 0.87 } } } });
+  assert.equal(figures.length, 5, 'at most five figures');
+  assert.deepEqual(figures.map((f) => [f.value, f.screen]), [[3, 'health'], [11, 'health'], [1, 'health'], [4, 'activity'], [412, 'dashboard']]);
+  assert.equal(figures[4].label, 'soru, %87\'i kaynaklı');
+  assert.deepEqual(weekFigures({ summary: { pendingApprovals: 2 } }).map((f) => f.value), [2], 'a failed source is left out, not 0');
+  const usage = { budgets: [{ scope: 'CONNECTION', scopeKey: 'x', hardLimit: 25000, softLimit: 20000, spent: 18420, state: 'OK' }] };
+  const withBudget = weekFigures({ metrics: { totals: { questions: 412 } }, usage });
+  assert.equal(withBudget.length, 1, 'the budget takes the usage figure\'s place (ADR-0056)');
+  assert.deepEqual([withBudget[0].value, withBudget[0].screen], ['18.420 / 25.000', 'providers']);
+  assert.equal(weekFigures({ usage: { budgets: [{ hardLimit: 10, spent: 10, state: 'HARD' }] } })[0].label,
+    'bütçe doldu, model çağrıları durdu');
+  assert.equal(weekFigures({ metrics: { totals: { questions: 1 } }, usage: { budgets: [] } })[0].screen, 'dashboard',
+    'no budget: the usage figure stays');
+  assert.deepEqual(setupProgress([{ done: true }, { done: false }]), { done: 1, total: 2, complete: false, label: '1/2 adım' });
+  assert.equal(setupProgress([{ done: true }]).complete, true);
+  const screen = readFileSync('panel/js/screens/home.js', 'utf8');
+  assert.match(screen, /admin \? week\(ctx, weekFigures/, 'the strip for admins only');
+  assert.match(screen, /admin \? checklist\(ctx, steps\) : null/, 'the checklist for admins only, until done');
+  assert.doesNotMatch(screen, /İlk belgenizi ekleyin/, 'not the old upload-first layout');
+  assert.match(screen, /const slash = ctx\.skillsAvailable \? slashPicker\(field, ctx\) : null;/, 'the real "/" picker of ADR-0057');
+  assert.match(screen, /api\.listSkillRuns\(0, 50\)/, 'the caller\'s own runs rank the skill cards');
+  assert.doesNotMatch(screen, /\bVerso\b/, 'the product name comes from the branding (ADR-0021)');
+});
+
+test('activity: the strip, the query string, the day groups and the lines carry no person', async () => {
+  const { activityQuery, detailId, groupByDay, itemModel, linkOf, statusStrip, TABS: ACTIVITY_TABS } = await import('../panel/js/activity.js');
+  assert.deepEqual(statusStrip({ attention: 0, reasons: [], last24h: { runs: 0, background: 6, hooks: 11, knowledge: 27 } }).title, 'Her şey yolunda');
+  const busy = statusStrip({ attention: 3, reasons: ['Bir bağlayıcı senkronu hata verdi', 'Altın değerlendirmede gerileme', '4 onay bekliyor', 'x'],
+    last24h: { runs: 38, background: 6, hooks: 11, knowledge: 27 }, pendingApprovals: 4, partial: true });
+  assert.equal(busy.title, '3 iş dikkat istiyor');
+  assert.equal(busy.reasons, 'Bir bağlayıcı senkronu hata verdi · Altın değerlendirmede gerileme · 4 onay bekliyor');
+  assert.deepEqual(busy.counts, ['38 çalışma', '6 arka plan işi', '11 kanca', '27 bilgi değişikliği']);
+  assert.equal(busy.partial, true);
+  assert.equal(statusStrip(null).calm, true, 'no summary: nothing claimed');
+  assert.equal(statusStrip({ attention: -2 }).calm, true);
+  assert.deepEqual(ACTIVITY_TABS.map((t) => t.label), ['Tümü', 'Çalışmalar', 'Arka plan işleri', 'Kancalar', 'Bilgi değişiklikleri']);
+
+  const today = new Date(2026, 9, 28);
+  assert.equal(activityQuery({}, today), 'from=2026-10-22&to=2026-10-28&page=0&size=25');
+  assert.equal(activityQuery({ category: 'HOOK', status: 'FAILED', days: 30, page: 2 }, today),
+    'category=HOOK&status=FAILED&from=2026-09-29&to=2026-10-28&page=2&size=25');
+  assert.equal(activityQuery({ category: 'APPROVAL', days: 90 }, today), 'category=APPROVAL&from=2026-07-31&to=2026-10-28&page=0&size=25');
+  assert.equal(activityQuery({ category: 'DROP TABLE', status: 'x', days: 365, collection: "1' OR 1=1", page: 99 }, today),
+    'from=2026-10-22&to=2026-10-28&page=0&size=25', 'unknown words, days, ids and pages are not sent');
+  assert.match(activityQuery({ collection: '0193a4b2-1c3d-7e4f-8a9b-0c1d2e3f4a5b' }, today), /collection=0193a4b2-/);
+  assert.equal(detailId('connector.0193a4b2-1c3d-7e4f-8a9b-0c1d2e3f4a5b'), 'connector.0193a4b2-1c3d-7e4f-8a9b-0c1d2e3f4a5b');
+  assert.equal(detailId('../admin'), null);
+
+  const items = [{ startedAt: new Date(2026, 9, 28, 14, 32).toISOString(), title: 'a' },
+    { startedAt: new Date(2026, 9, 28, 9, 15).toISOString(), title: 'b' },
+    { startedAt: new Date(2026, 9, 27, 2, 0).toISOString(), title: 'c' },
+    { startedAt: new Date(2026, 9, 20, 2, 0).toISOString(), title: 'd' }, { startedAt: 'nope', title: 'e' }];
+  const groups = groupByDay(items, today);
+  assert.deepEqual(groups.map((g) => [g.label, g.items.map((i) => i.title)]).slice(0, 2), [['Bugün', ['a', 'b']], ['Dün', ['c']]]);
+  assert.equal(groups.length, 3, 'an unreadable date is left out');
+
+  const line = itemModel({ id: 'connector.0193a4b2-1c3d-7e4f-8a9b-0c1d2e3f4a5b', category: 'BACKGROUND', type: 'CONNECTOR_SYNC',
+    status: 'FAILED', startedAt: '2026-10-28T11:05:00Z', finishedAt: '2026-10-28T11:08:12Z', title: 'Bağlayıcı senkronu · Kalite',
+    actor: { kind: 'SYSTEM', label: 'Bağlayıcı senkronu' }, attention: true, link: { screen: 'connectors', targetId: 'x' } });
+  assert.equal(line.status, 'Hata');
+  assert.equal(line.tone, 'bad');
+  assert.equal(line.duration, '3 dk 12 sn');
+  assert.equal(line.actor, 'Bağlayıcı senkronu (sistem)');
+  assert.deepEqual(line.link, { screen: 'connectors', id: null }, 'an invalid id is dropped');
+  assert.equal(linkOf({ link: { screen: 'javascript:alert(1)' } }), null);
+  assert.equal(itemModel({ type: 'NEW_THING', status: 'ODD' }).type, 'NEW_THING', 'an unknown word is shown as it is');
+  const screen = readFileSync('panel/js/screens/activity.js', 'utf8');
+  assert.match(screen, /'Kişi değil ekip ya da rol görünür'/);
+  assert.match(screen, /'Onay kutusu'/);
+  assert.doesNotMatch(screen, /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'/);
+  assert.doesNotMatch(screen, /accountId|preferred_username|actorSub|currentIdentity/, 'the screen never shows an account');
+});
+
+test('dashboard: the knowledge-health score is the mean of coverage, freshness and consistency, with its formula', async () => {
+  const { adoption, budgetState, citedRate, gatewayCost, HEALTH_FORMULA, healthScore, issuesByImpact, scoreTone, usageSplit } = await import('../panel/js/dashboard.js');
+  const report = {
+    coverage: [{ documents: 80, citedInWindow: 60 }, { documents: 20, citedInWindow: null }],
+    staleDocuments: [{ fileName: 'vpn.pdf', citations: 31 }, { citations: 2 }],
+    cards: { verified: 18, stale: 2 },
+    contradictions: [{ first: { documentId: 'a' }, second: { documentId: 'b' } }, { first: { documentId: 'a' }, second: { documentId: 'c' } }],
+    clusters: [{ turns: 17, askers: 6, keywords: ['rezervasyon', 'iade'] }],
+  };
+  // coverage 60/80 = 0.75 (the suppressed area does not count); freshness 1 − mean(2/100, 2/20) = 0.94;
+  // consistency 1 − 3/100 = 0.97; score round(mean) = 89.
+  assert.deepEqual(healthScore(report), { score: 89, coverage: 75, freshness: 94, consistency: 97 });
+  assert.deepEqual(healthScore(null), { score: null, coverage: null, freshness: null, consistency: null });
+  assert.deepEqual(healthScore({ coverage: [{ documents: 10, citedInWindow: null }] }),
+    { score: 100, coverage: null, freshness: 100, consistency: 100 }, 'only the parts that can be computed');
+  assert.equal(scoreTone(89), 'ok');
+  assert.equal(scoreTone(60), 'wait');
+  assert.equal(scoreTone(10), 'bad');
+  for (const key of ['coverage', 'freshness', 'consistency', 'score']) assert.ok(HEALTH_FORMULA[key].length > 40, key);
+  assert.deepEqual(citedRate({ totals: { questions: 412, outcomeRates: { answered: 0.87, notFound: 0.09, uncited: 0.04 } } }),
+    { answered: 87, notFound: 9, uncited: 4, questions: 412 });
+  assert.deepEqual(adoption({ totals: { activeUsers: 3, questions: 9 } }),
+    { active: null, suppressed: true, questions: 9, teams: [], hiddenTeams: 0 }, 'fewer than five accounts: no number');
+  // ADR-0056: teams come from the gateway's month, which lists only teams with at least minTeamUsers users.
+  const month = { requests: 200, minTeamUsers: 5, hiddenTeams: 2, teams: [{ team: 'Operasyon', requests: 150 }, { team: 'BT', requests: 50 }] };
+  assert.deepEqual(adoption({ totals: { activeUsers: 64 } }, month).teams, [{ name: 'Operasyon', share: 75 }, { name: 'BT', share: 25 }]);
+  assert.equal(adoption({ totals: { activeUsers: 64 } }, month).hiddenTeams, 2);
+  assert.deepEqual(adoption({ totals: { activeUsers: 64 } }, { ...month, minTeamUsers: 2 }).teams, [],
+    'a gateway set below k = 5 is not trusted for team rows');
+  assert.equal(usageSplit({ totals: { modes: { local: 0, cloud: 0 } } }), null, 'no answers: the tile hides');
+  assert.deepEqual(usageSplit({ totals: { modes: { local: 62, cloud: 38 } } }), { local: 62, cloud: 38, total: 100 });
+  // ADR-0056: the cost tile, local vs cloud by the connection's locality; the built-in model follows the mode.
+  const gw = { month: '2026-10', requests: 40, cost: 100, rows: [{ connectionId: 'c1', cost: 60 }, { connectionId: 'c2', cost: 10 },
+    { connectionId: null, cost: 30 }], budgets: [] };
+  const conns = [{ id: 'c1', locality: 'EXTERNAL' }, { id: 'c2', locality: 'LOCAL' }];
+  assert.deepEqual(gatewayCost(gw, conns, 'local'), { month: '2026-10', total: 100, cloud: 60, local: 40, cloudShare: 60, localShare: 40, requests: 40 });
+  assert.equal(gatewayCost(gw, conns, 'cloud').cloud, 90, 'the built-in model is cloud in cloud mode');
+  assert.equal(gatewayCost({ ...gw, requests: 0 }, conns, 'local'), null, 'no calls: the tile hides');
+  assert.equal(gatewayCost({ ...gw, cost: 0 }, conns, 'local'), null, 'no cost: the tile hides');
+  assert.equal(gatewayCost(null, conns, 'local'), null, 'no gateway: the tile hides');
+  assert.deepEqual(budgetState({ budgets: [{ hardLimit: 100, spent: 80, state: 'SOFT' }, { hardLimit: 50, spent: 10, state: 'OK' }] }),
+    { spent: 90, limit: 150, state: 'SOFT', share: 60 });
+  assert.equal(budgetState({ budgets: [] }), null);
+  const issues = issuesByImpact({ report, summary: { pendingApprovals: 4 }, failingConnectors: 1 });
+  assert.deepEqual(issues.map((i) => i.kind), ['Bağlayıcı', 'Eski', 'Çelişki', 'Cevapsız', 'Onay']);
+  assert.equal(issues[1].label, 'Eski belge: vpn.pdf');
+  assert.ok(issues.every((i) => typeof i.screen === 'string'), 'every issue links to its action');
+  const screen = readFileSync('panel/js/screens/dashboard.js', 'utf8');
+  assert.match(screen, /title: formula/, 'the formula is the tooltip of each part');
+  assert.match(screen, /renderInsights\(\{ \.\.\.ctx, main: panel, embedded: true \}\)/, 'the value dashboard is a tab');
+});
+
+test('insight cards: a stale cited source, an expired verification and known contradictions, in one style', async () => {
+  const { citedDocuments, insightCards, staleDays } = await import('../panel/js/insight.js');
+  const now = Date.parse('2026-10-28T12:00:00Z');
+  const result = { citations: [
+    { number: 1, documentId: 'd1', fileName: 'plan.pdf', page: 3, unit: 'PAGE' },
+    { number: 2, documentId: 'd2', fileName: 'sla.pdf', page: 1, unit: 'PAGE' },
+    { number: 3, documentId: 'd1', fileName: 'plan.pdf', page: 4, unit: 'PAGE' },
+    { number: 4, documentId: 'd3', fileName: 'eski.pdf', page: 1, unit: 'PAGE', deleted: true }] };
+  assert.deepEqual(citedDocuments(result), ['d1', 'd2'], 'distinct, readable, in order');
+  const documents = new Map([['d1', { updatedAt: '2025-03-01T00:00:00Z' }], ['d2', { updatedAt: '2026-10-01T00:00:00Z' }]]);
+  const cards = insightCards(result, { documents, staleAfterDays: 180, now });
+  assert.equal(cards.length, 1);
+  assert.equal(cards[0].title, 'Bu kaynak eskimiş');
+  assert.match(cards[0].text, /^Kaynak \[1\], \[3\] 20 aydır güncellenmedi;/);
+  assert.equal(insightCards(result, { documents, staleAfterDays: 900, now }).length, 0, 'the server\'s threshold decides');
+  assert.equal(insightCards(result, { documents: new Map(), now }).length, 0, 'no date (not readable): no card');
+  const expired = insightCards({ citations: [], memory: { cardId: 'c', expiresAt: '2026-10-01T00:00:00Z' } }, { now });
+  assert.equal(expired[0].title, 'Onaylı cevabın süresi dolmuş');
+  const conflict = insightCards({ citations: [{ number: 1, documentId: 'a', fileName: 'a.pdf', page: 1, unit: 'PAGE' },
+    { number: 2, documentId: 'b', fileName: 'b.pdf', page: 2, unit: 'PAGE' }],
+  reasoning: { steps: [{ number: 1, question: 'x', found: true, citations: [1] }],
+    contradictions: [{ first: 1, second: 2, source: 'CONTRADICTION_SCAN' }] } }, { now });
+  assert.deepEqual(conflict.map((c) => [c.kind, c.title]), [['conflict', 'Belgeler arasında çelişki']]);
+  assert.equal(staleDays({ staleAfterDays: 90 }), 90);
+  assert.equal(staleDays({ staleAfterDays: 'x' }), 180, 'an older server: the default');
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /notFound \? null : insightBox\(result\)/);
+  assert.match(ask, /class: `insight-card \$\{card\.kind\}`, role: 'note'/);
+  assert.doesNotMatch(ask, /reasoning-conflict/, 'one style for every insight card');
+  assert.match(readFileSync('panel/css/panel.css', 'utf8'), /\.insight-card \{[^}]*background: var\(--warning-bg\); color: var\(--warning-text\);/);
+});
+
+test('platform api: the home feed and the activity centre go to the documented paths; the id is encoded', async () => {
+  const { calls: tokenCalls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(tokenCalls);
+  await completeSignIn();
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push([String(url), init?.method ?? 'GET']);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}) };
+  };
+  await api.home().catch(() => {});
+  await api.activity('from=2026-10-22&to=2026-10-28&page=0&size=25').catch(() => {});
+  await api.activitySummary().catch(() => {});
+  await api.activityDetail('qa.0193a4b2-1c3d-7e4f-8a9b-0c1d2e3f4a5b/../x').catch(() => {});
+  const paths = calls.map(([u]) => u.replace(/^https?:\/\/[^/]+/, ''));
+  assert.ok(paths.some((p) => p.endsWith('/v1/home')), paths.join());
+  assert.ok(paths.some((p) => p.endsWith('/v1/admin/activity?from=2026-10-22&to=2026-10-28&page=0&size=25')));
+  assert.ok(paths.some((p) => p.endsWith('/v1/admin/activity/summary')));
+  assert.ok(paths.some((p) => p.endsWith('/v1/admin/activity/qa.0193a4b2-1c3d-7e4f-8a9b-0c1d2e3f4a5b%2F..%2Fx')));
+  assert.ok(calls.every(([, method]) => method === 'GET'), 'read-only');
+  signOut();
 });

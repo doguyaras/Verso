@@ -18,6 +18,7 @@ import { canApprove, memoryBadge } from '../knowledge.js';
 import { procedureModel } from '../skills.js';
 import { slashMatches, slashTarget } from '../skilllib.js';
 import { reasoningModel } from '../reasoning.js';
+import { citedDocuments, DEFAULT_STALE_DAYS, insightCards, staleDays } from '../insight.js';
 import { ROLES } from '../roles.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { ratingControls } from '../rating.js';
@@ -130,16 +131,62 @@ function reasoningBox(result) {
     model.missing.length ? el('div', { class: 'notice neutral reasoning-missing', role: 'note' }, icon('search', 'sm'),
       el('div', { class: 'grow' }, el('strong', {}, 'Belgelerde bulunamayan kısım'),
         el('ul', { class: 'reasoning-list' }, model.missing.map((line) => el('li', {}, line))))) : null,
-    model.contradictions.map((note) => el('div', { class: 'notice wait reasoning-conflict', role: 'note' }, icon('alert', 'sm'),
-      el('div', { class: 'grow' }, el('strong', {}, 'Belgeler arasında çelişki'), el('div', {}, note.text),
-        el('ul', { class: 'reasoning-list' }, note.sources.map((source) => el('li', {}, source))),
-        el('div', { class: 'sub' }, note.origin)))),
+    // The known contradictions are insight cards since ADR-0058 (insightBox), in the same style as "Bu kaynak eskimiş".
     el('details', { class: 'reasoning-steps' },
       el('summary', {}, icon('layers', 'sm'), model.title),
       el('p', { class: 'sub' }, model.summary),
       el('ol', { class: 'steps-list' }, model.steps.map((step) => el('li', { class: step.found ? null : 'missing' },
         step.text,
         el('span', { class: 'sub' }, step.found ? (step.sources ? ` (${step.sources})` : ' (kaynak gösterilmedi)') : ' (bulunamadı)'))))));
+}
+
+/** The stale threshold of /v1/info, asked once per page load (ADR-0058); the default until it answers. */
+let staleAfter = null;
+function staleThreshold() {
+  if (staleAfter === null) {
+    staleAfter = DEFAULT_STALE_DAYS;
+    api.info().then((info) => { staleAfter = staleDays(info); }).catch(() => {});
+  }
+  return staleAfter;
+}
+
+/**
+ * ADR-0058 (concept C): insight cards inside the answer: a stale cited source, an expired verification, a known
+ * contradiction. Drawn at once from the answer; the stale check follows when the cited documents' dates arrive (the
+ * caller's own GET /v1/documents/{id}, so only documents the caller may read). Text only, never markup.
+ */
+function insightBox(result) {
+  const box = el('div', { class: 'insight-cards', role: 'group', 'aria-label': 'Bu cevapla ilgili uyarılar' });
+  const draw = (documents) => {
+    const cards = insightCards(result, { documents, staleAfterDays: staleThreshold(), now: Date.now() }).map(insightCard);
+    box.replaceChildren(...cards);
+  };
+  draw(new Map());
+  const ids = citedDocuments(result);
+  if (ids.length) {
+    Promise.all(ids.map((id) => documentDate(id).then((doc) => (doc ? [id, doc] : null))))
+      .then((pairs) => draw(new Map(pairs.filter(Boolean))));
+  }
+  return box;
+}
+
+/** One insight card (insight.js), text only. */
+function insightCard(card) {
+  return el('div', { class: `insight-card ${card.kind}`, role: 'note' },
+    icon(card.kind === 'conflict' ? 'alert' : 'clock', 'sm'),
+    el('div', { class: 'grow' }, el('strong', {}, card.title), el('div', {}, card.text),
+      card.sources.length ? el('ul', { class: 'reasoning-list' }, card.sources.map((source) => el('li', {}, source))) : null,
+      card.note ? el('div', { class: 'sub' }, card.note) : null));
+}
+
+/** One look-up per document and page load: a thread drawn again does not ask again. Only the dates are kept. */
+const documentDates = new Map();
+function documentDate(id) {
+  if (!documentDates.has(id)) {
+    documentDates.set(id, api.getDocument(id).then((doc) => ({ createdAt: doc?.createdAt, updatedAt: doc?.updatedAt }))
+      .catch(() => null));
+  }
+  return documentDates.get(id);
 }
 
 function outcomeBadge(result) {
@@ -379,6 +426,7 @@ function answerView(entry, actions) {
       : text.box,
     // ADR-0055: how a multi-step answer was researched, what was not found, known contradictions.
     reasoningBox(result),
+    notFound ? null : insightBox(result),
     result.outcome === 'UNCITED' && !unverified
       ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), el('div', { class: 'grow' },
         // A turn from the history keeps its outcome but not the sentences (ADR-0047): with citations, say why.
@@ -442,7 +490,7 @@ function turn(question, content) {
  * Enter takes the highlighted skill; after Escape, or when no skill matches, Enter sends the text as a question
  * exactly as before. The skill list is read once per visit, only after a "/" is typed.
  */
-function slashPicker(field, ctx) {
+export function slashPicker(field, ctx) {
   let skills = null;
   let matches = [];
   let active = 0;
@@ -718,7 +766,7 @@ export function renderAsk(ctx) {
       event.preventDefault();
       moveTurn(event.key === 'PageUp' ? -1 : 1);
     }
-  } }, el('h1', { class: 'sr-only' }, 'Soru sor'), bar, thread, announcer, pick, form);
+  } }, el('h1', { class: 'sr-only' }, 'Asistan'), bar, thread, announcer, pick, form);
 
   // Phones: the visual viewport shrinks when the keyboard opens while the layout viewport does not, so the composer
   // is lifted by the keyboard's height (and the tab bar steps aside) while the question box has the focus.

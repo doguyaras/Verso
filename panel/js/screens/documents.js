@@ -86,9 +86,11 @@ export function renderDocuments(ctx) {
 
   main.replaceChildren(
     el('div', { class: 'page-head' },
-      el('div', {}, el('h1', {}, 'Bilgi kaynakları'),
+      el('div', {}, el('h1', {}, 'Kaynaklar ve alanlar'),
         el('p', {}, `${CONFIG.deployment.productName} cevap verirken bu belgeleri okur. Belgeler bu sunucuda işlenir; kişisel alanınızdakiler yalnız size, bilgi alanlarındakiler o alana yetkili gruplara görünür. Word ve metin dosyaları sayfa yerine bölümlerle kaynak gösterir.`)),
       el('div', { class: 'page-actions' }, picker,
+        // ADR-0058: documents and collections are one entry point; an admin manages who reads an area from here.
+        ...(admin ? [el('a', { class: 'button ghost', href: '#/collections' }, icon('key'), 'Erişim ve roller')] : []),
         el('button', { class: 'button secondary', type: 'button', onclick: () => refresh() }, icon('refresh'), 'Yenile'),
         el('button', { class: 'button', type: 'button', onclick: () => input.click() }, icon('upload'), 'Belge yükle'))),
     dropzone, uploads,

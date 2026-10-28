@@ -107,7 +107,12 @@ public enum QaErrorCode implements ErrorCode {
     /** A price or budget names an unknown connection or model. */
     MODEL_PRICE_INVALID(11098, "The price or budget is not valid.", HttpStatus.BAD_REQUEST),
     /** The month is not YYYY-MM or out of range. */
-    MODEL_USAGE_RANGE_INVALID(11099, "The month is invalid.", HttpStatus.BAD_REQUEST);
+    MODEL_USAGE_RANGE_INVALID(11099, "The month is invalid.", HttpStatus.BAD_REQUEST),
+    // --- activity centre (11110-11119, ADR-0058); 11090-11099 are the model gateway's (ADR-0056)
+    /** An unknown type, status or category word, a reversed or too long window, or a page beyond the cap. */
+    ACTIVITY_FILTER_INVALID(11110, "The activity filter is invalid.", HttpStatus.BAD_REQUEST),
+    /** An id of an unknown source, a malformed id or an entry the source does not know (or the admin may not read). */
+    ACTIVITY_NOT_FOUND(11111, "Activity entry not found.", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

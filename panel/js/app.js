@@ -1,34 +1,37 @@
-// Verso panel (ADR-0015, design v3 ADR-0017): overview, questions with citations, documents, the system view for
-// operators, the conversation history drawer (ADR-0025) and the value dashboard for admins. No framework and no build
-// step; ES modules served by the edge proxy. Screens are hash routes (#/ask, …).
+// Verso panel (ADR-0015, design v3 ADR-0017, platform IA ADR-0058): "Ana sayfa", then "Çalış", "Bilgi", "İçgörü" and
+// "Yönetim" (nav.js). No framework and no build step; ES modules served by the edge proxy. Screens are hash routes
+// (#/ask, …); renamed routes redirect (nav.js REDIRECTS).
 import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
 import { api, ApiError, lastMode } from './api.js';
 import { applyAccent, loadBranding } from './branding.js';
 import { CONFIG } from './config.js';
+import { setupProgress } from './home.js';
 import { icon, logo } from './icons.js';
+import { HIDDEN, menuScreens, MORE, moreModel, navModel, NAV, resolveRoute, shortcutTarget, slotId, tabModel } from './nav.js';
 import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
 import { langSwitch, themeSwitch } from './toggles.js';
-import { ADMIN_GROUP, adminScreens, canOpen, ROLES, rolesOf, screensFor, SCREENS, withServerRoles } from './roles.js';
+import { adminScreens, canOpen, ROLES, rolesOf, SCREENS, withServerRoles } from './roles.js';
 import { el, plainName } from './render.js';
-import { isDark, prefs, startNewConversation } from './store.js';
+import { conversation, isDark, prefs, startNewConversation } from './store.js';
 import { cardSpotlight, navIndicator, transition } from './motion.js';
 import { initials, openMenu, toast } from './ui.js';
+import { renderActivity } from './screens/activity.js';
 import { renderAsk } from './screens/ask.js';
 import { renderBeceriler } from './screens/beceriler.js';
+import { renderDashboard } from './screens/dashboard.js';
 import { renderDocuments } from './screens/documents.js';
 import { openHistory } from './screens/history.js';
+import { renderHome } from './screens/home.js';
 import { renderChunks } from './screens/chunks.js';
 import { renderCollections } from './screens/collections.js';
-import { renderInsights } from './screens/insights.js';
 import { renderSubjects } from './screens/subjects.js';
 import { renderConnectors } from './screens/connectors.js';
 import { renderKnowledge } from './screens/knowledge.js';
 import { notificationBell, renderHealth } from './screens/health.js';
 import { renderSkills } from './screens/skills.js';
 import { renderSystemMap } from './screens/systemmap.js';
-import { renderOverview } from './screens/overview.js';
-import { renderSetup } from './screens/setup.js';
+import { renderSetup, setupSteps } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
 import { renderTrust } from './screens/trust.js';
 import { renderProviders } from './screens/providers.js';
@@ -36,10 +39,17 @@ import { renderProviders } from './screens/providers.js';
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
-const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, beceriler: renderBeceriler, setup: renderSetup, system: renderSystem,
-  insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects,
-  connectors: renderConnectors, trust: renderTrust, providers: renderProviders, knowledge: renderKnowledge, health: renderHealth, skills: renderSkills,
-  systemmap: renderSystemMap };
+// One renderer per screen id of roles.js. A screen of another branch adds its line here; nav.js shows it only when
+// both its SCREENS entry and this line exist (feature detection, ADR-0058).
+const RENDER = Object.freeze({
+  home: renderHome, ask: renderAsk, beceriler: renderBeceriler, documents: renderDocuments, knowledge: renderKnowledge, skills: renderSkills,
+  systemmap: renderSystemMap, activity: renderActivity, dashboard: renderDashboard, health: renderHealth,
+  connectors: renderConnectors, collections: renderCollections, subjects: renderSubjects, trust: renderTrust,
+  providers: renderProviders, system: renderSystem, setup: renderSetup, chunks: renderChunks,
+});
+const AVAILABLE = new Set(Object.keys(RENDER));
+/** The screen id of the skills gallery when its branch is deployed, else null (home composer, "/" commands). */
+const SKILL_GALLERY = slotId(NAV.find((g) => g.id === 'work').items.find((i) => i.slot === 'skillGallery'), AVAILABLE);
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
 const MAC = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
@@ -146,8 +156,13 @@ function setCount(screen, value) {
 }
 
 function route() {
-  const wanted = location.hash.replace(/^#\//, '') || 'overview';
-  const screen = canOpen(wanted, roles) ? wanted : screensFor(roles)[0];
+  const { screen, params: redirectParams, redirected } = resolveRoute(location.hash, roles, AVAILABLE);
+  // A renamed route (#/overview, #/insights) or one this user cannot open is replaced, not pushed: "back" never loops.
+  if (redirected && location.hash !== `#/${screen}`) {
+    if (redirectParams) params = redirectParams;
+    location.replace(`#/${screen}`);
+    return;
+  }
   for (const link of document.querySelectorAll('#nav a, #tabbar a')) {
     if (link.dataset.screen === screen) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -165,11 +180,11 @@ function show(screen) {
   cleanup = null;
   document.title = `${SCREENS[screen].title} · ${CONFIG.deployment.productName}`;
   if (screen === 'system') prefs.markOnboarding({ sawMode: true });
-  // The "Yönetim" screens get the 44 px touch targets on phones (panel.css, ADR-0036).
-  $('#main').dataset.group = SCREENS[screen].group ?? '';
+  // The verso-admin screens get the 44 px touch targets on phones (panel.css, ADR-0036).
+  $('#main').dataset.group = adminScreens(roles).includes(screen) ? 'admin' : '';
   const ctx = {
     main: $('#main'), roles, identity: currentIdentity(), expiresAt, guarded, withAuth, navigate, setCount, showMode,
-    openHistory: showHistory, params, isCurrent: () => shown === view,
+    openHistory: showHistory, params, isCurrent: () => shown === view, available: AVAILABLE, skillsAvailable: SKILL_GALLERY,
   };
   params = null;
   const result = RENDER[screen](ctx);
@@ -199,33 +214,21 @@ function accountMenu(anchor, placement) {
     { heading: identity.preferred_username ?? 'kullanıcı', sub: roleLabel() },
     ...themeItems(),
     'separator',
-    // Phones have no menu column: the history and the screens kept out of the tab bar are reached from here.
+    // Phones reach the history from here too; the screens are under "Daha" in the tab bar (ADR-0058).
     { label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory },
-    // ADR-0057: the skill library is out of the tab bar; phones reach it here.
-    ...(canOpen('beceriler', roles) ? [{ label: 'Beceriler', glyph: 'sparkles', onSelect: () => navigate('beceriler') }] : []),
-    ...(canOpen('system', roles) ? [{ label: 'Sistem ve güvenlik', glyph: 'server', onSelect: () => navigate('system') }] : []),
-    ...adminItems(),
     'separator',
     { label: 'Çıkış yap', glyph: 'logout', onSelect: signOut },
   ], { placement });
 }
 
-/** The "Yönetim" group of the account menu (ADR-0036); nothing at all without verso-admin. */
-function adminItems() {
-  const items = [
-    ...(canOpen('insights', roles) ? [{ label: 'Değer panosu', glyph: 'chart', onSelect: () => navigate('insights') }] : []),
-    ...(canOpen('collections', roles) ? [{ label: 'Bilgi alanları', glyph: 'layers', onSelect: () => navigate('collections') }] : []),
-    ...(canOpen('chunks', roles) ? [{ label: 'Parçaları incele', glyph: 'search', onSelect: () => navigate('chunks') }] : []),
-    ...(canOpen('subjects', roles) ? [{ label: 'KVKK başvuruları', glyph: 'shield', onSelect: () => navigate('subjects') }] : []),
-    ...(canOpen('connectors', roles) ? [{ label: 'Bağlayıcılar', glyph: 'plug', onSelect: () => navigate('connectors') }] : []),
-    ...(canOpen('trust', roles) ? [{ label: 'Güven', glyph: 'lock', onSelect: () => navigate('trust') }] : []),
-    ...(canOpen('providers', roles) ? [{ label: 'Yapay zekâ sağlayıcıları', glyph: 'cpu', onSelect: () => navigate('providers') }] : []),
-    ...(canOpen('knowledge', roles) ? [{ label: 'Onaylı bilgiler', glyph: 'checkCircle', onSelect: () => navigate('knowledge') }] : []),
-    ...(canOpen('health', roles) ? [{ label: 'Bilgi sağlığı', glyph: 'pulse', onSelect: () => navigate('health') }] : []),
-    ...(canOpen('skills', roles) ? [{ label: 'Prosedürler', glyph: 'flag', onSelect: () => navigate('skills') }] : []),
-    ...(canOpen('systemmap', roles) ? [{ label: 'Sistem haritası', glyph: 'map', onSelect: () => navigate('systemmap') }] : []),
-  ];
-  return items.length ? [{ group: ADMIN_GROUP }, ...items] : [];
+/** "Daha" of the tab bar (ADR-0058): every menu entry that is not a tab, under the menu's group headings. */
+function moreMenu(anchor) {
+  openMenu(anchor, moreModel(roles, AVAILABLE).flatMap((group) => [
+    ...(group.title ? [{ group: group.title }] : []),
+    ...group.entries.map((entry) => (entry.kind === 'action'
+      ? { label: entry.title, glyph: entry.icon, onSelect: showHistory }
+      : { label: entry.title, glyph: entry.icon, onSelect: () => navigate(entry.id) })),
+  ]), { placement: 'above' });
 }
 
 function railToggle() {
@@ -239,18 +242,22 @@ function railToggle() {
   button.setAttribute('aria-expanded', String(!on));
 }
 
+/** The palette's pages: the menu's screens, then the screens without a menu entry (Ctrl+K reaches them all). */
 function paletteSources() {
-  const pages = screensFor(roles).map((id) => ({ label: SCREENS[id].title, glyph: SCREENS[id].icon, hint: `G ${SCREENS[id].key.toUpperCase()}`,
+  const ids = [...menuScreens(roles, AVAILABLE), ...HIDDEN.filter((id) => AVAILABLE.has(id) && canOpen(id, roles))];
+  const pages = ids.map((id) => ({ label: SCREENS[id].title, glyph: SCREENS[id].icon, hint: `G ${SCREENS[id].key.toUpperCase()}`,
     keywords: 'sayfa ekran git', run: () => navigate(id) }));
   const actions = [
-    { label: 'Yeni soru sor', glyph: 'chat', keywords: 'soru cevap sor', run: () => navigate('ask', { focus: true }) },
-    { label: 'Konuşma geçmişi', glyph: 'history', hint: 'G G', keywords: 'geçmiş konuşma sohbet eski', run: showHistory },
+    { label: 'Yeni soru sor', glyph: 'chat', keywords: 'soru cevap sor asistan', run: () => navigate('ask', { focus: true }) },
+    { label: 'Geçmiş ve çıktılar', glyph: 'history', hint: 'G G', keywords: 'geçmiş konuşma sohbet eski çıktı', run: showHistory },
     { label: 'Yeni konuşma', glyph: 'plus', keywords: 'konuşma sohbet temiz başlat', run: () => {
       startNewConversation();
       navigate('ask', { focus: true });
     } },
     { label: 'Beceri çalıştır', glyph: 'sparkles', keywords: 'beceri form rapor özet premortem ihale sözleşme', run: () => navigate('beceriler') },
     { label: 'Belge yükle', glyph: 'upload', keywords: 'yükle dosya pdf word', run: () => navigate('documents', { upload: true }) },
+    ...(canOpen('activity', roles) ? [{ label: 'Onay kutusu', glyph: 'checkCircle', keywords: 'onay bekleyen etkinlik',
+      run: () => navigate('activity') }] : []),
     { label: 'Açık temaya geç', glyph: 'sun', keywords: 'tema görünüm', run: () => setTheme('light') },
     { label: 'Koyu temaya geç', glyph: 'moon', keywords: 'tema görünüm karanlık', run: () => setTheme('dark') },
     { label: 'Temada sistemi izle', glyph: 'monitor', keywords: 'tema otomatik', run: () => setTheme('system') },
@@ -285,7 +292,7 @@ function shortcuts() {
     }
     if (Date.now() - pendingG < 1200) {
       pendingG = 0;
-      const target = screensFor(roles).find((id) => SCREENS[id].key === key);
+      const target = shortcutTarget(key, roles, AVAILABLE);
       if (target) {
         event.preventDefault();
         navigate(target);
@@ -294,14 +301,44 @@ function shortcuts() {
   });
 }
 
-function buildShell() {
+/** One menu entry: a route link, or the history button ("Geçmiş ve çıktılar" opens a drawer, so it is no route). */
+function navEntry(entry) {
+  if (entry.kind === 'action') {
+    return el('button', { class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog', title: `${entry.title} (${entry.hint})`, onclick: showHistory },
+      icon(entry.icon), el('span', { class: 'label' }, entry.title), el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, entry.hint));
+  }
+  return el('a', { href: `#/${entry.id}`, 'data-screen': entry.id, title: `${entry.title} (G ${entry.key.toUpperCase()})` },
+    icon(entry.icon), el('span', { class: 'label' }, entry.title),
+    entry.id === 'documents' ? el('span', { class: 'count' }, String(counts.documents ?? '')) : null,
+    el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${entry.key.toUpperCase()}`));
+}
+
+/**
+ * The setup chip under the menu (ADR-0058): for whoever may open "Kurulum", until every step is done. Read once after
+ * sign-in; a failed read shows nothing.
+ */
+async function setupChip(foot, info) {
+  if (!canOpen('setup', roles)) return;
+  const docs = await guarded(() => api.listAllDocuments());
+  if (!docs) return;
+  const progress = setupProgress(setupSteps({ signedIn: true, mode: info?.mode ?? null,
+    ready: docs.filter((d) => d.status === 'READY').length,
+    cited: conversation.some((entry) => entry.result?.citations?.length > 0), pilotGroup: Boolean(CONFIG.deployment.pilotGroup) }));
+  if (progress.complete) return;
+  foot.prepend(el('a', { class: 'setup-chip', href: '#/setup', title: `Kurulum: ${progress.label}` },
+    el('span', { class: 'setup-chip-text' }, icon('flag', 'sm'), el('span', { class: 'label' }, `Kurulum · ${progress.label}`)),
+    el('progress', { max: progress.total, value: progress.done, 'aria-label': `Kurulum ilerlemesi ${progress.label}` })));
+}
+
+function buildShell(info) {
   const { client, logo: clientLogo, productName } = CONFIG.deployment;
   const identity = currentIdentity();
   const name = identity.preferred_username ?? 'kullanıcı';
   if (prefs.rail()) $('#shell').classList.add('rail');
 
   $('#brand').prepend(logo(30));
-  $('#brand').setAttribute('aria-label', `${productName}, genel bakış`);
+  $('#brand').setAttribute('href', '#/home');
+  $('#brand').setAttribute('aria-label', `${productName}, ana sayfa`);
   $('#brand .brand-text').prepend(signature({ height: 42, ink: 'var(--signature-ink)' }));
   // Under the signature only the client's name and logo, when the installation sets them (ADR-0018, ADR-0021). The
   // logo is a same-origin file (CSP img-src 'self'); one that fails to load is removed rather than shown broken.
@@ -320,21 +357,16 @@ function buildShell() {
   $('#search').replaceChildren(icon('search', 'sm'), el('span', {}, 'Ara…'), el('kbd', {}, MAC ? '⌘K' : 'Ctrl K'));
   $('#search').addEventListener('click', () => openPalette(paletteSources()));
 
-  const links = screensFor(roles).map((id) => ({ id, ...SCREENS[id] }));
-  // "Geçmiş" sits right under "Soru sor": it opens a drawer over the current screen, so it is a button, not a route.
-  const history = el('button', { class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog', title: 'Geçmiş (G G)', onclick: showHistory },
-    icon('history'), el('span', { class: 'label' }, 'Geçmiş'), el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, 'G G'));
-  // The admin screens sit under their own "Yönetim" heading (ADR-0036); without verso-admin there is none.
-  const firstAdmin = adminScreens(roles)[0];
-  const adminHeading = el('div', { class: 'nav-label nav-group', id: 'nav-admin' }, ADMIN_GROUP);
-  $('#nav').replaceChildren(
-    ...links.flatMap((s) => [...(s.id === firstAdmin ? [adminHeading] : []), el('a',{ href: `#/${s.id}`, 'data-screen': s.id, title: `${s.title} (G ${s.key.toUpperCase()})` },
-      icon(s.icon), el('span', { class: 'label' }, s.title),
-      s.id === 'documents' ? el('span', { class: 'count' }, String(counts.documents ?? '')) : null,
-      el('kbd', { class: 'shortcut', 'aria-hidden': 'true' }, `G ${s.key.toUpperCase()}`)), ...(s.id === 'ask' ? [history] : [])]));
+  // ADR-0058: "Ana sayfa" alone, then the groups under their headings; in the icon rail a heading becomes a divider.
+  $('#nav').replaceChildren(...navModel(roles, AVAILABLE).flatMap((group) => [
+    ...(group.title ? [el('div', { class: 'nav-label nav-group', id: `nav-${group.id}`, role: 'presentation' }, group.title)] : []),
+    ...group.entries.map(navEntry)]));
   moveIndicator = navIndicator($('#nav'));
   cardSpotlight($('#main'));
-  $('#tabbar').replaceChildren(...links.filter((s) => s.tab !== false).map((s) => el('a', { href: `#/${s.id}`, 'data-screen': s.id }, icon(s.icon), s.short)));
+  const more = el('button', { class: 'tab-more', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+    onclick: () => moreMenu(more) }, icon(MORE.icon), MORE.label);
+  $('#tabbar').replaceChildren(...tabModel(roles, AVAILABLE).map((t) => el('a', { href: `#/${t.id}`, 'data-screen': t.id }, icon(t.icon), t.label)),
+    more);
 
   const account = el('button', { class: 'account', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
     onclick: () => accountMenu(account, 'above') },
@@ -344,11 +376,12 @@ function buildShell() {
   const collapse = el('button', { class: 'icon-button collapse-toggle', id: 'collapse', type: 'button',
     'aria-label': prefs.rail() ? 'Menüyü genişlet' : 'Menüyü daralt', 'aria-expanded': String(!prefs.rail()), onclick: railToggle }, icon('sidebar', 'sm'));
   $('#sidebar-foot').replaceChildren(account, collapse);
+  setupChip($('#sidebar-foot'), info);
 
   const mobileAccount = el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Hesap ve tema', 'aria-haspopup': 'menu',
     onclick: () => accountMenu(mobileAccount, 'below') }, el('span', { class: 'avatar' }, initials(name)));
   $('#mobilebar').replaceChildren(
-    el('a', { class: 'brand', href: '#/overview', 'aria-label': `${productName}, genel bakış` },
+    el('a', { class: 'brand', href: '#/home', 'aria-label': `${productName}, ana sayfa` },
       signature({ height: 26, ink: 'var(--signature-ink)' })),
     el('span', { class: 'spacer' }),
     el('button', { class: 'icon-button', type: 'button', 'aria-label': 'Ara', onclick: () => openPalette(paletteSources()) }, icon('search')),
@@ -434,7 +467,7 @@ async function start() {
   roles = withServerRoles(rolesOf(currentClaims()), info);
   $('#gate').hidden = true;
   $('#shell').hidden = false;
-  buildShell();
+  buildShell(info);
   shortcuts();
   addEventListener('hashchange', route);
   route();

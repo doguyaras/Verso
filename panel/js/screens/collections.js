@@ -53,7 +53,7 @@ export function renderCollections(ctx) {
 
   main.replaceChildren(
     el('div', { class: 'page-head' },
-      el('div', {}, el('h1', {}, 'Bilgi alanları'),
+      el('div', {}, el('h1', {}, 'Erişim ve roller'),
         el('p', {}, 'Paylaşılan belgeler bir bilgi alanında durur. Bir alanı okuyabilenler, alana eklediğiniz gruplar ve kullanıcılardır; '
           + 'izin her soruda kimlik sağlayıcının verdiği gruplarla denetlenir. Grup değişiklikleri kullanıcının bir sonraki oturum '
           + 'anahtarında (en çok 5 dakika) geçerli olur. Yönetici alanları yönetir; içeriği sormak için kendisinin de yetkili olması gerekir.')),

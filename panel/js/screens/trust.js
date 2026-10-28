@@ -29,14 +29,14 @@ const list = (items) => el('ul', { class: 'plain-list' }, items.map((text) => el
 export async function renderTrust(ctx) {
   const { main, guarded } = ctx;
   const productName = CONFIG.deployment.productName;
-  fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven'),
+  fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven ve denetim'),
     el('p', {}, `${productName} kurulumunuzda verinin nereye gidebildiğini ve bunu nasıl kendiniz doğrulayabileceğinizi gösterir.`))),
   el('div', { class: 'skeleton block' }));
   const trust = await guarded(() => api.trust());
   if (!ctx.isCurrent()) return;
   const model = trustModel(trust, productName);
   if (!model) {
-    fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven'))),
+    fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven ve denetim'))),
       emptyState('alert', 'Güven bilgisi alınamadı', 'Sayfayı yenileyin; sürerse sistem yöneticinize başvurun.'));
     return;
   }
@@ -47,7 +47,7 @@ export async function renderTrust(ctx) {
   };
 
   fill(main,
-    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven'),
+    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven ve denetim'),
       el('p', {}, `${productName} kurulumunuzda verinin nereye gidebildiğini ve bunu nasıl kendiniz doğrulayabileceğinizi gösterir.`)),
     el('div', { class: 'page-actions' },
       el('button', { class: 'button lg', type: 'button', onclick: () => download('md') }, icon('download'), 'Güven raporu indir'),

@@ -126,9 +126,11 @@ export async function renderInsights(ctx) {
   const presets = el('div', { class: 'segmented', role: 'group', 'aria-label': 'Tarih aralığı' });
   const filters = el('div', { class: 'filter-row' }, presets, rangeText);
   const status = el('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
+  // ADR-0058: the former "Değer panosu" is the "Değer ve kullanım" tab of "Komuta panosu" (ctx.embedded): no own head.
   fill(main,
-    el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Değer panosu'),
-      el('p', {}, `${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi. Sayılar günlük sayaçlardan gelir; kişi ve cevap metni içermez.`))),
+    ctx.embedded ? el('p', { class: 'muted' }, `${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi. Sayılar günlük sayaçlardan gelir; kişi ve cevap metni içermez.`)
+      : el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Değer panosu'),
+        el('p', {}, `${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi. Sayılar günlük sayaçlardan gelir; kişi ve cevap metni içermez.`))),
     filters, status, content);
   fill(content, el('div', { class: 'grid kpis' }, Array.from({ length: 7 }, () => el('div', { class: 'skeleton block' }))));
 

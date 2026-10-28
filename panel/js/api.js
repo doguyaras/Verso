@@ -349,6 +349,12 @@ export const api = {
   info: () => request('/v1/info'),
   // The trust report (ADR-0050), verso-admin only.
   trust: () => request('/v1/admin/trust'),
+  // ADR-0058: the home feed (any user) and the activity centre (verso-admin). The query string is built by
+  // activity.js from fixed words, days and a UUID only; an entry id is "{source}.{uuid}", encoded anyway.
+  home: () => request('/v1/home'),
+  activity: (query) => request(`/v1/admin/activity?${query}`),
+  activitySummary: () => request('/v1/admin/activity/summary'),
+  activityDetail: (id) => request(`/v1/admin/activity/${encodeURIComponent(id)}`),
   listConversations: (page = 0, size = HISTORY_PAGE_SIZE) => request(`/v1/conversations?page=${page}&size=${size}`),
   getConversation: (id) => request(`/v1/conversations/${encodeURIComponent(id)}`),
   renameConversation: (id, title) => request(`/v1/conversations/${encodeURIComponent(id)}`, { method: 'PATCH',

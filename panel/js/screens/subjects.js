@@ -36,7 +36,7 @@ export function renderSubjects(ctx) {
 
   main.replaceChildren(
     el('div', { class: 'page-head' },
-      el('div', {}, el('h1', {}, 'KVKK başvuruları'),
+      el('div', {}, el('h1', {}, 'KVKK ve veri'),
         el('p', {}, 'Bir kişinin bu sistemde tutulan verisini hesap kimliğiyle bulun, JSON olarak dışa aktarın ya da silin (KVKK md. 11). '
           + 'Kişi yalnız hesap kimliğiyle bulunur; belge metninde ad araması yoktur. Her işlem denetim kaydına yazılır.'))),
     blocked,

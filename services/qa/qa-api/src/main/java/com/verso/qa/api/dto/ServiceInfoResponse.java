@@ -13,10 +13,18 @@ import java.util.List;
  * @param embeddingModel the embedding model (always local)
  * @param roles          the caller's Verso roles, highest first: {@code verso-admin}, {@code verso-user}; every
  *                       signed-in caller has {@code verso-user}. Clients ignore values they do not know.
+ * @param staleAfterDays the age in days after which a cited document counts as stale (ADR-0052's threshold), for the
+ *                       answer screen's "Bu kaynak eskimiş" card (ADR-0058); null when unknown (additive field)
  */
-public record ServiceInfoResponse(String mode, String chatModel, String embeddingModel, List<String> roles) {
+public record ServiceInfoResponse(String mode, String chatModel, String embeddingModel, List<String> roles,
+                                  Integer staleAfterDays) {
 
     public ServiceInfoResponse {
         roles = List.copyOf(roles);
+    }
+
+    /** Without the stale threshold (before ADR-0058). */
+    public ServiceInfoResponse(String mode, String chatModel, String embeddingModel, List<String> roles) {
+        this(mode, chatModel, embeddingModel, roles, null);
     }
 }
