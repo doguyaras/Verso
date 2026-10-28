@@ -10,5 +10,7 @@ public enum ModelTask {
     FOLLOW_UP,
     DECOMPOSITION,
     SKILL_CONDENSE,
+    /** A step of a task skill run (ADR-0057: the work module's SkillModel, routing word {@code skill:<id>:<step>}). */
+    SKILL_RUN,
     EMBEDDING
 }

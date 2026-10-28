@@ -1,5 +1,7 @@
 package com.verso.work.model;
 
+import com.verso.work.api.SkillModel;
+import com.verso.work.api.SkillModelException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

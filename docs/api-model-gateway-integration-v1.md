@@ -34,7 +34,7 @@ Kurumun kendi model sağlayıcısını ve API anahtarını bağladığı yöneti
 ## Rotalar ve ayarlar
 | Uç | Gövde | Yanıt |
 |---|---|---|
-| `GET …/routes` | – | `{routes: {ANSWER: [...], FOLLOW_UP: [...], DECOMPOSITION: [...], SKILL_CONDENSE: [...], EMBEDDING: []}, builtInModel, userModelChoice, keyStoreReady}` |
+| `GET …/routes` | – | `{routes: {ANSWER: [...], FOLLOW_UP: [...], DECOMPOSITION: [...], SKILL_CONDENSE: [...], SKILL_RUN: [...], EMBEDDING: []}, builtInModel, userModelChoice, keyStoreReady}` |
 | `PUT …/routes/{task}` | `{"entries": [{"connectionId": "…"\|null, "model": "…"}]}` (en çok 5; ilk birincil, sonrakiler yedek; `connectionId: null` yerleşik model) | Güncel rotalar. `EMBEDDING` ya da bilinmeyen/kapalı bağlantı, listede olmayan model, tekrar eden adım `400 11096`; local modda dış bağlantı `409 11091` |
 | `PUT …/settings` | `{"userModelChoice": true\|false}` (zorunlu) | Güncel rotalar |
 

@@ -72,7 +72,8 @@ CREATE TABLE qa.model_route (
     CONSTRAINT fk_model_route_connection FOREIGN KEY (connection_id) REFERENCES qa.model_connection (id)
         ON DELETE RESTRICT,
     -- Embeddings stay local and pinned (llm-rules 1.2, 6.2): no route for them.
-    CONSTRAINT ck_model_route_task CHECK (task IN ('ANSWER', 'FOLLOW_UP', 'DECOMPOSITION', 'SKILL_CONDENSE')),
+    CONSTRAINT ck_model_route_task CHECK (task IN ('ANSWER', 'FOLLOW_UP', 'DECOMPOSITION', 'SKILL_CONDENSE',
+        'SKILL_RUN')),
     CONSTRAINT ck_model_route_position CHECK (position BETWEEN 0 AND 4)
 );
 CREATE INDEX idx_model_route_connection ON qa.model_route (connection_id);
@@ -125,6 +126,9 @@ CREATE TABLE qa.model_usage (
     connection_id     uuid,
     model             text          NOT NULL,
     task              text          NOT NULL,
+    -- The skill library's routing word of a SKILL_RUN call (skill:<skill id>:<step key>, ADR-0057): fixed words from
+    -- the skill definition, never user text.
+    task_detail       text,
     team              text,
     external          boolean       NOT NULL,
     outcome           text          NOT NULL,
@@ -137,7 +141,9 @@ CREATE TABLE qa.model_usage (
     filter_policy     text          NOT NULL,
     CONSTRAINT pk_model_usage PRIMARY KEY (id),
     CONSTRAINT ck_model_usage_month CHECK (month ~ '^[0-9]{4}-[0-9]{2}$'),
-    CONSTRAINT ck_model_usage_task CHECK (task IN ('ANSWER', 'FOLLOW_UP', 'DECOMPOSITION', 'SKILL_CONDENSE', 'TEST')),
+    CONSTRAINT ck_model_usage_task CHECK (task IN ('ANSWER', 'FOLLOW_UP', 'DECOMPOSITION', 'SKILL_CONDENSE',
+        'SKILL_RUN', 'TEST')),
+    CONSTRAINT ck_model_usage_task_detail CHECK (task_detail IS NULL OR task_detail ~ '^skill:[A-Za-z0-9:_.-]{1,190}$'),
     CONSTRAINT ck_model_usage_outcome CHECK (outcome IN ('OK', 'FAILED', 'BLOCKED')),
     CONSTRAINT ck_model_usage_tokens CHECK (prompt_tokens >= 0 AND completion_tokens >= 0 AND cost >= 0)
 );

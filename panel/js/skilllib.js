@@ -28,6 +28,7 @@ export const STATUSES = Object.freeze({
 export const FAILURE_WORDS = Object.freeze({
   MODEL_UNAVAILABLE: 'Model şu an yanıt vermiyor; birazdan yeniden deneyin.',
   MODEL_BUSY: 'Model meşgul; birkaç dakika sonra yeniden deneyin.',
+  MODEL_BUDGET_EXCEEDED: 'Aylık model bütçesi doldu; yöneticinize başvurun.',
   OUTPUT_INVALID: 'Modelin çıktısı beklenen biçime uymadı (düzeltme denemesinden sonra da).',
   RETRIEVAL_FAILED: 'Belgelerinizde arama yapılamadı.',
   INTERRUPTED: 'Çalışma yarıda kaldı (sunucu yeniden başladı ya da süre doldu).',

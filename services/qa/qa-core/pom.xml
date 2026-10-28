@@ -96,6 +96,11 @@
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-model</artifactId>
     </dependency>
+    <!-- The skill library's model port (ADR-0057): the gateway provides its SkillModel (work-api only, no work-core). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>work-api</artifactId>
+    </dependency>
     <!-- The model gateway (ADR-0056) builds every provider's client itself, natively in Spring AI 2.0: the provider
          modules without their auto-configuration (the assembly keeps choosing the built-in model through its
          starters). Licences: Apache-2.0 (Spring AI, the OpenAI/Anthropic Java SDKs, AWS SDK v2, google-genai);

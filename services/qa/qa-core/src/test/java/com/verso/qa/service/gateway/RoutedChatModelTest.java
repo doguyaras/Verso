@@ -78,7 +78,7 @@ class RoutedChatModelTest {
         }
 
         @Override
-        public void record(RoutedChatModel.Candidate candidate, ModelTask task, String team, String account,
+        public void record(RoutedChatModel.Candidate candidate, ModelTask task, String detail, String team, String account,
                            String outcome, Usage usage, List<ModelRequestFilter.EgressCategory> categories) {
             records.add(candidate.model() + ":" + outcome + (usage == null ? "" : ":" + usage.getPromptTokens() + "/"
                     + usage.getCompletionTokens()));
@@ -131,7 +131,7 @@ class RoutedChatModelTest {
             candidates.add(new RoutedChatModel.Candidate(m.startsWith("ext")
                     ? connection(ModelConnection.Locality.EXTERNAL) : connection(ModelConnection.Locality.LOCAL), m));
         }
-        return new RoutedChatModel(hooks, ModelTask.ANSWER, candidates, "team-a", "acct");
+        return new RoutedChatModel(hooks, ModelTask.ANSWER, null, candidates, "team-a", "acct");
     }
 
     @Test

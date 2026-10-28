@@ -37,7 +37,8 @@ public interface ModelRequestFilter {
 
     /** The kinds of data a task sends (llm-rules 1.2, 3.6, 3.8): the egress log records these, never the text. */
     enum EgressCategory {
-        SYSTEM_INSTRUCTIONS, QUESTION, PASSAGES, CONVERSATION_TURNS, SYSTEM_MODEL_NAMES, PROCEDURE_STEPS, TEST_PROMPT;
+        SYSTEM_INSTRUCTIONS, QUESTION, PASSAGES, CONVERSATION_TURNS, SYSTEM_MODEL_NAMES, PROCEDURE_STEPS, SKILL_FORM_INPUT,
+        TEST_PROMPT;
 
         static List<EgressCategory> of(ModelTask task) {
             return switch (task) {
@@ -45,6 +46,8 @@ public interface ModelRequestFilter {
                 case FOLLOW_UP -> List.of(SYSTEM_INSTRUCTIONS, QUESTION, CONVERSATION_TURNS);
                 case DECOMPOSITION -> List.of(SYSTEM_INSTRUCTIONS, QUESTION, SYSTEM_MODEL_NAMES);
                 case SKILL_CONDENSE -> List.of(SYSTEM_INSTRUCTIONS, PROCEDURE_STEPS);
+                // A task skill step (ADR-0057): the user's form fields and the retrieved passages it cites.
+                case SKILL_RUN -> List.of(SYSTEM_INSTRUCTIONS, SKILL_FORM_INPUT, PASSAGES);
                 case EMBEDDING -> List.of();
             };
         }

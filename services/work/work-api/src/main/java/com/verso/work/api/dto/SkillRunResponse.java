@@ -16,7 +16,7 @@ import java.util.UUID;
  * @param stage        the progress stage while RUNNING; FINISHED after
  * @param step         1-based step while GENERATING
  * @param failureCode  a fixed word when FAILED (MODEL_UNAVAILABLE, MODEL_BUSY, OUTPUT_INVALID, RETRIEVAL_FAILED,
- *                     INTERRUPTED)
+ *                     INTERRUPTED, MODEL_TIMEOUT; with the model gateway, ADR-0056: MODEL_BUDGET_EXCEEDED)
  * @param inputs       the caller's form values as submitted
  * @param output       null until finished
  * @param checks       the deterministic checks of the stored output; null until finished

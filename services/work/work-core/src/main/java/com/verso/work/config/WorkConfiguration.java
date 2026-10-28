@@ -1,7 +1,7 @@
 package com.verso.work.config;
 
 import com.verso.work.model.ChatModelSkillModel;
-import com.verso.work.model.SkillModel;
+import com.verso.work.api.SkillModel;
 import java.time.Clock;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -12,11 +12,12 @@ import org.springframework.context.annotation.Configuration;
 /**
  * The skill library's model port (ADR-0057).
  *
- * <p><b>Model gateway integration point.</b> {@link SkillModel} is the only way the runtime reaches a model. Until the
- * provider-agnostic gateway lands, the adapter below wraps the installation's {@code ChatModel} (whatever provider and
- * AI mode verso-app configured; this module adds no provider, URL or key). The gateway takes over by declaring a
- * {@code SkillModel} bean of its own: this one then steps aside ({@code @ConditionalOnMissingBean}), and the gateway
- * routes by {@link SkillModel.Call#task()} and enforces its budgets in {@link SkillModel#tryAcquire}.
+ * <p><b>Model gateway integration point.</b> {@link SkillModel} (work-api) is the only way the runtime reaches a
+ * model. The model gateway (ADR-0056, qa module) declares its own {@code @Primary} {@code SkillModel} bean, which routes
+ * by {@link SkillModel.Call#task()} with its fallbacks, budgets and usage record; this adapter on the installation's
+ * {@code ChatModel} only serves an assembly without the gateway. {@code @ConditionalOnMissingBean} on a scanned
+ * configuration depends on the order the beans are registered in, so the gateway's bean is also {@code @Primary}:
+ * whichever order, the runtime gets the gateway's.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)

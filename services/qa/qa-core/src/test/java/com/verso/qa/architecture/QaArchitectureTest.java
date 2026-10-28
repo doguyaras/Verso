@@ -59,7 +59,8 @@ class QaArchitectureTest {
     void module_whenImported_usesOnlyTheDocumentApi() {
         noClasses().that().resideInAPackage(ROOT + "..")
                 .should().dependOnClassesThat(resideInAPackage("com.verso..")
-                        .and(resideOutsideOfPackages(ROOT + "..", "com.verso.platform..", "com.verso.document.api..", "com.verso.audit.api..")))
+                        .and(resideOutsideOfPackages(ROOT + "..", "com.verso.platform..", "com.verso.document.api..", "com.verso.audit.api..",
+                                "com.verso.work.api..")))
                 .check(classes);
     }
 

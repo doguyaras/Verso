@@ -1,4 +1,4 @@
-package com.verso.work.model;
+package com.verso.work.api;
 
 /** A model call that did not give an answer; the reason is a fixed word (MODEL_UNAVAILABLE, MODEL_TIMEOUT). */
 public class SkillModelException extends RuntimeException {

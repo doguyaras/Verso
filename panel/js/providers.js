@@ -33,6 +33,7 @@ export const TASKS = Object.freeze([
   { id: 'FOLLOW_UP', label: 'Takip sorusu yeniden yazımı' },
   { id: 'DECOMPOSITION', label: 'Çok adımlı soru ayrıştırma' },
   { id: 'SKILL_CONDENSE', label: 'Prosedür adımı özetleme' },
+  { id: 'SKILL_RUN', label: 'Beceri çalıştırma (Beceriler)' },
 ]);
 
 export const EMBEDDING_NOTE = 'Embedding her zaman yerel modeldedir: değiştirmek bütün belgelerin yeniden dizinlenmesi '

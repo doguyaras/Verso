@@ -44,17 +44,21 @@ public final class RoutedChatModel implements ChatModel {
         ModelRequestFilter filter();
 
         /** @param usage null when the provider reported none (or the call failed) */
-        void record(Candidate candidate, ModelTask task, String team, String account, String outcome, Usage usage,
-                    List<ModelRequestFilter.EgressCategory> sent);
+        void record(Candidate candidate, ModelTask task, String detail, String team, String account, String outcome,
+                    Usage usage, List<ModelRequestFilter.EgressCategory> sent);
     }
 
     private final Hooks hooks;
     private final ModelTask task;
+    /** The skill library's routing word of a SKILL_RUN call; null for the other tasks. */
+    private final String detail;
     private final List<Candidate> candidates;
     private final String team;
     private final String account;
 
-    RoutedChatModel(Hooks hooks, ModelTask task, List<Candidate> candidates, String team, String account) {
+    RoutedChatModel(Hooks hooks, ModelTask task, String detail, List<Candidate> candidates, String team,
+                    String account) {
+        this.detail = detail;
         this.hooks = hooks;
         this.task = task;
         this.candidates = List.copyOf(candidates);
@@ -75,7 +79,7 @@ public final class RoutedChatModel implements ChatModel {
             Candidate candidate = candidates.get(step);
             if (hooks.overBudget(candidate, team)) {
                 blocked = true;
-                hooks.record(candidate, task, team, account, "BLOCKED", null, List.of());
+                hooks.record(candidate, task, detail, team, account, "BLOCKED", null, List.of());
                 continue;
             }
             List<ModelRequestFilter.EgressCategory> sent = sent(candidate);
@@ -84,10 +88,10 @@ public final class RoutedChatModel implements ChatModel {
                 Prompt outgoing = candidate.external() ? hooks.filter().beforeSend(prompt, call) : prompt;
                 ChatResponse response = hooks.client(candidate).call(outgoing);
                 ChatResponse incoming = candidate.external() ? hooks.filter().afterReceive(response, call) : response;
-                hooks.record(candidate, task, team, account, "OK", usageOf(incoming), sent);
+                hooks.record(candidate, task, detail, team, account, "OK", usageOf(incoming), sent);
                 return incoming;
             } catch (RuntimeException e) {
-                hooks.record(candidate, task, team, account, "FAILED", null, sent);
+                hooks.record(candidate, task, detail, team, account, "FAILED", null, sent);
                 last = e;
                 // The caller gave up (its time bound interrupted this thread; OkHttp turns that into an
                 // InterruptedIOException and may clear the flag): no next model, nothing more leaves (llm-review L1).
@@ -119,7 +123,7 @@ public final class RoutedChatModel implements ChatModel {
         Candidate candidate = candidates.get(step);
         return Flux.defer(() -> {
             if (hooks.overBudget(candidate, team)) {
-                hooks.record(candidate, task, team, account, "BLOCKED", null, List.of());
+                hooks.record(candidate, task, detail, team, account, "BLOCKED", null, List.of());
                 return attempt(prompt, step + 1, true);
             }
             List<ModelRequestFilter.EgressCategory> sent = sent(candidate);
@@ -138,18 +142,18 @@ public final class RoutedChatModel implements ChatModel {
                     })
                     .doOnComplete(() -> {
                         if (recorded.compareAndSet(false, true)) {
-                            hooks.record(candidate, task, team, account, "OK", usage.get(), sent);
+                            hooks.record(candidate, task, detail, team, account, "OK", usage.get(), sent);
                         }
                     })
                     .doOnCancel(() -> {
                         // The client left: the tokens produced so far are not known; the call still counts.
                         if (recorded.compareAndSet(false, true)) {
-                            hooks.record(candidate, task, team, account, "OK", usage.get(), sent);
+                            hooks.record(candidate, task, detail, team, account, "OK", usage.get(), sent);
                         }
                     })
                     .onErrorResume(error -> {
                         if (recorded.compareAndSet(false, true)) {
-                            hooks.record(candidate, task, team, account, "FAILED", null, sent);
+                            hooks.record(candidate, task, detail, team, account, "FAILED", null, sent);
                         }
                         boolean retryable = FailureClassifier.classify(error) == FailureClassifier.Kind.RETRYABLE;
                         if (emitted.get() || !retryable || step == candidates.size() - 1) return Flux.error(error);

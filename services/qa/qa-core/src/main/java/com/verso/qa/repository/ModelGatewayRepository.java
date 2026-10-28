@@ -25,7 +25,8 @@ import org.springframework.stereotype.Repository;
 public class ModelGatewayRepository {
 
     /** One call to record (the egress log columns included). */
-    public record Usage(String month, UUID connectionId, String model, String task, String team, boolean external,
+    public record Usage(String month, UUID connectionId, String model, String task, String taskDetail, String team,
+                        boolean external,
                         String outcome, int promptTokens, int completionTokens, BigDecimal cost,
                         List<String> sentCategories, String filterPolicy) {
     }
@@ -157,12 +158,13 @@ public class ModelGatewayRepository {
 
     public void insertUsage(Usage u) {
         db.jdbc().sql("""
-                        INSERT INTO qa.model_usage (month, connection_id, model, task, team, external, outcome,
+                        INSERT INTO qa.model_usage (month, connection_id, model, task, task_detail, team, external, outcome,
                             prompt_tokens, completion_tokens, cost, sent_categories, filter_policy)
-                        VALUES (:month, :connection, :model, :task, :team, :external, :outcome, :prompt, :completion,
+                        VALUES (:month, :connection, :model, :task, :detail, :team, :external, :outcome, :prompt, :completion,
                                 :cost, :categories, :policy)""")
                 .param("month", u.month()).param("connection", u.connectionId()).param("model", u.model())
-                .param("task", u.task()).param("team", u.team()).param("external", u.external())
+                .param("task", u.task()).param("detail", u.taskDetail()).param("team", u.team())
+                .param("external", u.external())
                 .param("outcome", u.outcome()).param("prompt", u.promptTokens()).param("completion", u.completionTokens())
                 .param("cost", u.cost()).param("categories", u.sentCategories().toArray(String[]::new))
                 .param("policy", u.filterPolicy()).update();

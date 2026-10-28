@@ -170,9 +170,9 @@ class ModelGatewayTest {
         ModelGateway gateway = gateway(AiMode.CLOUD);
         RoutedChatModel.Candidate paid = ((RoutedChatModel) gateway.route(ModelTask.ANSWER, null)).candidates().getFirst();
 
-        gateway.record(paid, ModelTask.ANSWER, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of(
+        gateway.record(paid, ModelTask.ANSWER, null, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of(
                 ModelRequestFilter.EgressCategory.QUESTION));
-        gateway.record(paid, ModelTask.ANSWER, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of());
+        gateway.record(paid, ModelTask.ANSWER, null, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of());
 
         // 1000 × 3 / 1M + 200 × 15 / 1M = 0.006
         assertThat(ModelGateway.cost(new ModelPrice(cloud.id(), "m1", new BigDecimal("3"), new BigDecimal("15"), "USD"),

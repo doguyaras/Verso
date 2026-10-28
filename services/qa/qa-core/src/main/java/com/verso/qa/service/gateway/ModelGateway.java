@@ -136,6 +136,11 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
 
     @Override
     public ChatModel route(ModelTask task, String choice) {
+        return route(task, choice, null);
+    }
+
+    /** {@link #route(ModelTask, String)} with the skill library's routing word, kept on the usage row (ADR-0057). */
+    public ChatModel route(ModelTask task, String choice, String detail) {
         if (task == ModelTask.EMBEDDING) {
             throw new IllegalArgumentException("Embeddings are not routed: they stay on the local model (llm-rules 1.2)");
         }
@@ -148,7 +153,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
             });
         }
         List<String> callerGroups = callerGroups();
-        return new RoutedChatModel(this, task, candidates, team(s, callerGroups), accountName());
+        return new RoutedChatModel(this, task, detail, candidates, team(s, callerGroups), accountName());
     }
 
     /** The route's usable models: enabled, allowed in this mode; the built-in model when none is left. */
@@ -164,6 +169,11 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
         }
         if (list.isEmpty()) list.add(new RoutedChatModel.Candidate(null, ai.chatModel()));
         return list;
+    }
+
+    /** The model a task would try first now (for a run record's model id); the built-in model when nothing is routed. */
+    public String firstModel(ModelTask task) {
+        return candidates(snapshot(), task).getFirst().model();
     }
 
     /** Local mode: never a cloud connection, whatever the database says (the third guard, llm-rules 1.1). */
@@ -258,7 +268,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
     }
 
     @Override
-    public void record(RoutedChatModel.Candidate candidate, ModelTask task, String team, String account,
+    public void record(RoutedChatModel.Candidate candidate, ModelTask task, String detail, String team, String account,
                        String outcome, Usage usage, List<ModelRequestFilter.EgressCategory> sent) {
         String month = month();
         UUID connectionId = candidate.connection() == null ? null : candidate.connection().id();
@@ -275,7 +285,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
                 .register(registry).increment(completion);
         try {
             repository.insertUsage(new ModelGatewayRepository.Usage(month, connectionId, candidate.model(),
-                    task.name(), team, candidate.external(), outcome, prompt, completion, cost,
+                    task.name(), detail, team, candidate.external(), outcome, prompt, completion, cost,
                     sent.stream().map(Enum::name).toList(), candidate.external() ? filter.policy() : "NONE"));
             if (team != null && account != null && kek.available()) {
                 repository.reach(month, team, reachDigest(month, team, account));
@@ -375,7 +385,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
         long latency = (System.nanoTime() - started) / 1_000_000;
         try {
             repository.insertUsage(new ModelGatewayRepository.Usage(month(), connection.id(),
-                    connection.models().getFirst(), "TEST", null, connection.external(), "OK".equals(status) ? "OK"
+                    connection.models().getFirst(), "TEST", null, null, connection.external(), "OK".equals(status) ? "OK"
                     : "FAILED", usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens(),
                     usage == null || usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens(),
                     BigDecimal.ZERO, connection.external() ? List.of("TEST_PROMPT") : List.of(),

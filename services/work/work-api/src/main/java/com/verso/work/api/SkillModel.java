@@ -1,14 +1,15 @@
-package com.verso.work.model;
+package com.verso.work.api;
 
 import java.time.Duration;
 import java.util.Optional;
 
 /**
  * The skill runtime's only door to a language model (ADR-0057): the integration point of the provider-agnostic model
- * gateway. Today {@link ChatModelSkillModel} adapts the installation's Spring AI {@code ChatModel} (the same provider,
- * mode and egress rules as the question path, ADR-0006/0013); the gateway replaces it by declaring its own
- * {@code SkillModel} bean (the adapter is {@code @ConditionalOnMissingBean}), with routing per {@link Call#task()} and
- * its budgets behind {@link #tryAcquire}. Nothing else in the work module touches a chat client.
+ * gateway. It lives in work-api (an in-process contract, ADR-0007 #24) so the qa module's gateway can implement it
+ * without a core-to-core dependency: the gateway's bean (ADR-0056, primary) routes every call by {@link Call#task()}
+ * through the {@code SKILL_RUN} route with its fallbacks, budgets and usage record. The work module's own
+ * {@code ChatModelSkillModel} (the installation's built-in Spring AI {@code ChatModel}) remains only for an assembly
+ * without the gateway. Nothing else in the work module touches a chat client.
  *
  * <p>Contract for an implementation: never log a prompt or an answer (llm-rules 2.1); bound every call by
  * {@link Call#timeout()}; fail with {@link SkillModelException} and a fixed reason word.

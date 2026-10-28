@@ -22,7 +22,7 @@ import com.verso.work.domain.OutputSchema;
 import com.verso.work.domain.Source;
 import com.verso.work.exception.WorkErrorCode;
 import com.verso.work.exception.WorkServiceException;
-import com.verso.work.model.SkillModel;
+import com.verso.work.api.SkillModel;
 import com.verso.work.outbox.WorkAudit;
 import com.verso.work.repository.SkillRunRepository;
 import com.verso.work.repository.SkillRunRepository.RunRow;
