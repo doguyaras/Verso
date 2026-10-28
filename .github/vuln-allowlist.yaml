@@ -523,72 +523,72 @@ entries:
   - id: CVE-2026-45447
     scope: ggml-org-llama.cpp-server-cuda
     package: libssl3t64
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-45447
     scope: ggml-org-llama.cpp-server-cuda
     package: openssl
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-84782
     scope: ggml-org-llama.cpp-server-cuda
     package: libssl3t64
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-84782
     scope: ggml-org-llama.cpp-server-cuda
     package: openssl
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: dirmngr
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gnupg
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gnupg-utils
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gnupg2
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpg
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpg-agent
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpgconf
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpgsm
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpgv
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: keyboxd
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan b11889 when Docker is back; bump if it clears this."
+    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-92392
     scope: grafana-grafana
