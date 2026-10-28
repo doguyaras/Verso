@@ -15,8 +15,11 @@ export const INACCESSIBLE_DOCUMENT = 'Erişiminiz yok';
 export const DELETE_ALL_WORD = 'SİL';
 
 /** The body of POST /v1/questions: a conversation id only when the question continues one. */
-export function askBody(question, conversationId) {
-  return conversationId ? { question, conversationId } : { question };
+export function askBody(question, conversationId, model = null) {
+  const body = conversationId ? { question, conversationId } : { question };
+  // ADR-0056: a model choice only when the admin offers one (GET /v1/models); otherwise the field is not sent.
+  if (typeof model === 'string' && model) body.model = model;
+  return body;
 }
 
 /**

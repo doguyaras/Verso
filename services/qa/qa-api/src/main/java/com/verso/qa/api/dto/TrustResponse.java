@@ -18,9 +18,24 @@ import java.util.List;
  * @param audit       audit log state
  * @param backup      backup state
  * @param guarantee   the strict local mode statement of the installation (fixed Turkish text, llm-rules 1.1)
+ * @param models      the enabled model provider connections of the gateway and where each sends data (ADR-0056)
  */
 public record TrustResponse(Instant generatedAt, Ai ai, Egress egress, Connectors connectors, Mcp mcp, Identity identity,
-                            Build build, Audit audit, Backup backup, String guarantee) {
+                            Build build, Audit audit, Backup backup, String guarantee, Models models) {
+
+    /**
+     * @param known       false when the connection list could not be read; then the list says nothing
+     * @param connections the enabled connections, by name, type, locality and the host they reach
+     */
+    public record Models(boolean known, List<Connection> connections) {
+        public Models {
+            connections = List.copyOf(connections);
+        }
+
+        /** @param locality LOCAL or EXTERNAL; region: the provider region or data zone the admin set (may be null) */
+        public record Connection(String name, String type, String locality, String host, String region) {
+        }
+    }
 
     /**
      * @param mode           {@code local} or {@code cloud}

@@ -21,7 +21,7 @@ import org.springframework.boot.http.client.InetAddressFilter;
  * afterwards and its answer is not used, but the redirected request has already been attempted; without a route out
  * (the network) it cannot connect.
  */
-final class LocalModelEgress implements Interceptor {
+public final class LocalModelEgress implements Interceptor {
 
     private static final InetAddressFilter INTERNAL = InetAddressFilter.internalAddresses();
 

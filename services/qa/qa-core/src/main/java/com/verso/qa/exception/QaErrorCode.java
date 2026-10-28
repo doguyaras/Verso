@@ -9,6 +9,11 @@ public enum QaErrorCode implements ErrorCode {
     // --- model (11000-11009); fail closed: never an empty or made-up answer (ADR-0008, llm-rules 2.3)
     MODEL_UNAVAILABLE(11001, "The language model is unavailable, try again later.", HttpStatus.SERVICE_UNAVAILABLE),
     MODEL_BUSY(11002, "The language model is busy, try again shortly.", HttpStatus.SERVICE_UNAVAILABLE),
+    /** ADR-0056: every model of the route is over its hard monthly budget (connection or the caller's team). */
+    MODEL_BUDGET_EXCEEDED(11003, "The monthly model budget is used up; contact your administrator.",
+            HttpStatus.TOO_MANY_REQUESTS),
+    /** ADR-0056: the question names a model the admin does not offer (or user choice is off). */
+    MODEL_CHOICE_INVALID(11004, "This model cannot be chosen.", HttpStatus.BAD_REQUEST),
 
     // --- request (11010-11019); the body is bounded before it is read (phase 5 review S2)
     QUESTION_BODY_TOO_LARGE(11010, "The request body is too large.", HttpStatus.CONTENT_TOO_LARGE),
@@ -80,7 +85,29 @@ public enum QaErrorCode implements ErrorCode {
     /** Only a DRAFT suggestion can be accepted or rejected. */
     SYSTEM_SUGGESTION_NOT_DRAFT(11082, "The suggestion was already reviewed.", HttpStatus.CONFLICT),
     /** The document is unknown, not READY or not readable by the admin. */
-    SYSTEM_SUGGESTION_DOCUMENT_NOT_FOUND(11083, "Document not found.", HttpStatus.NOT_FOUND);
+    SYSTEM_SUGGESTION_DOCUMENT_NOT_FOUND(11083, "Document not found.", HttpStatus.NOT_FOUND),
+
+    // --- model gateway (11090-11099, ADR-0056); never the provider's message, never the key
+    MODEL_CONNECTION_NOT_FOUND(11090, "Model connection not found.", HttpStatus.NOT_FOUND),
+    /** Local mode (llm-rules 1.1): a cloud provider, or an address outside the internal network, cannot be enabled. */
+    MODEL_CONNECTION_LOCAL_MODE(11091, "Local mode allows only model servers on the internal network.",
+            HttpStatus.CONFLICT),
+    /** A field the type needs is missing or malformed (base URL, region, deployment, project, key format). */
+    MODEL_CONNECTION_INVALID(11092, "The connection settings are not valid for this provider.", HttpStatus.BAD_REQUEST),
+    MODEL_CONNECTION_NAME_TAKEN(11093, "A connection with this name already exists.", HttpStatus.CONFLICT),
+    /** The key-encryption key (SECRET_MODEL_GATEWAY_KEK) is not installed: no key can be stored or read. */
+    MODEL_KEY_STORE_UNAVAILABLE(11094, "The key store is not set up on this installation.",
+            HttpStatus.SERVICE_UNAVAILABLE),
+    /** The validation call on save or rotation failed (bad key, unknown model, unreachable). */
+    MODEL_CONNECTION_CHECK_FAILED(11095, "The provider did not accept the connection.", HttpStatus.UNPROCESSABLE_CONTENT),
+    /** Unknown or disabled connection, a model it does not list, an embedding route, or a cloud model in local mode. */
+    MODEL_ROUTE_INVALID(11096, "The route is not valid.", HttpStatus.BAD_REQUEST),
+    /** A route still uses the connection: change the route first. */
+    MODEL_CONNECTION_IN_USE(11097, "The connection is used by a route.", HttpStatus.CONFLICT),
+    /** A price or budget names an unknown connection or model. */
+    MODEL_PRICE_INVALID(11098, "The price or budget is not valid.", HttpStatus.BAD_REQUEST),
+    /** The month is not YYYY-MM or out of range. */
+    MODEL_USAGE_RANGE_INVALID(11099, "The month is invalid.", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

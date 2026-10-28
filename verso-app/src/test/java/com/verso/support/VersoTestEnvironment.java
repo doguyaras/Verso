@@ -29,6 +29,21 @@ public @interface VersoTestEnvironment {
      * The deployment inputs compose gives the application for models (prod.env.example), plus the poll switch. The AI
      * mode settings default to local mode; a cloud mode test sets its own first (they are kept).
      */
+    /** A random KEK for the test JVM (ADR-0056). */
+    final class LocalKek {
+        public static final String SETTING = "SECRET_MODEL_GATEWAY_KEK";
+        public static final String VALUE = java.util.HexFormat.of().formatHex(randomBytes());
+
+        private LocalKek() {
+        }
+
+        private static byte[] randomBytes() {
+            byte[] bytes = new byte[24];
+            new java.security.SecureRandom().nextBytes(bytes);
+            return bytes;
+        }
+    }
+
     final class Models implements ApplicationContextInitializer<ConfigurableApplicationContext> {
         private static final Map<String, String> AI_DEFAULTS = Map.of(
                 "VERSO_AI_MODE", "local",
@@ -66,6 +81,11 @@ public @interface VersoTestEnvironment {
                     // Two slots: QuestionApiTest exercises the bulkhead with two calls in flight (production default 1).
                     "verso.qa.chat-concurrency=2",
                     "verso.qa.local-chat-timeout=8s",
+                    // The model gateway's KEK (ADR-0056), as the config tree would give it: a test property, never an
+                    // environment variable (refused). Random per JVM: no key value is ever written down.
+                    LocalKek.SETTING + "=" + LocalKek.VALUE,
+                    // Admin changes are seen at once by the instance that made them; a short TTL for the others.
+                    "verso.qa.gateway.cache-ttl=0s",
                     "verso.document.retrieval.embedding-timeout=2s").applyTo(context);
         }
     }

@@ -140,6 +140,27 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 - **Yetki (en az yetki):** uygulamaya `Sites.Selected` verilir ve kurum yöneticisi yalnız eşitlenecek siteye okuma izni tanımlar; `Sites.Read.All` bütün sitelere okuma açar, önerilmez. İzni veren ve tarih: {{SHAREPOINT_IZIN_KAYDI}}.
 - **İzinler:** SharePoint izinleri aktarılmaz; okuma yetkisini hedef bilgi alanı verir. Kitaplıktan farklı izni olan (benzersiz izin, paylaşım bağlantısı) dosyalar varsayılan olarak alınmaz (risk R16).
 
+### 5.6 Kurumun kendi model sağlayıcısı (model geçidi; isteğe bağlı, ADR-0056)
+
+- **Ne:** yönetici panelde ("Yapay zekâ sağlayıcıları") kurumun kendi sağlayıcı hesabını ve API anahtarını bağlar; her görev (cevap, takip sorusu yeniden yazımı, çok adımlı ayrıştırma, prosedür özetleme) bir birincil modele ve sıralı yedeklere yönlendirilir. Embedding her zaman yereldir ve bu ekrandan değiştirilmez.
+- **`local` mod:** yalnız iç ağdaki model sunucuları (Ollama, OpenAI uyumlu vLLM / llama.cpp) bağlanabilir. Bulut sağlayıcısı kaydedilemez, veritabanında açık bir bulut bağlantısı varsa uygulama açılmaz, her çağrıda adres yeniden denetlenir (llm-rules 1.1). Yurt dışı aktarım doğmaz.
+- **`cloud` mod:** her dış bağlantının adresi çıkış izin listesine girer; bağlantının istemcisi yalnız kendi adresine bağlanabilir. Sağlayıcıya giden içerik 5.2'deki ile aynıdır (sistem kuralları, soru, en çok 5 pasaj; açıksa takip turları ve alt sorular). Her dış çağrıda giden **veri türleri** (soru, pasaj, konuşma turu; içerik değil) ve gizlilik süzgecinin adı kaydedilir. Güven ekranı açık bağlantıları ve adreslerini listeler.
+- **Anahtarlar:** zarf şifrelemeyle saklanır (bağlantı başına veri anahtarı, kurulumun anahtar şifreleme anahtarı `/run/secrets` altında, veritabanında değil); hiçbir ekranda, yanıtta ve log'da görünmez; ekleme, değiştirme, döndürme ve deneme denetim kaydına yalnız kimliklerle yazılır.
+- **Kullanım ve maliyet:** çağrı başına token sayısı bağlantı, model, görev ve ekip bazında tutulur; **kişi bazında rapor yoktur**, ekip satırı en az 5 farklı kullanıcısı olan ekipler için gösterilir (ekip üyeleri anahtarlı bir özetle sayılır, kimlik saklanmaz). Saklama 13 aydır.
+- **Sağlayıcı başına aktarım notları** (bilgi amaçlıdır; sağlayıcı koşulları değişir, **kurum hukuk birimi teyit etmeli**):
+
+| Sağlayıcı | Verinin işlendiği yer (kurulumun seçimi) | Not |
+|---|---|---|
+| Azure OpenAI | Seçilen Azure bölgesi; dağıtım türü *Global* her bölgede, *Data Zone* (AB) bölge grubunda, *Standard* seçilen bölgede işler | Dağıtım türü VKED'e yazılır; Microsoft veri işleyendir. **Kurum hukuk birimi teyit etmeli** |
+| AWS Bedrock | Seçilen AWS bölgesi (ör. eu-central-1); çapraz bölge çıkarım profili başka bölgede işleyebilir | AWS veri işleyendir. **Kurum hukuk birimi teyit etmeli** |
+| Google Vertex AI / Gemini API | Vertex'te seçilen konum (ör. europe-west4); Gemini API (anahtarla) küreseldir | Vertex ile Gemini API'nin koşulları ayrıdır. **Kurum hukuk birimi teyit etmeli** |
+| Anthropic (doğrudan) | ABD; AB'de işleme seçeneği doğrudan API'de yoktur (AB için Bedrock / Vertex) | Varsayılan saklama ve sıfır saklama (ZDR) ayrı sözleşmedir. **Kurum hukuk birimi teyit etmeli** |
+| OpenAI (doğrudan) | Uygun projelerde bölgesel (AB) işleme seçeneği | ZDR onaya tabidir. **Kurum hukuk birimi teyit etmeli** |
+| Mistral AI | Varsayılan AB barındırma | **Kurum hukuk birimi teyit etmeli** |
+| OpenAI uyumlu (vLLM, llama.cpp, ağ geçidi) / Ollama | İç ağdaysa kurum içi; dış adresse o sunucunun yeri | Dış adres bir alıcıdır; Bölüm 2'deki tabloya eklenir. **Kurum hukuk birimi teyit etmeli** |
+
+- Kurumun seçtiği sağlayıcılar, bölgeler ve sözleşme / ZDR durumu: {{MODEL_SAGLAYICILARI}}; aktarım mekanizması: {{MODEL_AKTARIM_MEKANIZMASI}}. Takma adlandırma (ileride eklenecek kişisel veri maskeleme) aktarımı kişisel veri olmaktan çıkarmaz; yalnız riski azaltır.
+
 ## 6. Hukuki sebep, aydınlatma, haklar
 
 - **Hukuki sebep:** girdi (soru), çıktı (cevap) ve belgeler için ayrı analiz yapılır **[repo: KVKK Üretken YZ Rehberi]**. Kurumun belirlediği sebep: {{HUKUKI_SEBEP_GIRDI}} / {{HUKUKI_SEBEP_CIKTI}} / {{HUKUKI_SEBEP_BELGELER}}. Dayanak maddeler (KVKK md. 5, özel nitelikli veri için md. 6) **[genel]** kurum hukuk birimi teyit etmeli.

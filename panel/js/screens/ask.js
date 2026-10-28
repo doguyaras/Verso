@@ -544,6 +544,18 @@ export function renderAsk(ctx) {
     }
   });
 
+  // ADR-0056: a model choice, shown only when the admin allows it (GET /v1/models says enabled); hidden otherwise, and a
+  // failed call leaves it hidden (the server's own route answers).
+  const modelPicker = el('select', { class: 'model-picker', 'aria-label': 'Cevap modeli', hidden: true },
+    el('option', { value: '' }, 'Varsayılan model'));
+  ctx.withAuth(() => api.modelChoices()).then((offer) => {
+    if (ctx.isCurrent && !ctx.isCurrent()) return;
+    if (!offer?.enabled || !Array.isArray(offer.choices) || !offer.choices.length) return;
+    modelPicker.append(...offer.choices.map((c) => el('option', { value: c.id },
+      c.external ? `${c.label} (dış sağlayıcı)` : c.label)));
+    modelPicker.hidden = false;
+  }).catch(() => {});
+
   const form = el('form', { class: 'composer', onsubmit: (event) => {
     event.preventDefault();
     if (busy) {
@@ -551,7 +563,7 @@ export function renderAsk(ctx) {
       field.focus(); // the stop button turns back into "send": the focus goes where the next question is typed
     } else ask(field.value.trim());
   } }, field, send,
-  el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), disclosureLine(productName)), counter));
+  el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), disclosureLine(productName)), modelPicker, counter));
   form.append(slash.list); // positioned above the composer (panel.css .slash-picker)
 
   const prefill = (value) => {
@@ -789,6 +801,8 @@ export function renderAsk(ctx) {
     let written = '';
     let streamed = false;
     const live = {
+      // ADR-0056: the model the user picked, only when the admin offers a choice; otherwise the field is not sent.
+      model: modelPicker.value || null,
       stage: (event) => {
         streamed = true;
         const now = stageText(event);

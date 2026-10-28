@@ -8,6 +8,7 @@ import com.verso.platform.security.jwt.TrustedIssuers;
 import com.verso.qa.api.dto.TrustResponse;
 import com.verso.qa.config.AiMode;
 import com.verso.qa.config.VersoAiProperties;
+import com.verso.qa.service.gateway.ModelGatewayAdmin;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
@@ -52,9 +53,12 @@ public class AdminTrustController {
     private final ObjectProvider<BuildProperties> build;
     private final List<TrustContributor> contributors;
     private final Clock clock;
+    private final ModelGatewayAdmin modelConnections;
 
     public AdminTrustController(VersoAiProperties ai, Environment environment, TrustedIssuers issuers,
-                                ObjectProvider<BuildProperties> build, List<TrustContributor> contributors, Clock clock) {
+                                ObjectProvider<BuildProperties> build, List<TrustContributor> contributors, Clock clock,
+                                ModelGatewayAdmin modelConnections) {
+        this.modelConnections = modelConnections;
         this.ai = ai;
         this.environment = environment;
         this.issuers = issuers;
@@ -84,7 +88,22 @@ public class AdminTrustController {
                         digest(environment.getProperty("VERSO_IMAGE_DIGEST"))),
                 new TrustResponse.Audit(report.lastAuditEventAt(), ageSeconds(report.oldestOutboxAt(), now)),
                 new TrustResponse.Backup(null, BACKUP_VERIFICATION),
-                ai.mode() == AiMode.CLOUD ? GUARANTEE_CLOUD : GUARANTEE_LOCAL));
+                ai.mode() == AiMode.CLOUD ? GUARANTEE_CLOUD : GUARANTEE_LOCAL, models()));
+    }
+
+    /**
+     * The enabled gateway connections (ADR-0056): where a model call may send data. Host and region only; never the
+     * base URL's path, a key or its hint. An unreadable list is "unknown", never "none".
+     */
+    private TrustResponse.Models models() {
+        try {
+            return new TrustResponse.Models(true, modelConnections.list().stream()
+                    .filter(com.verso.qa.api.dto.ModelConnectionResponse::enabled)
+                    .map(c -> new TrustResponse.Models.Connection(c.name(), c.type().name(), c.locality(),
+                            c.egressHost(), c.region())).toList());
+        } catch (RuntimeException e) {
+            return new TrustResponse.Models(false, List.of());
+        }
     }
 
     /** The issuer's host only: the path, the key address and the client are not the customer's business here. */

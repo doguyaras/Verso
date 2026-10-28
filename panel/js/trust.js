@@ -57,6 +57,11 @@ export function externalPaths(t) {
   if (t?.ai?.mode === 'cloud') {
     paths.push({ id: 'model', label: 'Model sağlayıcısı', detail: `${t.ai.chatProvider ?? 'bulut'} (${t.ai.chatModel}): soru ve seçilen pasajlar` });
   }
+  // ADR-0056: every enabled gateway connection that leaves the installation, with the host it reaches.
+  (t?.models?.connections ?? []).filter((c) => c.locality === 'EXTERNAL').forEach((c, index) => {
+    paths.push({ id: `gateway-${index}`, label: `Model sağlayıcısı (bağlantı): ${c.name}`,
+      detail: `${c.type}, ${c.host ?? 'adres bilinmiyor'}${c.region ? `, bölge ${c.region}` : ''}: soru ve seçilen pasajlar` });
+  });
   if (t?.egress?.externalConnectorEgress) {
     const hosts = t.egress.allowedHosts ?? [];
     paths.push({ id: 'connectors', label: 'Bağlayıcıların internet çıkışı', detail: hosts.length ? `İzinli adresler: ${hosts.join(', ')}` : 'Adres listesi boş' });
@@ -68,6 +73,16 @@ export function externalPaths(t) {
     paths.push({ id: 'mcp', label: 'MCP sunucusu açık', detail: `Yetkili istemciler /mcp üzerinden pasaj okuyabilir (hedef kitle: ${t.mcp.audience ?? '–'})` });
   }
   return paths;
+}
+
+/** ADR-0056: one line about the gateway's connections; "unknown" never reads as "none". */
+export function gatewayLine(models) {
+  if (!models) return [];
+  if (models.known === false) return ['Model bağlantıları okunamadı; "yok" anlamına gelmez, Yapay zekâ sağlayıcıları ekranına bakın.'];
+  const all = models.connections ?? [];
+  if (!all.length) return ['Ek model bağlantısı yok: yalnız yerleşik model çalışır.'];
+  const external = all.filter((c) => c.locality === 'EXTERNAL').length;
+  return [`Model bağlantıları: ${all.length} açık (${external} dış, ${all.length - external} iç ağ)`];
 }
 
 /** The plain facts of the screen: what to say and how to colour it. Null input (a failed call) gives null. */
@@ -83,7 +98,8 @@ export function trustModel(t, productName) {
     hero: {
       title: local ? 'Çalışma modu: Yerel — soru, belge ve cevaplar bu sunucudan çıkmaz' : 'Çalışma modu: Bulut — soru ve seçilen pasajlar sağlayıcıya gider',
       text: t.guarantee ?? '',
-      models: [`Sohbet modeli: ${t.ai?.chatModel ?? '–'}`, `Embedding modeli: ${t.ai?.embeddingModel ?? '–'} (her modda yerel)`],
+      models: [`Sohbet modeli: ${t.ai?.chatModel ?? '–'}`, `Embedding modeli: ${t.ai?.embeddingModel ?? '–'} (her modda yerel)`,
+        ...gatewayLine(t.models)],
     },
     modeChanges: local ? CLOUD_CHANGES : [],
     modeChangesTitle: local ? `Bulut moduna geçilirse ${productName} kurulumunda şunlar değişir` : null,

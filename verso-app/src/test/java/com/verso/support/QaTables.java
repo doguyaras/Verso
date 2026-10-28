@@ -31,10 +31,28 @@ public final class QaTables {
                     + "qa.skill, qa.skill_version, qa.skill_step, qa.skill_step_source, qa.skill_trigger, "
                     + "qa.skill_golden_case, qa.skill_approval, qa.skill_event, qa.skill_eval_result, "
                     // ADR-0054: suggested relations of the system model.
-                    + "qa.system_model_suggestion");
+                    + "qa.system_model_suggestion, "
+                    // ADR-0056: the model gateway (connections, routes, prices, budgets, usage).
+                    + "qa.model_route, qa.model_price, qa.model_budget, qa.model_usage, qa.model_team_reach, "
+                    + "qa.model_connection");
             st.execute("UPDATE qa.hook_rule SET enabled = default_enabled");
+            st.execute("UPDATE qa.model_gateway_setting SET user_model_choice = false");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the qa schema", e);
+        }
+    }
+
+    /**
+     * Empties the model gateway's tables only (ADR-0056). Gateway tests call it after each test: a cloud connection
+     * left enabled would stop the next local-mode context from starting (the startup check, llm-rules 1.1).
+     */
+    public static void resetGateway() {
+        try (Connection admin = admin(); Statement st = admin.createStatement()) {
+            st.execute("TRUNCATE qa.model_route, qa.model_price, qa.model_budget, qa.model_usage, qa.model_team_reach, "
+                    + "qa.model_connection");
+            st.execute("UPDATE qa.model_gateway_setting SET user_model_choice = false");
+        } catch (SQLException e) {
+            throw new IllegalStateException("cannot reset the model gateway tables", e);
         }
     }
 

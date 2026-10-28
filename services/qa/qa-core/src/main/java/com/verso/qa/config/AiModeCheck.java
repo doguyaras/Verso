@@ -69,6 +69,7 @@ public final class AiModeCheck {
     }
 
     public static void verify(AiMode mode, Environment environment) {
+        refuseSdkLogging(environment);
         String embedding = environment.getProperty(EMBEDDING_PROVIDER, "");
         if (!LOCAL_PROVIDERS.contains(embedding)) {
             throw new IllegalStateException(EMBEDDING_PROVIDER + " must be ollama in every mode (llm-rules 1.2)");
@@ -117,6 +118,15 @@ public final class AiModeCheck {
             throw new IllegalStateException(keySetting + " must come from /run/secrets, not from an environment "
                     + "variable or a system property (llm-rules 1.4)");
         }
+        refuseSdkLogging(environment);
+    }
+
+    /**
+     * The SDKs' own request logging stays off in every mode and with every built-in provider: the model gateway
+     * (ADR-0056) may build an OpenAI or Anthropic client at runtime even when the built-in model is Ollama (security
+     * review B1), and that logging would write prompts to the log (llm-rules 2.1).
+     */
+    static void refuseSdkLogging(Environment environment) {
         for (String logSwitch : SDK_LOG_SWITCHES) {
             if (!environment.getProperty(logSwitch, "").isBlank()) {
                 throw new IllegalStateException(logSwitch + " is set: the provider SDK would log requests "

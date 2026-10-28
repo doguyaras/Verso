@@ -10,6 +10,7 @@ import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 import { dailySeries, dayLabel, DEFAULT_PRESET, documentLabel, formatCount, formatPercent, isEmpty, kpis, PRESETS, rangeFor,
   rangeLabel, reasonRows } from '../metrics.js';
+import { usageSummary } from '../providers.js';
 import { el, fill, formatDate } from '../render.js';
 import { emptyState, relativeTime } from '../ui.js';
 
@@ -101,6 +102,23 @@ function problem(error) {
     el('strong', {}, 'Sayılar alınamadı.'), el('div', {}, error instanceof ApiError ? error.message : 'Bağlantı kurulamadı.')));
 }
 
+/**
+ * ADR-0056: this month's model calls, tokens and cost by connection, model and task, and the budgets; teams only above
+ * the k-anonymity floor, never a person. Absent when the gateway has nothing to say (no call yet).
+ */
+function modelUsage(usage) {
+  const summary = usageSummary(usage);
+  if (!summary || !usage.requests) return null;
+  return card('Model kullanımı ve maliyet',
+    el('p', { class: 'stat-note' }, `${summary.month} ayı · fiyatlar Yapay zekâ sağlayıcıları ekranındaki tablodan`),
+    el('div', { class: 'grid kpis' }, summary.totals.map((t) => tile({ label: t.label, value: t.value, note: '' }))),
+    el('ul', { class: 'plain-list' }, summary.rows.map((r) => el('li', {}, el('strong', {}, r.label), ` (${r.task}): ${r.text}`))),
+    summary.budgets.length ? el('ul', { class: 'plain-list' }, summary.budgets.map((b) =>
+      el('li', {}, el('span', { class: `pill ${b.tone}` }, el('span', { class: 'dot' }), b.state), ` ${b.label}: ${b.text}`))) : null,
+    summary.teams.length ? el('ul', { class: 'plain-list' }, summary.teams.map((t) => el('li', {}, t))) : null,
+    el('p', { class: 'stat-note' }, summary.teamNote));
+}
+
 export async function renderInsights(ctx) {
   const { main, withAuth } = ctx;
   const content = el('div', { class: 'insights' });
@@ -152,10 +170,14 @@ export async function renderInsights(ctx) {
         (data.neverCitedDocuments?.total ?? 0) > 0 ? neverCited(data) : null);
       return;
     }
+    // The gateway's usage is optional here: a failure (or an older server) leaves the card out, never the board.
+    const usage = await withAuth(() => api.modelUsage()).catch(() => null);
+    if (!ctx.isCurrent() || mine !== request) return;
     fill(content,
       el('div', { class: 'grid kpis' }, kpis(data.totals).map(tile)),
       trends(data),
       modesAndReasons(data.totals),
+      modelUsage(usage),
       documents(data),
       unanswered(data.unansweredQuestions));
   }

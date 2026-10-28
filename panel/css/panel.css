@@ -1239,3 +1239,16 @@ dialog.palette::backdrop { background: var(--scrim); }
 .slash-picker li[aria-selected="true"] { background: var(--accent-bg-subtle); }
 .slash-picker li code { font: 13px var(--font-mono, monospace); color: var(--fg-accent); }
 @media (pointer: coarse) { .skill-lib-cite, .skill-lib-rating .button { min-height: 44px; } }
+/* "Yapay zekâ sağlayıcıları" (ADR-0056): connection rows, task routes and the small price and budget forms. */
+.provider-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--border-muted); }
+.provider-row:first-child { border-top: 0; }
+.provider-row .grow { flex: 1 1 260px; min-width: 0; }
+.route-row { display: grid; grid-template-columns: minmax(160px, 1fr) repeat(3, minmax(0, 1.4fr)) auto; gap: 8px; align-items: center; padding: 8px 0; }
+.route-row select, .inline-form select, .inline-form input { min-width: 0; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.inline-form input { flex: 1 1 120px; }
+.toggle-line { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.model-picker { max-width: 260px; font-size: var(--text-sm); }
+@media (max-width: 720px) {
+  .route-row { grid-template-columns: 1fr; }
+}

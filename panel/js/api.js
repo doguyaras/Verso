@@ -166,7 +166,7 @@ async function streamQuestion(question, signal, conversationId, live) {
   if (!token) throw new ApiError(401, 90100);
   let res;
   try {
-    res = await fetch(`${CONFIG.api}/v1/questions/stream`, { method: 'POST', signal, body: JSON.stringify(askBody(question, conversationId)),
+    res = await fetch(`${CONFIG.api}/v1/questions/stream`, { method: 'POST', signal, body: JSON.stringify(askBody(question, conversationId, live?.model)),
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' } });
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
@@ -328,8 +328,8 @@ export const api = {
    * signal: an AbortSignal; aborting stops waiting for the answer (the server finishes its own call). conversationId:
    * the conversation the question continues, or none for a new one (ADR-0023).
    */
-  ask: (question, signal, conversationId = null) => request('/v1/questions', { method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(askBody(question, conversationId)), signal }),
+  ask: (question, signal, conversationId = null, model = null) => request('/v1/questions', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(askBody(question, conversationId, model)), signal }),
   /**
    * The answer as a stream (ADR-0035), or from POST /v1/questions when no stream gets through (an older proxy or
    * server); live.fallback() says so. Aborting a stream stops the server's model call; a JSON answer is still
@@ -341,7 +341,7 @@ export const api = {
     } catch (error) {
       if (!(error instanceof StreamUnavailable)) throw error;
       live.fallback?.();
-      return api.ask(question, signal, conversationId);
+      return api.ask(question, signal, conversationId, live.model ?? null);
     }
   },
   /** The stored text of one page or section of a readable document (ADR-0035, docs/api-documents-integration-v1.md). */
@@ -481,4 +481,22 @@ export const api = {
   /** state: SYNCED, FAILED, SKIPPED, or anything else for every file. */
   listConnectorItems: (id, state = '', page = 0, size = 50) => request(`/v1/admin/connectors/${encodeURIComponent(id)}/items?${
     ['SYNCED', 'FAILED', 'SKIPPED'].includes(state) ? `state=${state}&` : ''}page=${page}&size=${size}`),
+  // The model gateway (ADR-0056), verso-admin only. The API key travels once, in a JSON body (never a URL), and no
+  // response ever carries it back: only keyStored and the last four characters (keyHint).
+  modelConnections: () => request('/v1/admin/model-gateway/connections'),
+  createModelConnection: (body) => request('/v1/admin/model-gateway/connections', json('POST', body)),
+  updateModelConnection: (id, body) => request(`/v1/admin/model-gateway/connections/${encodeURIComponent(id)}`, json('PUT', body)),
+  rotateModelKey: (id, apiKey) => request(`/v1/admin/model-gateway/connections/${encodeURIComponent(id)}/key`, json('POST', { apiKey })),
+  testModelConnection: (id) => request(`/v1/admin/model-gateway/connections/${encodeURIComponent(id)}/test`, { method: 'POST' }),
+  deleteModelConnection: (id) => request(`/v1/admin/model-gateway/connections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  modelRoutes: () => request('/v1/admin/model-gateway/routes'),
+  setModelRoute: (task, entries) => request(`/v1/admin/model-gateway/routes/${encodeURIComponent(task)}`, json('PUT', { entries })),
+  setModelSettings: (userModelChoice) => request('/v1/admin/model-gateway/settings', json('PUT', { userModelChoice: userModelChoice === true })),
+  modelPrices: () => request('/v1/admin/model-gateway/prices'),
+  setModelPrice: (price) => request('/v1/admin/model-gateway/prices', json('PUT', price)),
+  modelBudgets: () => request('/v1/admin/model-gateway/budgets'),
+  setModelBudget: (budget) => request('/v1/admin/model-gateway/budgets', json('PUT', budget)),
+  modelUsage: (month = '') => request(`/v1/admin/model-gateway/usage${/^\d{4}-\d{2}$/.test(month) ? `?month=${month}` : ''}`),
+  /** Any signed-in user: the answer models offered, when the admin allows a choice (enabled=false otherwise). */
+  modelChoices: () => request('/v1/models'),
 };

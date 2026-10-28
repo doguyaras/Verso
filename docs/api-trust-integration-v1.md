@@ -7,6 +7,7 @@ Kurulumun verisinin nereye gidebildiğini söyleyen salt okunur yönetici ucu. K
 ## Değişikliklerin özeti
 - Yeni uç: `GET /v1/admin/trust`. Mevcut uçlar değişmedi; mobil ve internal çağıran etkilenmez.
 - Yeni panel istemcisi: `api.trust()`.
+- Ekleyici alan (ADR-0056): `models: {known, connections: [{name, type, locality, host, region}]}`, model geçidinin açık bağlantıları ve nereye gittikleri ([`docs/api-model-gateway-integration-v1.md`](api-model-gateway-integration-v1.md)).
 
 ## Kurallar
 - **Kritik:** yalnız `verso-admin` (ADR-0019). Başka kimlikli çağıran `403` (`90101 ACCESS_DENIED`), kimliksiz `401`. İstemci ekranı `GET /v1/info` `roles`'a göre gizler; asıl kontrol sunucudadır.

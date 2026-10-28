@@ -31,13 +31,14 @@ import { renderOverview } from './screens/overview.js';
 import { renderSetup } from './screens/setup.js';
 import { renderSystem } from './screens/system.js';
 import { renderTrust } from './screens/trust.js';
+import { renderProviders } from './screens/providers.js';
 
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
 const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, beceriler: renderBeceriler, setup: renderSetup, system: renderSystem,
   insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects,
-  connectors: renderConnectors, trust: renderTrust, knowledge: renderKnowledge, health: renderHealth, skills: renderSkills,
+  connectors: renderConnectors, trust: renderTrust, providers: renderProviders, knowledge: renderKnowledge, health: renderHealth, skills: renderSkills,
   systemmap: renderSystemMap };
 /** How long the first screen waits for /v1/info's roles; without them the admin screen stays hidden (server: 403). */
 const INFO_WAIT_MS = 3000;
@@ -218,6 +219,7 @@ function adminItems() {
     ...(canOpen('subjects', roles) ? [{ label: 'KVKK başvuruları', glyph: 'shield', onSelect: () => navigate('subjects') }] : []),
     ...(canOpen('connectors', roles) ? [{ label: 'Bağlayıcılar', glyph: 'plug', onSelect: () => navigate('connectors') }] : []),
     ...(canOpen('trust', roles) ? [{ label: 'Güven', glyph: 'lock', onSelect: () => navigate('trust') }] : []),
+    ...(canOpen('providers', roles) ? [{ label: 'Yapay zekâ sağlayıcıları', glyph: 'cpu', onSelect: () => navigate('providers') }] : []),
     ...(canOpen('knowledge', roles) ? [{ label: 'Onaylı bilgiler', glyph: 'checkCircle', onSelect: () => navigate('knowledge') }] : []),
     ...(canOpen('health', roles) ? [{ label: 'Bilgi sağlığı', glyph: 'pulse', onSelect: () => navigate('health') }] : []),
     ...(canOpen('skills', roles) ? [{ label: 'Prosedürler', glyph: 'flag', onSelect: () => navigate('skills') }] : []),

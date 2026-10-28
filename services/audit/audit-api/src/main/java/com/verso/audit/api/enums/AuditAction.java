@@ -144,5 +144,21 @@ public enum AuditAction {
     /** A verso-admin approved a customer-authored skill's current version. */
     TASK_SKILL_CUSTOM_APPROVED,
     /** A verso-admin archived a customer-authored skill. */
-    TASK_SKILL_CUSTOM_ARCHIVED
+    TASK_SKILL_CUSTOM_ARCHIVED,
+    /** A verso-admin added a model provider connection (ADR-0056); the detail is the provider type. Never the key. */
+    MODEL_CONNECTION_CREATED,
+    /** A verso-admin changed a connection's settings (not its key); the detail is ENABLED, DISABLED or SETTINGS. */
+    MODEL_CONNECTION_UPDATED,
+    /** A verso-admin replaced a connection's API key (rotation); the detail is the new key version. Never the key. */
+    MODEL_CONNECTION_KEY_ROTATED,
+    /** A connection was tested (on save, rotation or on request); the detail is the result (OK, AUTH_FAILED, ...). */
+    MODEL_CONNECTION_TESTED,
+    /** A verso-admin deleted a connection and its stored key. */
+    MODEL_CONNECTION_DELETED,
+    /** A verso-admin changed the gateway: the detail is ROUTE_&lt;TASK&gt;, SETTINGS, PRICE or BUDGET. */
+    MODEL_GATEWAY_CHANGED,
+    /** A monthly budget reached a limit (system actor); the detail is SOFT or HARD, the target the scope. */
+    MODEL_BUDGET_LIMIT_REACHED,
+    /** A verso-admin read the gateway's usage and cost report. */
+    MODEL_USAGE_VIEWED
 }

@@ -196,6 +196,9 @@ services:
       - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_CONNECTOR_PASSWORD
       - SECRET_DB_WORK_PASSWORD
+      # The model gateway's key-encryption key (ADR-0056): wraps the provider API keys stored in the qa schema; the
+      # config tree turns the file into the setting of the same name (no placeholder, no fallback).
+      - SECRET_MODEL_GATEWAY_KEK
     # Not published: the edge proxy is the way in (ADR-0013).
     depends_on:
       postgres:
@@ -750,6 +753,8 @@ secrets:
     file: ./secrets/SECRET_KEYCLOAK_PANEL_ADMIN_PASSWORD
   SECRET_GRAFANA_ADMIN_PASSWORD:
     file: ./secrets/SECRET_GRAFANA_ADMIN_PASSWORD
+  SECRET_MODEL_GATEWAY_KEK:
+    file: ./secrets/SECRET_MODEL_GATEWAY_KEK
 
 networks:
   # Application ↔ ollama only; internal: no gateway to the outside (llm-rules 1.1, 8.2; ADR-0011).

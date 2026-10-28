@@ -31,6 +31,7 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_CONNECTOR_SHAREPOINT_CERT` | uygulama, yalnız SharePoint overlay'i (`deploy/compose.sharepoint.yaml`) | SharePoint Online / OneDrive bağlayıcısının Entra uygulama kaydının kimliği: PKCS#8 özel anahtar (`-----BEGIN PRIVATE KEY-----`, RSA ≥ 2048) ve sertifika (`-----BEGIN CERTIFICATE-----`) tek PEM dosyasında; Entra'ya yalnız sertifikanın açık kısmı yüklenir. İstemci gizlisi kullanılırsa onun yerine `SECRET_CONNECTOR_SHAREPOINT_SECRET` (`authMethod: CLIENT_SECRET`). Bağlayıcı bu adı `credentialRef` ile anar; değer veritabanına, log'a, denetim kaydına ve yanıta hiç girmez. Script yalnız yer tutucu üretir, gerçek anahtarı sen yazarsın (ADR-0045) |
 | `SECRET_CONNECTOR_CONFLUENCE_TOKEN` | uygulama, yalnız Confluence overlay'i (`deploy/compose.confluence.yaml`) | Confluence bağlayıcısının belirteci: Data Center'da kişisel erişim belirteci (Bearer), Cloud'da hesabın API belirteci (e-posta ile Basic). Bağlayıcı bu adı `credentialRef` ile anar; değer veritabanına, log'a, denetim kaydına ve yanıta hiç girmez. Script yalnız yer tutucu üretir, gerçek belirteci sen yazarsın (`printf`, satır sonu olmadan). Salt okuma yetkili, yalnız eşitlenecek alanları gören bir hesabın belirteci olmalı (ADR-0044) |
 | `SECRET_CLOUD_API_KEY` | uygulama, yalnız cloud overlay'i | Bulut sağlayıcısının API anahtarı; script üretmez, sen yazarsın (ADR-0013) |
+| `SECRET_MODEL_GATEWAY_KEK` | yalnız uygulama | Model geçidinin anahtar şifreleme anahtarı (KEK, ADR-0056): yönetim panelinden girilen sağlayıcı API anahtarlarının veri anahtarlarını sarar. En az 32 rastgele karakter (script 40 üretir); veritabanına hiç girmez. **Kaybolursa kayıtlı anahtarlar açılamaz**: dosyanın bir kopyasını yedeklerden ayrı, erişimi kısıtlı bir yerde sakla. Yoksa uygulama açılır ama anahtar saklanamaz (`503 11094`); ortam değişkeninden verilirse uygulama açılmaz |
 
 Keycloak secret'larını `deploy/keycloak/start.sh` okur ve yalnız Keycloak sürecinin ortamına verir; compose ortamına girmezler.
 
@@ -72,3 +73,9 @@ Postgres init script'leri yalnız ilk kurulumda (boş veri volume'ünde) çalı�
 `SECRET_DB_KEYCLOAK_PASSWORD` veritabanı parolalarıyla aynı psql kalıbıyla (`ALTER ROLE keycloak`) değişir; sonra `docker compose up -d --force-recreate keycloak`.
 
 **Superuser parolası:** yalnız ilk kurulumda ve restore provasında kullanılır. Rotasyonu aynı psql kalıbıyla `ALTER ROLE postgres` olarak yapılır.
+
+**Model geçidi KEK'i** (`SECRET_MODEL_GATEWAY_KEK`, ADR-0056): her sarılmış veri anahtarının yanında KEK'in kimliği saklanır; değer değişince eski satırlar açılamaz. Çevrimiçi yeniden sarma (rewrap) henüz yoktur. KEK'i değiştirmek gerekirse:
+
+1. Yeni değeri dosyaya yaz, `docker compose up -d --force-recreate verso-app`.
+2. Panelde "Yapay zekâ sağlayıcıları" ekranında her bağlantının anahtarını "Anahtarı yenile" ile yeniden gir (sağlayıcıda da yeni anahtar üretmek önerilir). O ana kadar bu bağlantılar `FAILED` döner ve rota bir sonraki modele geçmez; yerleşik model çalışmaya devam eder.
+3. Eski KEK'i imha et.

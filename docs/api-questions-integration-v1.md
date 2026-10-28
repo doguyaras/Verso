@@ -15,6 +15,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 - Sonradan eklenen, geriye uyumlu alan: `citations[].excerpt` (alıntılanan pasajdan cevabın dayandığı kısım, ≤ 280 karakter). Eski istemciler bilinmeyen alanı yok sayar; sürüm değişmez.
 - 24 Ekim 2026: `excerpt` artık pasajın başı değil, atfı taşıyan cevap cümlesiyle en çok örtüşen pencere (ADR-0020). Alan, tip ve sınır aynı; istemci değişikliği gerekmez.
 - Sonradan eklenen, geriye uyumlu alanlar (ADR-0023, 24 Ekim 2026): istekte isteğe bağlı `conversationId`, yanıtta `conversationId` ve `turnId`. Her cevap kullanıcının geçmişine yazılır; geçmiş, puanlama ve yeni hata kodları (11020, 11022): [`docs/api-conversations-integration-v1.md`](api-conversations-integration-v1.md).
+- Ekleyici alan (ADR-0056, 28 Ekim 2026): istekte isteğe bağlı `model` (kullanıcı model seçimi; yalnız yönetici açtıysa). Sunulmayan seçim `400 11004`, rotadaki fiyatlı modellerin bütçesi dolmuşsa `429 11003`: [`docs/api-model-gateway-integration-v1.md`](api-model-gateway-integration-v1.md).
 - Yeni uç (ADR-0035, 24 Ekim 2026): `POST /v1/questions/stream`, aynı cevabın server-sent events akışı. `POST /v1/questions` değişmedi; akış istemeyen istemci hiçbir şey yapmaz.
 - Sonradan eklenen, geriye uyumlu (ADR-0055, 27 Ekim 2026; kurulumda varsayılan kapalı): yanıtta ve `done` olayında `reasoning`, akışta `DECOMPOSING` ve `SUB_QUESTION` aşamaları, `stage` olayında `step` ve `steps`. Tanımadığı aşamayı genel metinle gösteren istemcinin değişmesi gerekmez.
 

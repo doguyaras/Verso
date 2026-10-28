@@ -1,8 +1,10 @@
 package com.verso.qa.service;
 
+import com.verso.qa.api.dto.ModelTask;
 import com.verso.qa.config.AiMode;
 import com.verso.qa.config.QaSkillProperties;
 import com.verso.qa.config.VersoAiProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.verso.qa.service.SkillTemplates.DraftStep;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -63,13 +65,20 @@ public class SkillCondenser {
     public record Outcome(List<DraftStep> steps, boolean condensed, int reverted) {
     }
 
-    private final ChatModel chat;
+    private final ModelRouter router;
     private final VersoAiProperties ai;
     private final QaSkillProperties properties;
     private final Semaphore slot = new Semaphore(1);
 
+    /** One model (the unit tests; no gateway). */
     public SkillCondenser(ChatModel chat, VersoAiProperties ai, QaSkillProperties properties) {
-        this.chat = chat;
+        this(ModelRouter.fixed(chat), ai, properties);
+    }
+
+    /** The SKILL_CONDENSE route of the model gateway (ADR-0056); local mode only, as before. */
+    @Autowired
+    public SkillCondenser(ModelRouter router, VersoAiProperties ai, QaSkillProperties properties) {
+        this.router = router;
         this.ai = ai;
         this.properties = properties;
     }
@@ -89,6 +98,7 @@ public class SkillCondenser {
         }
         try {
             Prompt prompt = new Prompt(List.of(new SystemMessage(SYSTEM), new UserMessage(userPrompt(template))));
+            ChatModel chat = router.route(ModelTask.SKILL_CONDENSE, null);
             Future<ChatResponse> call = VIRTUAL.submit(() -> chat.call(prompt));
             ChatResponse response;
             try {

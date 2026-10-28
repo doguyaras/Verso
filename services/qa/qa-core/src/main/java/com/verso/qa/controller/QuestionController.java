@@ -44,7 +44,7 @@ public class QuestionController {
 
     @PostMapping
     public ResponseEntity<AnswerResponse> ask(@CurrentAccount AccountId account, @Valid @RequestBody QuestionRequest request) {
-        AnswerResponse answer = service.ask(account, request.question(), request.conversationId());
+        AnswerResponse answer = service.ask(account, request.question(), request.conversationId(), request.model());
         // After the answer exists (and its turn is stored); ids and the outcome type only (ADR-0026).
         audit.questionAsked(answer);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate()).body(answer);
@@ -60,7 +60,7 @@ public class QuestionController {
     public ResponseEntity<SseEmitter> stream(@CurrentAccount AccountId account,
                                              @Valid @RequestBody QuestionRequest request) {
         QuestionEventStream events = new QuestionEventStream(streamTimeout(), audit);
-        service.stream(account, request.question(), request.conversationId(), events);
+        service.stream(account, request.question(), request.conversationId(), request.model(), events);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
                 .header("X-Accel-Buffering", "no").contentType(MediaType.TEXT_EVENT_STREAM).body(events.emitter());
     }

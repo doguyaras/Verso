@@ -96,12 +96,29 @@
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-model</artifactId>
     </dependency>
-    <!-- Only for the egress guard on the OpenAI-compatible client's OkHttp stack (a local model server, ADR-0051).
-         Optional: the assembly (verso-app) brings the starter and chooses the provider. -->
+    <!-- The model gateway (ADR-0056) builds every provider's client itself, natively in Spring AI 2.0: the provider
+         modules without their auto-configuration (the assembly keeps choosing the built-in model through its
+         starters). Licences: Apache-2.0 (Spring AI, the OpenAI/Anthropic Java SDKs, AWS SDK v2, google-genai);
+         recorded in docs/versions.md. Mistral uses the OpenAI client (its API is OpenAI-compatible): no extra module. -->
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-openai</artifactId>
-      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-anthropic</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-ollama</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-bedrock-converse</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-google-genai</artifactId>
     </dependency>
     <!-- Metrics for Prometheus (ADR-0014): Micrometer, the registry comes with the assembly (verso-app). -->
     <dependency>

@@ -81,6 +81,15 @@ class AiModeCheckTest {
                 .hasMessageContaining("is missing");
     }
 
+    /** ADR-0056 security review B1: the gateway may build an SDK client at runtime, so the switches are refused always. */
+    @Test
+    void verify_whenAnSdkLogSwitchIsSet_refusesEvenWithOllama() {
+        MockEnvironment ollama = new MockEnvironment().withProperty("spring.ai.model.embedding", "ollama")
+                .withProperty("spring.ai.model.chat", "ollama").withProperty("spring.ai.ollama.base-url", "http://ollama:11434")
+                .withProperty("ANTHROPIC_LOG", "debug");
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, ollama)).hasMessageContaining("ANTHROPIC_LOG is set");
+    }
+
     /** Phase 6 review B3/B4: the key only from the config tree; the SDKs' request logging stays off. */
     @Test
     void cloud_whenTheKeyComesFromTheEnvironmentOrSdkLoggingIsOn_refusesToStart() {

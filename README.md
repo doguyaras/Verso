@@ -276,6 +276,27 @@ Sözleşmeler: [`docs/api-documents-integration-v1.md`](docs/api-documents-integ
 **Kullanıcı nasıl çalıştırır:** panelde **Beceriler** (`g c`) → kategori ya da arama → beceri kartı → form → "Çalıştır". İlerleme aşama aşama görünür (belgeler aranıyor, adım 2/3, kontroller). Bitince taslak tablo halinde gelir; kaynak çipleri belge sayfasını açar. Kullanıcı hücreleri düzenler, "Onayla" ile "Onaylandı" işaretler, Markdown ya da JSON olarak indirir ve 1-5 puan verir. Soru kutusuna `/` yazınca beceri listesi açılır; `/toplanti <not>` formu notla doldurur. Çalıştırmalar Beceriler ekranının geçmiş listesinde durur, konuşmalarla aynı süre saklanır ve silinebilir. Yönetici her beceriyi kurulum için açıp kapatabilir.
 
 **Danışmanlık ekibi kuruma özel beceriyi nasıl ekler:** müşterinin tekrarlayan bir iş akışı (ör. "tedarikçi ret raporu", "ISG olay ön analizi") için `skills/README.md`'deki biçimde bir JSON tanımı yazılır: form alanları, hangi bilgi alanlarında aranacağı (`grounding.scopeCollections`; kullanıcının erişimiyle kesişir, kimsenin erişimini genişletmez), adımlar, çıktı tablosu, rubrik, çerçeve ve uyarı etiketi. Beceriler ekranının yalnız `verso-admin`'in gördüğü yönetici bölümündeki JSON düzenleyicide "Doğrula" ile kurallar denetlenir, "Taslak kaydet" ile saklanır (kullanıcılar görmez), konu sahibiyle 2-3 örnek girdiyle denenip "Onayla" ile galeriye alınır. Her değişiklik yeni sürümdür ve yeniden onay ister; eski sürümler silinmez. Örnek vakalar (`skills/golden/` biçiminde) `node scripts/skill-eval.mjs --base <adres> --skill <id> [--judge]` ile kurulumun modeline karşı çalıştırılır; sonuç `eval/results/` altına yazılır ve danışmanlık raporuna eklenir.
+## Kendi yapay zekâ sağlayıcınızı bağlama (model geçidi)
+
+Kurum, kendi model sağlayıcısını ve API anahtarını yönetim panelinden bağlar; kod ya da yeniden kurulum gerekmez (ADR-0056). Desteklenen türler: OpenAI, Azure OpenAI, Anthropic, AWS Bedrock, Google Gemini / Vertex AI, Mistral AI, iç ağdaki Ollama ve OpenAI uyumlu her sunucu (vLLM, llama.cpp, kurumun kendi ağ geçidi). Hiç bağlantı eklenmezse kurulumun yerleşik modeli eskisi gibi çalışır.
+
+1. Kurulumda anahtar şifreleme anahtarı oluşur: `bash scripts/dev-secrets.sh` (`secrets/SECRET_MODEL_GATEWAY_KEK`). Bu dosyanın bir kopyasını yedeklerden ayrı saklayın: kaybolursa kayıtlı anahtarlar yeniden girilir (`secrets/README.md`).
+2. Panelde **Yönetim → Yapay zekâ sağlayıcıları → Yeni bağlantı**: türü seçin, adı, (gerekiyorsa) adresi / bölgeyi / dağıtım adını, model adlarını ve API anahtarını yazın. **Doğrula ve ekle** önce sağlayıcıda küçük bir deneme çağrısı yapar; anahtar reddedilirse hiçbir şey kaydedilmez.
+3. **Görev yönlendirme** bölümünde her görev için birincil modeli ve en çok iki yedeği seçin (cevap, takip sorusu, çok adımlı ayrıştırma, prosedür özetleme). Sağlayıcı geçici hata (5xx) ya da hız sınırı (429) dönerse sıradaki model denenir.
+4. İsterseniz model başına fiyat (milyon token başına) ve aylık bütçe girin: uyarı sınırında denetim kaydı ve panel uyarısı, üst sınırda o model atlanır; başka model kalmazsa kullanıcı "aylık bütçe doldu" görür (`429 11003`).
+5. İsterseniz **Kullanıcılar cevap modelini seçebilsin**'i açın; soru ekranında bir seçici görünür.
+
+Anahtarlar hakkında: anahtar şifreli saklanır (bağlantı başına veri anahtarı, onu saran anahtar şifreleme anahtarı veritabanında değil `/run/secrets` altında) ve **hiçbir ekranda, yanıtta, log'da ya da denetim kaydında görünmez**; listede yalnız son dört karakteri görünür. **Anahtarı yenile** ile döndürülür; her işlem denetim kaydına yalnız kimlikle yazılır.
+
+Ne yerelde kalır:
+
+- **Yerel modda** yalnız iç ağdaki model sunucuları eklenebilir; bulut sağlayıcısı kaydedilemez, veritabanında açık bir bulut bağlantısı varsa uygulama açılmaz. Hiçbir şey kurumdan çıkmaz.
+- **Embedding her modda yereldir** ve bu ekrandan değiştirilmez (değiştirmek bütün belgelerin yeniden dizinlenmesi demektir). Belgeler, dosyalar ve vektörler hiçbir sağlayıcıya gitmez.
+- **Bulut modunda** dış bağlantıya yalnız sistem kuralları, soru ve seçilen pasajlar (açıksa takip turları ve alt sorular) gider; her bağlantı yalnız kendi adresine bağlanabilir ve **Güven** ekranı açık bağlantıları ve adreslerini listeler. Her dış çağrıda giden veri türleri (içerik değil) kaydedilir. Kişisel veri maskeleme (Türkçe TCKN, IBAN, telefon…) için kanca hazırdır, bir sonraki adımda eklenecek; maskeleme aktarımı kişisel veri olmaktan çıkarmaz.
+- **Kullanım ve maliyet** değer panosunda bağlantı, model, görev ve ekip bazında görünür; kişi bazında rapor yoktur, ekipler en az 5 kullanıcıyla gösterilir.
+- Sağlayıcı başına veri konumu ve aktarım notları VKED şablonunun 5.6 bölümündedir; **kurum hukuk birimi teyit etmelidir**. Bu bölüm hukuki tavsiye değildir.
+
+API: [`docs/api-model-gateway-integration-v1.md`](docs/api-model-gateway-integration-v1.md).
 
 ## Yapay zekâ istemcileri için MCP sunucusu
 
@@ -433,7 +454,7 @@ Kodlar global olarak tekildir. `ErrorCodeUniquenessTest` bu tabloyu zorlar.
 | Blok | Aralık | Not |
 |---|---|---|
 | document | 10000–10999 | belge yükleme, işleme, retrieval, bilgi alanları (10002–10004, 10040–10044; ADR-0028), sayfa görünümü (10005; ADR-0035), sistem modeli (10050–10051; ADR-0054) |
-| qa | 11000–11999 | soru-cevap, model çağrısı; onaylı bilgi kartı ve altın set (11040–11048; ADR-0049); bilgi sağlığı ve kancalar (11060–11063; ADR-0052); onaylı prosedürler (11070–11079; ADR-0053); sistem modeli önerileri (11080–11083; ADR-0054) |
+| qa | 11000–11999 | soru-cevap, model çağrısı; onaylı bilgi kartı ve altın set (11040–11048; ADR-0049); bilgi sağlığı ve kancalar (11060–11063; ADR-0052); onaylı prosedürler (11070–11079; ADR-0053); sistem modeli önerileri (11080–11083; ADR-0054); model geçidi (11003–11004, 11090–11099; ADR-0056) |
 | audit | 12000–12999 | denetim kaydı sorgusu ve dışa aktarımı |
 | privacy | 13000–13999 | KVKK ilgili kişi başvurusu ve cevap karartma (ADR-0034) |
 | connector | 14000–14999 | dosya paylaşımı bağlayıcısı yönetimi (ADR-0038); Confluence türü, URL ve dış bağlantı (14012–14015; ADR-0044) |

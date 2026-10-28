@@ -282,6 +282,78 @@ public class QaAudit {
                 : AuditAction.SYSTEM_SUGGESTION_REJECTED, AuditTargetType.SYSTEM_SUGGESTION, suggestionId));
     }
 
+    // ---------------------------------------------------------------- model gateway (ADR-0056): ids and fixed words
+
+    /** The audit actor of the gateway's own events (a budget limit reached by calls, not by an admin). */
+    public static final String GATEWAY_COMPONENT = "model-gateway";
+
+    public void connectionCreatedInTransaction(UUID connectionId, String type) {
+        append(() -> AuditEvent.success(AuditAction.MODEL_CONNECTION_CREATED, AuditTargetType.MODEL_CONNECTION,
+                connectionId).withDetail(type));
+    }
+
+    /** @param detail ENABLED, DISABLED or SETTINGS */
+    public void connectionUpdatedInTransaction(UUID connectionId, String detail) {
+        append(() -> AuditEvent.success(AuditAction.MODEL_CONNECTION_UPDATED, AuditTargetType.MODEL_CONNECTION,
+                connectionId).withDetail(detail));
+    }
+
+    public void connectionKeyRotatedInTransaction(UUID connectionId, int version) {
+        append(() -> AuditEvent.success(AuditAction.MODEL_CONNECTION_KEY_ROTATED, AuditTargetType.MODEL_CONNECTION,
+                connectionId).withDetail("V" + version));
+    }
+
+    public void connectionTestedInTransaction(UUID connectionId, String status) {
+        append(() -> AuditEvent.success(AuditAction.MODEL_CONNECTION_TESTED, AuditTargetType.MODEL_CONNECTION,
+                connectionId).withDetail(status));
+    }
+
+    public void connectionDeletedInTransaction(UUID connectionId) {
+        append(() -> AuditEvent.success(AuditAction.MODEL_CONNECTION_DELETED, AuditTargetType.MODEL_CONNECTION,
+                connectionId));
+    }
+
+    /** @param detail ROUTE_&lt;TASK&gt;, SETTINGS, PRICE or BUDGET */
+    public void gatewayChangedInTransaction(String detail) {
+        append(() -> AuditEvent.success(AuditAction.MODEL_GATEWAY_CHANGED, AuditTargetType.MODEL_GATEWAY)
+                .withDetail(detail));
+    }
+
+    /**
+     * A budget limit reached (system actor), in its own short transaction; never fails the call that crossed it.
+     *
+     * @param connectionId the connection of a CONNECTION budget; null for a TEAM budget (the group name stays out)
+     */
+    public void modelBudgetLimitReached(UUID connectionId, String scope, String level) {
+        try {
+            db.inTransaction(status -> {
+                write(() -> (connectionId == null
+                        ? AuditEvent.success(AuditAction.MODEL_BUDGET_LIMIT_REACHED, AuditTargetType.MODEL_GATEWAY)
+                        : AuditEvent.success(AuditAction.MODEL_BUDGET_LIMIT_REACHED, AuditTargetType.MODEL_CONNECTION,
+                                connectionId)).withDetail(scope + "_" + level), GATEWAY_COMPONENT);
+                return null;
+            });
+        } catch (RuntimeException e) {
+            writeFailed.increment();
+            log.error("Audit event not stored: code=AUDIT_WRITE_FAILED reason=OUTBOX action=MODEL_BUDGET_LIMIT_REACHED "
+                    + "exceptionType={}", e.getClass().getSimpleName());
+        }
+    }
+
+    /** A read of the usage report: its own short transaction that never fails the read. */
+    public void modelUsageViewed() {
+        try {
+            db.inTransaction(status -> {
+                append(() -> AuditEvent.success(AuditAction.MODEL_USAGE_VIEWED, AuditTargetType.MODEL_GATEWAY));
+                return null;
+            });
+        } catch (RuntimeException e) {
+            writeFailed.increment();
+            log.error("Audit event not stored: code=AUDIT_WRITE_FAILED reason=OUTBOX action=MODEL_USAGE_VIEWED "
+                    + "exceptionType={}", e.getClass().getSimpleName());
+        }
+    }
+
     private void appendSystem(Supplier<AuditEvent> build) {
         write(build, KNOWLEDGE_COMPONENT);
     }

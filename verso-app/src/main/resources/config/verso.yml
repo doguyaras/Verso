@@ -360,6 +360,19 @@ verso:
       unanswered-min-users: 3
       unanswered-limit: 20
       max-range-days: 366
+    # Model gateway (ADR-0056): provider connections a verso-admin adds in the panel, with their own API keys. Keys are
+    # envelope-encrypted under the key-encryption key /run/secrets/SECRET_MODEL_GATEWAY_KEK (config tree: the file
+    # name is the setting, no placeholder here, so no fallback; QaConfiguration refuses it from an environment
+    # variable). Local mode accepts only connections on the internal network. Starting values (BA):
+    gateway:
+      # Bound of the validation call on save, rotation and "test" (a tiny completion).
+      check-timeout: 15s
+      # Routes, connections, prices and budgets an instance keeps before reading them again.
+      cache-ttl: 10s
+      # k of the team rows of the usage report (works-council rule; never below 5).
+      min-team-users: 5
+      # Usage rows and team digests are kept this long (deleted with the history retention's schedule and switch).
+      usage-retention-months: 13
   # Audit log (ADR-0026): the module's own schema "audit", its own pool as svc_audit (INSERT and SELECT only) and its own
   # Flyway as svc_audit_migrate (owner, DDL), like qa (ADR-0023). Passwords from /run/secrets (SECRET_DB_AUDIT_PASSWORD,
   # SECRET_DB_AUDIT_MIGRATE_PASSWORD), no fallback. The migration runs whenever spring.flyway.enabled is on (compose: the

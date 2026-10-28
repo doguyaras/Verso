@@ -83,10 +83,19 @@ class ComposeConfigTest {
 
     /** Review S4: a compromised application must not hold the schema owner's password. */
     @Test
-    void migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService() {
+    void migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService() throws IOException {
         // One application role per module schema (ADR-0023); never a migration role.
+        // ... plus the model gateway's key-encryption key (ADR-0056), which no other service gets.
         assertThat(secrets("verso-app")).containsExactly("SECRET_DB_DOCUMENT_PASSWORD", "SECRET_DB_QA_PASSWORD", "SECRET_DB_AUDIT_PASSWORD",
-                "SECRET_DB_CONNECTOR_PASSWORD", "SECRET_DB_WORK_PASSWORD");
+                "SECRET_DB_CONNECTOR_PASSWORD", "SECRET_DB_WORK_PASSWORD", "SECRET_MODEL_GATEWAY_KEK");
+        services().forEach((name, definition) -> {
+            if (!name.equals("verso-app")) {
+                assertThat(String.valueOf(((Map<?, ?>) definition).get("secrets"))).as(name)
+                        .doesNotContain("SECRET_MODEL_GATEWAY_KEK");
+            }
+        });
+        assertThat(read("scripts/dev-secrets.sh")).contains("SECRET_MODEL_GATEWAY_KEK");
+        assertThat(read("secrets/README.md")).contains("SECRET_MODEL_GATEWAY_KEK");
         assertThat(environment("verso-app")).containsEntry("SPRING_FLYWAY_ENABLED", "false");
         assertThat(secrets("migrate")).containsExactly("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_QA_MIGRATE_PASSWORD",
                 "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD",

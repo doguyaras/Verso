@@ -71,6 +71,10 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.verso.qa.api.dto.ModelTask;
+import com.verso.qa.service.ModelBudgetExceededException;
+import com.verso.qa.service.ModelRouter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.concurrent.DelegatingSecurityContextRunnable;
@@ -126,8 +130,14 @@ public class QuestionServiceImpl implements QuestionService {
     private static final String ANSWERED = "Question answered";
     private static final String STREAMED = "Question streamed";
 
+    /**
+     * The user's model choice of the question being answered (ADR-0056), for the answer route only; bound for the
+     * duration of ask/stream, so the follow-up rewrite and the decomposition keep their own routes.
+     */
+    private static final ScopedValue<String> MODEL_CHOICE = ScopedValue.newInstance();
+
     private final DocumentRetrieval retrieval;
-    private final ChatModel chatModel;
+    private final ModelRouter router;
     private final PromptBuilder promptBuilder;
     private final CitationExtractor citations;
     private final QaProperties properties;
@@ -145,7 +155,20 @@ public class QuestionServiceImpl implements QuestionService {
     private final SkillMatcher procedures;
     private final MultiStepReasoning reasoning;
 
+    /** One model for every task (the unit tests; no gateway). */
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
+                               CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
+                               ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
+                               AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
+                               QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory,
+                               SkillMatcher procedures, MultiStepReasoning reasoning) {
+        this(retrieval, ModelRouter.fixed(chatModel), promptBuilder, citations, properties, ai, circuit, metrics,
+                history, gate, groups, rewriter, followUp, grounding, memory, procedures, reasoning);
+    }
+
+    /** Every chat call goes through the model gateway's routes (ADR-0056). */
+    @Autowired
+    public QuestionServiceImpl(DocumentRetrieval retrieval, ModelRouter router, PromptBuilder promptBuilder,
                                CitationExtractor citations, QaProperties properties, VersoAiProperties ai,
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
@@ -160,7 +183,7 @@ public class QuestionServiceImpl implements QuestionService {
         this.followUp = followUp;
         this.history = history;
         this.retrieval = retrieval;
-        this.chatModel = chatModel;
+        this.router = router;
         this.promptBuilder = promptBuilder;
         this.citations = citations;
         this.properties = properties;
@@ -174,6 +197,16 @@ public class QuestionServiceImpl implements QuestionService {
 
     @Override
     public AnswerResponse ask(AccountId account, String question, UUID conversationId) {
+        return ask(account, question, conversationId, null);
+    }
+
+    @Override
+    public AnswerResponse ask(AccountId account, String question, UUID conversationId, String model) {
+        String choice = router.validChoice(model);
+        return ScopedValue.where(MODEL_CHOICE, choice).call(() -> answer(account, question, conversationId));
+    }
+
+    private AnswerResponse answer(AccountId account, String question, UUID conversationId) {
         refuseWhileCircuitOpen();
         long started = System.nanoTime();
         // A foreign, deleted or full conversation is refused before any model call (ADR-0023).
@@ -201,12 +234,19 @@ public class QuestionServiceImpl implements QuestionService {
 
     @Override
     public void stream(AccountId account, String question, UUID conversationId, AnswerStream out) {
+        stream(account, question, conversationId, null, out);
+    }
+
+    @Override
+    public void stream(AccountId account, String question, UUID conversationId, String model, AnswerStream out) {
+        String choice = router.validChoice(model);
         refuseWhileCircuitOpen();
         long started = System.nanoTime();
         if (conversationId != null) history.checkWritable(account, conversationId);
         // Read on the request thread: the token's groups live in its security context (ADR-0028).
         Reader reader = readerOf(account);
-        VIRTUAL.execute(withCallerContext(() -> streamAnswer(account, reader, question, conversationId, out, started)));
+        VIRTUAL.execute(withCallerContext(() -> ScopedValue.where(MODEL_CHOICE, choice)
+                .run(() -> streamAnswer(account, reader, question, conversationId, out, started))));
     }
 
     private void streamAnswer(AccountId account, Reader reader, String question, UUID conversationId, AnswerStream out,
@@ -309,7 +349,7 @@ public class QuestionServiceImpl implements QuestionService {
     /** The rewrite call: the model's text, or empty when it failed or ran out of time (logged with a reason only). */
     private Optional<String> rewrite(BuiltPrompt prompt) {
         try {
-            return Optional.ofNullable(textOf(call(request(prompt), followUp.timeout())));
+            return Optional.ofNullable(textOf(call(ModelTask.FOLLOW_UP, request(prompt), followUp.timeout())));
         } catch (CallFailed e) {
             // Best effort: the circuit is the answer call's to judge; a model that is really down fails that call too.
             log.warn("Follow-up rewrite failed: reason={}", e.reason);
@@ -349,7 +389,7 @@ public class QuestionServiceImpl implements QuestionService {
         if (out != null && !out.stage(AnswerStage.DECOMPOSING, 0, 0)) throw new Cancelled();
         Optional<List<String>> subQuestions;
         try {
-            String output = textOf(call(request(reasoning.decompositionPrompt(search.query(), trigger)),
+            String output = textOf(call(ModelTask.DECOMPOSITION, request(reasoning.decompositionPrompt(search.query(), trigger)),
                     limits.decomposeTimeout(), true));
             subQuestions = reasoning.subQuestions(output, search.query());
         } catch (CallFailed e) {
@@ -608,8 +648,9 @@ public class QuestionServiceImpl implements QuestionService {
     private String chat(BuiltPrompt prompt) {
         ChatResponse response;
         try {
-            response = call(request(prompt), chatTimeout());
+            response = call(ModelTask.ANSWER, request(prompt), chatTimeout());
         } catch (CallFailed e) {
+            if (BUDGET_EXCEEDED.equals(e.reason)) throw budgetExceeded();
             throw failure(e.reason);
         }
         String text = textOf(response);
@@ -622,15 +663,18 @@ public class QuestionServiceImpl implements QuestionService {
      * One blocking chat call on a chat slot under {@code timeout}; a failure is a {@link CallFailed} with a content-free
      * reason, which the caller turns into a 503 (the answer) or a fallback (the follow-up rewrite, ADR-0046).
      */
-    private ChatResponse call(Prompt request, Duration timeout) {
-        return call(request, timeout, false);
+    private ChatResponse call(ModelTask task, Prompt request, Duration timeout) {
+        return call(task, request, timeout, false);
     }
 
     /**
      * {@code optional} (ADR-0055 decomposition): a busy slot is a {@link CallFailed} "NO_CHAT_SLOT" the caller falls
      * back from, not a 503 and not a MODEL_BUSY outcome (the question itself still gets its answer call).
+     * The task's route is picked here, on the caller's thread (its security context names the team, ADR-0056); the
+     * time bound covers the whole route, fallbacks included.
      */
-    private ChatResponse call(Prompt request, Duration timeout, boolean optional) {
+    private ChatResponse call(ModelTask task, Prompt request, Duration timeout, boolean optional) {
+        ChatModel chatModel = router.route(task, task == ModelTask.ANSWER ? choice() : null);
         if (!optional) {
             acquireSlot();
         } else if (!tryAcquireSlot()) {
@@ -666,6 +710,7 @@ public class QuestionServiceImpl implements QuestionService {
             cancel(call, started);
             throw new CallFailed("TIMEOUT");
         } catch (ExecutionException e) {
+            if (e.getCause() instanceof ModelBudgetExceededException) throw new CallFailed(BUDGET_EXCEEDED);
             // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
             throw new CallFailed(e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName());
         } catch (InterruptedException e) {
@@ -680,6 +725,8 @@ public class QuestionServiceImpl implements QuestionService {
      * there; this thread writes them to the client, so a slow client never blocks the provider's event loop.
      */
     private String streamChat(BuiltPrompt prompt, AnswerStream out) {
+        // On the streaming thread, which carries the caller's security context (withCallerContext): the team is known.
+        ChatModel chatModel = router.route(ModelTask.ANSWER, choice());
         acquireSlot();
         AtomicBoolean released = new AtomicBoolean();
         Runnable release = () -> {
@@ -734,6 +781,7 @@ public class QuestionServiceImpl implements QuestionService {
                 } else if (item == END) {
                     break;
                 } else if (item instanceof Failed failed) {
+                    if (failed.error() instanceof ModelBudgetExceededException) throw budgetExceeded();
                     // Provider exceptions can quote the prompt; only the type is kept (llm-rules 2.3).
                     throw failure(failed.error().getClass().getSimpleName());
                 } else {
@@ -784,6 +832,22 @@ public class QuestionServiceImpl implements QuestionService {
     private Duration chatTimeout() {
         return ai.mode() == AiMode.CLOUD ? properties.cloudChatTimeout() : properties.localChatTimeout();
     }
+
+    /**
+     * ADR-0056: every model of the answer route is over a hard budget. Not a model failure: the circuit stays as it is.
+     * One structured line: a user-caused refusal is WARN (AGENTS.md section 11).
+     */
+    private QaServiceException budgetExceeded() {
+        log.warn("Question rejected: code=MODEL_BUDGET_EXCEEDED reason=HARD_LIMIT");
+        return new QaServiceException(QaErrorCode.MODEL_BUDGET_EXCEEDED, "HARD_LIMIT");
+    }
+
+    /** The user's model choice bound by ask/stream, or null. */
+    private static String choice() {
+        return MODEL_CHOICE.isBound() ? MODEL_CHOICE.get() : null;
+    }
+
+    private static final String BUDGET_EXCEEDED = "BUDGET_EXCEEDED";
 
     private QaServiceException failure(String reason) {
         circuit.recordFailure();

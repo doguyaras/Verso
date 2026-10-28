@@ -20,4 +20,13 @@ public interface QuestionService {
      * {@code stream} and never throws.
      */
     void stream(AccountId account, String question, UUID conversationId, AnswerStream stream);
+
+    /**
+     * {@link #ask(AccountId, String, UUID)} with a user's model choice (ADR-0056): an id of GET /v1/models or null;
+     * one the admin does not offer is 400 {@code MODEL_CHOICE_INVALID} before any work.
+     */
+    AnswerResponse ask(AccountId account, String question, UUID conversationId, String model);
+
+    /** {@link #stream(AccountId, String, UUID, AnswerStream)} with a user's model choice (ADR-0056). */
+    void stream(AccountId account, String question, UUID conversationId, String model, AnswerStream stream);
 }

@@ -47,5 +47,9 @@ public enum AuditTargetType {
      */
     TASK_SKILL,
     /** One run of a task skill (ADR-0057). */
-    TASK_SKILL_RUN
+    TASK_SKILL_RUN,
+    /** A model provider connection of the gateway (ADR-0056). */
+    MODEL_CONNECTION,
+    /** The model gateway's routes, settings, prices, budgets or usage report (ADR-0056). */
+    MODEL_GATEWAY
 }
