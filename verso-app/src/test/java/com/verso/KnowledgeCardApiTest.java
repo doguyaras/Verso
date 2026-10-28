@@ -46,7 +46,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * reaches a log line.
  *
  * <p>Test embedding: equal texts embed equally (similarity 1); texts of one "topic-x" are about 0.9 similar, below the
- * 0.93 match threshold, so only the same question matches a card.
+ * 0.95 match threshold, so only the same question matches a card.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "management.server.port=0")
 @VersoTestEnvironment

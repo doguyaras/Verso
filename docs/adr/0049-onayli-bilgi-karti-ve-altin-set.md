@@ -58,7 +58,7 @@ Kaynağı değişmiş `STALE` kart yeniden onaylanamaz: metin artık yoktur; gü
 ### Sunma kuralları
 
 1. Bayrak açıkken soru bir kez gömülür; `VERIFIED`, süresi dolmamış, aynı embedding modelli kartlardan en yakın 3'ü tam kosinüsle okunur.
-2. Yalnız benzerliği **≥ 0,93** olanlar (başlangıç ayarı; müşteri setiyle ölçülecek).
+2. Yalnız benzerliği **≥ 0,95** olanlar. Eval v2 yeniden ifade setiyle ölçüldü (2026-10-28, `docs/evidence/onayli-bilgi-dogrulama.md`): 0,93'te 30 yakın ıskanın 3'ü (P1 yerine P3, 0–5 yıl yerine 5–15 yıl) farklı bilgiyi taşıyan karta düşüyordu, en yükseği 0,944; sıfır yakın ıska veren en düşük eşik 0,95. Bedeli: yeniden ifadelerin yalnız 2/64'ü karta düşer, kart pratikte "aynı soru" içindir. Müşteri setiyle yeniden ölçülür.
 3. Sırayla: kart yeniden okunur ve hâlâ sunulabilir olmalı; bağlı ve atıflı her sayfa **çağıranın ilkeleriyle** okunur; her bağlı özet sayfasında bulunmalı. Biri tutmazsa sonraki aday; hiçbiri tutmazsa normal yol, sanki kart yokmuş gibi.
 4. Cevap kartın metnidir; atıflar sunucuda, okunabilen sayfa metnine eşlenir (llm-rules 3.3, `CitationExtractor`), alıntı penceresi o metinden. `model` = `verified-answer`, `memory = {cardId, verifiedAt, expiresAt}` (ekleyici alan). Chat modeli çağrılmaz; dayanaklılık kontrolü (ADR-0047) çalışmaz (`unverified` null): metni bir insan onayladı.
 5. Akışta `RETRIEVING`'den sonra `MEMORY_FOUND` ("Onaylı bilgi bulundu"), ardından `citations` ve `done` (`memory` ile); `delta` ve `WRITING` yoktur.
@@ -100,6 +100,7 @@ Yönetim → "Onaylı bilgiler": durum süzgeci, kartlar (onay sayısı, süre, 
 
 ## Yeniden değerlendirme koşulu
 
-- Altın sette yanlış eşleşme (aynı karta düşen farklı soru) görülürse ya da müşteri seti eşiği ölçerse: `match-threshold`.
+- Altın sette yanlış eşleşme (aynı karta düşen farklı soru) görülürse ya da müşteri seti eşiği ölçerse: `match-threshold` (araç: `eval/embedding-olcumu/kart-esik.mjs`).
+- Yeniden ifade recall'ı ürün için gerekirse: tek başına kosinüs yetmez (yakın ıska en çok 0,944, yeniden ifade medyanı 0,855); sayı/varlık farkını yakalayan ikinci bir kontrol ya da reranker skoru gerekir.
 - Bellekten cevaplarda itiraz oranı > model cevaplarınınki: onay süreci ve iki kişi kuralı varsayılanı.
 - Gece kontrolü 1 saati (kira) aşarsa: `max-cases` ve parçalı koşu.

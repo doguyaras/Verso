@@ -24,7 +24,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties("verso.qa.knowledge")
 public record QaKnowledgeProperties(
         @DefaultValue("true") boolean enabled,
-        @DefaultValue("0.93") double matchThreshold,
+        @DefaultValue("0.95") double matchThreshold,
         @DefaultValue("3") int matchCandidates,
         @DefaultValue("90d") Duration verificationCadence,
         @DefaultValue("false") boolean twoPersonRule,

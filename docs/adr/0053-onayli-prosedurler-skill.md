@@ -24,7 +24,7 @@
 | Kaynak bağlama | sayfa · **adım başına parça + SHA-256** | Her adım kendi işaretlerinin ([n]) alıntıladığı sayfaların parçalarına özetle bağlıdır (işaretsiz adım: cevabın bütün atıf sayfaları, en çok 10). Eşleştirme (sayfa, özet) ile, kartlardaki gibi |
 | Görünürlük | kopyalanmış kapsam · **sunarken yeniden okumak** | `scope_collections` (bütün kaynakların bilgi alanları; okuyucu hepsine erişmeli: kesişim kuralı) yalnız gösterim ve denetim içindir; her sunuş bağlı parçaları çağıranın ilkeleriyle yeniden okur |
 | Sunma | cevabın yerine · **cevabın üstünde** · gösterme | Aşağıda "Sunma kararı" |
-| Eşleşme | soru metni · **tetikleyici soruların vektörü** | Onaylı becerinin örnek soruları (tetikleyiciler) yerel modelle gömülür; soru yolunun **aynı** vektörüyle en yakın tetikleyici, eşik **0,90** (başlangıç ayarı, kartın 0,93'ünden düşük çünkü yanlış eşleşmede cevap yine gelir) |
+| Eşleşme | soru metni · **tetikleyici soruların vektörü** | Onaylı becerinin örnek soruları (tetikleyiciler) yerel modelle gömülür; soru yolunun **aynı** vektörüyle en yakın tetikleyici, eşik **0,90** (başlangıç ayarı, kartın 0,95'inden düşük çünkü yanlış eşleşmede cevap yine gelir) |
 | Altın vakalar | kartın vakası · **beceriye özel 2-5 vaka** | Soru → beklenen kaynak sayfa (+ isteğe bağlı sayfada geçen bilgi); onay için 2-5 zorunlu, gece kontrolü kartlarla aynı koşuda çalıştırır |
 
 ## Karar

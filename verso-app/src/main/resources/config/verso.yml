@@ -242,10 +242,10 @@ verso:
     # sourced answers. Before retrieval, a question whose vector is at least match-threshold similar to a VERIFIED,
     # unexpired card's question is answered with the card ("uzman onaylı"), but only when the caller can read every
     # document it cites and every bound chunk still has its hash. Off (VERSO_QA_KNOWLEDGE_ENABLED=false): no question is
-    # answered from a card (cards can still be made and checked). Starting values; the threshold is measured per customer.
+    # answered from a card (cards can still be made and checked). Starting values; 0.95 measured on the eval v2 paraphrase set (docs/evidence/onayli-bilgi-dogrulama.md), re-measure per customer.
     knowledge:
       enabled: ${VERSO_QA_KNOWLEDGE_ENABLED:true}
-      match-threshold: 0.93
+      match-threshold: 0.95
       match-candidates: 3
       verification-cadence: 90d
       # Two different admins must verify a card before it is served (high-impact domains: HR, finance, safety).

@@ -60,4 +60,26 @@
 ## Net kanıt bulunamayan alanlar
 
 - Entegrasyon testlerinin sonucu bu belgede yok (Docker kullanılmadı); CI koşusu kanıttır.
-- Eşleşme eşiğinin gerçek Türkçe sorularda yanlış eşleşme oranı ölçülmedi.
+- Eşleşme eşiği eval v2 sorularıyla ölçüldü (aşağıda); müşterinin gerçek soru kaydıyla henüz ölçülmedi.
+
+## Eşleşme eşiği ölçümü (2026-10-28, gerçek bge-m3)
+
+- Set: `eval/embedding-olcumu/kart-esik-set.json`, eval v2'nin 11 belgesinden 30 kart kaynak sorusu; her birine 2–3 yeniden ifade (64; kart sunulmalı) ve 1 yakın ıska (30; aynı konu, farklı bilgi, ör. P1 → P3, 0–5 yıl → 5–15 yıl; kart sunulmamalı).
+- Embedding: çalışan yığının Ollama'sı, `bge-m3:567m`, öneksiz (soru yolunun vektörü), ağ içinden tek `/api/embed` isteği (geçici curl kapsayıcısı, uygulama yeniden başlatılmadı). Analiz: `node eval/embedding-olcumu/kart-esik.mjs <emb.json>` (en yakın kart, tam kosinüs).
+- "Yanlış karta düşen yeniden ifade" bütün eşiklerde 0.
+
+| Eşik | Doğru kart (recall) | Yakın ıska eşleşmesi | Precision |
+|---|---|---|---|
+| 0,88 | 23/64 (0,359) | 4/30 | 0,852 |
+| 0,89 | 21/64 (0,328) | 4/30 | 0,840 |
+| 0,90 | 16/64 (0,250) | 3/30 | 0,842 |
+| 0,91 | 10/64 (0,156) | 3/30 | 0,769 |
+| 0,92 | 9/64 (0,141) | 3/30 | 0,750 |
+| 0,93 (eski) | 5/64 (0,078) | 3/30 | 0,625 |
+| 0,94 | 4/64 (0,063) | 2/30 | 0,667 |
+| **0,95 (yeni)** | **2/64 (0,031)** | **0/30** | **1,000** |
+| 0,96 | 2/64 (0,031) | 0/30 | 1,000 |
+
+- Dağılımlar örtüşüyor: yeniden ifade → kendi kartı min 0,601, medyan 0,855, maks 0,966; yakın ıska → en yakın kart medyan 0,813, maks 0,944 (`guvenlik-3` "ne kadar sürede" → "kime"), 0,941 (`izin-1` 0–5 yıl → 5–15 yıl), 0,933 (`bt-1` P1 → P3).
+- Karar: varsayılan 0,93 → **0,95** (`QaKnowledgeProperties`, `config/verso.yml`). 0,93 farklı bilgiyi "uzman onaylı" diye sunuyordu; onaylı kartta yanlış cevap, kaçan bir eşleşmeden pahalıdır (kaçan soru normal RAG yoluna gider). Pay dar (0,944 → 0,95); müşteri setinde yeniden ölçülmeli.
+- Sonuç: kosinüs tek başına yeniden ifadeyi yakın ıskadan ayıramıyor; kart bugün "aynı ya da neredeyse aynı soru" içindir. Recall gerekirse ikinci kontrol gerekir (ADR-0049 yeniden değerlendirme).
