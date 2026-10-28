@@ -145,7 +145,16 @@ Tek sohbet yuvasını kaldırmanın iki yolu yapılandırmayla seçilebilir. Oll
 - **GPU belleği:** N ile ölçülebilir bir artış yok. Ölçülen bütün GPU kullanımı 6,3–7,5 GB'tı (masaüstü dahil), 16 GB'ın yarısından az.
 - **Varsayılan 1'de kaldı:** varsayılan kurulum CPU makinesini hedefler. CPU'da ikinci eşzamanlı cevap yalnız iki bekleyişi de uzatır (faz 8, yukarıdaki "Bulgular" 2). GPU ayarı `.env` ile seçilir.
 - **Kalite:** ölçülmedi. Ayar modeli ve prompt'u değiştirmez.
-- **llama-server:** Ollama'nın GGUF'unu yükledi ve cevap verdi. Karşılaştırma ölçümü (2 / 4 / 8 yuva) yapılmadı. Paylaşımlı kademe için seçim bu ölçüme kalıyor.
+- **llama-server (2026-10-28):** `deploy/compose.llamacpp.yaml`, `LLAMA_PARALLEL` = `VERSO_QA_CHAT_CONCURRENCY` = N, aynı yöntem; aynı gün Ollama N=4 tekrarı ile:
+
+| Sunucu, N | 4 istemci: cevap/sn | p50 / p95 / p99 | 503 | 8 istemci: cevap/sn | p50 / p95 / p99 | 503 |
+|---|---|---|---|---|---|---|
+| llama-server, 2 | 0,98 | 3,9 / 7,2 / 10,1 sn | 0 / 119 | 1,15 | 5,5 / 7,5 / 8,4 sn | 25 / 169 |
+| llama-server, 4 | 1,43 | 2,7 / 5,5 / 6,1 sn | 0 / 176 | 1,47 | 5,0 / 7,8 / 12,1 sn | 5 / 199 |
+| **llama-server, 8** | **1,45** | 2,7 / 5,3 / **5,9 sn** | **0** / 177 | **1,93** | 3,7 / 7,8 / **9,0 sn** | 5 / 254 (hepsi `10030`) |
+| Ollama, 4 (aynı gün) | 0,88 | 2,9 / 17,0 / 30,1 sn | 0 / 114 | 1,02 | 6,3 / 13,4 / 16,7 sn | 15 / 142 |
+
+- **Paylaşımlı kademe: llama-server, 8 yuva** (ADR-0051). GPU kullanımı (bütün kart) 4,5–4,7 GB, Ollama düzeninde 6,0 GB. 8 istemcide kalan `503`'ler soru embedding bulkhead'inden (`10030`, 4 eşzamanlı): sohbet darboğazı kalkınca sıradaki sınır embedding'dir. Overlay varsayılanı (4) kalite eval'i (`LLAMA_PARALLEL=8` ile 140 soru) gürültü payında çıkana kadar değişmez; eval Docker'ın sanal makinesi düştüğü için yapılamadı. Kayıt: `docs/evidence/paylasimli-kademe-olcumu.md` bölüm 5.
 
 | Seçenek | Ayar | Ne değişir |
 |---|---|---|
@@ -188,7 +197,7 @@ RTX 4070 Ti SUPER'lı makinede ingestion sürerken bile 4 eşzamanlı istemci p9
 
 | Seçenek | Ne değişir | Bedeli |
 |---|---|---|
-| GPU'lu host (`deploy/compose.gpu.yaml`) | Ölçüldü: chat p50 1,3 sn, p95 5,4 sn; kalite aynı (yukarıdaki GPU bölümü). Eşzamanlılık: `OLLAMA_NUM_PARALLEL=4` + `VERSO_QA_CHAT_CONCURRENCY=4` ile 4 istemcide 1,6 cevap/sn, 503 yok ("Paylaşımlı kademe", ADR-0051); llama-server overlay'i ölçüm bekliyor | Donanım; NVIDIA sürücüsü ve Docker GPU desteği |
+| GPU'lu host (`deploy/compose.gpu.yaml`) | Ölçüldü: chat p50 1,3 sn, p95 5,4 sn; kalite aynı (yukarıdaki GPU bölümü). Eşzamanlılık: `OLLAMA_NUM_PARALLEL=4` + `VERSO_QA_CHAT_CONCURRENCY=4` ile 4 istemcide 1,6 cevap/sn, 503 yok ("Paylaşımlı kademe", ADR-0051); llama-server overlay'i 8 yuvada 4 istemcide 1,45, 8 istemcide 1,93 cevap/sn, p99 ≤ 9 sn, `503 11002` yok (kalite eval'i bekliyor) | Donanım; NVIDIA sürücüsü ve Docker GPU desteği |
 | Embedding için ayrı Ollama | Soru embedding'leri chat üretimiyle CPU paylaşmaz; 10030'lar kalkar | Bir container daha, bellek |
 | Ollama'ya daha çok CPU (`OLLAMA_CPUS`) | Tek cevabın süresi kısalır; eşzamanlılık değişmez | Uygulama ve veritabanıyla CPU paylaşımı |
 | Daha küçük chat modeli (`VERSO_CHAT_MODEL`) | Süre kısalır | Türkçe kalite düşer; eval setiyle yeniden ölçülmeli |

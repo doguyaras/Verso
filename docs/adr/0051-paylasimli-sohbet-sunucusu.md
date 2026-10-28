@@ -62,6 +62,15 @@ Kayıt: `docs/evidence/paylasimli-kademe-olcumu.md` bölüm 3; ham sonuçlar `ev
 - **Karar (A için):** GPU kurulumlarında N=4 önerilir, `.env` ile. Varsayılan 1'de kalır: varsayılan kurulum CPU makinesini hedefler, orada ikinci eşzamanlı cevap yalnız bekleyişleri uzatır (faz 8).
 - **llama-server (B):** `b11561` imajı Ollama'nın `gemma4:e2b` blob'unu SHA-256 ile doğrulayıp yükledi (2 yuva × 4096), uygulama `openai` sağlayıcısıyla healthy oldu ve cevap aldı. Yük ölçümü tek istemcili ilk koşuda kesildi (Docker Desktop tepsi menüsünden kapatıldı). A ile B arasındaki seçim, eval ve b11889 taraması açık kaldı. Yukarıdaki plan (madde 2–5) geçerli.
 
+## Ölçüm sonucu (2026-10-28, üçüncü oturum)
+
+Kayıt: `docs/evidence/paylasimli-kademe-olcumu.md` bölüm 5; ham sonuçlar `eval/results/paylasimli-llama-p{2,4,8}.json`, `paylasimli-ollama-p4-tekrar.json`.
+
+- **llama-server (B), 8 istemci:** 2 / 4 / 8 yuva = 1,15 / 1,47 / **1,93** cevap/sn, p99 8,4 / 12,1 / **9,0** sn, `503 11002` 21 / 1 / **0**. **4 istemci:** 0,98 / 1,43 / 1,45 cevap/sn, p99 10,1 / 6,1 / 5,9 sn, `503` yok. GPU (bütün kart) 4,5–4,7 GB.
+- **Ollama N=4 (A), aynı gün:** 4 istemcide 0,88 cevap/sn, p99 30,1 sn; 8 istemcide 1,02 cevap/sn, p99 16,7 sn, 11 `503 11002`. 10-26'daki ölçüm (1,60 / 1,45) bundan iyiydi; iki gün arası fark makinedeki öteki yükten, aynı gün karşılaştırma esas.
+- **Kademe kararı:** yükte paylaşımlı kademeyi **B, `LLAMA_PARALLEL=8`** kazanıyor: aynı GPU'da 8 eşzamanlı istemcide 503'süz ve p99 ≤ 9 sn, 4 istemcide kuyruk A'nın yarısından dar. 50 kullanıcılı kademenin sunucusu llama-server'dır; A, tek kullanıcı/küçük ekip ve CPU kurulumu için kalır. **Varsayılanlar henüz değişmedi:** kabul ölçütünün kalite koşulu (plan madde 3, eval) Docker'ın sanal makinesi eval başlarken düştüğü için ölçülemedi. Eval gürültü payındaysa overlay varsayılanı `LLAMA_PARALLEL` 4 → 8 olur.
+- **b11889:** pin'li Syft/Grype ile tarandı; allowlist'teki 14 yüksek bulgunun (OpenSSL `CVE-2026-45447`, `CVE-2026-84782`; GnuPG `CVE-2025-68973`) hepsi duruyor. Pin b11561'de kalır.
+
 ## Kademeler (öneri; donanım araştırmadan, Verso'da ölçülmedi)
 
 | Kademe | Eşzamanlı soru (%1–3, katı %5) | Sunucu | Donanım (araştırma notu) |
