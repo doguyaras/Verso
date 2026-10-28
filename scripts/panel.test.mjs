@@ -3423,3 +3423,23 @@ test('platform api: the home feed and the activity centre go to the documented p
   assert.ok(calls.every(([, method]) => method === 'GET'), 'read-only');
   signOut();
 });
+
+test('panel.css: every block is closed, so no rule is swallowed by an unclosed @media (a merge once lost a brace)', () => {
+  const css = readFileSync(new URL('../panel/css/panel.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  let depth = 0;
+  css.split('\n').forEach((line, i) => {
+    for (const c of line) {
+      if (c === '{') depth++;
+      if (c === '}') depth--;
+      assert.ok(depth >= 0, `extra closing brace at line ${i + 1}`);
+    }
+  });
+  assert.equal(depth, 0, 'an opened block is never closed');
+  for (const rule of ['.home {', '.activity', '.dashboard']) {
+    const at = css.indexOf(rule);
+    if (at < 0) continue;
+    let d = 0;
+    for (const c of css.slice(0, at)) d += c === '{' ? 1 : c === '}' ? -1 : 0;
+    assert.equal(d, 0, `${rule} sits inside another block`);
+  }
+});

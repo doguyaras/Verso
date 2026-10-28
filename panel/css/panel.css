@@ -1251,6 +1251,7 @@ dialog.palette::backdrop { background: var(--scrim); }
 .model-picker { max-width: 260px; font-size: var(--text-sm); }
 @media (max-width: 720px) {
   .route-row { grid-template-columns: 1fr; }
+}
 /* ---------- the platform (ADR-0058): menu groups, "Ana sayfa", "Etkinlik merkezi", "Komuta panosu", insight cards ---------- */
 /* the four groups: a heading per group in the open menu, a divider in the icon rail (the .nav-group rule above) */
 .nav .nav-group { padding-top: 14px; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
