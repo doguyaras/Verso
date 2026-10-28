@@ -12,7 +12,7 @@ import { ROLES } from '../roles.js';
 import { el, fill, formatDate, plainName } from '../render.js';
 import { closePageDrawer, openPageDrawer } from '../drawer.js';
 import { StreamUnavailable } from '../stream.js';
-import { confirmDialog, emptyState, openDrawer, toast } from '../ui.js';
+import { confirmDialog, disclosure, emptyState, helpLine, openDrawer, toast } from '../ui.js';
 import { adminRows, CATEGORIES, categoriesOf, categoryLabel, counterText, editBody, EXPORTS, emptyValues, exportRun, filterSkills,
   formModel, markNotAssessable, NOT_ASSESSABLE, parseDefinition, RATINGS, ratingBody, ratingLabel, runBody, runView, applyEvent,
   setCell, setText, statusLabel, statusTone, validateForm, CUSTOM_STATES } from '../skilllib.js';
@@ -33,10 +33,9 @@ export function renderBeceriler(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Beceriler'),
-        el('p', {}, 'Kurumunuzun belgeleriyle çalışan hazır yapay zekâ iş akışları: formu doldurun, sonuç kaynaklarıyla birlikte '
-          + 'düzenlenebilir bir taslak olarak gelsin. Her satır belgelerinizden ya da girdinizden bir kaynağa dayanır; dayanağı '
-          + 'olmayan satır "değerlendirilemez" der. Taslağı siz kontrol eder, onaylar ve dışa aktarırsınız. '
-          + 'Onaylı "nasıl yapılır" adımları için Prosedürler ekranı ayrıdır.')),
+        helpLine('Formu doldurun; sonuç kaynaklarıyla birlikte düzenlenebilir bir taslak olarak gelsin.',
+          'Her satır belgelerinizden ya da girdinizden bir kaynağa dayanır; dayanağı olmayan satır "değerlendirilemez" der. '
+          + 'Taslağı siz kontrol eder, onaylar ve dışa aktarırsınız. Onaylı "nasıl yapılır" adımları için Prosedürler ekranı ayrıdır.')),
       el('div', { class: 'page-actions' },
         el('button', { class: 'button secondary', type: 'button', onclick: () => showGallery() }, icon('sparkles'), 'Galeri'))),
     body);
@@ -62,8 +61,17 @@ export function renderBeceriler(ctx) {
       } }, key ? CATEGORIES[key] : 'Tümü')));
     const drawCards = () => {
       const shown = filterSkills(skills, { category, query });
-      fill(cards, shown.length ? shown.map(card) : emptyState('search', 'Beceri bulunamadı',
-        skills.length ? 'Aramayı ya da kategoriyi değiştirin.' : 'Bu kurulumda açık beceri yok; yöneticinize bildirin.'));
+      fill(cards, shown.length ? shown.map(card) : skills.length
+        ? emptyState('search', 'Beceri bulunamadı', 'Aramayı ya da kategoriyi değiştirin.',
+          el('button', { class: 'button secondary', type: 'button', onclick: () => {
+            category = '';
+            query = '';
+            search.value = '';
+            drawChips();
+            drawCards();
+          } }, 'Filtreyi temizle'))
+        : emptyState('sparkles', 'Bu kurulumda açık beceri yok', 'Yöneticiniz becerileri açtığında burada görünür.',
+          el('button', { class: 'button secondary', type: 'button', onclick: () => ctx.navigate('ask', { focus: true }) }, icon('chat'), 'Asistana sorun')));
     };
     drawChips();
     drawCards();
@@ -73,23 +81,24 @@ export function renderBeceriler(ctx) {
         el('div', { class: 'card-head' }, el('h2', { id: 'skill-lib-gallery' }, 'Galeri')),
         el('div', { class: 'card-body grid' },
           el('label', { class: 'sr-only', for: 'skill-lib-search' }, 'Becerilerde ara'), search, chips, cards)),
-      el('section', { class: 'card', 'aria-labelledby': 'skill-lib-history' },
-        el('div', { class: 'card-head' }, el('h2', { id: 'skill-lib-history' }, 'Son çalıştırmalarım')), history),
-      admin ? adminCard() : null);
+      // Sadeleştirme (ADR-0058): the gallery first; the run history and the admin's settings open on demand.
+      disclosure('Son çalıştırmalarım', el('section', { class: 'card', 'aria-labelledby': 'skill-lib-history' },
+        el('div', { class: 'card-head' }, el('h2', { id: 'skill-lib-history' }, 'Son çalıştırmalarım')), history)),
+      admin ? disclosure('Becerileri yönet', adminCard()) : null);
     loadHistory(history);
   }
 
   function card(skill) {
-    return el('article', { class: 'skill-lib-card' },
-      el('div', { class: 'skill-lib-card-head' },
-        el('h3', {}, skill.name),
-        el('span', { class: 'pill neutral' }, categoryLabel(skill.category))),
-      el('p', { class: 'muted' }, skill.description),
+    // A compact card (Sadeleştirme): the name, one line of description, the command; the category is the filter chip, and
+    // only the compliance warning stays as a pill. The rest is in the card's title.
+    const notes = [categoryLabel(skill.category), skill.grounded ? 'Belgelerinizde arar' : null,
+      skill.origin === 'CUSTOM' ? 'Kuruma özel' : null].filter(Boolean).join(' · ');
+    return el('article', { class: 'skill-lib-card compact', title: notes },
+      el('h3', {}, skill.name),
+      el('p', { class: 'muted skill-lib-line' }, skill.description),
       el('div', { class: 'skill-lib-meta' },
         el('code', {}, `/${skill.slash}`),
-        skill.grounded ? el('span', { class: 'pill info' }, icon('search', 'sm'), 'Belgelerinizde arar') : null,
-        skill.compliance ? el('span', { class: 'pill wait' }, icon('alert', 'sm'), 'Uzman incelemesi gerekir') : null,
-        skill.origin === 'CUSTOM' ? el('span', { class: 'pill neutral' }, 'Kuruma özel') : null),
+        skill.compliance ? el('span', { class: 'pill wait' }, icon('alert', 'sm'), 'Uzman incelemesi gerekir') : null),
       el('button', { class: 'button', type: 'button', onclick: () => showForm(skill.id) }, 'Başla', icon('arrowRight')));
   }
 

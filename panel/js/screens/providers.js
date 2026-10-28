@@ -9,7 +9,7 @@ import { icon } from '../icons.js';
 import { connectionRequest, EMBEDDING_NOTE, FIELD_LABELS, formProblems, keyText, localityText, PROVIDER_TYPES,
   routeEntries, routeOptions, statusText, TASKS, typesFor, usageSummary } from '../providers.js';
 import { el, fill } from '../render.js';
-import { emptyState, skeletonRows, toast } from '../ui.js';
+import { disclosure, emptyState, helpLine, skeletonRows, toast } from '../ui.js';
 
 /** Fields that hold addresses and names: no autofill history, no spell check. */
 const PLAIN = { autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off' };
@@ -50,9 +50,8 @@ export async function renderProviders(ctx) {
   fill(main,
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Yapay zekâ sağlayıcıları'),
-        el('p', {}, 'Kurumunuzun kendi model sağlayıcısını ve API anahtarını bağlayın, her görev için hangi modelin '
-          + 'çalışacağını ve yedeklerini seçin, maliyeti ve bütçeyi izleyin. Anahtarlar şifreli saklanır ve hiçbir ekranda '
-          + 'gösterilmez.')),
+        helpLine('Kurumunuzun model sağlayıcılarını bağlayın.', 'Her görev için hangi modelin çalışacağını ve yedeklerini '
+          + 'seçin, maliyeti ve bütçeyi izleyin. Anahtarlar şifreli saklanır ve hiçbir ekranda gösterilmez.')),
       el('div', { class: 'page-actions' }, newButton)),
     el('div', { class: `notice ${mode === 'local' ? 'good' : 'warn'}` }, icon(mode === 'local' ? 'shield' : 'cloud', 'sm'),
       el('div', { class: 'grow' }, mode === 'local'
@@ -61,8 +60,9 @@ export async function renderProviders(ctx) {
           + 'Yurt dışına aktarım için kurum hukuk birimi değerlendirmesi gerekir.')),
     card('providers-list', 'Bağlantılar', list),
     formSlot,
-    card('providers-routing', 'Görev yönlendirme', routing),
-    card('providers-costs', 'Fiyat, bütçe ve kullanım', costs));
+    // Sadeleştirme (ADR-0058): the list first; routing, prices and budgets open on demand.
+    disclosure('Görev yönlendirme', card('providers-routing', 'Görev yönlendirme', routing), 'providers-more'),
+    disclosure('Fiyat, bütçe ve kullanım', card('providers-costs', 'Fiyat, bütçe ve kullanım', costs), 'providers-more'));
   fill(list, skeletonRows(3));
 
   /** 403: the admin-only state; 401: the sign-in takes over; anything else: a toast with the server's message. */
@@ -91,7 +91,8 @@ export async function renderProviders(ctx) {
 
   function drawList() {
     if (!connections.length) {
-      fill(list, emptyState('cpu', 'Henüz bağlantı yok', 'Bağlantı eklenene kadar kurulumun yerleşik modeli çalışır.'));
+      fill(list, emptyState('cpu', 'Henüz bağlantı yok', 'Bağlantı eklenene kadar kurulumun yerleşik modeli çalışır.',
+        el('button', { class: 'button', type: 'button', onclick: () => drawForm(null) }, icon('plus'), 'Bağlantı ekleyin')));
       return;
     }
     fill(list, el('ul', { class: 'plain-list' }, connections.map((c) => el('li', { class: 'provider-row' },

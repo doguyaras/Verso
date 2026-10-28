@@ -3,11 +3,12 @@
 // steps, sources and model-call metadata of one entry and its audit reference. verso-admin only; the server sends no
 // account id (a team, a role or a system is the actor) and names only what this admin may read.
 import { api, ApiError } from '../api.js';
-import { activityQuery, auditText, groupByDay, itemModel, RANGES, STATUS_FILTERS, statusLabel, statusStrip, TABS } from '../activity.js';
+import { activityQuery, auditText, filtersActive, FIRST_VIEW, groupByDay, itemModel, RANGES, STATUS_FILTERS, statusLabel, statusStrip,
+  TABS, visibleItems } from '../activity.js';
 import { icon } from '../icons.js';
 import { canOpen } from '../roles.js';
 import { el, fill } from '../render.js';
-import { emptyState, openDrawer, skeletonRows } from '../ui.js';
+import { disclosure, emptyState, helpLine, openDrawer, skeletonRows } from '../ui.js';
 
 const RANGE_LABELS = Object.freeze({ 1: 'Son 24 saat', 7: 'Son 7 gün', 30: 'Son 30 gün', 90: 'Son 90 gün' });
 
@@ -33,6 +34,8 @@ function line(ctx, item, open) {
 }
 
 function approvalBox(ctx, items, open) {
+  // Sadeleştirme: the box shows only while something waits; "Bekleyen onay yok" is no news.
+  if (!items.length) return null;
   return el('section', { class: 'card activity-inbox', 'aria-labelledby': 'inbox-title' },
     el('div', { class: 'card-head' }, el('h2', { id: 'inbox-title' }, 'Onay kutusu'), el('span', { class: 'spacer' }),
       el('span', { class: 'pill neutral tabular' }, String(items.length))),
@@ -96,17 +99,21 @@ async function openDetail(ctx, item) {
 
 export async function renderActivity(ctx) {
   const { main, guarded } = ctx;
-  const state = { category: '', status: '', days: 7, page: 0 };
+  const state = { category: '', status: '', days: 7, page: 0, expanded: false };
   const stripSlot = el('div', { class: 'activity-strip-slot' }, el('div', { class: 'skeleton line' }));
   const tabs = el('div', { class: 'activity-tabs', role: 'tablist', 'aria-label': 'Etkinlik türü' });
   const filters = el('div', { class: 'activity-filters' });
-  const timeline = el('div', { class: 'activity-timeline', 'aria-live': 'polite' }, skeletonRows(5));
+  // Sadeleştirme (ADR-0058): the status line and the newest five entries first; the tabs and filters behind "Filtrele".
+  const filterBox = disclosure('Filtrele', [tabs, filters], 'filters');
+  const filterLabel = filterBox.querySelector('summary span');
+  const timeline = el('div', { class: 'activity-timeline', 'aria-live': 'polite' }, skeletonRows(FIRST_VIEW));
   const inbox = el('div', { class: 'activity-side' });
   fill(main,
     el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Etkinlik merkezi'),
-      el('p', {}, 'Çalışmalar, arka plan işleri, kancalar, bilgi değişiklikleri ve onaylar tek yerde. Raporlarda kişi değil ekip ya da rol görünür.'))),
+      helpLine('Çalışmalar, arka plan işleri, kancalar ve onaylar tek yerde.',
+        'Bilgi değişiklikleri de burada. Kişi değil ekip ya da rol görünür; bir satır ayrıntısını, adımlarını ve denetim referansını açar.'))),
     stripSlot,
-    el('div', { class: 'activity-layout' }, el('div', { class: 'activity-main' }, tabs, filters, timeline), inbox));
+    el('div', { class: 'activity-layout' }, el('div', { class: 'activity-main' }, filterBox, timeline), inbox));
 
   const open = (item, opener) => {
     opener?.focus();
@@ -132,7 +139,8 @@ export async function renderActivity(ctx) {
       state.page = 0;
       load();
     } }, RANGES.map((d) => el('option', { value: String(d), selected: d === state.days }, RANGE_LABELS[d])));
-    fill(filters, status, range, el('span', { class: 'muted small' }, 'Kişi değil ekip ya da rol görünür'));
+    fill(filters, status, range);
+    filterLabel.textContent = filtersActive(state) ? 'Filtrele · süzgeç açık' : 'Filtrele';
     timeline.setAttribute('aria-busy', 'true');
     const [page, approvals] = await Promise.all([
       guarded(() => api.activity(activityQuery(state))),
@@ -145,15 +153,26 @@ export async function renderActivity(ctx) {
       fill(timeline, el('div', { class: 'notice bad' }, icon('alert', 'sm'), el('div', { class: 'grow' }, 'Etkinlikler alınamadı.')));
       return;
     }
-    const groups = groupByDay(page.items.filter((i) => i.category !== 'APPROVAL' || state.category === 'APPROVAL'));
+    const items = page.items.filter((i) => i.category !== 'APPROVAL' || state.category === 'APPROVAL');
+    const groups = groupByDay(visibleItems(items, state.expanded));
+    const hidden = items.length - visibleItems(items, state.expanded).length;
+    // An empty list has one way out: back to every category and status over the longest range.
+    const widen = el('button', { class: 'button secondary', type: 'button', onclick: () => {
+      Object.assign(state, { category: '', status: '', days: RANGES.at(-1), page: 0 });
+      load();
+    } }, 'Tüm etkinliklere bak');
     fill(timeline,
       page.partial ? el('div', { class: 'notice wait' }, icon('alert', 'sm'), el('div', { class: 'grow' }, 'Bazı modüller yanıt vermedi; liste eksik olabilir.')) : null,
       groups.length ? groups.map((g) => el('section', { class: 'activity-day' }, el('h2', { class: 'activity-day-head' }, g.label),
         el('ul', { class: 'activity-lines' }, g.items.map((item) => line(ctx, item, open)))))
         : emptyState('clock', 'Bu aralıkta etkinlik yok', state.category === 'RUN' && !page.sources.includes('work')
           ? 'Beceri çalışmaları, beceri modülü kurulduğunda burada görünür.'
-          : 'Süzgeçleri genişletin ya da daha uzun bir tarih aralığı seçin.'),
-      el('div', { class: 'activity-pager' },
+          : 'Seçili süzgeçlerle eşleşen bir şey yok.', filtersActive(state) ? widen : null),
+      hidden > 0 ? el('button', { class: 'button ghost activity-more', type: 'button', onclick: () => {
+        state.expanded = true;
+        load();
+      } }, `Daha fazla göster (${hidden})`) : null,
+      state.expanded || state.page > 0 ? el('div', { class: 'activity-pager' },
         state.page > 0 ? el('button', { class: 'button secondary sm', type: 'button', onclick: () => {
           state.page -= 1;
           load();
@@ -161,7 +180,7 @@ export async function renderActivity(ctx) {
         page.hasMore ? el('button', { class: 'button secondary sm', type: 'button', onclick: () => {
           state.page += 1;
           load();
-        } }, 'Daha eski') : null));
+        } }, 'Daha eski') : null) : null);
   }
 
   const summary = guarded(() => api.activitySummary()).then((s) => {

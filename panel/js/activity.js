@@ -111,6 +111,20 @@ export function detailId(id) {
 }
 
 /** Day headings: "Bugün", "Dün", else the date in Turkish; items keep their order (newest first). */
+/** How many entries "Etkinlik merkezi" shows before "Daha fazla göster" (ADR-0058 Sadeleştirme). */
+export const FIRST_VIEW = 5;
+
+/** The entries the timeline draws: the newest FIRST_VIEW until the user asks for the whole page. */
+export function visibleItems(items, expanded = false) {
+  const list = Array.isArray(items) ? items : [];
+  return expanded ? list : list.slice(0, FIRST_VIEW);
+}
+
+/** Whether any filter differs from the defaults (category all, status all, 7 days): the "Filtrele" label shows it. */
+export function filtersActive(state) {
+  return Boolean(state?.category) || Boolean(state?.status) || (state?.days ?? 7) !== 7;
+}
+
 export function groupByDay(items, today = new Date()) {
   const groups = [];
   const todayKey = isoDay(today);

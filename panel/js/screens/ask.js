@@ -27,7 +27,7 @@ import { conversation, prefs, startNewConversation, thread as current } from '..
 import { pulse, reducedMotion, wordSpans } from '../motion.js';
 import { closePageDrawer, openPageDrawer } from '../drawer.js';
 import { provisionalText, stageText } from '../stream.js';
-import { fileIcon, toast } from '../ui.js';
+import { disclosure, fileIcon, toast } from '../ui.js';
 import { openHistory } from './history.js';
 
 const MAX_CHARS = 1000;
@@ -308,6 +308,32 @@ function failureView(entry, actions) {
       buttons.length ? el('div', { class: 'actions' }, buttons) : null)));
 }
 
+/** The follow-up chips under an answer: at most two (Sadeleştirme, ADR-0058). */
+export const MAX_FOLLOW_UPS = 2;
+
+/** Wide screens show the sources beside the answer, so the disclosure starts open there; narrow ones start closed. */
+export const SOURCES_OPEN_QUERY = '(min-width: 1200px)';
+
+/** Opens an answer's collapsed "Kaynakları göster" (a marker or "Kaynakları göster" chip points at a card). */
+function showSources(box) {
+  box.querySelector('details.sources-toggle')?.setAttribute('open', '');
+}
+
+/**
+ * The sources of an answer (Sadeleştirme): a row of compact citation chips always visible, the full source cards inside
+ * a "Kaynakları göster" disclosure, open at once only on wide screens.
+ */
+function sourcesBlock(citations, cards, link) {
+  const wide = typeof matchMedia === 'function' && matchMedia(SOURCES_OPEN_QUERY).matches;
+  const chips = el('div', { class: 'source-chips', role: 'group', 'aria-label': 'Kaynaklar' }, groupSources(citations).map((group) =>
+    el('button', { class: 'chip source-chip', type: 'button', title: plainName(group.fileName),
+      onclick: () => link.open(group.items[0].number) },
+    el('span', { class: 'n' }, group.items.map((c) => c.number).join(', ')), el('span', { class: 'fname' }, plainName(group.fileName)))));
+  const details = disclosure('Kaynakları göster', cards, 'sources-toggle');
+  if (wide) details.setAttribute('open', '');
+  return el('div', { class: 'answer-sources' }, chips, details);
+}
+
 /**
  * Links an answer's markers, its source cards and its sentences: hovering or focusing either side lights both and
  * tints the answer sentence that cites the source; a click on a marker opens its card, one on a card's page shows the
@@ -332,6 +358,7 @@ function linker(answer, segments) {
     open(n) {
       const card = cardOf(n);
       if (!card) return;
+      showSources(box);
       setOpen(card, true);
       card.classList.add('flash');
       card.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
@@ -345,6 +372,7 @@ function linker(answer, segments) {
       marker.focus({ preventScroll: true });
     },
     all() {
+      if (box) showSources(box);
       for (const card of box?.querySelectorAll('.source') ?? []) {
         card.classList.add('flash');
         pulse(card);
@@ -401,8 +429,10 @@ function answerView(entry, actions) {
   if (text) segments.push(...text.segments);
   const unverified = notFound ? null : unverifiedNote(result);
   if (text && unverified) markUnverified(text.segments, unverifiedSentences(result));
-  const sources = result.citations.length ? sourceCards(result.citations, evidence, link, restored, actions.page) : null;
-  const chips = restored ? [] : followUps(result);
+  const sources = result.citations.length
+    ? sourcesBlock(result.citations, sourceCards(result.citations, evidence, link, restored, actions.page), link) : null;
+  // At most two follow-ups; with citations the local "which document" chip is left out (the source chips answer it).
+  const chips = restored ? [] : followUps(result).filter((f) => !f.local).slice(0, MAX_FOLLOW_UPS);
   // ADR-0046: a follow-up searched with the conversation says how it was understood (not stored: fresh answers only).
   const contextNote = contextQueryNote(result);
   // EU AI Act Art. 50 (ADR-0027): a generated answer is machine-readable as such. The fixed "not found" text is not generated.

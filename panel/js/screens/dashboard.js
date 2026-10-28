@@ -11,6 +11,7 @@ import { icon } from '../icons.js';
 import { rangeFor } from '../metrics.js';
 import { canOpen } from '../roles.js';
 import { el, fill } from '../render.js';
+import { disclosure, helpLine } from '../ui.js';
 import { PHASES } from './setup.js';
 import { renderInsights } from './insights.js';
 
@@ -99,8 +100,10 @@ async function renderCommand(ctx, root) {
   const budget = budgetState(gateway);
   const failingConnectors = new Set((failing?.items ?? []).filter((i) => i.type === 'CONNECTOR_SYNC')
     .map((i) => i.link?.targetId ?? i.id)).size;
+  // Sadeleştirme (ADR-0058): three headline tiles first; cost, issues, journey and procedures open on demand.
+  const ranked = issuesByImpact({ report, summary, failingConnectors });
   fill(root,
-    el('div', { class: 'grid kpis dashboard-kpis' },
+    el('div', { class: 'grid kpis dashboard-kpis headline' },
       healthTile(score),
       tile('Kaynaklı cevap oranı', 'checkCircle', rate ? `%${rate.answered}` : '—',
         rate ? `Bulunamadı %${rate.notFound} · kaynak gösterilemedi %${rate.uncited} · ${rate.questions} soru, son 30 gün` : 'Son 30 günde soru yok.'),
@@ -108,15 +111,17 @@ async function renderCommand(ctx, root) {
         people.teams.length
           ? `Model çağrılarında ekip payı: ${people.teams.map((t) => `${t.name} %${t.share}`).join(' · ')}${people.hiddenTeams
             ? ` · ${people.hiddenTeams} küçük ekip gösterilmiyor` : ''}. Kişi bazında sayı yok.`
-          : `etkin hesap, son 30 gün · ${people.questions} soru. Ekip kırılımı model geçidi verisiyle gelir; kişi bazında sayı yok.`),
+          : `etkin hesap, son 30 gün · ${people.questions} soru. Ekip kırılımı model geçidi verisiyle gelir; kişi bazında sayı yok.`)),
+    disclosure(ranked.length ? `Ayrıntılar · ${ranked.length} öncelikli sorun` : 'Ayrıntılar', [
       // ADR-0056: the month's model cost, local vs cloud, and the budget; hidden while the gateway reports none.
       cost ? tile('Yerel ve bulut maliyet', 'cpu', money(cost.total),
         `%${cost.localShare} yerel (${money(cost.local)}) · %${cost.cloudShare} bulut (${money(cost.cloud)}) · ${cost.requests} çağrı, ${cost.month}`
         + (budget ? ` · bütçe ${money(budget.spent)} / ${money(budget.limit)}${budget.state === 'HARD' ? ' (sınırda, çağrılar durdu)'
           : budget.state === 'SOFT' ? ' (uyarı sınırında)' : ''}` : ''))
-        : split ? tile('Yerel ve bulut', 'cpu', `%${split.local} yerel`, `%${split.cloud} bulut · ${split.total} cevap, son 30 gün`) : null),
-    el('div', { class: 'grid split' }, issues(ctx, issuesByImpact({ report, summary, failingConnectors })),
-      el('div', { class: 'grid' }, journey(), procedures(ctx, skills ? procedureCounts(skills.data) : null, ctx.skillsAvailable))));
+        : split ? tile('Yerel ve bulut', 'cpu', `%${split.local} yerel`, `%${split.cloud} bulut · ${split.total} cevap, son 30 gün`) : null,
+      el('div', { class: 'grid split' }, issues(ctx, ranked),
+        el('div', { class: 'grid' }, journey(), procedures(ctx, skills ? procedureCounts(skills.data) : null, ctx.skillsAvailable)))],
+    'dashboard-more'));
 }
 
 export async function renderDashboard(ctx) {
@@ -125,7 +130,9 @@ export async function renderDashboard(ctx) {
   const tabs = el('div', { class: 'segmented', role: 'tablist', 'aria-label': 'Pano' });
   const panel = el('div', { class: 'dashboard-panel', role: 'tabpanel' });
   fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Komuta panosu'),
-    el('p', {}, 'Şirketinizin bilgi sağlığı, kullanım ve açık işler tek bakışta. Kişi değil ekip ya da toplam görünür.'))), tabs, panel);
+    helpLine('Bilgi sağlığı, kullanım ve açık işler tek bakışta.',
+      'Kişi değil ekip ya da toplam görünür; benimseme en az 5 hesapla gösterilir. Maliyet, öncelikli sorunlar, kurulum yolculuğu ve prosedürler "Ayrıntılar" altında.'))),
+  tabs, panel);
   async function show() {
     fill(tabs, TABS.map((t) => el('button', { type: 'button', role: 'tab', 'aria-selected': String(t.id === current),
       'aria-pressed': String(t.id === current), onclick: () => {

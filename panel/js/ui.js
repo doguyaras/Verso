@@ -146,6 +146,27 @@ export function fileIcon(format, size = '') {
     FILE_TYPES.includes(type) ? type.toUpperCase() : 'DOC');
 }
 
+/** The label of a closed disclosure ("az göster, isteyince aç", ADR-0058 Sadeleştirme). */
+export const MORE_LABEL = 'Ayrıntıları göster';
+
+/**
+ * A native disclosure, closed by default: the first view shows a few key facts, the rest opens on demand. <details> and
+ * <summary> are keyboard-accessible by themselves (Enter and Space toggle); the chevron turns when open (panel.css).
+ * `children` is a node or a list of nodes; `className` adds a class (e.g. 'filters').
+ */
+export function disclosure(label = MORE_LABEL, children = [], className = '') {
+  return el('details', { class: `more ${className}`.trim() },
+    el('summary', {}, icon('chevronDown', 'sm'), el('span', {}, label)),
+    el('div', { class: 'more-body' }, children));
+}
+
+/** The one line of help a screen shows; anything longer sits behind a small, closed info toggle. */
+export function helpLine(text, more = null) {
+  return el('div', { class: 'help-line' }, el('span', {}, text),
+    more ? el('details', { class: 'info-toggle' },
+      el('summary', { 'aria-label': 'Daha fazla bilgi', title: 'Daha fazla bilgi' }, icon('info', 'sm')), el('p', {}, more)) : null);
+}
+
 export function emptyState(glyph, title, text, action) {
   return el('div', { class: 'empty' }, el('span', { class: 'empty-art' }, icon(glyph, 'lg')), el('strong', {}, title),
     el('p', {}, text), action ?? null);

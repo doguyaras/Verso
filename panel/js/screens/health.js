@@ -9,7 +9,7 @@ import { actionLabel, bellBadge, exportFileName, notificationItem, percentText, 
   severityLabel, severityTone, sideLabel, trendLabel, trendTone, valuesText } from '../health.js';
 import { icon } from '../icons.js';
 import { el, fill, formatDate, plainName } from '../render.js';
-import { emptyState, formatNumber, openMenu, toast } from '../ui.js';
+import { disclosure, emptyState, formatNumber, helpLine, MORE_LABEL, openMenu, toast } from '../ui.js';
 
 /** The ranges the screen offers; the previous quarter is the consulting deliverable. */
 const RANGES = Object.freeze([
@@ -61,15 +61,16 @@ export function renderHealth(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Bilgi sağlığı'),
-        el('p', {}, 'Şirketinizin bilgisinin nerede eksik, eski ya da çelişkili olduğunu gösterir: cevapsız kalan soru kümeleri, '
-          + 'eski ama çok kullanılan belgeler, hiç kullanılmayan belgeler ve birbirini tutmayan belgeler. Her bulgunun yanında '
-          + 'bir öneri vardır. Üç ayda bir indirilen rapor, danışmanlık ekibinin yapay zekâ entegrasyonu için yol haritasıdır. '
-          + 'Hiçbir toplam 5 kişiden azına dayanmaz; kişi bazında döküm yoktur.')),
+        helpLine('Bilginizin nerede eksik, eski ya da çelişkili olduğunu öneriyle gösterir.',
+          'Cevapsız soru kümeleri, eski ama çok kullanılan belgeler, hiç kullanılmayan ve birbirini tutmayan belgeler. Üç ayda bir '
+          + 'indirilen rapor, danışmanlık ekibinin yapay zekâ entegrasyonu için yol haritasıdır. Hiçbir toplam 5 kişiden azına '
+          + 'dayanmaz; kişi bazında döküm yoktur.')),
       el('div', { class: 'page-actions' },
         el('label', { class: 'sr-only', for: 'health-range' }, 'Dönem'), select, runButton,
-        el('button', { class: 'button', type: 'button', onclick: download('MARKDOWN') }, icon('download'), 'Raporu indir'),
-        el('button', { class: 'button ghost', type: 'button', onclick: download('JSON') }, 'JSON'))),
+        el('button', { class: 'button', type: 'button', onclick: download('MARKDOWN') }, icon('download'), 'Raporu indir'))),
     body,
+    // Sadeleştirme (ADR-0058): the hooks, notifications and runs are settings and history, opened on demand.
+    disclosure('Kancalar, bildirimler ve teşhis çalışmaları', [
     el('section', { class: 'card', 'aria-labelledby': 'health-hooks' },
       el('div', { class: 'card-head' }, el('h2', { id: 'health-hooks' }, 'Kancalar')),
       el('p', { class: 'card-body muted' }, 'Kancalar yalnız bildirir, incelemeye işaretler, bir kartı kullanımdan çıkarır ya da '
@@ -78,10 +79,16 @@ export function renderHealth(ctx) {
     el('section', { class: 'card', 'aria-labelledby': 'health-notifications' },
       el('div', { class: 'card-head' }, el('h2', { id: 'health-notifications' }, 'Bildirimler')), notificationsSlot),
     el('section', { class: 'card', 'aria-labelledby': 'health-runs' },
-      el('div', { class: 'card-head' }, el('h2', { id: 'health-runs' }, 'Teşhis çalışmaları')), runsSlot));
+      el('div', { class: 'card-head' }, el('h2', { id: 'health-runs' }, 'Teşhis çalışmaları')), runsSlot),
+    el('button', { class: 'button ghost', type: 'button', onclick: download('JSON') }, icon('download'), 'Raporu JSON olarak indir')],
+    'health-settings'));
 
   function pill(text, tone) {
     return el('span', { class: `pill ${tone}` }, text);
+  }
+
+  function figure(value, label) {
+    return el('div', { class: 'card stat kpi' }, el('span', { class: 'kpi-value' }, value), el('span', { class: 'stat-label' }, label));
   }
 
   function section(id, title, ...children) {
@@ -171,8 +178,14 @@ export function renderHealth(ctx) {
         ? `Teşhis penceresi ${run.windowFrom} – ${run.windowTo} · ${formatNumber(run.questions)} belirsiz soru · `
           + `${formatNumber(report.openFlags ?? 0)} işaret inceleme bekliyor`
         : 'Bu dönemde tamamlanmış teşhis yok; "Şimdi teşhis et" ile başlatabilirsiniz.'),
-      findingsView(report), clustersView(report), staleView(report), coverageView(report), contradictionsView(report),
-      cardsView(report));
+      // Sadeleştirme (ADR-0058): three counts and the findings first; the lists behind "Ayrıntıları göster".
+      el('div', { class: 'grid kpis health-headline' },
+        figure(formatNumber((report.clusters ?? []).length), 'cevapsız soru kümesi'),
+        figure(formatNumber((report.staleDocuments ?? []).length), 'eski ama kullanılan belge'),
+        figure(formatNumber((report.contradictions ?? []).length), 'belgeler arası çelişki')),
+      findingsView(report),
+      disclosure(MORE_LABEL, [clustersView(report), staleView(report), coverageView(report), contradictionsView(report),
+        cardsView(report)], 'health-more'));
     refreshNotifications();
     refreshRuns();
   }

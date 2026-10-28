@@ -12,7 +12,7 @@ import { approvalConfirmed, AUTH_METHODS, codeText, CONNECTOR_PAGE_SIZE, connect
   runSummary, SCHEDULE_MAX, SCHEDULE_MIN, scheduleText, trackedCount } from '../connectors.js';
 import { icon } from '../icons.js';
 import { el, fill, formatDate, formatSize, plainName } from '../render.js';
-import { emptyState, formatNumber, relativeTime, skeletonRows, toast } from '../ui.js';
+import { disclosure, emptyState, formatNumber, helpLine, MORE_LABEL, relativeTime, skeletonRows, toast } from '../ui.js';
 
 /** Fields that hold host names, paths and file names: no autofill history, no spell check, no capitalisation. */
 const PLAIN = { autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off' };
@@ -32,15 +32,18 @@ export function renderConnectors(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Bağlayıcılar'),
-        el('p', {}, 'Kurumun dosya sunucusundaki (SMB) bir klasörü, Confluence alanlarını ya da SharePoint Online / OneDrive kitaplıklarını bir bilgi alanıyla eşitleyin: yeni ve değişen '
-          + 'dosyalar ve sayfalar kendiliğinden alınır, kaynakta silinen buradan da bütün türevleriyle silinir. Her değişiklik denetim kaydına yazılır.')),
+        helpLine('Dosya sunucusu, Confluence ya da SharePoint kaynaklarını bir bilgi alanıyla eşitleyin.',
+          'Kurumun dosya sunucusundaki (SMB) bir klasörü, Confluence alanlarını ya da SharePoint Online / OneDrive kitaplıklarını bir bilgi '
+          + 'alanıyla eşitleyin: yeni ve değişen dosyalar ve sayfalar kendiliğinden alınır, kaynakta silinen buradan da bütün türevleriyle '
+          + 'silinir. Her değişiklik denetim kaydına yazılır.')),
       el('div', { class: 'page-actions' }, newButton)),
     blocked,
     el('section', { class: 'card', 'aria-labelledby': 'connectors-list' },
       el('div', { class: 'card-head' }, el('h2', { id: 'connectors-list' }, 'Bağlayıcı listesi')), list),
     formSlot,
     detail,
-    helpCard());
+    // Sadeleştirme (ADR-0058): the installer's notes open on demand.
+    disclosure('Kurulum (kurulum ekibi için)', helpCard()));
 
   /** An API call: 403 shows the admin-only state, 401 starts the sign-in, a connector code lands under its field. */
   async function call(action, fields = null, type = 'SMB') {
@@ -104,7 +107,8 @@ export function renderConnectors(ctx) {
   function drawList() {
     if (!state.connectors.length) {
       fill(list, el('div', { class: 'card-body' }, emptyState('plug', 'Henüz bağlayıcı yok',
-        'Önce "Bilgi alanları"nda hedef alanı oluşturup erişimleri verin, sonra "Yeni bağlayıcı" ile paylaşım klasörünü bağlayın.')));
+        'Önce "Erişim ve roller"de hedef alanı oluşturup erişimleri verin, sonra paylaşım klasörünü bağlayın.',
+        el('button', { class: 'button', type: 'button', onclick: () => drawForm(null) }, icon('plus'), 'Bağlayıcı ekleyin'))));
       return;
     }
     const paging = pageState(state.pageInfo);
@@ -363,26 +367,28 @@ export function renderConnectors(ctx) {
           connector.lastErrorCode ? el('div', { class: `notice ${connector.health === 'FAILING' ? 'bad' : 'wait'}` }, icon('alert', 'sm'),
             el('div', {}, el('strong', {}, 'Son hata'), el('div', {}, codeText(connector.lastErrorCode)))) : null,
           pending ? approvalCard(connector, pending) : null,
+          // Sadeleştirme (ADR-0058): four key facts first; the source settings and counts open on demand.
           el('dl', { class: 'facts' },
             fact('Tür', TYPES[connector.type] ?? TYPES.SMB),
+            fact('Hedef bilgi alanı', collectionName(connector.collectionId)),
+            fact('Son başarılı eşitleme', connector.lastSuccessAt ? formatDate(connector.lastSuccessAt) : 'Hiç'),
+            fact('Son koşu', latest === undefined ? 'Yükleniyor…' : runSummary(latest))),
+          disclosure(MORE_LABEL, el('dl', { class: 'facts' },
             ...(connector.type === 'CONFLUENCE' ? confluenceFacts(connector) : connector.type === 'SHAREPOINT' ? sharePointFacts(connector) : [
               fact('Sunucu', `${connector.host}${connector.port && connector.port !== 445 ? `:${connector.port}` : ''}`),
               fact('Paylaşım ve klasör', `${connector.share}${connector.pathPrefix ? ` / ${connector.pathPrefix}` : ' (bütün paylaşım)'}`),
               fact('Servis hesabı', `${connector.domain ? `${connector.domain}\\` : ''}${connector.username}`),
               fact('Parola dosyası', el('span', { class: 'code' }, String(connector.credentialRef ?? '')))]),
-            fact('Hedef bilgi alanı', collectionName(connector.collectionId)),
             fact('Aralık', `${scheduleText(connector.scheduleMinutes)}${connector.enabled === false ? ' (kapalı)' : ''}`),
-            fact('Son başarılı eşitleme', connector.lastSuccessAt ? formatDate(connector.lastSuccessAt) : 'Hiç'),
             fact('Sonraki eşitleme', connector.nextRunAt ? formatDate(connector.nextRunAt) : '–'),
-            fact('İzlenen dosya', formatNumber(trackedCount(connector))),
-            fact('Son koşu', latest === undefined ? 'Yükleniyor…' : runSummary(latest))),
+            fact('İzlenen dosya', formatNumber(trackedCount(connector))))),
           el('div', { class: 'page-actions' }, syncButton,
             el('button', { class: 'button secondary', type: 'button', disabled: deleting, onclick: () => drawForm(connector) }, icon('edit'), 'Düzenle'),
             el('button', { class: 'button secondary', type: 'button', onclick: () => loadRuns(connector, runsSlot, 0) }, icon('history'), 'Koşuları göster'),
             el('button', { class: 'button secondary', type: 'button', onclick: () => loadItems(connector, itemsSlot, '', 0) }, icon('files'), 'Dosyaları göster'),
             el('button', { class: 'button secondary', type: 'button', onclick: () => fill(detail) }, 'Kapat')),
           runsSlot, itemsSlot)),
-      deleting ? null : deleteCard(connector));
+      deleting ? null : disclosure('Bağlayıcıyı sil', deleteCard(connector), 'danger-zone'));
   }
 
   function fact(label, value) {

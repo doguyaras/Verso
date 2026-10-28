@@ -12,7 +12,11 @@ import { dailySeries, dayLabel, DEFAULT_PRESET, documentLabel, formatCount, form
   rangeLabel, reasonRows } from '../metrics.js';
 import { usageSummary } from '../providers.js';
 import { el, fill, formatDate } from '../render.js';
-import { emptyState, relativeTime } from '../ui.js';
+import { disclosure, emptyState, helpLine, MORE_LABEL, relativeTime } from '../ui.js';
+
+/** The key figures the first view shows (Sadeleştirme); the rest open under "Ayrıntıları göster". */
+export const HEADLINE_KPIS = 4;
+const VALUE_MORE = 'Sayılar günlük sayaçlardan gelir; kişi ve cevap metni içermez. Eğilimler, 👎 nedenleri, maliyet ve belgeler "Ayrıntıları göster" altında.';
 
 let preset = DEFAULT_PRESET; // kept while the tab lives, like the documents filter
 
@@ -128,9 +132,9 @@ export async function renderInsights(ctx) {
   const status = el('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
   // ADR-0058: the former "Değer panosu" is the "Değer ve kullanım" tab of "Komuta panosu" (ctx.embedded): no own head.
   fill(main,
-    ctx.embedded ? el('p', { class: 'muted' }, `${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi. Sayılar günlük sayaçlardan gelir; kişi ve cevap metni içermez.`)
+    ctx.embedded ? helpLine(`${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi.`, VALUE_MORE)
       : el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Değer panosu'),
-        el('p', {}, `${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi. Sayılar günlük sayaçlardan gelir; kişi ve cevap metni içermez.`))),
+        helpLine(`${CONFIG.deployment.productName} kurulumunun kullanımı ve cevap kalitesi.`, VALUE_MORE))),
     filters, status, content);
   fill(content, el('div', { class: 'grid kpis' }, Array.from({ length: 7 }, () => el('div', { class: 'skeleton block' }))));
 
@@ -167,21 +171,25 @@ export async function renderInsights(ctx) {
     status.textContent = `${rangeLabel(range)} aralığı yüklendi.`;
     if (isEmpty(data)) {
       fill(content,
-        el('section', { class: 'card' }, emptyState('chart', 'Bu aralıkta soru yok',
-          'Kullanıcılar soru sordukça sayılar burada görünür. Yeni bir kurulumda ilk sorular sorulduğunda pano dolar.')),
+        el('section', { class: 'card' }, emptyState('chart', 'Bu aralıkta soru yok', 'Kullanıcılar soru sordukça sayılar burada görünür.',
+          ctx.navigate ? el('button', { class: 'button', type: 'button', onclick: () => ctx.navigate('ask', { focus: true }) }, 'Bir soru sorun') : null)),
         (data.neverCitedDocuments?.total ?? 0) > 0 ? neverCited(data) : null);
       return;
     }
     // The gateway's usage is optional here: a failure (or an older server) leaves the card out, never the board.
     const usage = await withAuth(() => api.modelUsage()).catch(() => null);
     if (!ctx.isCurrent() || mine !== request) return;
+    // Sadeleştirme (ADR-0058): four key figures first; the other figures, trends, reasons, cost and documents on demand.
+    const all = kpis(data.totals);
     fill(content,
-      el('div', { class: 'grid kpis' }, kpis(data.totals).map(tile)),
-      trends(data),
-      modesAndReasons(data.totals),
-      modelUsage(usage),
-      documents(data),
-      unanswered(data.unansweredQuestions));
+      el('div', { class: 'grid kpis' }, all.slice(0, HEADLINE_KPIS).map(tile)),
+      disclosure(MORE_LABEL, [
+        all.length > HEADLINE_KPIS ? el('div', { class: 'grid kpis' }, all.slice(HEADLINE_KPIS).map(tile)) : null,
+        trends(data),
+        modesAndReasons(data.totals),
+        modelUsage(usage),
+        documents(data),
+        unanswered(data.unansweredQuestions)], 'insights-more'));
   }
   await load();
 }

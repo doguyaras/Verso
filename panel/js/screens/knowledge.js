@@ -8,7 +8,7 @@ import { icon } from '../icons.js';
 import { canArchive, canVerify, eventText, runModel, staleText, STATE_FILTERS, STATES, stateLabel, stateTone,
   verifierText } from '../knowledge.js';
 import { el, fill, formatDate, plainName } from '../render.js';
-import { confirmDialog, emptyState, formatNumber, toast } from '../ui.js';
+import { confirmDialog, emptyState, formatNumber, helpLine, toast } from '../ui.js';
 
 /** ADR-0028: an admin without a grant on every source sees the card's state, not its text (the server sends none). */
 export const HIDDEN = 'Kaynaklarından en az birini okuma yetkiniz yok; metin gösterilmiyor.';
@@ -34,7 +34,7 @@ export function renderKnowledge(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Onaylı bilgiler'),
-        el('p', {}, 'Uzmanlarınızın onayladığı cevaplar şirketinizin öğrenen bilgi katmanıdır. Aynı soru yeniden sorulduğunda, '
+        helpLine('Uzmanlarınızın onayladığı cevaplar; aynı soru yeniden gelince önce bunlar gösterilir.', 'Uzmanlarınızın onayladığı cevaplar şirketinizin öğrenen bilgi katmanıdır. Aynı soru yeniden sorulduğunda, '
           + 'kaynak belgelerin hepsini okuyabilen kişiye model yerine onaylı cevap "uzman onaylı" işaretiyle gösterilir. '
           + 'Kaynak değişince, onay süresi dolunca ya da birkaç kullanıcı yanlış bulunca kart kendiliğinden kullanımdan çıkar; '
           + 'yeniden onaylamak ve arşivlemek her zaman bir insanın kararıdır.')),

@@ -1,7 +1,11 @@
-// "Ana sayfa" (ADR-0058, concept A "Çalışma alanı"): the composer, quick starts, skill cards or knowledge actions,
-// "Ekibinizin son çıktıları", "Bilgide yeni" and, for admins, "Bu hafta şirketinizde". Pure view models over the APIs
-// the caller may read; the server filters every list by the caller's grants (ADR-0028).
-import { budgetState, money } from './dashboard.js';
+// "Ana sayfa" (ADR-0058, "Sadeleştirme": az göster, isteyince aç): a big composer, three suggestions, at most four
+// skill cards, "Bilgide yeni" (three), for admins ONE attention line and, until setup is done, a slim progress line; a
+// short welcome on the first run. "Ekibinizin son çıktıları" opens on demand. Pure view models over the APIs the caller
+// may read; the server filters every list by the caller's grants (ADR-0028).
+import { budgetState } from './dashboard.js';
+
+/** How much the home shows at most: the first view stays calm whatever the data. */
+export const HOME_LIMITS = Object.freeze({ chips: 3, skills: 4, news: 3 });
 
 /** The first name to greet with: the token's given name, else the user name before any "@" or ".". */
 export function firstName(identity) {
@@ -38,35 +42,21 @@ export function composerIntent(text) {
  * counted from the caller's own run history (GET /v1/skill-runs), then the library's order; at most `limit`. Each card
  * opens the skill's guided form. Nothing here is about another person: the run list is the caller's own.
  */
-export function skillCards(skills, runs, limit = 4) {
+export function skillCards(skills, runs, limit = HOME_LIMITS.skills) {
   const list = (Array.isArray(skills) ? skills : []).filter((s) => typeof s?.id === 'string' && typeof s?.name === 'string');
   const used = new Map();
   for (const run of Array.isArray(runs) ? runs : []) {
     if (typeof run?.skillId === 'string') used.set(run.skillId, (used.get(run.skillId) ?? 0) + 1);
   }
   return list.map((s, index) => ({ s, index, uses: used.get(s.id) ?? 0 }))
-    .sort((a, b) => b.uses - a.uses || a.index - b.index).slice(0, limit)
+    .sort((a, b) => b.uses - a.uses || a.index - b.index).slice(0, Math.min(limit, HOME_LIMITS.skills))
     .map(({ s, uses }) => ({ id: s.id, name: s.name, description: typeof s.description === 'string' ? s.description : '',
       slash: typeof s.slash === 'string' ? s.slash : null, uses }));
 }
 
-/** The quick-start chips: the installation's suggested questions (config.js), at most six. */
+/** The suggestion chips: the installation's suggested questions (config.js), at most three. */
 export function quickStarts(suggestions) {
-  return (Array.isArray(suggestions) ? suggestions : []).filter((s) => typeof s === 'string' && s.trim()).slice(0, 6);
-}
-
-/**
- * The cards under the composer when there is no skill gallery yet: what this user can do with the knowledge layer,
- * only the ones the user may open.
- */
-export function knowledgeActions(canOpen) {
-  return [
-    { id: 'documents', title: 'Belge ekleyin', text: 'PDF, Word ya da metin; yalnız bu sunucuda işlenir.', icon: 'upload',
-      params: { upload: true } },
-    { id: 'ask', title: 'Kaynaklı soru sorun', text: 'Her cevap belgedeki yerine bağlanır.', icon: 'chat', params: { focus: true } },
-    { id: 'knowledge', title: 'Onaylı bilgiler', text: 'Uzmanların doğruladığı cevaplar önce gelir.', icon: 'checkCircle' },
-    { id: 'skills', title: 'Prosedürler', text: 'Sık sorulan işleri adım adım prosedüre çevirin.', icon: 'flag' },
-  ].filter((a) => canOpen(a.id)).slice(0, 4);
+  return (Array.isArray(suggestions) ? suggestions : []).filter((s) => typeof s === 'string' && s.trim()).slice(0, HOME_LIMITS.chips);
 }
 
 const day = (iso) => {
@@ -90,50 +80,50 @@ export function outputsModel(feed, limit = 5, runs = []) {
 }
 
 /** "Bilgide yeni": the caller's newest documents (the list is already filtered by the caller's grants). */
-export function newKnowledge(documents, limit = 4) {
+export function newKnowledge(documents, limit = HOME_LIMITS.news) {
   return (Array.isArray(documents) ? documents : []).filter((d) => d && day(d.createdAt))
-    .sort((a, b) => day(b.createdAt) - day(a.createdAt)).slice(0, limit)
+    .sort((a, b) => day(b.createdAt) - day(a.createdAt)).slice(0, Math.min(limit, HOME_LIMITS.news))
     .map((d) => ({ id: d.id, fileName: d.fileName, format: d.format, collection: d.collectionName ?? null, at: d.createdAt,
       status: d.status }));
 }
 
 /**
- * "Bu hafta şirketinizde", for admins: at most five figures, each with the action that resolves it (concept A's risk:
- * the strip must not become a dashboard). A figure whose source failed is left out rather than shown as 0.
+ * The admin's one line (replaces the former five-figure strip; the figures live in "Komuta panosu"): "Her şey yolunda"
+ * or "N konu dikkat istiyor →". Sources: the activity summary's attention count, the knowledge-health findings and the
+ * model budget. The link goes to the one source that has something, else to "Etkinlik merkezi". Null when every source
+ * failed: nothing is claimed that was not read.
  */
-export function weekFigures({ report, summary, metrics, usage } = {}) {
-  const figures = [];
-  if (Array.isArray(report?.clusters)) {
-    figures.push({ value: report.clusters.length, label: 'cevapsız soru kümesi', action: 'Bilgi sağlığı', screen: 'health' });
+export function attentionLine({ summary, report, usage } = {}) {
+  const parts = [];
+  if (Number.isInteger(summary?.attention)) parts.push({ n: Math.max(0, summary.attention), screen: 'activity' });
+  if (report && Array.isArray(report.clusters)) {
+    const n = [report.clusters, report.staleDocuments, report.contradictions].reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
+    parts.push({ n, screen: 'health' });
   }
-  if (Array.isArray(report?.staleDocuments)) {
-    figures.push({ value: report.staleDocuments.length, label: 'eski ama alıntılanan belge', action: 'Sahiplere sor', screen: 'health' });
-  }
-  if (Array.isArray(report?.contradictions)) {
-    figures.push({ value: report.contradictions.length, label: 'belgeler arası çelişki', action: 'Karara bağla', screen: 'health' });
-  }
-  if (Number.isInteger(summary?.pendingApprovals)) {
-    figures.push({ value: summary.pendingApprovals, label: 'onay bekliyor', action: 'Onay kutusu', screen: 'activity' });
-  }
-  const questions = metrics?.totals?.questions;
-  if (Number.isFinite(questions)) {
-    const answered = metrics.totals.outcomeRates?.answered;
-    figures.push({ value: questions, label: Number.isFinite(answered) ? `soru, %${Math.round(answered * 100)}'i kaynaklı` : 'soru',
-      action: 'Komuta panosu', screen: 'dashboard' });
-  }
-  // ADR-0056: the model gateway's budget of the month takes the usage figure's place when one is set.
   const budget = budgetState(usage);
-  if (budget) {
-    const figure = { value: `${money(budget.spent)} / ${money(budget.limit)}`, tone: budget.state,
-      label: budget.state === 'HARD' ? 'bütçe doldu, model çağrıları durdu' : budget.state === 'SOFT' ? 'bütçe uyarı sınırında' : 'model bütçesi, bu ay',
-      action: 'Sağlayıcılar', screen: 'providers' };
-    if (figures.length && figures.at(-1).screen === 'dashboard') figures[figures.length - 1] = figure;
-    else figures.push(figure);
-  }
-  return figures.slice(0, 5);
+  if (budget) parts.push({ n: budget.state === 'HARD' || budget.state === 'SOFT' ? 1 : 0, screen: 'providers' });
+  if (!parts.length) return null;
+  const total = parts.reduce((sum, p) => sum + p.n, 0);
+  if (total === 0) return { state: 'ok', count: 0, text: 'Her şey yolunda', screen: 'activity' };
+  const busy = parts.filter((p) => p.n > 0);
+  return { state: 'attention', count: total, text: `${total} konu dikkat istiyor`, screen: busy.length === 1 ? busy[0].screen : 'activity' };
 }
 
-/** The setup progress of the menu chip and the admin checklist: done steps of setup.js's list. */
+/**
+ * The first-run welcome: when the user has never asked a question, can read no document and has not closed it in this
+ * browser session (store.js prefs, sessionStorage). Three steps; "Belge ekleyin" for admins only, "Bir beceri deneyin"
+ * only when the skills screen is deployed. Unknown inputs (a failed read: null) never show it.
+ */
+export function firstRun({ documents, conversations, asked = false, dismissed = false, admin = false, skills = null } = {}) {
+  if (dismissed || asked || !Array.isArray(documents) || !Array.isArray(conversations)) return null;
+  if (documents.length > 0 || conversations.length > 0) return null;
+  const steps = [{ id: 'ask', title: 'Bir soru sorun', text: 'Cevap kaynağıyla birlikte gelir.', screen: 'ask', params: { focus: true } }];
+  if (skills) steps.push({ id: 'skill', title: 'Bir beceri deneyin', text: 'Hazır formlarla özet, rapor, kontrol listesi.', screen: skills, params: null });
+  if (admin) steps.push({ id: 'upload', title: 'Belge ekleyin', text: 'PDF, Word ya da metin; yalnız bu sunucuda işlenir.', screen: 'documents', params: { upload: true } });
+  return { title: 'Hoş geldiniz', text: 'Üç adımda başlayın; gerisini ihtiyaç oldukça açarsınız.', steps };
+}
+
+/** The setup progress of the home's slim line and the hub's hint: done steps of setup.js's list. */
 export function setupProgress(steps) {
   const list = Array.isArray(steps) ? steps : [];
   const done = list.filter((s) => s?.done === true).length;

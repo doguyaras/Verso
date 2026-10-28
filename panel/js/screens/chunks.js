@@ -8,7 +8,7 @@ import { CHUNK_PAGE_SIZE, chunkHeading, chunkLabel, chunkPreview, filterChunks, 
 import { closePageDrawer, openPageDrawer } from '../drawer.js';
 import { icon } from '../icons.js';
 import { el, fill, plainName } from '../render.js';
-import { emptyState, formatNumber, toast } from '../ui.js';
+import { emptyState, formatNumber, helpLine, toast } from '../ui.js';
 
 export function renderChunks(ctx) {
   const { main, guarded, withAuth } = ctx;
@@ -30,7 +30,7 @@ export function renderChunks(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Parçaları incele'),
-        el('p', {}, 'Bir belgenin soru-cevapta kullanılan parçalarını görün: her parçanın sayfası ya da bölümü, uzunluğu, başlığı '
+        helpLine('Bir belgenin soru-cevapta kullanılan parçaları.', 'Bir belgenin soru-cevapta kullanılan parçalarını görün: her parçanın sayfası ya da bölümü, uzunluğu, başlığı '
           + 've ilk satırları. Yalnız sizin okuyabildiğiniz belgeler listelenir; bir bilgi alanını yönetmek onu okumak değildir. '
           + 'Bir alanın belgelerini incelemek için o alanda kendinize erişim verin.'))),
     blocked,

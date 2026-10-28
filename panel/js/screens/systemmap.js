@@ -7,7 +7,7 @@
 import { api } from '../api.js';
 import { icon } from '../icons.js';
 import { el, fill, formatDate, plainName } from '../render.js';
-import { emptyState, formatNumber, toast } from '../ui.js';
+import { emptyState, formatNumber, helpLine, toast } from '../ui.js';
 import { entityCounts, entityTitle, relationGroups, showSuggestions, sourceLabel, statsSummary, suggestionText, TABS,
   typeIcon, typeLabel, typePlural } from '../systemmap.js';
 
@@ -38,7 +38,7 @@ export function renderSystemMap(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Sistem haritası'),
-        el('p', {}, 'Belgelerinizden kurallarla çıkarılan sistemler, ekranlar, kodlar, süreçler ve terimler; aralarındaki '
+        helpLine('Belgelerinizde geçen sistemler, ekranlar, kodlar ve süreçler.', 'Belgelerinizden kurallarla çıkarılan sistemler, ekranlar, kodlar, süreçler ve terimler; aralarındaki '
           + 'ilişkiler ve her birinin hangi belgede geçtiği. Kişi adı tutulmaz, sorumlular yalnız unvan ya da birim olarak '
           + 'görünür. Her kayıt yalnız okuma yetkiniz olan belgeler üzerinden gösterilir.')),
       el('div', { class: 'page-actions' },

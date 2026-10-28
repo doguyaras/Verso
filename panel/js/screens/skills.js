@@ -12,7 +12,7 @@ import { approvalProblems, approvalText, canApprove, canArchive, canEdit, canExp
   LIMITS, sourceLabel, sourcePages, staleText, STATE_FILTERS, STATES, stateLabel, stateTone, suggestionText,
   versionBody } from '../skills.js';
 import { el, fill, formatDate, plainName } from '../render.js';
-import { confirmDialog, emptyState, toast } from '../ui.js';
+import { confirmDialog, emptyState, helpLine, toast } from '../ui.js';
 import { saveFile } from './health.js';
 
 /** ADR-0028: an admin without a grant on every source sees the skill's state, not its text (the server sends none). */
@@ -34,7 +34,7 @@ export function renderSkills(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Prosedürler'),
-        el('p', {}, 'Sık sorulan "nasıl yaparım" sorularını uzmanlarınızın onayladığı adım adım prosedürlere çevirin. Taslak, '
+        helpLine('Sık sorulan işleri onaylı, adım adım prosedürlere çevirin.', 'Sık sorulan "nasıl yaparım" sorularını uzmanlarınızın onayladığı adım adım prosedürlere çevirin. Taslak, '
           + 'onaylı bilgi kartlarının cevaplarından ve alıntıladıkları sayfalardan şablonla kurulur; her adım kaynağına bağlıdır. '
           + 'Onaylanan prosedür, kaynaklarının hepsini okuyabilen kişiye cevabın üstünde "Bu bir prosedür" olarak görünür, '
           + 'Claude ya da Copilot gibi asistanlara MCP üzerinden kişinin kendi yetkisiyle sunulur ve SKILL.md olarak indirilebilir. '

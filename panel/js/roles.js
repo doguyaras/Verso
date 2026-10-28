@@ -14,8 +14,8 @@ export const ROLES = Object.freeze({
 /** The roles read from the token; verso-admin is not among them (it comes from /v1/info, withServerRoles). */
 const TOKEN_ROLES = Object.freeze([ROLES.USER, ROLES.OPERATOR]);
 
-// The screens (ADR-0058). Where each sits in the menu is nav.js's job; "group" names the menu group a screen belongs
-// to ("work", "knowledge", "insight", "admin"), "key" is the second key of the "g" shortcut ("g g" opens the history
+// The screens (ADR-0058). Where each sits (menu, "Bilgi" tabs or the "Yönetim" hub) is nav.js's job; "group" names
+// where a screen of another branch lands ("work": the menu, "knowledge": Bilgi's tabs, "insight"/"admin": the hub), "key" is the second key of the "g" shortcut ("g g" opens the history
 // drawer). A screen of another branch adds one entry here and one renderer in app.js; nav.js places it by its group.
 // The API enforces the real rules: "Onaylı bilgiler", "Prosedürler" and "Sistem haritası" sit in "Bilgi" but their
 // endpoints are verso-admin only (ADR-0049, ADR-0053, ADR-0054), so a user does not see them.
@@ -46,6 +46,8 @@ export const SCREENS = Object.freeze({
   providers: { title: 'Yapay zekâ sağlayıcıları', short: 'Sağlayıcı', icon: 'cpu', key: 'z', roles: [ROLES.ADMIN], group: 'admin' },
   system: { title: 'Sistem durumu', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR], group: 'admin' },
   setup: { title: 'Kurulum', short: 'Kurulum', icon: 'flag', key: 'k', roles: [ROLES.OPERATOR, ROLES.ADMIN], group: 'admin' },
+  // ADR-0058 Sadeleştirme: the "Yönetim" hub (nav.js HUB): one menu entry for admins and operators instead of their screens.
+  yonetim: { title: 'Yönetim', short: 'Yönetim', icon: 'settings', key: 't', roles: [ROLES.OPERATOR, ROLES.ADMIN], group: 'manage' },
   // Reached from "Kaynaklar ve alanlar", the palette and "g p"; no menu entry of its own.
   chunks: { title: 'Parçaları incele', short: 'Parçalar', icon: 'search', key: 'p', roles: [ROLES.ADMIN], group: 'admin' },
 });

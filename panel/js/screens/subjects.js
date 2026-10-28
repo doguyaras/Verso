@@ -8,7 +8,7 @@ import { api, ApiError } from '../api.js';
 import { icon } from '../icons.js';
 import { el, fill, formatDate, formatLabel, plainName } from '../render.js';
 import { deleteConfirmed, deletionModel, exportFileName, redactionConfirmed, RUNBOOK, subProblem, summaryModel } from '../subjects.js';
-import { emptyState, formatNumber, statusPill, toast } from '../ui.js';
+import { emptyState, formatNumber, helpLine, statusPill, toast } from '../ui.js';
 
 /** Fields that hold a sub or a document id: no autofill history, no spell check, no capitalisation. */
 const PLAIN_INPUT = { class: 'input', type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off' };
@@ -37,7 +37,7 @@ export function renderSubjects(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'KVKK ve veri'),
-        el('p', {}, 'Bir kişinin bu sistemde tutulan verisini hesap kimliğiyle bulun, JSON olarak dışa aktarın ya da silin (KVKK md. 11). '
+        helpLine('Bir kişinin verisini bulun, dışa aktarın ya da silin (KVKK md. 11).', 'Bir kişinin bu sistemde tutulan verisini hesap kimliğiyle bulun, JSON olarak dışa aktarın ya da silin (KVKK md. 11). '
           + 'Kişi yalnız hesap kimliğiyle bulunur; belge metninde ad araması yoktur. Her işlem denetim kaydına yazılır.'))),
     blocked,
     el('section', { class: 'card', 'aria-labelledby': 'subject-find' },

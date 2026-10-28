@@ -6,7 +6,7 @@ import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 import { el, fill } from '../render.js';
 import { COMPLIANCE_DOCS, reportFileName, reportJson, reportMarkdown, trustModel, VERIFY_STEPS } from '../trust.js';
-import { emptyState } from '../ui.js';
+import { disclosure, emptyState, helpLine, MORE_LABEL } from '../ui.js';
 
 /** Hands a text to the browser as a file (Blob + <a download>, no new CSP directive); the seams are injectable for tests. */
 export function saveReport(text, name, type, { doc = document, urls = URL, wait = setTimeout } = {}) {
@@ -24,20 +24,23 @@ function card(id, title, ...body) {
     el('div', { class: 'card-body' }, ...body));
 }
 
+const TRUST_MORE = 'Bu ekran uygulamanın kendi bildirdiğidir; dışarı açık bağlantılar, denetim kaydı, bağımsız doğrulama betikleri ve uyum paketi "Ayrıntıları göster" altında.';
+
 const list = (items) => el('ul', { class: 'plain-list' }, items.map((text) => el('li', {}, text)));
 
 export async function renderTrust(ctx) {
   const { main, guarded } = ctx;
   const productName = CONFIG.deployment.productName;
   fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven ve denetim'),
-    el('p', {}, `${productName} kurulumunuzda verinin nereye gidebildiğini ve bunu nasıl kendiniz doğrulayabileceğinizi gösterir.`))),
+    helpLine('Verinizin nereye gidebildiği ve bunu nasıl doğrulayacağınız.', TRUST_MORE))),
   el('div', { class: 'skeleton block' }));
   const trust = await guarded(() => api.trust());
   if (!ctx.isCurrent()) return;
   const model = trustModel(trust, productName);
   if (!model) {
     fill(main, el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven ve denetim'))),
-      emptyState('alert', 'Güven bilgisi alınamadı', 'Sayfayı yenileyin; sürerse sistem yöneticinize başvurun.'));
+      emptyState('alert', 'Güven bilgisi alınamadı', 'Sürerse sistem yöneticinize başvurun.',
+        el('button', { class: 'button', type: 'button', onclick: () => renderTrust(ctx) }, icon('refresh', 'sm'), 'Yeniden dene')));
     return;
   }
   const download = (extension) => {
@@ -48,16 +51,17 @@ export async function renderTrust(ctx) {
 
   fill(main,
     el('div', { class: 'page-head' }, el('div', {}, el('h1', {}, 'Güven ve denetim'),
-      el('p', {}, `${productName} kurulumunuzda verinin nereye gidebildiğini ve bunu nasıl kendiniz doğrulayabileceğinizi gösterir.`)),
+      helpLine('Verinizin nereye gidebildiği ve bunu nasıl doğrulayacağınız.', TRUST_MORE)),
     el('div', { class: 'page-actions' },
-      el('button', { class: 'button lg', type: 'button', onclick: () => download('md') }, icon('download'), 'Güven raporu indir'),
-      el('button', { class: 'button secondary lg', type: 'button', onclick: () => download('json') }, icon('download'), 'JSON olarak indir'))),
+      el('button', { class: 'button lg', type: 'button', onclick: () => download('md') }, icon('download'), 'Güven raporu indir'))),
     el('section', { class: `card mode-hero ${model.local ? 'local' : 'cloud'}`, 'aria-labelledby': 'trust-mode' },
       el('span', { class: 'big-icon' }, icon(model.local ? 'shield' : 'cloud', 'lg')),
       el('div', {}, el('h2', { id: 'trust-mode' }, model.hero.title),
         el('p', {}, model.hero.text),
         list(model.hero.models),
         model.modeChanges.length ? el('div', {}, el('h3', {}, model.modeChangesTitle), list(model.modeChanges)) : null)),
+    // Sadeleştirme (ADR-0058): the mode and the report first; connections, audit, verification and compliance on demand.
+    disclosure(MORE_LABEL, [
     el('div', { class: 'grid halves' },
       card('trust-paths', 'Dışarı açık bağlantılar',
         el('p', {}, model.pathsText),
@@ -75,5 +79,7 @@ export async function renderTrust(ctx) {
         el('h3', {}, step.script), el('pre', { class: 'code-block' }, el('code', {}, step.command)), el('p', {}, step.meaning)))),
     card('trust-compliance', 'Uyum paketi',
       el('p', {}, 'Depodaki docs/uyum klasöründe, kurumunuzun doldurup imzalayacağı belgeler bulunur:'),
-      list(COMPLIANCE_DOCS.map((d) => `${d.title} (${d.file})`))));
+      list(COMPLIANCE_DOCS.map((d) => `${d.title} (${d.file})`))),
+    el('button', { class: 'button ghost', type: 'button', onclick: () => download('json') }, icon('download'), 'Raporu JSON olarak indir')],
+    'trust-more'));
 }

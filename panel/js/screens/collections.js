@@ -6,7 +6,7 @@
 import { api } from '../api.js';
 import { icon } from '../icons.js';
 import { el, fill, formatDate, plainName } from '../render.js';
-import { confirmDialog, emptyState, formatNumber, toast } from '../ui.js';
+import { confirmDialog, emptyState, formatNumber, helpLine, toast } from '../ui.js';
 
 /** The grant a form describes, or null when it cannot be one (the server checks the same: 1-256 characters). */
 export function grantInput(type, value) {
@@ -54,7 +54,7 @@ export function renderCollections(ctx) {
   main.replaceChildren(
     el('div', { class: 'page-head' },
       el('div', {}, el('h1', {}, 'Erişim ve roller'),
-        el('p', {}, 'Paylaşılan belgeler bir bilgi alanında durur. Bir alanı okuyabilenler, alana eklediğiniz gruplar ve kullanıcılardır; '
+        helpLine('Bilgi alanları ve onları kimlerin okuyabileceği.', 'Paylaşılan belgeler bir bilgi alanında durur. Bir alanı okuyabilenler, alana eklediğiniz gruplar ve kullanıcılardır; '
           + 'izin her soruda kimlik sağlayıcının verdiği gruplarla denetlenir. Grup değişiklikleri kullanıcının bir sonraki oturum '
           + 'anahtarında (en çok 5 dakika) geçerli olur. Yönetici alanları yönetir; içeriği sormak için kendisinin de yetkili olması gerekir.')),
       el('div', { class: 'page-actions' },

@@ -8,7 +8,9 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor, withServerRoles } from '../panel/js/roles.js';
-import { MORE, moreModel, NAV, navModel, REDIRECTS, resolveRoute, shortcutTarget, slotId, TABS, tabModel } from '../panel/js/nav.js';
+import { HUB_ID, hubModel, hubScreens, inHub, NAV, navModel, reachableScreens, REDIRECTS, resolveRoute, sectionTabs, shortcutTarget, slotId,
+  TAB_LIMIT, tabModel } from '../panel/js/nav.js';
+import { MORE_LABEL } from '../panel/js/ui.js';
 import { askBody, continueWith, DELETE_ALL_WORD, deleteAllConfirmed, DELETED_DOCUMENT, filterConversations, hasMore, historyCitation,
   restoreEntries, startOverNote, startsOver, TITLE_MAX, titleProblem, turnCountLabel } from '../panel/js/conversations.js';
 import { initialFeedback, rate, reasonLabel, REASONS, reasonsFor, thanks } from '../panel/js/feedback.js';
@@ -49,8 +51,8 @@ test('roles: a user without Verso roles is a verso-user and sees Ana sayfa, Çal
 
 test('roles: an operator also sees the system screen and the setup status; unknown screens are closed', () => {
   const roles = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(roles), ['home', 'ask', 'beceriler', 'documents', 'system', 'setup']);
-  assert.ok(screensFor(roles).length <= 6, 'at most five screens (ADR-0015) plus Beceriler (ADR-0057)');
+  assert.deepEqual(screensFor(roles), ['home', 'ask', 'beceriler', 'documents', 'system', 'setup', 'yonetim']);
+  assert.ok(navModel(roles, new Set(Object.keys(SCREENS))).flatMap((g) => g.entries).length <= 6, 'five entries plus Yönetim (Sadeleştirme)');
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
 });
@@ -1029,9 +1031,9 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
   assert.deepEqual(screensFor(admin), ['home', 'ask', 'beceriler', 'documents', 'knowledge', 'skills', 'systemmap', 'activity', 'dashboard', 'health',
-    'connectors', 'collections', 'subjects', 'trust', 'providers', 'setup', 'chunks']);
+    'connectors', 'collections', 'subjects', 'trust', 'providers', 'setup', 'yonetim', 'chunks']);
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
-  assert.ok(tabModel(both, new Set(Object.keys(SCREENS))).length <= 3, 'three tabs and "Daha" on phones');
+  assert.ok(tabModel(both, new Set(Object.keys(SCREENS))).length <= 4, 'four tabs on phones (Sadeleştirme)');
   for (const info of [null, undefined, {}, { roles: 'verso-admin' }, { roles: [{ name: 'verso-admin' }] }, { roles: ['VERSO-ADMIN'] }]) {
     assert.equal(canOpen('dashboard', withServerRoles(user, info)), false, JSON.stringify(info));
   }
@@ -1348,7 +1350,7 @@ test('privacy: history and dashboard text stays in memory; nothing personal goes
     'sessionStorage keys are preferences only');
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /class: 'nav-action', type: 'button', 'aria-haspopup': 'dialog'/, '"Geçmiş" in the menu');
-  assert.match(app, /\{ label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory \}/, 'phones reach the history from the account menu');
+  assert.match(app, /\{ label: 'Geçmiş', glyph: 'history', onSelect: showHistory \}/, 'phones reach the history from the account menu');
   assert.match(readFileSync('panel/js/screens/ask.js', 'utf8'), /onclick: \(\) => openHistory\(ctx\) \}, icon\('history', 'sm'\), 'Geçmiş'\)/);
 });
 
@@ -1387,7 +1389,7 @@ test('disclosure: the notice flag is a preference in the existing onboarding key
   prefs.markOnboarding({ aiNoticeSeen: true });
   assert.equal(prefs.onboarding().aiNoticeSeen, true);
   assert.deepEqual([...store.keys()], ['verso.panel.onboarding'], 'no new sessionStorage key');
-  assert.deepEqual(JSON.parse(store.get('verso.panel.onboarding')), { asked: false, sawMode: false, dismissed: false, aiNoticeSeen: true },
+  assert.deepEqual(JSON.parse(store.get('verso.panel.onboarding')), { asked: false, sawMode: false, dismissed: false, aiNoticeSeen: true, welcomeDismissed: false },
     'booleans only: nothing the user wrote');
   assert.equal(prefs.onboarding().dismissed, false, 'dismissing the overview checklist is separate');
   store.clear();
@@ -1735,7 +1737,7 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const user = rolesOf({ realm_access: { roles: [] } });
   const operator = rolesOf({ realm_access: { roles: ['verso-operator'] } });
   assert.deepEqual(screensFor(user), ['home', 'ask', 'beceriler', 'documents']);
-  assert.deepEqual(screensFor(operator), ['home', 'ask', 'beceriler', 'documents', 'system', 'setup']);
+  assert.deepEqual(screensFor(operator), ['home', 'ask', 'beceriler', 'documents', 'system', 'setup', 'yonetim']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
     for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills', 'systemmap', 'activity', 'dashboard']) assert.equal(canOpen(id, roles), false, id);
@@ -1745,14 +1747,14 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   assert.equal(ADMIN_GROUP, 'Yönetim');
   const available = new Set(Object.keys(SCREENS));
   for (const id of adminScreens(admin)) {
-    assert.ok(!TABS.some((t) => t.id === id), `${id}: the tab bar keeps the user's tabs`);
+    assert.ok(!tabModel(admin, available).some((t) => t.id === id), `${id}: the tab bar keeps the user's tabs`);
     assert.deepEqual(SCREENS[id].roles, [ROLES.ADMIN], id);
   }
-  assert.deepEqual(navModel(user, available).map((g) => g.id), ['home', 'work', 'knowledge'], 'a user: no İçgörü, no Yönetim');
+  assert.deepEqual(navModel(user, available).map((g) => g.id), ['main'], 'a user: no Yönetim');
   const keys = Object.values(SCREENS).map((s) => s.key);
   assert.equal(new Set(keys).size, keys.length, 'every "g" shortcut key is unique');
   const app = readFileSync('panel/js/app.js', 'utf8');
-  assert.match(app, /\.\.\.\(group\.title \? \[el\('div', \{ class: 'nav-label nav-group'/, 'a heading only for a titled group; navModel drops empty groups');
+  assert.doesNotMatch(app, /nav-label nav-group/, 'no group headings (Sadeleştirme)');
 });
 
 test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the confirmations match byte for byte', async () => {
@@ -1954,7 +1956,7 @@ test('connectors: only verso-admin (from /v1/info) opens the screen; it sits in 
   assert.ok(adminScreens(admin).includes('connectors'));
   assert.deepEqual(SCREENS.connectors.roles, [ROLES.ADMIN]);
   assert.equal(SCREENS.connectors.group, 'admin');
-  assert.ok(!TABS.some((t) => t.id === 'connectors'));
+  assert.ok(!tabModel(admin, new Set(Object.keys(SCREENS))).some((t) => t.id === 'connectors'));
   assert.equal(SCREENS.connectors.title, 'Bağlayıcılar');
   assert.match(readFileSync('panel/js/app.js', 'utf8'), /connectors: renderConnectors/);
 });
@@ -2824,17 +2826,18 @@ test('beceriler: the screen is for every user, apart from "Prosedürler", with i
   assert.equal(SCREENS.beceriler.title, 'Beceriler');
   assert.equal(SCREENS.skills.title, 'Prosedürler', 'the procedures keep their name');
   assert.deepEqual(SCREENS.skills.roles, [ROLES.ADMIN]);
-  assert.ok(!TABS.some((t) => t.id === 'beceriler'), 'the tab bar keeps Ana sayfa, Asistan, Bilgi (and "Daha")');
+  assert.ok(tabModel(rolesOf({}), new Set(Object.keys(SCREENS))).some((t) => t.id === 'beceriler'), 'Sadeleştirme: a tab on phones');
   assert.equal(SCREENS.beceriler.group, 'work', 'ADR-0058: Çalış → Beceriler');
   const keys = Object.values(SCREENS).map((s) => s.key);
   assert.equal(new Set(keys).size, keys.length);
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /beceriler: renderBeceriler/);
-  // ADR-0058: phones reach it from "Daha" (nav.js moreModel); the account menu no longer lists screens.
+  // Sadeleştirme: a tab on phones; "Prosedürler" is a Bilgi tab under its own name.
   const admin = withServerRoles(rolesOf({}), { roles: ['verso-admin'] });
-  assert.ok(moreModel(rolesOf({}), new Set(Object.keys(SCREENS))).flatMap((g) => g.entries).some((e) => e.id === 'beceriler'));
-  const titles = navModel(admin, new Set(Object.keys(SCREENS))).flatMap((g) => g.entries).map((e) => e.title);
-  assert.ok(titles.includes('Beceriler') && titles.includes('Prosedürler'), 'both, under their own names');
+  assert.ok(tabModel(rolesOf({}), new Set(Object.keys(SCREENS))).some((t) => t.id === 'beceriler'));
+  const titles = sectionTabs('documents', admin, new Set(Object.keys(SCREENS))).map((t) => t.title);
+  assert.ok(navModel(admin, new Set(Object.keys(SCREENS)))[0].entries.some((e) => e.title === 'Beceriler') && titles.includes('Prosedürler'),
+    'both, under their own names');
 });
 
 test('beceriler: the gallery filters by category and searches name, description and /command in Turkish case', async () => {
@@ -3110,7 +3113,7 @@ test('beceriler screen: no markup, inline style, eval or browser storage; the ad
   }
   const screen = readFileSync('panel/js/screens/beceriler.js', 'utf8');
   assert.match(screen, /const admin = \(ctx\.roles \?\? \[\]\)\.includes\(ROLES\.ADMIN\);/);
-  assert.match(screen, /admin \? adminCard\(\) : null/, 'only verso-admin gets the admin part');
+  assert.match(screen, /admin \? disclosure\('Becerileri yönet', adminCard\(\)\) : null/, 'only verso-admin gets the admin part, on demand');
   assert.match(screen, /error\.status === 403/);
   assert.match(screen, /'Bu bölüm yöneticiler içindir\.'/);
   assert.match(screen, /Prosedürler ekranı ayrıdır/, 'the copy tells the two apart');
@@ -3124,149 +3127,195 @@ test('beceriler screen: no markup, inline style, eval or browser storage; the ad
 // ---------- the platform (ADR-0058): information architecture, home, activity centre, dashboard, insight cards ----------
 const ALL = new Set(Object.keys(SCREENS));
 
-test('platform IA: Ana sayfa alone, then Çalış · Bilgi for everyone, İçgörü · Yönetim for verso-admin only', () => {
-  const user = rolesOf({ realm_access: { roles: [] } });
-  const operator = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  const shape = (roles) => navModel(roles, ALL).map((g) => [g.id, g.title, g.entries.map((e) => e.id)]);
-  assert.deepEqual(shape(user), [['home', null, ['home']], ['work', 'Çalış', ['ask', 'beceriler', 'history']], ['knowledge', 'Bilgi', ['documents']]]);
-  assert.deepEqual(shape(operator).map((g) => g[0]), ['home', 'work', 'knowledge', 'admin']);
-  assert.deepEqual(shape(operator).at(-1)[2], ['system', 'setup'], 'the operator keeps its own screens, nothing of the admin');
-  assert.deepEqual(shape(admin), [
-    ['home', null, ['home']],
-    ['work', 'Çalış', ['ask', 'beceriler', 'history']],
-    ['knowledge', 'Bilgi', ['documents', 'knowledge', 'skills', 'systemmap']],
-    ['insight', 'İçgörü', ['activity', 'dashboard', 'health']],
-    ['admin', 'Yönetim', ['providers', 'connectors', 'collections', 'subjects', 'trust', 'setup']],
-  ]);
+const USER = rolesOf({ realm_access: { roles: [] } });
+const OPERATOR = rolesOf({ realm_access: { roles: ['verso-operator'] } });
+const ADMIN = withServerRoles(USER, { roles: ['verso-admin'] });
+const flatIds = (roles, available = ALL) => navModel(roles, available).flatMap((g) => g.entries.map((e) => e.id));
+
+test('Sadeleştirme IA: at most five menu entries for everyone, plus one "Yönetim" for admins and operators; no headings', () => {
+  const titles = (roles) => navModel(roles, ALL).map((g) => [g.id, g.entries.map((e) => e.title)]);
+  assert.deepEqual(titles(USER), [['main', ['Ana sayfa', 'Asistan', 'Beceriler', 'Bilgi', 'Geçmiş']]], 'a user: five entries, no Yönetim');
+  assert.deepEqual(titles(OPERATOR), [['main', ['Ana sayfa', 'Asistan', 'Beceriler', 'Bilgi', 'Geçmiş']], ['manage', ['Yönetim']]]);
+  assert.deepEqual(titles(ADMIN), [['main', ['Ana sayfa', 'Asistan', 'Beceriler', 'Bilgi', 'Geçmiş']], ['manage', ['Yönetim']]]);
+  for (const roles of [USER, OPERATOR, ADMIN]) {
+    const [main, manage] = navModel(roles, ALL);
+    assert.ok(main.entries.length <= 5, 'at most five main entries');
+    assert.ok(!manage || manage.entries.length === 1, 'one Yönetim entry at most');
+    assert.ok(navModel(roles, ALL).every((g) => !('title' in g)), 'no group headings');
+  }
+  const bilgi = (roles) => navModel(roles, ALL)[0].entries.find((e) => e.title === 'Bilgi');
+  assert.deepEqual([bilgi(USER).id, bilgi(USER).covers], ['documents', ['documents']], 'Bilgi opens Kaynaklar ve alanlar');
+  assert.deepEqual(bilgi(ADMIN).covers, ['documents', 'knowledge', 'skills', 'systemmap'], 'Bilgi covers its tabs for admins');
+  const manage = navModel(ADMIN, ALL)[1].entries[0];
+  assert.deepEqual([manage.id, manage.icon], [HUB_ID, 'settings'], 'a gear');
+  assert.ok(manage.covers.includes('activity') && manage.covers.includes('setup'), 'Yönetim is current on every hub screen');
+  assert.ok(!flatIds(ADMIN).includes('chunks'), '"Parçaları incele" has no menu entry');
   assert.equal(SCREENS.dashboard.title, 'Komuta panosu');
-  assert.equal(SCREENS.activity.title, 'Etkinlik merkezi');
-  assert.equal(navModel(admin, ALL)[1].entries[1].title, 'Beceriler');
-  assert.equal(navModel(admin, ALL)[1].entries[2].title, 'Geçmiş ve çıktılar');
-  assert.ok(!navModel(admin, ALL).flatMap((g) => g.entries).some((e) => e.id === 'chunks'), '"Parçaları incele" has no menu entry');
   const keys = Object.values(SCREENS).map((s) => s.key);
   assert.equal(new Set(keys).size, keys.length, 'every "g" shortcut key is unique');
-  assert.equal(shortcutTarget('i', admin, ALL), 'activity');
-  assert.equal(shortcutTarget('p', admin, ALL), 'chunks', 'a hidden screen keeps its shortcut');
-  assert.equal(shortcutTarget('i', user, ALL), null, 'a user has no shortcut into İçgörü');
   for (const id of Object.keys(SCREENS)) assert.ok(ICON_NAMES.includes(SCREENS[id].icon), `${id}: icon drawn`);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.doesNotMatch(app, /nav-label nav-group/, 'no group heading is drawn');
+  assert.match(app, /'data-covers': entry\.covers\.join\(' '\)/, 'the entry is current on every screen it covers');
 });
 
-test('platform IA: other branches slot in by feature detection (screen entry and renderer both present)', () => {
-  const admin = withServerRoles(rolesOf({ realm_access: { roles: [] } }), { roles: ['verso-admin'] });
-  const user = rolesOf({ realm_access: { roles: [] } });
-  // Without the gallery and the providers screen nothing changes.
+test('Sadeleştirme IA: Bilgi tabs and "← Yönetim" sit above the screen; the phone bar is Ana sayfa, Asistan, Beceriler, Bilgi', () => {
+  assert.equal(sectionTabs('documents', USER, ALL), null, 'one tab is no tab bar');
+  assert.deepEqual(sectionTabs('skills', ADMIN, ALL).map((t) => t.title), ['Kaynaklar ve alanlar', 'Onaylı bilgiler', 'Prosedürler', 'Sistem haritası']);
+  assert.equal(sectionTabs('activity', ADMIN, ALL), null);
+  assert.ok(inHub('trust', ADMIN, ALL) && inHub('system', OPERATOR, ALL) && !inHub('ask', ADMIN, ALL));
+  for (const roles of [USER, OPERATOR, ADMIN]) {
+    assert.deepEqual(tabModel(roles, ALL).map((t) => t.label), ['Ana sayfa', 'Asistan', 'Beceriler', 'Bilgi']);
+  }
+  assert.equal(TAB_LIMIT, 4);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /label: 'Yönetim', glyph: 'settings', onSelect: \(\) => navigate\(HUB_ID\)/, 'phones reach Yönetim from the account menu');
+  assert.match(app, /label: 'Geçmiş', glyph: 'history', onSelect: showHistory/);
+  assert.doesNotMatch(app, /tab-more|moreMenu|setupChip/, 'no "Daha" menu, no setup chip under the menu');
+  assert.match(readFileSync('panel/index.html', 'utf8'), /<nav class="subnav" id="subnav" aria-label="Bölüm" hidden><\/nav>/);
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.nav-group-manage \{ margin-top: auto;/, 'Yönetim at the bottom of the menu');
+  assert.match(css, /\.subnav-tabs a \{[^}]*min-height: 44px;/, 'the tabs are 44 px targets');
+});
+
+test('Sadeleştirme hub: grouped cards per role, each with a one-line description and a hint from what was read', async () => {
+  const shape = (roles) => hubModel(roles, ALL).map((g) => [g.title, g.cards.map((c) => c.id)]);
+  assert.deepEqual(shape(USER), [], 'a user has no hub');
+  assert.deepEqual(shape(OPERATOR), [['Kurulum', ['setup', 'system']]], 'the operator: its own screens only');
+  assert.deepEqual(shape(ADMIN), [
+    ['İçgörü', ['activity', 'dashboard', 'health']],
+    ['Bağlantılar', ['providers', 'connectors']],
+    ['Erişim ve uyum', ['collections', 'subjects', 'trust']],
+    ['Kurulum', ['setup']],
+  ]);
+  for (const card of hubModel(ADMIN, ALL).flatMap((g) => g.cards)) {
+    assert.ok(card.description && !card.description.includes('\n') && card.description.length <= 80, `${card.id}: one short line`);
+  }
+  // Feature detection: an unplaced screen of another branch joins its hub group; a missing renderer hides a card.
+  const screens = { ...SCREENS, yeni: { title: 'Yeni', icon: 'info', key: 'q', roles: [ROLES.ADMIN], group: 'insight' } };
+  assert.deepEqual(hubModel(ADMIN, new Set([...ALL, 'yeni']), screens)[0].cards.map((c) => c.id), ['activity', 'dashboard', 'health', 'yeni']);
+  assert.ok(!hubScreens(ADMIN, new Set([...ALL].filter((id) => id !== 'providers'))).includes('providers'));
+  const { hubHints } = await import('../panel/js/hub.js');
+  assert.deepEqual(hubHints({}), {}, 'nothing read, nothing claimed');
+  const hints = hubHints({ summary: { attention: 2 }, report: { clusters: [{}], staleDocuments: [], contradictions: [{}] },
+    usage: { budgets: [{ hardLimit: 10, spent: 10, state: 'HARD' }] }, connectors: [{ health: 'OK' }, { health: 'FAILING' }],
+    setup: { done: 2, total: 5, complete: false, label: '2/5 adım' } });
+  assert.deepEqual(Object.fromEntries(Object.entries(hints).map(([k, v]) => [k, [v.text, v.tone]])), {
+    activity: ['2 iş dikkat istiyor', 'wait'], health: ['2 bulgu', 'wait'], providers: ['Bütçe doldu', 'bad'],
+    connectors: ['1 bağlayıcı dikkat istiyor', 'wait'], setup: ['2/5 adım', 'wait'] });
+  assert.equal(hubHints({ summary: { attention: 0 } }).activity.text, 'Her şey yolunda');
+  const screen = readFileSync('panel/js/screens/yonetim.js', 'utf8');
+  assert.match(screen, /hubModel\(roles, ctx\.available\)/);
+  assert.match(screen, /\.catch\(\(\) => null\)/, 'a hint read never toasts');
+  assert.doesNotMatch(screen, /innerHTML|style=/);
+  assert.match(readFileSync('panel/js/app.js', 'utf8'), /yonetim: renderYonetim/);
+});
+
+test('Sadeleştirme routes: every former route still resolves for its role; the palette and "g" still reach everything', () => {
+  for (const id of Object.keys(SCREENS)) {
+    const roles = SCREENS[id].roles.includes(ROLES.ADMIN) ? ADMIN : SCREENS[id].roles.includes(ROLES.USER) ? USER : OPERATOR;
+    assert.deepEqual(resolveRoute(`#/${id}`, roles, ALL), { screen: id, params: null, redirected: false }, id);
+  }
+  assert.deepEqual(resolveRoute('#/overview', USER, ALL), { screen: 'home', params: null, redirected: true });
+  assert.deepEqual(resolveRoute('#/insights', ADMIN, ALL), { screen: 'dashboard', params: { tab: 'value' }, redirected: true });
+  assert.deepEqual(resolveRoute('#/insights', USER, ALL), { screen: 'home', params: null, redirected: true }, 'no tab param for a closed target');
+  assert.deepEqual(resolveRoute('#/bilgi', USER, ALL).screen, 'documents');
+  assert.deepEqual(resolveRoute('', USER, ALL), { screen: 'home', params: null, redirected: false });
+  assert.deepEqual(resolveRoute('#/activity', USER, ALL), { screen: 'home', params: null, redirected: true });
+  assert.deepEqual(resolveRoute('#/yonetim', USER, ALL).screen, 'home', 'a user has no hub');
+  assert.deepEqual(resolveRoute('#/nothing?x=1', ADMIN, ALL).screen, 'home');
+  assert.equal(REDIRECTS.overview.to, 'home');
+  // The palette lists every screen the role can open (screensFor), nothing more.
+  for (const roles of [USER, OPERATOR, ADMIN]) {
+    assert.deepEqual([...reachableScreens(roles, ALL)].sort(), [...screensFor(roles)].sort(), JSON.stringify(roles));
+  }
+  assert.equal(shortcutTarget('i', ADMIN, ALL), 'activity', 'a hub screen keeps its shortcut');
+  assert.equal(shortcutTarget('n', ADMIN, ALL), 'knowledge', 'a Bilgi tab keeps its shortcut');
+  assert.equal(shortcutTarget('p', ADMIN, ALL), 'chunks', 'a hidden screen keeps its shortcut');
+  assert.equal(shortcutTarget('t', OPERATOR, ALL), HUB_ID);
+  assert.equal(shortcutTarget('i', USER, ALL), null);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /const ids = reachableScreens\(roles, AVAILABLE\);/, 'the palette pages are every reachable screen');
+  assert.match(app, /location\.replace\(`#\/\$\{screen\}`\);/, 'a redirect replaces the history entry');
+});
+
+test('Sadeleştirme IA: other branches still slot in by feature detection', () => {
   const without = new Set([...ALL].filter((id) => id !== 'beceriler' && id !== 'providers'));
-  assert.equal(slotId(NAV[4].items[0], ALL), 'providers', 'the model gateway of ADR-0056 is the Yönetim slot\'s screen');
-  assert.equal(slotId(NAV[1].items[1], without), null);
-  assert.equal(slotId(NAV[1].items[1], ALL), 'beceriler', 'the skill library of ADR-0057 is the slot\'s screen');
-  const screens = { ...SCREENS,
-    saglayicilar: { title: 'Yapay zekâ sağlayıcıları', icon: 'cpu', key: 'z', roles: [ROLES.ADMIN], group: 'admin' },
-    yeni: { title: 'Bir başka ekran', icon: 'info', key: 'q', roles: [ROLES.ADMIN], group: 'insight' } };
-  const ids = (roles, available) => navModel(roles, available, screens).map((g) => g.entries.map((e) => e.id));
-  // A SCREENS entry without a renderer is not shown (the module is missing).
-  assert.deepEqual(ids(admin, without)[1], ['ask', 'history']);
-  const available = new Set([...without, 'beceriler', 'saglayicilar', 'yeni']);
-  assert.deepEqual(ids(admin, available)[1], ['ask', 'beceriler', 'history'], 'Çalış → Beceriler, right after Asistan');
-  assert.deepEqual(ids(admin, available)[4][0], 'saglayicilar', 'Yönetim → Yapay zekâ sağlayıcıları first');
-  assert.deepEqual(ids(admin, available)[3], ['activity', 'dashboard', 'health', 'yeni'], 'an unplaced screen joins its group');
-  assert.deepEqual(ids(user, available)[1], ['ask', 'beceriler', 'history'], 'the gallery is for everyone');
-  assert.ok(!ids(user, available).flat().includes('saglayicilar'));
-  assert.equal(slotId(NAV[1].items[1], available, screens), 'beceriler');
-  // The other ids the branches might pick are recognised too.
-  assert.equal(slotId(NAV[1].items[1], new Set(['gallery']), { gallery: SCREENS.beceriler }), 'gallery');
+  const gallery = NAV.find((i) => i.slot === 'skillGallery');
+  assert.equal(slotId(gallery, without), null);
+  assert.equal(slotId(gallery, ALL), 'beceriler');
+  assert.equal(slotId(gallery, new Set(['gallery']), { gallery: SCREENS.beceriler }), 'gallery');
+  assert.deepEqual(flatIds(USER, without), ['home', 'ask', 'documents', 'history'], 'no gallery: four entries');
+  const screens = { ...SCREENS, saglayicilar: { title: 'Yapay zekâ sağlayıcıları', icon: 'cpu', key: 'z', roles: [ROLES.ADMIN], group: 'admin' } };
+  assert.equal(hubModel(ADMIN, new Set([...without, 'saglayicilar']), screens)[1].cards[0].id, 'saglayicilar');
   const app = readFileSync('panel/js/app.js', 'utf8');
   assert.match(app, /const AVAILABLE = new Set\(Object\.keys\(RENDER\)\);/);
   assert.match(app, /skillsAvailable: SKILL_GALLERY/);
 });
 
-test('platform IA: old routes redirect with their parameters; a closed route falls back to the first screen', () => {
-  const user = rolesOf({ realm_access: { roles: [] } });
-  const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(resolveRoute('#/overview', user, ALL), { screen: 'home', params: null, redirected: true });
-  assert.deepEqual(resolveRoute('#/insights', admin, ALL), { screen: 'dashboard', params: { tab: 'value' }, redirected: true });
-  assert.deepEqual(resolveRoute('#/insights', user, ALL), { screen: 'home', params: null, redirected: true }, 'no tab param for a closed target');
-  assert.deepEqual(resolveRoute('', user, ALL), { screen: 'home', params: null, redirected: false });
-  assert.deepEqual(resolveRoute('#/activity', admin, ALL), { screen: 'activity', params: null, redirected: false });
-  assert.deepEqual(resolveRoute('#/activity', user, ALL), { screen: 'home', params: null, redirected: true });
-  assert.deepEqual(resolveRoute('#/setup', user, ALL).screen, 'home', 'setup moved to Yönetim');
-  assert.deepEqual(resolveRoute('#/nothing?x=1', admin, ALL).screen, 'home');
-  assert.equal(REDIRECTS.overview.to, 'home');
-  const app = readFileSync('panel/js/app.js', 'utf8');
-  assert.match(app, /location\.replace\(`#\/\$\{screen\}`\);/, 'a redirect replaces the history entry');
-});
-
-test('platform IA: the phone tab bar is Ana sayfa, Asistan, Bilgi and "Daha" with the rest grouped', () => {
-  const user = rolesOf({ realm_access: { roles: [] } });
-  const admin = withServerRoles(user, { roles: ['verso-admin'] });
-  assert.deepEqual(TABS.map((t) => t.label), ['Ana sayfa', 'Asistan', 'Bilgi']);
-  assert.equal(MORE.label, 'Daha');
-  assert.deepEqual(tabModel(user, ALL).map((t) => t.id), ['home', 'ask', 'documents']);
-  assert.deepEqual(moreModel(user, ALL).map((g) => [g.id, g.entries.map((e) => e.id)]), [['work', ['beceriler', 'history']]]);
-  const more = moreModel(admin, ALL);
-  assert.deepEqual(more.map((g) => g.title), ['Çalış', 'Bilgi', 'İçgörü', 'Yönetim']);
-  assert.ok(!more.flatMap((g) => g.entries).some((e) => ['home', 'ask', 'documents'].includes(e.id)), 'no tab twice');
-  const css = readFileSync('panel/css/panel.css', 'utf8');
-  assert.match(css, /\.tab-more \{\s*display: grid;[^}]*min-height: 44px;/, '"Daha" is a 44 px target');
-  assert.match(css, /\.shell\.rail \.nav \.nav-group \{ display: block; height: 0;/, 'group headings become dividers in the rail');
-});
-
-test('home: the greeting, the "/" entry only with skills, quick starts, outputs and the five admin figures', async () => {
-  const { composerHint, composerIntent, firstName, homeTitle, knowledgeActions, newKnowledge, outputsModel, quickStarts,
-    setupProgress, skillCards, weekFigures } = await import('../panel/js/home.js');
+test('Sadeleştirme home: capped counts, the admin one-liner, a slim setup line and the first-run welcome', async () => {
+  const { attentionLine, composerHint, composerIntent, firstName, firstRun, HOME_LIMITS, homeTitle, newKnowledge, outputsModel,
+    quickStarts, setupProgress, skillCards } = await import('../panel/js/home.js');
+  assert.deepEqual(HOME_LIMITS, { chips: 3, skills: 4, news: 3 });
   assert.equal(homeTitle({ given_name: 'Deniz Arslan' }), 'Bugün ne yapalım, Deniz?');
   assert.equal(firstName({ preferred_username: 'deniz.arslan@ilgaz.com.tr' }), 'Deniz', 'never the e-mail address');
-  assert.equal(homeTitle({}), 'Bugün ne yapalım?');
   assert.match(composerHint('beceriler'), / \/ ile bir beceri/);
   assert.doesNotMatch(composerHint(null), /\//, 'no slash promise without the skills module');
-  assert.deepEqual(composerIntent('/toplanti-notu'), { kind: 'question', question: '/toplanti-notu' },
-    'what the picker did not take is asked, as in Asistan');
+  assert.deepEqual(composerIntent('/toplanti-notu'), { kind: 'question', question: '/toplanti-notu' });
   assert.equal(composerIntent('   '), null);
-  assert.equal(composerIntent('x'.repeat(1200)).question.length, 1000);
-  const skills = [{ id: 'a', name: 'A', slash: 'a' }, { id: 'b', name: 'B', description: 'bb' }, { id: 'c', name: 'C' },
-    { id: 'd', name: 'D' }, { id: 'e', name: 'E' }, { name: 'nope' }];
-  const runs = [{ skillId: 'c' }, { skillId: 'c' }, { skillId: 'e' }, { skillId: 'zz' }];
-  assert.deepEqual(skillCards(skills, runs).map((s) => [s.id, s.uses]), [['c', 2], ['e', 1], ['a', 0], ['b', 0]],
-    'most used first, then the library order; at most four');
+  assert.deepEqual(quickStarts(['a', '', 2, 'b', 'c', 'd', 'e']), ['a', 'b', 'c'], 'three chips');
+  const skills = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ id, name: id.toUpperCase() }));
+  const runs = [{ skillId: 'c' }, { skillId: 'c' }, { skillId: 'e' }];
+  assert.deepEqual(skillCards(skills, runs).map((s) => [s.id, s.uses]), [['c', 2], ['e', 1], ['a', 0], ['b', 0]], 'most used first; four');
+  assert.equal(skillCards(skills, runs, 9).length, 4, 'never more than four');
   assert.deepEqual(skillCards(null, null), []);
-  const own = outputsModel({ outputs: [] }, 5, [{ id: 'r1', status: 'APPROVED', skillName: 'Toplantı notu', finishedAt: '2026-10-28T10:00:00Z' },
-    { id: 'r2', status: 'DRAFT', skillName: 'Taslak', finishedAt: '2026-10-28T11:00:00Z' }]);
-  assert.deepEqual(own.map((o) => [o.kind, o.screen, o.params?.runId]), [['Beceri çıktısı', 'beceriler', 'r1']], 'approved runs only');
-  assert.deepEqual(quickStarts(['a', '', 2, 'b', 'c', 'd', 'e', 'f', 'g']), ['a', 'b', 'c', 'd', 'e', 'f']);
-  assert.deepEqual(knowledgeActions((id) => ['documents', 'ask'].includes(id)).map((a) => a.id), ['documents', 'ask'],
-    'a user is not offered admin screens');
-  const outputs = outputsModel({ outputs: [
-    { kind: 'CARD', id: '1', title: 'Kısmi sevkiyat', at: '2026-10-27T10:00:00Z' },
-    { kind: 'PROCEDURE', id: '2', title: 'sayim-farki', description: 'Sayım farkı', at: '2026-10-28T10:00:00Z' },
-    { kind: 'CARD', id: '3', title: null, at: '2026-10-28T11:00:00Z' }] });
-  assert.deepEqual(outputs.map((o) => [o.kind, o.title, o.screen]), [['Prosedür', 'sayim-farki', 'skills'], ['Onaylı bilgi', 'Kısmi sevkiyat', 'knowledge']]);
-  assert.deepEqual(newKnowledge([{ id: 'a', fileName: 'a.pdf', createdAt: '2026-10-01T00:00:00Z' },
-    { id: 'b', fileName: 'b.pdf', createdAt: '2026-10-20T00:00:00Z', collectionName: 'BT' }]).map((d) => [d.id, d.collection]), [['b', 'BT'], ['a', null]]);
-  const figures = weekFigures({
-    report: { clusters: [{}, {}, {}], staleDocuments: Array(11).fill({}), contradictions: [{}] },
-    summary: { pendingApprovals: 4 },
-    metrics: { totals: { questions: 412, outcomeRates: { answered: 0.87 } } } });
-  assert.equal(figures.length, 5, 'at most five figures');
-  assert.deepEqual(figures.map((f) => [f.value, f.screen]), [[3, 'health'], [11, 'health'], [1, 'health'], [4, 'activity'], [412, 'dashboard']]);
-  assert.equal(figures[4].label, 'soru, %87\'i kaynaklı');
-  assert.deepEqual(weekFigures({ summary: { pendingApprovals: 2 } }).map((f) => f.value), [2], 'a failed source is left out, not 0');
-  const usage = { budgets: [{ scope: 'CONNECTION', scopeKey: 'x', hardLimit: 25000, softLimit: 20000, spent: 18420, state: 'OK' }] };
-  const withBudget = weekFigures({ metrics: { totals: { questions: 412 } }, usage });
-  assert.equal(withBudget.length, 1, 'the budget takes the usage figure\'s place (ADR-0056)');
-  assert.deepEqual([withBudget[0].value, withBudget[0].screen], ['18.420 / 25.000', 'providers']);
-  assert.equal(weekFigures({ usage: { budgets: [{ hardLimit: 10, spent: 10, state: 'HARD' }] } })[0].label,
-    'bütçe doldu, model çağrıları durdu');
-  assert.equal(weekFigures({ metrics: { totals: { questions: 1 } }, usage: { budgets: [] } })[0].screen, 'dashboard',
-    'no budget: the usage figure stays');
+  const docs = ['01', '05', '20', '11'].map((d) => ({ id: d, fileName: `${d}.pdf`, createdAt: `2026-10-${d}T00:00:00Z` }));
+  assert.deepEqual(newKnowledge(docs).map((d) => d.id), ['20', '11', '05'], 'newest three');
+  assert.equal(newKnowledge(docs, 10).length, 3);
+  const outputs = outputsModel({ outputs: [{ kind: 'PROCEDURE', id: '2', title: 'sayim-farki', at: '2026-10-28T10:00:00Z' }] }, 5,
+    [{ id: 'r1', status: 'APPROVED', skillName: 'Toplantı notu', finishedAt: '2026-10-27T10:00:00Z' }, { id: 'r2', status: 'DRAFT', skillName: 'x', finishedAt: '2026-10-28T11:00:00Z' }]);
+  assert.deepEqual(outputs.map((o) => [o.kind, o.screen]), [['Prosedür', 'skills'], ['Beceri çıktısı', 'beceriler']], 'approved runs only');
+  // The admin one-liner.
+  assert.equal(attentionLine({}), null, 'nothing read: no line');
+  assert.deepEqual(attentionLine({ summary: { attention: 0 }, report: { clusters: [], staleDocuments: [], contradictions: [] } }),
+    { state: 'ok', count: 0, text: 'Her şey yolunda', screen: 'activity' });
+  assert.deepEqual(attentionLine({ summary: { attention: 0 }, report: { clusters: [{}, {}], staleDocuments: [{}], contradictions: [] } }),
+    { state: 'attention', count: 3, text: '3 konu dikkat istiyor', screen: 'health' }, 'one source: its own screen');
+  assert.equal(attentionLine({ summary: { attention: 2 }, report: { clusters: [{}] } }).screen, 'activity', 'several: Etkinlik merkezi');
+  assert.equal(attentionLine({ usage: { budgets: [{ hardLimit: 10, spent: 9, softLimit: 8, state: 'SOFT' }] } }).screen, 'providers');
   assert.deepEqual(setupProgress([{ done: true }, { done: false }]), { done: 1, total: 2, complete: false, label: '1/2 adım' });
-  assert.equal(setupProgress([{ done: true }]).complete, true);
+  // The first run.
+  const fresh = { documents: [], conversations: [] };
+  assert.deepEqual(firstRun({ ...fresh, admin: true, skills: 'beceriler' }).steps.map((s) => s.title),
+    ['Bir soru sorun', 'Bir beceri deneyin', 'Belge ekleyin']);
+  assert.deepEqual(firstRun({ ...fresh, skills: 'beceriler' }).steps.map((s) => s.id), ['ask', 'skill'], '"Belge ekleyin" for admins only');
+  assert.equal(firstRun({ ...fresh, asked: true }), null, 'a question was asked');
+  assert.equal(firstRun({ ...fresh, dismissed: true }), null, 'closed for this session');
+  assert.equal(firstRun({ documents: [{}], conversations: [] }), null, 'there are documents');
+  assert.equal(firstRun({ documents: [], conversations: [{}] }), null, 'there is a history');
+  assert.equal(firstRun({ documents: null, conversations: [] }), null, 'a failed read never shows it');
   const screen = readFileSync('panel/js/screens/home.js', 'utf8');
-  assert.match(screen, /admin \? week\(ctx, weekFigures/, 'the strip for admins only');
-  assert.match(screen, /admin \? checklist\(ctx, steps\) : null/, 'the checklist for admins only, until done');
-  assert.doesNotMatch(screen, /İlk belgenizi ekleyin/, 'not the old upload-first layout');
+  assert.doesNotMatch(screen, /weekFigures|knowledgeActions|Bilgiyle başlayın|Bu hafta şirketinizde/, 'no figure strip, no duplicate start cards');
+  assert.match(screen, /admin \? attention\(ctx, attentionLine\(/, 'the one-liner for admins only');
+  assert.match(screen, /admin \? setupLine\(ctx, steps\) : null/);
+  assert.match(screen, /if \(!progress\.total \|\| progress\.complete\) return null;/, 'the setup line disappears when done');
+  assert.match(screen, /prefs\.markOnboarding\(\{ welcomeDismissed: true \}\)/, 'dismissed in sessionStorage (store.js prefs)');
+  assert.match(screen, /disclosure\(`Ekibinizin son çıktıları/, 'the team outputs on demand');
   assert.match(screen, /const slash = ctx\.skillsAvailable \? slashPicker\(field, ctx\) : null;/, 'the real "/" picker of ADR-0057');
-  assert.match(screen, /api\.listSkillRuns\(0, 50\)/, 'the caller\'s own runs rank the skill cards');
   assert.doesNotMatch(screen, /\bVerso\b/, 'the product name comes from the branding (ADR-0021)');
+  assert.match(readFileSync('panel/js/store.js', 'utf8'), /welcomeDismissed: false/);
+});
+
+test('Sadeleştirme disclosure: closed by default, native and keyboard-accessible; one help line', () => {
+  const ui = readFileSync('panel/js/ui.js', 'utf8');
+  const body = ui.slice(ui.indexOf('export function disclosure'), ui.indexOf('export function helpLine'));
+  assert.match(body, /el\('details', \{ class: `more \$\{className\}`\.trim\(\) \}/);
+  assert.doesNotMatch(body, /open/, 'never open by default');
+  assert.match(body, /el\('summary'/, 'a native summary: Enter and Space toggle it');
+  assert.equal(MORE_LABEL, 'Ayrıntıları göster');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /details\.more > summary \{[^}]*min-height: 44px;/, 'a 44 px summary');
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ details\.more > summary svg \{ transition: none; \} \}/);
 });
 
 test('activity: the strip, the query string, the day groups and the lines carry no person', async () => {
@@ -3312,7 +3361,7 @@ test('activity: the strip, the query string, the day groups and the lines carry 
   assert.equal(linkOf({ link: { screen: 'javascript:alert(1)' } }), null);
   assert.equal(itemModel({ type: 'NEW_THING', status: 'ODD' }).type, 'NEW_THING', 'an unknown word is shown as it is');
   const screen = readFileSync('panel/js/screens/activity.js', 'utf8');
-  assert.match(screen, /'Kişi değil ekip ya da rol görünür'/);
+  assert.match(screen, /Kişi değil ekip ya da rol görünür/);
   assert.match(screen, /'Onay kutusu'/);
   assert.doesNotMatch(screen, /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'/);
   assert.doesNotMatch(screen, /accountId|preferred_username|actorSub|currentIdentity/, 'the screen never shows an account');
@@ -3442,4 +3491,96 @@ test('panel.css: every block is closed, so no rule is swallowed by an unclosed @
     for (const c of css.slice(0, at)) d += c === '{' ? 1 : c === '}' ? -1 : 0;
     assert.equal(d, 0, `${rule} sits inside another block`);
   }
+});
+
+// ---------- Sadeleştirme: insight screens ----------
+test('Sadeleştirme: Etkinlik merkezi shows the newest five entries first and keeps its filters behind "Filtrele"', async () => {
+  const { FIRST_VIEW, visibleItems, filtersActive } = await import('../panel/js/activity.js');
+  const items = Array.from({ length: 12 }, (_, i) => ({ id: i }));
+  assert.equal(FIRST_VIEW, 5);
+  assert.deepEqual(visibleItems(items).map((i) => i.id), [0, 1, 2, 3, 4], 'collapsed by default');
+  assert.equal(visibleItems(items, true).length, 12, '"Daha fazla göster" shows the whole page');
+  assert.deepEqual(visibleItems(null), []);
+  assert.equal(filtersActive({ category: '', status: '', days: 7 }), false);
+  assert.equal(filtersActive({ category: 'RUN', status: '', days: 7 }), true);
+  assert.equal(filtersActive({ category: '', status: '', days: 30 }), true);
+  const screen = readFileSync('panel/js/screens/activity.js', 'utf8');
+  assert.match(screen, /disclosure\('Filtrele', \[tabs, filters\], 'filters'\)/, 'the tabs and filters sit inside a closed <details>');
+  assert.match(screen, /expanded: false/, 'the timeline starts collapsed');
+  assert.match(screen, /Daha fazla göster/);
+  assert.match(screen, /if \(!items\.length\) return null;/, 'the approval box shows only while something waits');
+});
+
+test('Sadeleştirme: Komuta panosu shows three headline tiles, the rest under "Ayrıntılar"', () => {
+  const screen = readFileSync('panel/js/screens/dashboard.js', 'utf8');
+  const headline = screen.slice(screen.indexOf("class: 'grid kpis dashboard-kpis headline'"), screen.indexOf('disclosure(ranked.length'));
+  assert.equal((headline.match(/healthTile\(|tile\('/g) ?? []).length, 3, 'health score, cited rate, adoption');
+  const more = screen.slice(screen.indexOf('disclosure(ranked.length'));
+  for (const part of ["'Yerel ve bulut maliyet'", 'issues(ctx, ranked)', 'journey()', 'procedures(ctx']) assert.ok(more.includes(part), part);
+  assert.match(screen, /helpLine\(/);
+  assert.doesNotMatch(screen, /el\('p', \{\}, 'Şirketinizin/, 'the long explanation went behind the info toggle');
+});
+
+test('Sadeleştirme: Değer panosu, Bilgi sağlığı and Güven open their details on demand', () => {
+  const insights = readFileSync('panel/js/screens/insights.js', 'utf8');
+  assert.match(insights, /export const HEADLINE_KPIS = 4;/);
+  assert.match(insights, /all\.slice\(0, HEADLINE_KPIS\)/);
+  assert.match(insights, /disclosure\(MORE_LABEL, \[[\s\S]*trends\(data\)[\s\S]*unanswered\(/);
+  assert.match(insights, /'Bir soru sorun'/, 'the empty board has one call to action');
+  const health = readFileSync('panel/js/screens/health.js', 'utf8');
+  assert.match(health, /findingsView\(report\),\s*disclosure\(MORE_LABEL, \[clustersView/, 'findings first, the lists behind the toggle');
+  assert.match(health, /disclosure\('Kancalar, bildirimler ve teşhis çalışmaları'/);
+  const trust = readFileSync('panel/js/screens/trust.js', 'utf8');
+  assert.match(trust, /disclosure\(MORE_LABEL, \[\s*el\('div', \{ class: 'grid halves' \}/);
+  assert.match(trust, /'Yeniden dene'/, 'the failed state has one call to action');
+  for (const source of [insights, health, trust]) {
+    assert.doesNotMatch(source, /innerHTML|style=|\.style\./);
+    assert.match(source, /helpLine\(/);
+  }
+  const ui = readFileSync('panel/js/ui.js', 'utf8');
+  assert.doesNotMatch(ui.slice(ui.indexOf('export function disclosure'), ui.indexOf('export function helpLine')), /open:/,
+    'a disclosure is closed by default');
+});
+
+// ---------- Sadeleştirme: work screens ----------
+test('Sadeleştirme, answer view: at most two follow-ups, sources as chips with the cards behind "Kaynakları göster"', async () => {
+  const { MAX_FOLLOW_UPS, SOURCES_OPEN_QUERY } = await import('../panel/js/screens/ask.js');
+  assert.equal(MAX_FOLLOW_UPS, 2);
+  assert.equal(SOURCES_OPEN_QUERY, '(min-width: 1200px)', 'open at once only where the sources sit beside the answer');
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /followUps\(result\)\.filter\(\(f\) => !f\.local\)\.slice\(0, MAX_FOLLOW_UPS\)/);
+  assert.match(ask, /disclosure\('Kaynakları göster', cards, 'sources-toggle'\)/, 'the source cards sit in a disclosure');
+  assert.match(ask, /class: 'source-chips'/, 'a compact chip row stays visible');
+  assert.match(ask, /if \(wide\) details\.setAttribute\('open', ''\)/, 'closed by default; opened only on wide screens');
+  assert.match(ask, /showSources\(box\);\s*setOpen\(card, true\)/, 'a marker opens the collapsed sources before its card');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.answer\.has-sources > \.answer-sources \{/, 'wide screens keep the sticky source column');
+});
+
+test('Sadeleştirme, Bağlayıcılar and Sağlayıcılar: the list first, the rest behind disclosures; one help line', () => {
+  const connectors = readFileSync('panel/js/screens/connectors.js', 'utf8');
+  assert.match(connectors, /helpLine\('Dosya sunucusu/);
+  assert.match(connectors, /disclosure\(MORE_LABEL, el\('dl', \{ class: 'facts' \}/, 'four key facts, the rest behind "Ayrıntıları göster"');
+  assert.match(connectors, /disclosure\('Bağlayıcıyı sil', deleteCard\(connector\), 'danger-zone'\)/);
+  assert.match(connectors, /disclosure\('Kurulum \(kurulum ekibi için\)', helpCard\(\)\)/);
+  assert.match(connectors, /'Bağlayıcı ekleyin'/, 'the empty list has one call to action');
+  assert.doesNotMatch(connectors, /el\('p', \{\}, 'Kurumun dosya sunucusundaki/, 'no long paragraph in the head');
+  const providers = readFileSync('panel/js/screens/providers.js', 'utf8');
+  assert.match(providers, /helpLine\('Kurumunuzun model sağlayıcılarını bağlayın\.'/);
+  assert.match(providers, /disclosure\('Görev yönlendirme', card\('providers-routing'/);
+  assert.match(providers, /disclosure\('Fiyat, bütçe ve kullanım', card\('providers-costs'/);
+  assert.match(providers, /onclick: \(\) => drawForm\(null\) \}, icon\('plus'\), 'Bağlantı ekleyin'/, 'the form opens on demand from the empty list');
+  for (const source of [connectors, providers]) assert.doesNotMatch(source, /innerHTML|style=|\.style\b/);
+});
+
+test('Sadeleştirme, Beceriler: category filter chips, compact cards, history and admin part on demand', () => {
+  const screen = readFileSync('panel/js/screens/beceriler.js', 'utf8');
+  assert.match(screen, /class: 'skill-lib-chips', role: 'group', 'aria-label': 'Kategori'/, 'categories are filter chips');
+  assert.match(screen, /'aria-pressed': String\(category === key\)/);
+  assert.match(screen, /class: 'skill-lib-card compact'/);
+  assert.match(screen, /class: 'muted skill-lib-line'/, 'one line of description');
+  assert.match(screen, /disclosure\('Son çalıştırmalarım'/);
+  assert.match(screen, /'Filtreyi temizle'/, 'an empty filter result has one way out');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.match(css, /\.skill-lib-line \{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/);
 });
