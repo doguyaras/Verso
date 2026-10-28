@@ -1,0 +1,44 @@
+{
+  "formatVersion": 1,
+  "id": "yazisma-ozeti",
+  "version": "1.0.0",
+  "name": "E-posta ve yazışma özeti",
+  "description": "Uzun bir e-posta zincirini ya da yazışmayı özetler: kim ne istedi, neye karar verildi, hangi konular açık kaldı. İsteğe göre ilgili şirket belgelerine dayanan kısa bir yanıt taslağı da hazırlar.",
+  "category": "PRODUCTIVITY",
+  "slash": "ozet",
+  "inputs": [
+    { "key": "thread", "label": "Yazışma", "type": "LONG_TEXT", "required": true, "maxLength": 25000, "maxItems": null, "options": null, "help": "E-posta zincirini en eskiden en yeniye ya da olduğu gibi yapıştırın.", "placeholder": null },
+    { "key": "intent", "label": "Amaç", "type": "SELECT", "required": true, "maxLength": null, "maxItems": null,
+      "options": [ { "value": "ozet", "label": "Yalnız özet" }, { "value": "yanit", "label": "Özet ve yanıt taslağı" } ],
+      "help": null, "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{thread}}"], "maxPassages": 5, "documentsInput": null, "collectionsInput": null, "scopeCollections": null },
+  "steps": [
+    {
+      "key": "ozetle",
+      "title": "Özetle ve yanıtı taslakla",
+      "instruction": "Yazışmayı oku ve kısaca özetle: taraflar, talepler, verilen sözler ve açık kalan konular. Açık konuların her biri için kimden yanıt beklendiğini yaz; yazışmada yoksa \"belirtilmedi\" yaz. Amaç {{intent}} ise ve değeri yanit ise, yazışmanın son mesajına kısa, kibar bir yanıt taslağı yaz; yanıtta şirket kuralı ya da sayı kullanacaksan yalnız numaralı kaynaklardan al ve kaynağını göster. Amaç ozet ise yanıt bölümüne \"İstenmedi.\" yaz. Yazışmada olmayan bir taahhüt ekleme; dayanağı olmayan satıra değerlendirilemez de.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 800 },
+      { "key": "openItems", "title": "Açık konular", "kind": "ROWS", "minRows": 0, "maxRows": 15, "maxLength": null,
+        "columns": [ { "key": "item", "label": "Konu", "maxLength": 300, "allowed": null }, { "key": "waitingOn", "label": "Beklenen kişi", "maxLength": 80, "allowed": null } ] },
+      { "key": "reply", "title": "Yanıt taslağı", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 1500 }
+    ]
+  },
+  "maxOutputChars": 5000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Özet ve yanıt yalnız yazışmada ve kaynaklarda geçenleri söylüyor." },
+    { "key": "fidelity", "name": "Sadakat", "description": "Tarafların talepleri ve sözleri çarpıtılmadan aktarılmış." },
+    { "key": "coverage", "name": "Kapsam", "description": "Bütün açık konular listelenmiş." },
+    { "key": "length", "name": "Uzunluk", "description": "Özet kısa, yanıt taslağı birkaç paragrafı aşmıyor." }
+  ],
+  "framework": { "name": "Yazışma özeti ve yanıt kalıbı", "reference": "Microsoft Copilot Prompt Gallery e-posta özeti kalıbı; BLUF (bottom line up front) yazışma ilkesi" },
+  "disclaimer": "Taslak — göndermeden önce gönderenin kontrolü için.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": []
+}

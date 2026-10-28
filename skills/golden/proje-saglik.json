@@ -1,0 +1,35 @@
+{
+  "skillId": "proje-saglik",
+  "cases": [
+    {
+      "name": "bt-operasyon-notlarla",
+      "documents": ["bt-operasyon-runbook.pdf"],
+      "inputs": {
+        "project": "BT Service Desk iyilestirme",
+        "period": "Ekim 2026",
+        "statusNotes": "Bu ay iki P1 olayinda 4 saatlik cozum hedefi asildi. Nobet cizelgesi bir haftadir guncel degil. Butce bilgisi paylasilmadi."
+      },
+      "expect": {
+        "sections": ["areas", "raid", "decisions", "summary"],
+        "minRows": { "areas": 3 },
+        "citesDocuments": ["bt-operasyon-runbook.pdf"],
+        "mentionsAny": [["Kırmızı", "Sarı"], ["Değerlendirilemez"], ["4 saat"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "bilgisiz-proje-uydurmaz",
+      "documents": [],
+      "inputs": { "project": "Mars ofisi acilisi" },
+      "expect": {
+        "sections": ["areas", "summary"],
+        "minRows": { "areas": 1 },
+        "citesDocuments": [],
+        "mentionsAny": [["Değerlendirilemez", "değerlendirilemez"]],
+        "forbids": ["Yeşil"],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

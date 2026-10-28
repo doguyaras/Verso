@@ -40,5 +40,12 @@ public enum AuditTargetType {
     /** The system model (ADR-0054): a lookup (no id) or a document whose model was looked at. */
     SYSTEM_MODEL,
     /** A suggested relation of the system model awaiting or after an admin's review (ADR-0054). */
-    SYSTEM_SUGGESTION
+    SYSTEM_SUGGESTION,
+    /**
+     * A task skill of the skill library (ADR-0057). Built-in skills have text ids, so the row's id is a name-based UUID
+     * ({@code UUID.nameUUIDFromBytes("verso:task-skill:" + id)}); a customer-authored skill's id is its own UUID.
+     */
+    TASK_SKILL,
+    /** One run of a task skill (ADR-0057). */
+    TASK_SKILL_RUN
 }

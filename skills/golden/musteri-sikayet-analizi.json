@@ -1,0 +1,36 @@
+{
+  "skillId": "musteri-sikayet-analizi",
+  "cases": [
+    {
+      "name": "sla-ve-iade-sikayetleri",
+      "documents": ["musteri-destek-sureci.pdf"],
+      "inputs": {
+        "complaints": "DK-1001 Kaydim 3 gundur kimseye atanmadi.\nDK-1002 Iade talebim 10 gun once yapildi, kargo kodu gelmedi.\nDK-1003 Ayni sorun icin ikinci kez kayit actim, yine cozulmedi.\nDK-1004 Kaydim atanmadi, kimse donmedi.\nDK-1005 Hasarli urun geldi, fotograf istendi ama sonra ses cikmadi.\nDK-1006 Kayit cozuldu denildi ama sorun devam ediyor.",
+        "period": "2026 3. ceyrek"
+      },
+      "expect": {
+        "sections": ["themes", "actions", "summary"],
+        "minRows": { "themes": 2, "actions": 1 },
+        "citesDocuments": ["musteri-destek-sureci.pdf"],
+        "mentionsAny": [["iade"], ["atanmadı", "atanmadi", "atama"], ["takım lideri", "takim lideri"]],
+        "forbids": ["%"],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "belgesiz-tema-sayimi",
+      "documents": [],
+      "inputs": {
+        "complaints": "Kargo gec geldi.\nKargo gec geldi, iki gun bekledim.\nUrun kutusu ezikti.\nFatura yanlis kesildi.\nKargo hic gelmedi."
+      },
+      "expect": {
+        "sections": ["themes"],
+        "minRows": { "themes": 2 },
+        "citesDocuments": [],
+        "mentionsAny": [["kargo"], ["fatura"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

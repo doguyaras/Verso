@@ -24,6 +24,7 @@ import com.verso.privacy.service.SubjectRequestService;
 import com.verso.qa.api.QaSubjects;
 import com.verso.qa.api.dto.SubjectConversation;
 import com.verso.qa.api.dto.SubjectHistoryCounts;
+import com.verso.work.api.WorkSubjects;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.Clock;
@@ -59,6 +60,7 @@ public class SubjectRequestServiceImpl implements SubjectRequestService {
     static final String EXPORT_FORMAT = "verso-subject-export/1";
 
     private final QaSubjects qa;
+    private final WorkSubjects work;
     private final DocumentSubjects documents;
     private final DocumentCatalog catalog;
     private final AuditSubjects audit;
@@ -66,9 +68,11 @@ public class SubjectRequestServiceImpl implements SubjectRequestService {
     private final JsonMapper json;
     private final Clock clock;
 
-    public SubjectRequestServiceImpl(QaSubjects qa, DocumentSubjects documents, DocumentCatalog catalog,
-                                     AuditSubjects audit, ApplicationEventPublisher events, JsonMapper json, Clock clock) {
+    public SubjectRequestServiceImpl(QaSubjects qa, WorkSubjects work, DocumentSubjects documents,
+                                     DocumentCatalog catalog, AuditSubjects audit, ApplicationEventPublisher events,
+                                     JsonMapper json, Clock clock) {
         this.qa = qa;
+        this.work = work;
         this.documents = documents;
         this.catalog = catalog;
         this.audit = audit;
@@ -160,6 +164,8 @@ public class SubjectRequestServiceImpl implements SubjectRequestService {
         String step = "history";
         try {
             SubjectHistoryCounts history = qa.deleteHistory(subject);
+            step = "skill-runs";
+            long skillRuns = work.deleteRuns(subject);
             long deleted = 0;
             long redacted = 0;
             while (true) {
@@ -177,9 +183,10 @@ public class SubjectRequestServiceImpl implements SubjectRequestService {
                     SubjectIds.auditRef(subject)).withDetail(left.documents().collectionCount() > 0
                             ? "COLLECTION_DOCUMENTS_KEPT" : "COMPLETE"));
             log.info("Subject request handled: operation=delete outcome=deleted conversations={} turns={} "
-                            + "personalDocuments={} answersRedacted={} collectionDocumentsKept={}",
-                    history.conversations(), history.turns(), deleted, redacted, left.documents().collectionCount());
-            return new SubjectDeletionResponse(history(history), deleted, redacted,
+                            + "skillRuns={} personalDocuments={} answersRedacted={} collectionDocumentsKept={}",
+                    history.conversations(), history.turns(), skillRuns, deleted, redacted,
+                    left.documents().collectionCount());
+            return new SubjectDeletionResponse(history(history, skillRuns), deleted, redacted,
                     new SubjectDeletionResponse.Kept(left.documents(), left.auditEventsAsActor()));
         } catch (RuntimeException e) {
             // Every step is idempotent: the same request finishes the erasure (docs/runbooks/kvkk-basvurusu.md).
@@ -208,11 +215,13 @@ public class SubjectRequestServiceImpl implements SubjectRequestService {
     private SubjectSummaryResponse find(String subject) {
         SubjectHistoryCounts history = qa.count(subject);
         com.verso.document.api.dto.SubjectDocuments held = documents.find(subject);
-        return new SubjectSummaryResponse(history(history), documents(held), audit.countByActor(subject));
+        return new SubjectSummaryResponse(history(history, work.countRuns(subject)), documents(held),
+                audit.countByActor(subject));
     }
 
-    private static SubjectHistory history(SubjectHistoryCounts counts) {
-        return new SubjectHistory(counts.conversations(), counts.turns(), counts.feedback(), counts.activeDays());
+    private static SubjectHistory history(SubjectHistoryCounts counts, long skillRuns) {
+        return new SubjectHistory(counts.conversations(), counts.turns(), counts.feedback(), counts.activeDays(),
+                skillRuns);
     }
 
     static SubjectDocuments documents(com.verso.document.api.dto.SubjectDocuments held) {

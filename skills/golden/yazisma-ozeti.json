@@ -1,0 +1,37 @@
+{
+  "skillId": "yazisma-ozeti",
+  "cases": [
+    {
+      "name": "masraf-itirazi-yanitli",
+      "documents": ["masraf-politikasi.pdf"],
+      "inputs": {
+        "thread": "Kimden: Can\nKonu: Eylul masrafim odenmedi\nEylul ayindaki otel masrafimi 12 Kasim'da sisteme girdim ama reddedildi. Neden?\n\nKimden: Finans\nPolitika geregi gec giris. Yoneticinizle gorusun.\n\nKimden: Can\nYoneticim izindeydi, istisna yapilabilir mi? Ayrica kurala nereden bakabilirim?",
+        "intent": "yanit"
+      },
+      "expect": {
+        "sections": ["summary", "openItems", "reply"],
+        "minRows": { "openItems": 1 },
+        "citesDocuments": ["masraf-politikasi.pdf"],
+        "mentionsAny": [["beşinci iş günü", "besinci is gunu", "5. iş günü"]],
+        "forbids": ["istisna onaylandı", "ödenecektir"],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "yalniz-ozet",
+      "documents": [],
+      "inputs": {
+        "thread": "Kimden: Deniz\nPazartesi tedarikci toplantisini 10:00'a alabilir miyiz?\n\nKimden: Ece\nBen 11:00'den once musait degilim.\n\nKimden: Deniz\nO zaman 11:00 olsun, salonu ben ayarlarim. Sunumu kim hazirlayacak?",
+        "intent": "ozet"
+      },
+      "expect": {
+        "sections": ["summary", "openItems", "reply"],
+        "minRows": { "openItems": 1 },
+        "citesDocuments": [],
+        "mentionsAny": [["11:00", "11.00"], ["sunum"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

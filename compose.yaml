@@ -130,6 +130,8 @@ services:
       - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
       - SECRET_DB_CONNECTOR_PASSWORD
+      - SECRET_DB_WORK_MIGRATE_PASSWORD
+      - SECRET_DB_WORK_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
       - SECRET_DB_KEYCLOAK_PASSWORD
     volumes:
@@ -147,7 +149,7 @@ services:
       start_period: 30s
 
   # One-shot migration with the application image (ADR-0009, review S4): only this container holds the migration
-  # roles' passwords. It runs Flyway for every module schema (document, qa, audit, connector; ADR-0023, ADR-0026, ADR-0038) without a web server and
+  # roles' passwords. It runs Flyway for every module schema (document, qa, audit, connector, work; ADR-0023, ADR-0026, ADR-0038, ADR-0057) without a web server and
   # without the application DataSource, then exits.
   migrate:
     <<: *java-service-defaults
@@ -173,6 +175,7 @@ services:
       - SECRET_DB_QA_MIGRATE_PASSWORD
       - SECRET_DB_AUDIT_MIGRATE_PASSWORD
       - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
+      - SECRET_DB_WORK_MIGRATE_PASSWORD
     networks: [backend]
     depends_on:
       postgres:
@@ -192,6 +195,7 @@ services:
       - SECRET_DB_QA_PASSWORD
       - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_CONNECTOR_PASSWORD
+      - SECRET_DB_WORK_PASSWORD
     # Not published: the edge proxy is the way in (ADR-0013).
     depends_on:
       postgres:
@@ -564,6 +568,8 @@ services:
       - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
       - SECRET_DB_CONNECTOR_PASSWORD
+      - SECRET_DB_WORK_MIGRATE_PASSWORD
+      - SECRET_DB_WORK_PASSWORD
       - SECRET_DB_BACKUP_PASSWORD
     volumes:
       - ./deploy/postgres/initdb/05-settings.sh:/docker-entrypoint-initdb.d/05-settings.sh:ro
@@ -595,6 +601,7 @@ services:
       - SECRET_DB_QA_PASSWORD
       - SECRET_DB_AUDIT_PASSWORD
       - SECRET_DB_CONNECTOR_PASSWORD
+      - SECRET_DB_WORK_PASSWORD
       - SECRET_BACKUP_ENCRYPTION_KEY
     volumes:
       - ./deploy/backup:/opt/verso:ro
@@ -685,6 +692,25 @@ services:
       restore-db:
         condition: service_healthy
 
+  # The same validate for the schema "work" (ADR-0057).
+  restore-flyway-work:
+    profiles: ["drill"]
+    <<: *hardening
+    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$(cat /run/secrets/SECRET_DB_WORK_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_work_migrate -schemas=work -defaultSchema=work -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
+    environment:
+      REDGATE_DISABLE_TELEMETRY: "true"
+    secrets:
+      - SECRET_DB_WORK_MIGRATE_PASSWORD
+    volumes:
+      - ./services/work/work-core/src/main/resources/db/migration/work:/flyway/migrations:ro
+    tmpfs:
+      - /tmp:size=64m
+    networks: [drill]
+    depends_on:
+      restore-db:
+        condition: service_healthy
+
 secrets:
   SECRET_POSTGRES_SUPERUSER_PASSWORD:
     file: ./secrets/SECRET_POSTGRES_SUPERUSER_PASSWORD
@@ -704,6 +730,10 @@ secrets:
     file: ./secrets/SECRET_DB_CONNECTOR_MIGRATE_PASSWORD
   SECRET_DB_CONNECTOR_PASSWORD:
     file: ./secrets/SECRET_DB_CONNECTOR_PASSWORD
+  SECRET_DB_WORK_MIGRATE_PASSWORD:
+    file: ./secrets/SECRET_DB_WORK_MIGRATE_PASSWORD
+  SECRET_DB_WORK_PASSWORD:
+    file: ./secrets/SECRET_DB_WORK_PASSWORD
   SECRET_DB_BACKUP_PASSWORD:
     file: ./secrets/SECRET_DB_BACKUP_PASSWORD
   SECRET_BACKUP_ENCRYPTION_KEY:

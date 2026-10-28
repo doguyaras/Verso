@@ -19,7 +19,7 @@ log() { printf '%s restore-check: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 fail() { log "FAILED: $*"; exit 1; }
 
 # One entry per module schema; must match deploy/postgres/initdb/10-roles.sh (ModuleConsistencyTest).
-MODULES=(document qa audit connector)
+MODULES=(document qa audit connector work)
 
 for f in SECRET_POSTGRES_SUPERUSER_PASSWORD SECRET_BACKUP_ENCRYPTION_KEY; do
   [ -r "$SECRETS/$f" ] && [ -s "$SECRETS/$f" ] || fail "secret $f missing or unreadable"

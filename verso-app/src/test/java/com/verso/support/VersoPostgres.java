@@ -46,6 +46,7 @@ public final class VersoPostgres {
                 "SECRET_DB_QA_MIGRATE_PASSWORD", "SECRET_DB_QA_PASSWORD",
                 "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_AUDIT_PASSWORD",
                 "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD", "SECRET_DB_CONNECTOR_PASSWORD",
+                "SECRET_DB_WORK_MIGRATE_PASSWORD", "SECRET_DB_WORK_PASSWORD",
                 "SECRET_DB_BACKUP_PASSWORD", "SECRET_DB_KEYCLOAK_PASSWORD"}) {
             SECRETS.put(name, randomPassword());
         }
@@ -88,6 +89,13 @@ public final class VersoPostgres {
                     "verso.connector.flyway.url=" + POSTGRES.getJdbcUrl(),
                     "verso.connector.flyway.user=svc_connector_migrate",
                     "verso.connector.flyway.password=" + secret("SECRET_DB_CONNECTOR_MIGRATE_PASSWORD"),
+                    // The work schema's own roles (ADR-0057).
+                    "verso.work.datasource.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.work.datasource.username=svc_work",
+                    "verso.work.datasource.password=" + secret("SECRET_DB_WORK_PASSWORD"),
+                    "verso.work.flyway.url=" + POSTGRES.getJdbcUrl(),
+                    "verso.work.flyway.user=svc_work_migrate",
+                    "verso.work.flyway.password=" + secret("SECRET_DB_WORK_MIGRATE_PASSWORD"),
                     // Several cached test contexts share one container: small pools keep them far below
                     // max_connections (phase 2 spring review C4).
                     "verso.document.datasource.maximum-pool-size=3",
@@ -97,7 +105,9 @@ public final class VersoPostgres {
                     "verso.audit.datasource.maximum-pool-size=2",
                     "verso.audit.datasource.minimum-idle=0",
                     "verso.connector.datasource.maximum-pool-size=2",
-                    "verso.connector.datasource.minimum-idle=0")
+                    "verso.connector.datasource.minimum-idle=0",
+                    "verso.work.datasource.maximum-pool-size=2",
+                    "verso.work.datasource.minimum-idle=0")
                     .applyTo(context);
         }
     }

@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "id": "gereksinim-kalitesi",
+  "version": "1.0.0",
+  "name": "Gereksinim kalitesi kontrolü",
+  "description": "Kullanıcı hikâyelerini ya da gereksinimleri INVEST ölçütleri ve ISO/IEC/IEEE 29148 kalite özellikleriyle tek tek değerlendirir; belirsiz ifadeleri listeler ve her madde için daha net bir yeniden yazım önerir.",
+  "category": "PROJECT",
+  "slash": "gereksinim",
+  "inputs": [
+    { "key": "requirements", "label": "Gereksinimler / kullanıcı hikâyeleri", "type": "LONG_TEXT", "required": true, "maxLength": 20000, "maxItems": null, "options": null, "help": "Her satıra bir gereksinim ya da hikâye.", "placeholder": "Kullanıcı olarak ... istiyorum, böylece ..." },
+    { "key": "style", "label": "Biçim", "type": "SELECT", "required": true, "maxLength": null, "maxItems": null,
+      "options": [ { "value": "hikaye", "label": "Kullanıcı hikâyesi (INVEST)" }, { "value": "gereksinim", "label": "Sistem gereksinimi (29148)" } ],
+      "help": null, "placeholder": null },
+    { "key": "context", "label": "Ürün / proje", "type": "TEXT", "required": false, "maxLength": 200, "maxItems": null, "options": null, "help": "Verilirse ürün belgeleri ve sözlük aranır.", "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{context}}", "{{requirements}}"], "maxPassages": 6, "documentsInput": null, "collectionsInput": null, "scopeCollections": null },
+  "steps": [
+    {
+      "key": "degerlendir",
+      "title": "Her maddeyi ölçütlerle değerlendir",
+      "instruction": "Girdideki her gereksinimi ayrı ele al. Biçim {{style}} hikaye ise INVEST (Bağımsız, Pazarlığa açık, Değerli, Tahmin edilebilir, Küçük, Test edilebilir), gereksinim ise ISO/IEC/IEEE 29148 özelliklerini (gerekli, tek anlamlı, tam, tekil, uygulanabilir, doğrulanabilir) kontrol et. Her madde için karşılanmayan ölçütleri ve belirsiz sözcükleri (hızlı, kolay, uygun, vb.) kısa notlarla yaz.",
+      "maxChars": 5000
+    },
+    {
+      "key": "yeniden-yaz",
+      "title": "Puanla ve yeniden yaz",
+      "instruction": "Önceki notlardan her madde için bir satır yaz: gereksinim, karşılanmayan ölçütler, 1-5 arası puan (5 en iyi) ve daha net bir yeniden yazım. Yeniden yazımda kaynaklarda ya da gereksinimde olmayan sayı, eşik ya da kod uydurma; ölçülebilir bir değer gerekiyorsa yer tutucu olarak [eşik belirlenmeli] yaz. Satırın kanıtı gereksinimin kendisidir (girdi kaynağı); ürün belgelerine dayanmayan bir terim yorumunda kanıt yoksa değerlendirilemez de. Belirsiz ifadeleri ayrı tabloda topla. Kısa yaz: her hücre en çok iki cümle.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "items", "title": "Madde değerlendirmesi", "kind": "ROWS", "minRows": 1, "maxRows": 40, "maxLength": null,
+        "columns": [
+          { "key": "requirement", "label": "Gereksinim", "maxLength": 400, "allowed": null },
+          { "key": "failedCriteria", "label": "Karşılanmayan ölçütler", "maxLength": 300, "allowed": null },
+          { "key": "score", "label": "Puan (1-5)", "maxLength": 1, "allowed": ["1", "2", "3", "4", "5"] },
+          { "key": "rewrite", "label": "Önerilen yeniden yazım", "maxLength": 500, "allowed": null }
+        ] },
+      { "key": "ambiguities", "title": "Belirsiz ifadeler", "kind": "ROWS", "minRows": 0, "maxRows": 30, "maxLength": null,
+        "columns": [ { "key": "phrase", "label": "İfade", "maxLength": 100, "allowed": null }, { "key": "why", "label": "Neden belirsiz", "maxLength": 300, "allowed": null } ] },
+      { "key": "summary", "title": "Genel değerlendirme", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 }
+    ]
+  },
+  "maxOutputChars": 18000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Değerlendirme maddelerin kendi metnine dayanıyor; yeniden yazımda uydurulmuş eşik yok." },
+    { "key": "expert-agreement", "name": "Uzman uyumu", "description": "Karşılanmayan ölçütler bir iş analistinin işaretleyeceklerle örtüşüyor." },
+    { "key": "specificity", "name": "Özgüllük", "description": "Belirsiz ifadeler tek tek gösterilmiş, genel öneri yok." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Yeniden yazımlar doğrudan backlog'a konabilir." },
+    { "key": "length", "name": "Uzunluk", "description": "Yeniden yazım özgün maddeden belirgin biçimde uzun değil (araştırma: uzunluk kullanıcıyı yoruyor)." }
+  ],
+  "framework": { "name": "INVEST ve ISO/IEC/IEEE 29148", "reference": "Bill Wake, INVEST in Good Stories (2003); ISO/IEC/IEEE 29148:2018 Requirements engineering, 5.2.5 iyi gereksinim özellikleri" },
+  "disclaimer": "Taslak — iş analisti ya da ürün sahibinin incelemesi için.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": []
+}

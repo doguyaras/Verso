@@ -1193,3 +1193,49 @@ dialog.palette::backdrop { background: var(--scrim); }
 .verify-step h3 { font-size: var(--text-md); font-weight: 600; margin-bottom: 6px; }
 .verify-step p { color: var(--fg-muted); max-width: 80ch; margin-top: 6px; }
 .code-block { margin: 0; padding: 10px 12px; overflow-x: auto; border-radius: var(--r-md); background: var(--bg-subtle, var(--border-muted)); font: 13px/1.5 var(--font-mono, monospace); }
+
+/* ---------- "Beceriler" (ADR-0057): the task-skill library; not "Prosedürler" (ADR-0053) ---------- */
+.skill-lib-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-lib-chips .chip[aria-pressed="true"] { background: var(--accent-bg-subtle); border-color: var(--accent-border); color: var(--fg-default); font-weight: 600; }
+.skill-lib-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.skill-lib-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--border-muted); border-radius: var(--r-lg); background: var(--bg-surface); }
+.skill-lib-card > .button { align-self: flex-start; margin-top: auto; }
+.skill-lib-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.skill-lib-card-head h3 { font-size: 15px; font-weight: 600; }
+.skill-lib-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.skill-lib-meta code { font: 13px var(--font-mono, monospace); color: var(--fg-muted); }
+.skill-lib-form { max-width: 72ch; }
+.skill-lib-field { display: grid; gap: 6px; }
+.skill-lib-label { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: var(--text-sm); }
+.skill-lib-picker { display: grid; gap: 4px; max-height: 240px; overflow-y: auto; padding: 8px; border: 1px solid var(--border-muted); border-radius: var(--r-md); }
+.field-error { color: var(--danger-text); font-size: var(--text-sm); }
+.field-error:empty { display: none; }
+.skill-lib-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.skill-lib-about p + p { margin-top: 4px; }
+.skill-lib-disclaimer { font-weight: 600; }
+.skill-lib-stages { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.skill-lib-stages li { padding: 4px 10px; border-radius: var(--r-full); border: 1px solid var(--border-muted); color: var(--fg-subtle); font-size: var(--text-sm); }
+.skill-lib-stages li.done { color: var(--success-text); border-color: var(--success-border); background: var(--success-bg); }
+.skill-lib-stages li.current { color: var(--fg-default); border-color: var(--accent-border); background: var(--accent-bg-subtle); font-weight: 600; }
+.skill-lib-section h3, #skill-run-sources { font-size: var(--text-md); font-weight: 600; margin-bottom: 8px; }
+.skill-lib-table td { height: auto; padding: 10px 16px; vertical-align: top; }
+.skill-lib-table tr.skill-lib-na td { color: var(--fg-muted); }
+.skill-lib-cite { padding: 3px 10px; min-height: 28px; }
+.skill-lib-sources { display: grid; gap: 6px; list-style: none; padding: 0; }
+.skill-lib-checks { display: grid; gap: 4px; list-style: none; padding: 0; font-size: var(--text-sm); }
+.skill-lib-checks li { display: flex; gap: 6px; align-items: center; }
+.skill-lib-checks li.ok { color: var(--success-text); }
+.skill-lib-checks li.bad { color: var(--danger-text); }
+.skill-lib-rating { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.skill-lib-rating .button[aria-pressed="true"] { background: var(--accent-bg-subtle); border-color: var(--accent-border); font-weight: 600; }
+.skill-lib-json { font: 13px/1.5 var(--font-mono, monospace); }
+.skill-lib-problems { display: grid; gap: 4px; padding-left: 18px; color: var(--danger-text); font-size: var(--text-sm); }
+.skill-lib-excerpt { white-space: pre-wrap; }
+/* The "/" skill picker of the ask box: above the composer, which is positioned (sticky). */
+.slash-picker { position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; z-index: 5; display: grid; gap: 2px; padding: 6px; margin: 0; list-style: none;
+  background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--r-md); box-shadow: var(--shadow-2); max-height: 280px; overflow-y: auto; }
+.slash-picker[hidden] { display: none; }
+.slash-picker li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--r-md); cursor: pointer; min-height: 44px; }
+.slash-picker li[aria-selected="true"] { background: var(--accent-bg-subtle); }
+.slash-picker li code { font: 13px var(--font-mono, monospace); color: var(--fg-accent); }
+@media (pointer: coarse) { .skill-lib-cite, .skill-lib-rating .button { min-height: 44px; } }

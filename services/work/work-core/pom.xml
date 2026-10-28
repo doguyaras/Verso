@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.verso</groupId>
+    <artifactId>verso</artifactId>
+    <version>${revision}</version>
+    <relativePath>../../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>work-core</artifactId>
+  <description>Skill library (ADR-0057): the task-skill runtime (input validation, grounding through document-api with
+    the caller's access, a bounded prompt pipeline through the SkillModel port, output-schema enforcement with one
+    repair, deterministic citation and grounding checks), run history in the module's own schema "work", the admin
+    switches and customer-authored skills, under /v1/skills, /v1/skill-runs and /v1/admin.</description>
+
+  <properties>
+    <!-- 0 tests = failure (reference Ek B lesson 2). -->
+    <failIfNoTests>true</failIfNoTests>
+  </properties>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- The built-in skills live at the repository root (skills/*.json, ADR-0057) so they are reviewed like code and
+           read by the eval harness; the jar carries them under skills/. The golden sets stay out of the jar. -->
+      <resource>
+        <directory>${project.basedir}/../../../skills</directory>
+        <targetPath>skills</targetPath>
+        <includes>
+          <include>*.json</include>
+        </includes>
+      </resource>
+    </resources>
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>work-api</artifactId>
+    </dependency>
+    <!-- Grounding goes through the document module's contract (DocumentRetrieval), never its tables. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>document-api</artifactId>
+    </dependency>
+    <!-- Runs and admin changes are audited (ADR-0026, ADR-0039). -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>audit-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>platform-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <!-- Own pool, JdbcClient and Flyway on the schema "work", like connector (ADR-0038). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
+    </dependency>
+    <!-- ChatModel only, behind the SkillModel port (ADR-0057); the provider starter is chosen by the assembly
+         (verso-app, ADR-0006) and the model gateway replaces the adapter later. -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-model</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Per-module architecture rules (ADR-0007 #7). -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

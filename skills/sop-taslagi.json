@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "id": "sop-taslagi",
+  "version": "1.0.0",
+  "name": "SOP / prosedür taslağı",
+  "description": "Görüşme notlarından ve mevcut şirket belgelerinden standart bir iş prosedürü (SOP) taslağı yazar: amaç, kapsam, roller, adımlar, kontroller, istisnalar ve kayıtlar. Süreç sahibinin onayına sunulacak bir taslaktır.",
+  "category": "PROCESS",
+  "slash": "sop",
+  "inputs": [
+    { "key": "process", "label": "Süreç adı", "type": "TEXT", "required": true, "maxLength": 200, "maxItems": null, "options": null, "help": null, "placeholder": "Ör. Satın alma talebi ve onayı" },
+    { "key": "interviewNotes", "label": "Görüşme notları", "type": "LONG_TEXT", "required": false, "maxLength": 20000, "maxItems": null, "options": null, "help": "Süreci yürütenlerle yapılan görüşmelerin notları; belgelerde olmayan uygulama bilgisi.", "placeholder": null },
+    { "key": "sourceDocuments", "label": "Mevcut belgeler", "type": "DOCUMENTS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": "Seçerseniz arama yalnız bu belgelerde yapılır.", "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{process}}", "{{process}} onay sorumlu kayıt"], "maxPassages": 12, "documentsInput": "sourceDocuments", "collectionsInput": null, "scopeCollections": null },
+  "steps": [
+    {
+      "key": "topla",
+      "title": "Süreç bilgisini topla",
+      "instruction": "{{process}} süreci için numaralı kaynaklardan ve görüşme notlarından şu bilgileri kaynak numarasıyla not et: amaç, kapsam ve kapsam dışı, roller, sıralı adımlar, eşikler ve onaylar, kontroller, istisnalar, tutulan kayıtlar. Kaynaklar arasında çelişki varsa ikisini de not et ve çelişki olduğunu yaz.",
+      "maxChars": 6000
+    },
+    {
+      "key": "yaz",
+      "title": "SOP taslağını yaz",
+      "instruction": "Notlardan SOP taslağını yaz. Adımlar sıralı, her biri tek eylem ve bir sorumlu rolle olsun. Tutar, süre, eşik ve kodları yalnız kaynaklardan aynen al; kaynakta olmayan bir eşik gerekiyorsa adımı değerlendirilemez olarak işaretle ve açık konulara yaz. Kaynaklar çelişiyorsa adımda tahmin yapma, çelişkiyi açık konulara yaz. Kontroller ve kayıtlar yalnız kaynakta geçenlerdir. Kısa ve emir kipinde yaz.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "purpose", "title": "Amaç ve kapsam", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 800 },
+      { "key": "roles", "title": "Roller", "kind": "ROWS", "minRows": 0, "maxRows": 12, "maxLength": null,
+        "columns": [ { "key": "role", "label": "Rol", "maxLength": 80, "allowed": null }, { "key": "responsibility", "label": "Sorumluluk", "maxLength": 300, "allowed": null } ] },
+      { "key": "steps", "title": "Adımlar", "kind": "ROWS", "minRows": 1, "maxRows": 25, "maxLength": null,
+        "columns": [ { "key": "step", "label": "Adım", "maxLength": 300, "allowed": null }, { "key": "role", "label": "Sorumlu", "maxLength": 80, "allowed": null } ] },
+      { "key": "controls", "title": "Kontroller ve onaylar", "kind": "ROWS", "minRows": 0, "maxRows": 15, "maxLength": null,
+        "columns": [ { "key": "control", "label": "Kontrol", "maxLength": 300, "allowed": null } ] },
+      { "key": "exceptions", "title": "İstisnalar", "kind": "ROWS", "minRows": 0, "maxRows": 10, "maxLength": null,
+        "columns": [ { "key": "exception", "label": "İstisna", "maxLength": 300, "allowed": null } ] },
+      { "key": "records", "title": "Kayıtlar", "kind": "ROWS", "minRows": 0, "maxRows": 10, "maxLength": null,
+        "columns": [ { "key": "record", "label": "Kayıt", "maxLength": 200, "allowed": null } ] },
+      { "key": "openIssues", "title": "Açık konular", "kind": "ROWS", "minRows": 0, "maxRows": 10, "maxLength": null,
+        "columns": [ { "key": "issue", "label": "Konu", "maxLength": 300, "allowed": null } ] }
+    ]
+  },
+  "maxOutputChars": 16000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Her adım, eşik ve kontrol kaynaklarda ya da görüşme notlarında geçiyor." },
+    { "key": "completeness", "name": "Bütünlük", "description": "Kaynaklardaki adımlar, onaylar ve kayıtlar eksiksiz aktarılmış." },
+    { "key": "clarity", "name": "Açıklık", "description": "Adımlar tek eylemli, sorumlusu belli ve sıralı." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Çelişkiler ve eksikler açık konu olarak süreç sahibine bırakılmış." },
+    { "key": "length", "name": "Uzunluk", "description": "Gereksiz açıklama ve tekrar yok." }
+  ],
+  "framework": { "name": "ISO 9001 dokümante bilgi", "reference": "ISO 9001:2015 7.5 Documented information (oluşturma, güncelleme, kontrol); SIPOC süreç tanımı pratiği" },
+  "disclaimer": "Taslak — süreç sahibinin onayı için; \"Prosedürler\" ekranındaki onaylı prosedürlerden farklıdır.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": ["yürürlüktedir", "yürürlüğe girmiştir"]
+}

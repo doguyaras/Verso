@@ -20,6 +20,8 @@ NAMES=(
   SECRET_DB_AUDIT_PASSWORD             # svc_audit: application, INSERT and SELECT only on audit (ADR-0026)
   SECRET_DB_CONNECTOR_MIGRATE_PASSWORD # svc_connector_migrate: owner of the connector schema, Flyway (ADR-0038)
   SECRET_DB_CONNECTOR_PASSWORD         # svc_connector: application, DML only on connector (ADR-0038)
+  SECRET_DB_WORK_MIGRATE_PASSWORD      # svc_work_migrate: owner of the work schema, Flyway (ADR-0057)
+  SECRET_DB_WORK_PASSWORD              # svc_work: application, DML only on work (ADR-0057)
   SECRET_CONNECTOR_SMB_PASSWORD        # SMB connector service account (ADR-0038); a placeholder until you write the real one
   SECRET_CONNECTOR_CONFLUENCE_TOKEN    # Confluence connector token (ADR-0044); a placeholder until you write the real one
   SECRET_CONNECTOR_SHAREPOINT_CERT     # SharePoint connector key + certificate, PEM (ADR-0045); a placeholder until you write the real one

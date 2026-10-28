@@ -21,7 +21,7 @@ public final class AuditTables {
         try (Connection admin = admin(); Statement st = admin.createStatement()) {
             st.execute("TRUNCATE audit.event");
             // Records still waiting for delivery (ADR-0039) belong to the log being reset.
-            st.execute("TRUNCATE document.outbox_event, qa.outbox_event, connector.outbox_event");
+            st.execute("TRUNCATE document.outbox_event, qa.outbox_event, connector.outbox_event, work.outbox_event");
         } catch (SQLException e) {
             throw new IllegalStateException("cannot reset the audit schema", e);
         }

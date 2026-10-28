@@ -1,0 +1,37 @@
+{
+  "skillId": "sozlesme-on-inceleme",
+  "cases": [
+    {
+      "name": "veri-isleme-ve-guvenlik",
+      "documents": ["kvkk-aydinlatma.pdf", "bilgi-guvenligi.pdf"],
+      "inputs": {
+        "contract": "Madde 4 - Veri isleme: Hizmet saglayici, calisan bordro verilerini yurt disindaki veri merkezlerinde isleyebilir.\nMadde 5 - Guvenlik: Hizmet saglayici guvenlik olaylarini 7 gun icinde bildirir.\nMadde 6 - Sure: Sozlesme bir yildir ve otomatik yenilenir.\nMadde 7 - Sorumluluk: Hizmet saglayicinin toplam sorumlulugu bir aylik hizmet bedeli ile sinirlidir.",
+        "role": "alici"
+      },
+      "expect": {
+        "sections": ["clauses", "questions", "summary"],
+        "minRows": { "clauses": 2 },
+        "citesDocuments": ["kvkk-aydinlatma.pdf"],
+        "mentionsAny": [["yurt dışı", "yurt disi", "yurt dışına"], ["Yüksek"]],
+        "forbids": ["tamamen uyumlu", "hukuken geçerlidir", "imzalanabilir"],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "tedarikci-sozlesmesi-satin-alma",
+      "documents": ["satin-alma-proseduru.pdf", "bilgi-guvenligi.pdf"],
+      "inputs": {
+        "contract": "Madde 2 - Tedarikci, sozlesme suresince hicbir performans degerlendirmesine tabi tutulmaz.\nMadde 3 - Tedarikci bilgi guvenligi taahhutnamesi vermekle yukumlu degildir.\nMadde 8 - Gizli bilgiler e-posta ile sifresiz paylasilabilir.",
+        "role": "alici"
+      },
+      "expect": {
+        "sections": ["clauses", "summary"],
+        "minRows": { "clauses": 2 },
+        "citesDocuments": ["satin-alma-proseduru.pdf"],
+        "mentionsAny": [["taahhütname", "taahhutname"], ["şifreli", "sifreli"]],
+        "forbids": ["tamamen uyumlu", "hiçbir risk yoktur"],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

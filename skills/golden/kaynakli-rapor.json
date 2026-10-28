@@ -1,0 +1,44 @@
+{
+  "skillId": "kaynakli-rapor",
+  "cases": [
+    {
+      "name": "masraf-onay-kurallari",
+      "documents": ["masraf-politikasi.pdf"],
+      "inputs": { "topic": "Seyahat ve yemek masraflarinda limitler ve onay kurallari", "audience": "yonetim", "length": "kisa" },
+      "expect": {
+        "sections": ["summary", "findings", "gaps"],
+        "minRows": { "findings": 2 },
+        "citesDocuments": ["masraf-politikasi.pdf"],
+        "mentionsAny": [["900 TL"], ["5.000 TL", "5000 TL"], ["beşinci iş günü", "besinci is gunu", "5. iş günü"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "uzaktan-calisma-destekleri",
+      "documents": ["uzaktan-calisma.pdf"],
+      "inputs": { "topic": "Uzaktan calisan personele verilen ekipman ve odemeler", "audience": "calisanlar", "length": "kisa" },
+      "expect": {
+        "sections": ["summary", "findings"],
+        "minRows": { "findings": 2 },
+        "citesDocuments": ["uzaktan-calisma.pdf"],
+        "mentionsAny": [["500 TL"], ["6.000 TL", "6000 TL"], ["monitör", "monitor"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "belgede-olmayan-konu-eksik-bilgi",
+      "documents": ["masraf-politikasi.pdf"],
+      "inputs": { "topic": "Sirket araclarinin kasko ve bakim politikasi", "audience": "ekip", "length": "kisa" },
+      "expect": {
+        "sections": ["summary", "findings", "gaps"],
+        "minRows": { "gaps": 1 },
+        "citesDocuments": [],
+        "mentionsAny": [],
+        "forbids": ["kasko yıllık", "bakım her 10.000"],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

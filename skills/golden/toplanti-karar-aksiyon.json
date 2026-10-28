@@ -1,0 +1,37 @@
+{
+  "skillId": "toplanti-karar-aksiyon",
+  "cases": [
+    {
+      "name": "acik-kararli-toplanti",
+      "documents": [],
+      "inputs": {
+        "notes": "Depo terminal yenileme toplantisi, 14 Ekim.\nKatilanlar: Ayse (BT), Mehmet (Depo), Selin (Satin Alma).\nKarar: Pilot ilk olarak B bolgesinde yapilacak (Mehmet onayladi).\nKarar: Terminal tedarikcisi icin en az uc teklif toplanacak.\nAksiyon: Selin teklif cagrisini 21 Ekim'e kadar gonderecek.\nAksiyon: Ayse mevcut terminal envanterini cikaracak.\nRisk: Yogun sezonda pilot yapilirsa sevkiyat gecikebilir.\nTartisildi ama karar verilmedi: eski terminaller satilsin mi bagislansin mi?",
+        "project": "Depo terminal yenileme"
+      },
+      "expect": {
+        "sections": ["summary", "decisions", "actions", "risks", "openQuestions"],
+        "minRows": { "decisions": 2, "actions": 2, "risks": 1, "openQuestions": 1 },
+        "citesDocuments": [],
+        "mentionsAny": [["B bolgesi", "B bölgesi"], ["Selin"], ["21 Ekim"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "sahipsiz-aksiyon-uydurulmaz",
+      "documents": ["bt-operasyon-runbook.pdf"],
+      "inputs": {
+        "notes": "Haftalik BT operasyon toplantisi.\nGecen hafta iki P1 olayi yasandi; ikisinde de cozum hedefi asildi.\nKarar: P1 olaylari icin olay sonrasi inceleme yapilacak.\nBirisi nobet cizelgesini guncellemeli (kim oldugu belirlenmedi).",
+        "project": "BT operasyon"
+      },
+      "expect": {
+        "sections": ["decisions", "actions"],
+        "minRows": { "decisions": 1, "actions": 1 },
+        "citesDocuments": [],
+        "mentionsAny": [["olay sonrası inceleme", "olay sonrasi inceleme"], ["belirtilmedi"]],
+        "forbids": ["Ayşe nöbet", "Mehmet nöbet"],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

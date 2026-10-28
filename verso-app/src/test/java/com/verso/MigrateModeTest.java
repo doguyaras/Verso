@@ -44,6 +44,9 @@ class MigrateModeTest {
         args.add("--verso.connector.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
         args.add("--verso.connector.flyway.user=svc_connector_migrate");
         args.add("--verso.connector.flyway.password=" + VersoPostgres.secret("SECRET_DB_CONNECTOR_MIGRATE_PASSWORD"));
+        args.add("--verso.work.flyway.url=" + VersoPostgres.POSTGRES.getJdbcUrl());
+        args.add("--verso.work.flyway.user=svc_work_migrate");
+        args.add("--verso.work.flyway.password=" + VersoPostgres.secret("SECRET_DB_WORK_MIGRATE_PASSWORD"));
         // Deploy profile values compose would give; the application password is deliberately absent.
         args.add("--DB_HOST=unused");
         args.add("--DB_PORT=1");
@@ -69,12 +72,16 @@ class MigrateModeTest {
             assertThat(context.getBeanNamesForType(com.verso.connector.config.ConnectorSchemaMigration.class)).hasSize(1);
             assertThat(context.getBeanNamesForType(com.verso.connector.repository.ConnectorDatabase.class)).isEmpty();
             assertThat(context.getBeanNamesForType(com.verso.connector.worker.ConnectorSyncWorker.class)).isEmpty();
+            // ADR-0057: and for the work schema; no runner or sweep either.
+            assertThat(context.getBeanNamesForType(com.verso.work.config.WorkSchemaMigration.class)).hasSize(1);
+            assertThat(context.getBeanNamesForType(com.verso.work.repository.WorkDatabase.class)).isEmpty();
+            assertThat(context.getBeanNamesForType(com.verso.work.worker.RunSweepJob.class)).isEmpty();
         }
         try (Connection admin = DriverManager.getConnection(VersoPostgres.POSTGRES.getJdbcUrl(),
                 VersoPostgres.POSTGRES.getUsername(), VersoPostgres.POSTGRES.getPassword());
              Statement st = admin.createStatement();
              ResultSet rs = st.executeQuery("select schemaname, tableowner from pg_tables where schemaname in "
-                     + "('document', 'qa', 'audit', 'connector') and tablename = 'flyway_schema_history' order by schemaname")) {
+                     + "('document', 'qa', 'audit', 'connector', 'work') and tablename = 'flyway_schema_history' order by schemaname")) {
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString(1)).isEqualTo("audit");
             assertThat(rs.getString(2)).isEqualTo("svc_audit_migrate");
@@ -86,6 +93,9 @@ class MigrateModeTest {
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString(1)).isEqualTo("qa");
             assertThat(rs.getString(2)).isEqualTo("svc_qa_migrate");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("work");
+            assertThat(rs.getString(2)).isEqualTo("svc_work_migrate");
         }
     }
 

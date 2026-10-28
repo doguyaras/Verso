@@ -3,7 +3,7 @@
 # Ownership is enforced by GRANT, not by tests: the application role can read and write the tables of its own schema
 # and nothing else; DDL belongs to the migration role alone.
 set -euo pipefail
-MODULES=(document qa audit connector)
+MODULES=(document qa audit connector work)
 
 sql="
 -- Nothing is reachable by default: no public schema (database access: 10-roles.sh).

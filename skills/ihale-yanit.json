@@ -1,0 +1,60 @@
+{
+  "formatVersion": 1,
+  "id": "ihale-yanit",
+  "version": "1.0.0",
+  "name": "İhale / RFP yanıt taslağı",
+  "description": "İhale veya teklif isteği (RFP/RFQ) gereksinimlerini şirket belgelerindeki kanıtla eşleştirir: her gereksinim için karşılanıyor, kısmen, boşluk ya da kanıt yok durumu ve kaynağa dayanan bir yanıt taslağı üretir.",
+  "category": "SALES",
+  "slash": "ihale",
+  "inputs": [
+    { "key": "requirements", "label": "Gereksinim listesi", "type": "LONG_TEXT", "required": true, "maxLength": 20000, "maxItems": null, "options": null, "help": "Şartnameden gereksinimleri her satıra bir tane gelecek şekilde yapıştırın.", "placeholder": "1. Tedarikçi bilgi güvenliği taahhüdü vermelidir..." },
+    { "key": "evidenceCollections", "label": "Kanıt aranacak bilgi alanları", "type": "COLLECTIONS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": "Geçmiş teklifler, sertifikalar, ürün ve süreç belgeleri.", "placeholder": null },
+    { "key": "deadline", "label": "Son teslim tarihi", "type": "TEXT", "required": false, "maxLength": 40, "maxItems": null, "options": null, "help": null, "placeholder": "Ör. 15.11.2026" }
+  ],
+  "grounding": { "queries": ["{{requirements}}"], "maxPassages": 12, "documentsInput": null, "collectionsInput": "evidenceCollections", "scopeCollections": null },
+  "steps": [
+    {
+      "key": "eslestir",
+      "title": "Gereksinimleri kanıtla eşleştir",
+      "instruction": "Gereksinim listesini satır satır ayır. Her gereksinim için numaralı kaynaklarda şirketin bunu karşıladığını gösteren kanıtı ara ve kısa not al: gereksinim, bulunan kanıt ve kaynak numarası ya da kanıt bulunamadı. Kanıtı yorumlama, yalnız kaynakta yazanı not et.",
+      "maxChars": 5000
+    },
+    {
+      "key": "yanitla",
+      "title": "Uyum matrisini ve yanıtları yaz",
+      "instruction": "Önceki adımın notlarından uyum matrisini yaz. Durum yalnız şu değerlerden biridir: Karşılanıyor (kaynak gereksinimi tam karşılıyor), Kısmen (bir kısmını karşılıyor), Boşluk (kaynak gereksinimle çelişiyor ya da karşılamadığını gösteriyor), Kanıt yok (kaynakta bilgi yok). Kanıt yok satırlarında kanıt yerine değerlendirilemez de; asla Karşılanıyor yazıp tahmin etme. Her satır için teklife konabilecek kısa bir yanıt taslağı yaz; tutar, süre ve kodları yalnız kaynaktan al. Sonra karşılanamayan ya da kanıtı olmayan gereksinimleri teklif ekibinin tamamlaması gereken işler olarak listele.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "matrix", "title": "Gereksinim uyum matrisi", "kind": "ROWS", "minRows": 1, "maxRows": 40, "maxLength": null,
+        "columns": [
+          { "key": "requirement", "label": "Gereksinim", "maxLength": 300, "allowed": null },
+          { "key": "status", "label": "Durum", "maxLength": 20, "allowed": ["Karşılanıyor", "Kısmen", "Boşluk", "Kanıt yok"] },
+          { "key": "answer", "label": "Yanıt taslağı", "maxLength": 600, "allowed": null }
+        ] },
+      { "key": "followUps", "title": "Teklif ekibinin tamamlaması gerekenler", "kind": "ROWS", "minRows": 0, "maxRows": 20, "maxLength": null,
+        "columns": [ { "key": "task", "label": "İş", "maxLength": 300, "allowed": null } ] },
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 }
+    ]
+  },
+  "maxOutputChars": 20000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Karşılanıyor ve Kısmen satırlarının her biri gereksinimi gerçekten destekleyen bir kaynağa dayanıyor." },
+    { "key": "coverage", "name": "Kapsam", "description": "Listedeki her gereksinim matriste bir satır." },
+    { "key": "honesty", "name": "Dürüstlük", "description": "Kanıtı olmayan gereksinim Kanıt yok olarak işaretlenmiş, karşılanıyor diye tahmin edilmemiş." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Eksikler teklif ekibi için somut işlere dönüşmüş." },
+    { "key": "length", "name": "Uzunluk", "description": "Yanıt taslakları kısa ve teklife konabilir." }
+  ],
+  "framework": { "name": "Teklif uyum matrisi (compliance matrix)", "reference": "APMP Body of Knowledge: compliance matrix ve requirement traceability; teklif hazırlama pratiği" },
+  "disclaimer": "Taslak — teklif sorumlusunun kontrolü ve onayı için; kanıtı olmayan maddeler ayrıca doğrulanmalıdır.",
+  "compliance": false,
+  "attribution": {
+    "source": "anthropics/knowledge-work-plugins",
+    "license": "Apache-2.0",
+    "url": "https://github.com/anthropics/knowledge-work-plugins",
+    "note": "Requirement-to-evidence mapping idea follows the Sales plugin's proposal/RFP support; restructured as a Turkish compliance matrix, no text copied."
+  },
+  "forbiddenPhrases": []
+}

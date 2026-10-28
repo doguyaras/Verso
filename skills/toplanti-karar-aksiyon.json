@@ -1,0 +1,97 @@
+{
+  "formatVersion": 1,
+  "id": "toplanti-karar-aksiyon",
+  "version": "1.0.0",
+  "name": "Toplantı notu → karar ve aksiyon listesi",
+  "description": "Toplantı notunu ya da dökümünü alır; alınan kararları, sahibi ve tarihiyle aksiyonları, dile getirilen riskleri ve açık soruları ayrı tablolar hâlinde çıkarır. Notta olmayan bir karar ya da sahip uydurulmaz.",
+  "category": "PRODUCTIVITY",
+  "slash": "toplanti",
+  "inputs": [
+    {
+      "key": "notes",
+      "label": "Toplantı notu veya dökümü",
+      "type": "LONG_TEXT",
+      "required": true,
+      "maxLength": 20000,
+      "options": null,
+      "maxItems": null,
+      "help": "Notu olduğu gibi yapıştırın. Konuşmacı adları varsa korunur.",
+      "placeholder": "Ör. 12 Ekim proje toplantısı: Ayşe ERP geçişinin..."
+    },
+    {
+      "key": "project",
+      "label": "Proje veya konu",
+      "type": "TEXT",
+      "required": false,
+      "maxLength": 200,
+      "options": null,
+      "maxItems": null,
+      "help": "Verilirse ilgili proje belgeleri de aranır.",
+      "placeholder": "Ör. Depo terminal yenileme"
+    }
+  ],
+  "grounding": {
+    "queries": ["{{project}}", "{{notes}}"],
+    "maxPassages": 6,
+    "documentsInput": null,
+    "collectionsInput": null,
+    "scopeCollections": null
+  },
+  "steps": [
+    {
+      "key": "cikar",
+      "title": "Kararları, aksiyonları ve riskleri çıkar",
+      "instruction": "Toplantı notunu oku. Yalnız notta açıkça alınmış kararları karar olarak yaz; tartışılan ama karara bağlanmayan konuları açık soru olarak yaz. Her aksiyon için notta geçen sahibi ve tarihi yaz; notta sahip ya da tarih yoksa o hücreye \"belirtilmedi\" yaz, tahmin etme. Riskleri yalnız notta dile getirildiyse yaz. Sayı, tarih ve kodları yalnız kaynaklardan al. Kaynaklarda dayanağı olmayan bir satır için kanıt yerine değerlendirilemez de. Kısa ve öz yaz; her hücre tek cümle olsun. Özet en çok üç cümledir.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 },
+      {
+        "key": "decisions", "title": "Kararlar", "kind": "ROWS", "minRows": 0, "maxRows": 20, "maxLength": null,
+        "columns": [
+          { "key": "decision", "label": "Karar", "maxLength": 300, "allowed": null },
+          { "key": "decidedBy", "label": "Karar veren", "maxLength": 80, "allowed": null }
+        ]
+      },
+      {
+        "key": "actions", "title": "Aksiyonlar", "kind": "ROWS", "minRows": 0, "maxRows": 30, "maxLength": null,
+        "columns": [
+          { "key": "action", "label": "Aksiyon", "maxLength": 300, "allowed": null },
+          { "key": "owner", "label": "Sahibi", "maxLength": 80, "allowed": null },
+          { "key": "due", "label": "Tarih", "maxLength": 40, "allowed": null }
+        ]
+      },
+      {
+        "key": "risks", "title": "Riskler", "kind": "ROWS", "minRows": 0, "maxRows": 15, "maxLength": null,
+        "columns": [
+          { "key": "risk", "label": "Risk", "maxLength": 300, "allowed": null }
+        ]
+      },
+      {
+        "key": "openQuestions", "title": "Açık sorular", "kind": "ROWS", "minRows": 0, "maxRows": 15, "maxLength": null,
+        "columns": [
+          { "key": "question", "label": "Soru", "maxLength": 300, "allowed": null }
+        ]
+      }
+    ]
+  },
+  "maxOutputChars": 10000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Her karar, aksiyon ve risk notta ya da kaynak belgede geçiyor; uydurulmuş karar veya sahip yok." },
+    { "key": "coverage", "name": "Kapsam", "description": "Nottaki bütün kararlar ve aksiyonlar yakalanmış; tartışılan ama karara bağlanmayan konular açık soru olarak ayrılmış." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Aksiyonlar fiille başlıyor, sahibi ve tarihi var ya da açıkça belirtilmedi deniyor." },
+    { "key": "length", "name": "Uzunluk", "description": "Hücreler tek cümle, özet en çok üç cümle; tekrar ve dolgu yok." }
+  ],
+  "framework": { "name": "Karar ve aksiyon kaydı (toplantı tutanağı pratiği)", "reference": "Toplantı tutanağı: karar, aksiyon (sahip, tarih), risk ve açık soru ayrımı; Microsoft Copilot toplantı özeti kalıbı" },
+  "disclaimer": "Taslak — toplantı sahibinin kontrolü ve onayı için; notta olmayan karar eklenmemiştir.",
+  "compliance": false,
+  "attribution": {
+    "source": "anthropics/knowledge-work-plugins",
+    "license": "Apache-2.0",
+    "url": "https://github.com/anthropics/knowledge-work-plugins",
+    "note": "The decisions/actions/open-questions structure follows the Productivity plugin's meeting-notes idea; rewritten in Turkish, no text copied."
+  },
+  "forbiddenPhrases": []
+}

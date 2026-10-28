@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "id": "kaynakli-rapor",
+  "version": "1.0.0",
+  "name": "Kaynaklı rapor taslağı",
+  "description": "Bir konu için şirket belgelerinden kaynak gösteren bir yönetim raporu ya da not taslağı yazar. Her bulgu ve her paragraf alıntıladığı belgeye bağlanır; belgelerde olmayan konular eksik bilgi olarak listelenir.",
+  "category": "PRODUCTIVITY",
+  "slash": "rapor",
+  "inputs": [
+    { "key": "topic", "label": "Rapor konusu", "type": "TEXT", "required": true, "maxLength": 300, "maxItems": null, "options": null, "help": "Raporun cevaplaması gereken soru ya da konu.", "placeholder": "Ör. Seyahat masraflarında onay kuralları" },
+    { "key": "audience", "label": "Okuyucu", "type": "SELECT", "required": true, "maxLength": null, "maxItems": null,
+      "options": [ { "value": "yonetim", "label": "Üst yönetim" }, { "value": "ekip", "label": "Ekip / bölüm" }, { "value": "calisanlar", "label": "Tüm çalışanlar" } ],
+      "help": "Dil ve ayrıntı düzeyi okuyucuya göre ayarlanır.", "placeholder": null },
+    { "key": "length", "label": "Uzunluk", "type": "SELECT", "required": true, "maxLength": null, "maxItems": null,
+      "options": [ { "value": "kisa", "label": "Kısa (yarım sayfa)" }, { "value": "orta", "label": "Orta (bir sayfa)" } ],
+      "help": null, "placeholder": null },
+    { "key": "collections", "label": "Aranacak bilgi alanları", "type": "COLLECTIONS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": "Boş bırakılırsa erişebildiğiniz bütün belgeler aranır.", "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{topic}}"], "maxPassages": 10, "documentsInput": null, "collectionsInput": "collections", "scopeCollections": null },
+  "steps": [
+    {
+      "key": "yaz",
+      "title": "Raporu kaynaklarla yaz",
+      "instruction": "{{topic}} konusunda {{audience}} okuyucusu için {{length}} uzunlukta bir rapor taslağı yaz. Yalnız numaralı kaynaklardaki bilgiyi kullan; her bulgu en az bir kaynağa dayansın. Sayı, tutar, süre ve kodları kaynaktaki gibi aynen yaz, yuvarlama ya da hesap yapma. Kaynaklarda bulunmayan ama konu için gerekli bilgileri eksik bilgi bölümüne yaz; kanıtı olmayan bulgu satırına değerlendirilemez de. Genel tavsiye, kaynakta olmayan yorum ve dolgu cümlesi yazma. Öneriler yalnız bulgulardan çıkmalı.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "summary", "title": "Yönetici özeti", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 800 },
+      { "key": "findings", "title": "Bulgular", "kind": "ROWS", "minRows": 1, "maxRows": 15, "maxLength": null,
+        "columns": [ { "key": "heading", "label": "Başlık", "maxLength": 100, "allowed": null }, { "key": "finding", "label": "Bulgu", "maxLength": 600, "allowed": null } ] },
+      { "key": "recommendations", "title": "Öneriler", "kind": "ROWS", "minRows": 0, "maxRows": 8, "maxLength": null,
+        "columns": [ { "key": "recommendation", "label": "Öneri", "maxLength": 300, "allowed": null } ] },
+      { "key": "gaps", "title": "Eksik bilgi", "kind": "ROWS", "minRows": 0, "maxRows": 8, "maxLength": null,
+        "columns": [ { "key": "gap", "label": "Belgelerde bulunamayan", "maxLength": 300, "allowed": null } ] }
+    ]
+  },
+  "maxOutputChars": 9000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Her bulgu alıntıladığı kaynakta geçiyor; sayı ve kodlar kaynakla aynı." },
+    { "key": "coverage", "name": "Kapsam", "description": "Konunun kaynaklarda bulunan ana yönleri raporda var; eksikler ayrıca listelenmiş." },
+    { "key": "specificity", "name": "Özgüllük", "description": "Bulgular şirkete özgü kural ve değerler içeriyor, genel geçer tavsiye değil." },
+    { "key": "audience-fit", "name": "Okuyucuya uygunluk", "description": "Dil ve ayrıntı seçilen okuyucuya uygun." },
+    { "key": "length", "name": "Uzunluk", "description": "Seçilen uzunluğu aşmıyor; tekrar ve dolgu yok." }
+  ],
+  "framework": { "name": "Kaynaklı yönetim raporu (piramit ilkesi)", "reference": "Barbara Minto, The Pyramid Principle (özet önce, bulgular sonra); her iddia için kaynak gösterimi" },
+  "disclaimer": "Taslak — yazarın kaynakları kontrol etmesi ve onaylaması için.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": []
+}

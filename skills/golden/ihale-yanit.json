@@ -1,0 +1,36 @@
+{
+  "skillId": "ihale-yanit",
+  "cases": [
+    {
+      "name": "bilgi-guvenligi-gereksinimleri",
+      "documents": ["bilgi-guvenligi.pdf", "satin-alma-proseduru.pdf"],
+      "inputs": {
+        "requirements": "1. Tum kurumsal hesaplarda iki asamali dogrulama zorunlu olmalidir.\n2. Calisanlar yilda en az bir kez bilgi guvenligi egitimi almalidir.\n3. Cihaz kaybi en gec iki saat icinde bildirilmelidir.\n4. Tedarikci ISO 27001 sertifikasina sahip olmalidir.",
+        "deadline": "15.11.2026"
+      },
+      "expect": {
+        "sections": ["matrix", "followUps", "summary"],
+        "minRows": { "matrix": 4 },
+        "citesDocuments": ["bilgi-guvenligi.pdf"],
+        "mentionsAny": [["Karşılanıyor"], ["Kanıt yok", "Boşluk"]],
+        "forbids": ["ISO 27001 sertifikamız bulunmaktadır", "ISO 27001 sertifikasına sahibiz"],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "satin-alma-sureci-gereksinimleri",
+      "documents": ["satin-alma-proseduru.pdf", "erp-satin-alma-kilavuzu.pdf"],
+      "inputs": {
+        "requirements": "1. Yuklenici, 50.000 TL ve uzeri alimlarda en az uc tedarikciden teklif aldigini gostermelidir.\n2. Yeni tedarikcilerden bilgi guvenligi taahhutnamesi alinmalidir.\n3. Tedarikciler yilda bir kez performans degerlendirmesine tabi tutulmalidir."
+      },
+      "expect": {
+        "sections": ["matrix", "summary"],
+        "minRows": { "matrix": 3 },
+        "citesDocuments": ["satin-alma-proseduru.pdf"],
+        "mentionsAny": [["üç tedarikçi", "uc tedarikci", "üç"], ["taahhütname", "taahhutname"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

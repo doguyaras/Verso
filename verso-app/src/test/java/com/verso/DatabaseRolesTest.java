@@ -52,7 +52,7 @@ class DatabaseRolesTest {
                 select count(*) from pg_database d, aclexplode(coalesce(d.datacl, acldefault('d', d.datdba))) a
                 where d.datname = current_database() and a.grantee = 0
                 """, Integer.class)).as("privileges granted to PUBLIC, explicit or implicit").isZero();
-        for (String role : new String[]{"svc_document", "svc_document_migrate", "svc_qa", "svc_qa_migrate", "svc_audit", "svc_audit_migrate", "svc_connector", "svc_connector_migrate", "verso_backup"}) {
+        for (String role : new String[]{"svc_document", "svc_document_migrate", "svc_qa", "svc_qa_migrate", "svc_audit", "svc_audit_migrate", "svc_connector", "svc_connector_migrate", "svc_work", "svc_work_migrate", "verso_backup"}) {
             assertThat(jdbc.queryForObject("select has_database_privilege(?, current_database(), 'CONNECT')",
                     Boolean.class, role)).as(role).isTrue();
         }
@@ -262,7 +262,7 @@ class DatabaseRolesTest {
     void roles_whenCreated_haveNoElevatedAttributes() {
         assertThat(jdbc.queryForObject("""
                 select count(*) from pg_roles
-                where rolname in ('svc_document', 'svc_document_migrate', 'svc_qa', 'svc_qa_migrate', 'svc_audit', 'svc_audit_migrate', 'svc_connector', 'svc_connector_migrate', 'verso_backup')
+                where rolname in ('svc_document', 'svc_document_migrate', 'svc_qa', 'svc_qa_migrate', 'svc_audit', 'svc_audit_migrate', 'svc_connector', 'svc_connector_migrate', 'svc_work', 'svc_work_migrate', 'verso_backup')
                   and (rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls)
                 """, Integer.class)).isZero();
     }
@@ -314,9 +314,9 @@ class DatabaseRolesTest {
              Statement st = admin.createStatement()) {
             assertThat(single(st, "show password_encryption")).isEqualTo("scram-sha-256");
             assertThat(single(st, "select count(*) from pg_authid where rolname in "
-                    + "('svc_document', 'svc_document_migrate', 'svc_qa', 'svc_qa_migrate', 'svc_audit', 'svc_audit_migrate', 'svc_connector', 'svc_connector_migrate', 'verso_backup') "
+                    + "('svc_document', 'svc_document_migrate', 'svc_qa', 'svc_qa_migrate', 'svc_audit', 'svc_audit_migrate', 'svc_connector', 'svc_connector_migrate', 'svc_work', 'svc_work_migrate', 'verso_backup') "
                     + "and rolpassword like 'SCRAM-SHA-256$%'"))
-                    .isEqualTo("9");
+                    .isEqualTo("11");
         }
     }
 

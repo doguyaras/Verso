@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "id": "musteri-sikayet-analizi",
+  "version": "1.0.0",
+  "name": "Müşteri şikâyeti analizi",
+  "description": "Bir dönemin müşteri şikâyetlerini temalara ayırır, temaların sıklığını sayar (Pareto), her tema için 5 Neden ile kök neden hipotezi kurar ve şirketin destek süreçlerine dayanan aksiyonlar önerir.",
+  "category": "QUALITY_CUSTOMER",
+  "slash": "sikayet",
+  "inputs": [
+    { "key": "complaints", "label": "Şikâyet listesi", "type": "LONG_TEXT", "required": true, "maxLength": 30000, "maxItems": null, "options": null, "help": "CRM dışa aktarımını ya da şikâyet metinlerini her satıra bir şikâyet gelecek şekilde yapıştırın. Müşteri adı ve iletişim bilgisi gerekmez; çıkarmanız önerilir.", "placeholder": null },
+    { "key": "period", "label": "Dönem", "type": "TEXT", "required": false, "maxLength": 60, "maxItems": null, "options": null, "help": null, "placeholder": "Ör. 2026 3. çeyrek" },
+    { "key": "processCollections", "label": "Destek süreci alanları", "type": "COLLECTIONS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": "Destek süreci, SLA, iade ve ürün belgeleri.", "placeholder": null }
+  ],
+  "grounding": { "queries": ["müşteri şikâyet destek süreci SLA eskalasyon", "{{complaints}}"], "maxPassages": 10, "documentsInput": null, "collectionsInput": "processCollections", "scopeCollections": null },
+  "steps": [
+    {
+      "key": "temalar",
+      "title": "Şikâyetleri temalara ayır ve say",
+      "instruction": "Şikâyet listesindeki her satırı oku ve en çok sekiz temaya ayır. Her tema için kaç şikâyetin o temaya girdiğini say; sayım yalnız girdideki satırlardan yapılır, tahmin ya da yüzde uydurma. Bir satır hiçbir temaya girmiyorsa diğer olarak say. Kişisel bilgileri notlara taşıma.",
+      "maxChars": 4000
+    },
+    {
+      "key": "kok-neden",
+      "title": "Kök nedenleri ve aksiyonları yaz",
+      "instruction": "Temaları sıklığa göre büyükten küçüğe sırala. Her tema için 5 Neden yaklaşımıyla kısa bir kök neden hipotezi yaz ve bunun hipotez olduğunu açıkça belirt. Kök neden ya da aksiyon şirket süreç belgelerindeki bir kurala (SLA, eskalasyon, iade) dayanıyorsa o kaynağı göster; temayı ve sayıyı girdi kaynağıyla göster. Dayanağı olmayan satıra değerlendirilemez de. Aksiyonların her biri bir sahibi rolü ve ölçülebilir bir hedefle yazılsın; rol ve sürelerini yalnız kaynaklardan al. Sayıları değiştirme, yuvarlama.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "themes", "title": "Temalar (Pareto)", "kind": "ROWS", "minRows": 1, "maxRows": 9, "maxLength": null,
+        "columns": [
+          { "key": "theme", "label": "Tema", "maxLength": 120, "allowed": null },
+          { "key": "count", "label": "Şikâyet sayısı", "maxLength": 10, "allowed": null },
+          { "key": "rootCause", "label": "Kök neden hipotezi", "maxLength": 400, "allowed": null }
+        ] },
+      { "key": "actions", "title": "Aksiyonlar", "kind": "ROWS", "minRows": 0, "maxRows": 12, "maxLength": null,
+        "columns": [
+          { "key": "action", "label": "Aksiyon", "maxLength": 300, "allowed": null },
+          { "key": "ownerRole", "label": "Sorumlu rol", "maxLength": 80, "allowed": null },
+          { "key": "target", "label": "Ölçülebilir hedef", "maxLength": 200, "allowed": null }
+        ] },
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 }
+    ]
+  },
+  "maxOutputChars": 10000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Sayılar girdideki satırlardan, süreç kuralları kaynaklardan geliyor." },
+    { "key": "quantification-honesty", "name": "Sayım dürüstlüğü", "description": "Tema sayıları toplamı girdiyle tutarlı; uydurulmuş yüzde yok." },
+    { "key": "specificity", "name": "Özgüllük", "description": "Kök neden hipotezleri genel değil, şikâyetlerden ve süreçten türüyor." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Aksiyonların sorumlu rolü ve ölçülebilir hedefi var." },
+    { "key": "length", "name": "Uzunluk", "description": "Kısa hücreler; şikâyet metinleri tekrar edilmiyor." }
+  ],
+  "framework": { "name": "ISO 10002 şikâyet yönetimi, Pareto ve 5 Neden", "reference": "ISO 10002:2018 Customer satisfaction — Guidelines for complaints handling; Pareto analizi (Juran); Toyota 5 Neden (Ohno)" },
+  "disclaimer": "Taslak — kalite ve müşteri deneyimi sorumlusunun incelemesi için; kök nedenler hipotezdir.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": []
+}

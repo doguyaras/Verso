@@ -87,6 +87,24 @@ export const MESSAGES = Object.freeze({
   14013: 'Bu kurulum bağlayıcıların bu adrese (internete) çıkmasına izin vermiyor; Confluence Cloud için dış bağlantı ayarı gerekir.',
   14014: 'Confluence adresi geçersiz: yalnız https, kullanıcı bilgisi, soru işareti ve # olmadan.',
   14015: 'Bağlayıcının türü sonradan değiştirilemez; yeni bağlayıcı oluşturun.',
+  // ADR-0057: the task-skill library ("Beceriler").
+  15001: 'Beceri bulunamadı.',
+  15002: 'Bu beceri bu kurulumda kapalı.',
+  15003: 'Formdaki bir değer geçersiz; zorunlu alanları ve uzunlukları kontrol edin.',
+  15004: 'Çalışma bulunamadı; silinmiş ya da saklama süresi dolmuş olabilir.',
+  15005: 'Çalışma henüz bitmedi.',
+  15006: 'Düzenlenen çıktı geçersiz: her satırın kaynağı olmalı ya da "değerlendirilemez" denmeli.',
+  15007: 'Beceri tanımı geçersiz; doğrulama hatalarını düzeltin.',
+  15008: 'Kuruma özel beceri bulunamadı.',
+  15009: 'Bu kimlikle bir beceri zaten var.',
+  15010: 'Becerinin durumu bu işleme izin vermiyor; sayfayı yenileyin.',
+  15011: 'Zaten çalışan bir beceriniz var; bitmesini bekleyin.',
+  15012: 'Model şu an meşgul; birkaç dakika sonra yeniden deneyin.',
+  15013: 'Sayfa numarası ya da sayfa boyutu aralık dışında.',
+  15014: 'Dışa aktarma biçimi desteklenmiyor.',
+  15015: 'Gönderilen içerik çok büyük. Metni kısaltıp yeniden deneyin.',
+  15016: 'İstek eksik gönderildi. Sayfayı yenileyip yeniden deneyin.',
+  15017: 'Şu anda çok fazla ilerleme izleniyor; durum birkaç saniyede bir yenilenecek.',
   90000: 'Soru boş ya da 1000 karakterden uzun.',
   90001: 'İstek okunamadı.',
   90002: 'İstekteki bir değer geçersiz.',
@@ -207,6 +225,30 @@ async function requestFile(path, payload) {
     throw new ApiError(res.status, body?.error?.code, Number(res.headers.get('Retry-After')) || undefined);
   }
   return { blob: await res.blob(), headers: res.headers };
+}
+
+/**
+ * GET /v1/skill-runs/{id}/events (ADR-0057) with fetch, so the Authorization header goes along: onEvent(name, value)
+ * for every "stage" and "done" event. Throws StreamUnavailable when no stream gets through; the caller then polls.
+ */
+async function streamRunEvents(runId, signal, onEvent) {
+  const token = await accessToken();
+  if (!token) throw new ApiError(401, 90100);
+  let res;
+  try {
+    res = await fetch(`${CONFIG.api}/v1/skill-runs/${encodeURIComponent(runId)}/events`, { signal,
+      headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    throw new StreamUnavailable('network');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    if (noStream(res.status, res.headers.get('Content-Type'), body?.error?.code)) throw new StreamUnavailable(`status ${res.status}`);
+    throw new ApiError(res.status, body?.error?.code, Number(res.headers.get('Retry-After')) || undefined);
+  }
+  if (noStream(res.status, res.headers.get('Content-Type')) || !res.body) throw new StreamUnavailable('not a stream');
+  return readEvents(res.body, onEvent);
 }
 
 const json = (method, payload) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -396,6 +438,33 @@ export const api = {
     request(`/v1/admin/system-map/suggestions/documents/${encodeURIComponent(documentId)}`, { method: 'POST' }),
   acceptSystemSuggestion: (id) => request(`/v1/admin/system-map/suggestions/${encodeURIComponent(id)}/accept`, { method: 'POST' }),
   rejectSystemSuggestion: (id) => request(`/v1/admin/system-map/suggestions/${encodeURIComponent(id)}/reject`, { method: 'POST' }),
+  // Task skills, "Beceriler" (ADR-0057). Not the procedures above (ADR-0053). Only ids, the format and page numbers go
+  // into a URL; form inputs and outputs travel in the JSON body (personal data, never in a URL).
+  listTaskSkills: () => request('/v1/skills'),
+  getTaskSkill: (skillId) => request(`/v1/skills/${encodeURIComponent(skillId)}`),
+  startSkillRun: (skillId, body) => request(`/v1/skills/${encodeURIComponent(skillId)}/runs`, json('POST', body)),
+  listSkillRuns: (page = 0, size = 20) => request(`/v1/skill-runs?page=${Math.max(0, Math.trunc(Number(page)) || 0)}&size=${
+    Math.min(100, Math.max(1, Math.trunc(Number(size)) || 20))}`),
+  getSkillRun: (runId) => request(`/v1/skill-runs/${encodeURIComponent(runId)}`),
+  /** The progress events of a running run; StreamUnavailable when the caller should poll getSkillRun instead. */
+  skillRunEvents: (runId, signal, onEvent) => streamRunEvents(runId, signal, onEvent),
+  editSkillRun: (runId, body) => request(`/v1/skill-runs/${encodeURIComponent(runId)}/output`, json('PUT', body)),
+  approveSkillRun: (runId) => request(`/v1/skill-runs/${encodeURIComponent(runId)}/approve`, { method: 'POST' }),
+  rateSkillRun: (runId, body) => request(`/v1/skill-runs/${encodeURIComponent(runId)}/rating`, json('POST', body)),
+  /** The run as a file (MARKDOWN or JSON) for the user's own download click. */
+  exportSkillRun: (runId, format = 'MARKDOWN') => getFile(`/v1/skill-runs/${encodeURIComponent(runId)}/export?format=${
+    format === 'JSON' ? 'JSON' : 'MARKDOWN'}`),
+  deleteSkillRun: (runId) => request(`/v1/skill-runs/${encodeURIComponent(runId)}`, { method: 'DELETE' }),
+  // verso-admin: the installation's switch per skill and the customer-authored skills (draft → approved).
+  listAdminTaskSkills: () => request('/v1/admin/task-skills'),
+  setTaskSkillEnabled: (skillId, enabled) => request(`/v1/admin/task-skills/${encodeURIComponent(skillId)}/enabled`,
+    json('PUT', { enabled: enabled === true })),
+  listCustomSkills: () => request('/v1/admin/custom-skills'),
+  createCustomSkill: (definition) => request('/v1/admin/custom-skills', json('POST', { definition })),
+  updateCustomSkill: (id, definition) => request(`/v1/admin/custom-skills/${encodeURIComponent(id)}`, json('PUT', { definition })),
+  approveCustomSkill: (id) => request(`/v1/admin/custom-skills/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
+  archiveCustomSkill: (id) => request(`/v1/admin/custom-skills/${encodeURIComponent(id)}/archive`, { method: 'POST' }),
+  validateCustomSkill: (definition) => request('/v1/admin/custom-skills/validate', json('POST', { definition })),
   // SMB connectors (ADR-0038, ADR-0042), verso-admin only. No call carries a password: credentialRef is the name of a
   // secret file on the server, and the API never returns a password. Only ids, page numbers and the state filter go
   // into a URL; everything else travels in the JSON body.

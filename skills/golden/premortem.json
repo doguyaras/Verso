@@ -1,0 +1,37 @@
+{
+  "skillId": "premortem",
+  "cases": [
+    {
+      "name": "erp-gecisi-gecmis-olaylarla",
+      "documents": ["bt-operasyon-runbook.pdf", "depo-yonetim-kilavuzu.pdf"],
+      "inputs": {
+        "charter": "Proje: Depo yonetim sisteminin yeni surume gecisi. Kapsam: uc depo, tum el terminalleri. Takvim: gecis bir hafta sonunda tek seferde yapilacak. Ekip: 2 BT muhendisi, 1 depo sorumlusu. Kisit: yogun sezon Kasim ayinda basliyor.",
+        "horizon": "3-ay"
+      },
+      "expect": {
+        "sections": ["causes", "summary"],
+        "minRows": { "causes": 3 },
+        "citesDocuments": ["bt-operasyon-runbook.pdf"],
+        "mentionsAny": [["terminal"], ["P1"], ["sezon"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "uzaktan-calisma-yayilimi",
+      "documents": ["uzaktan-calisma.pdf", "bilgi-guvenligi.pdf"],
+      "inputs": {
+        "charter": "Proje: Tum ofis calisanlarinin hibrit calismaya gecisi. Ekipman dagitimi ve VPN kapasitesi artirimi. Takvim: 6 ay.",
+        "horizon": "6-ay"
+      },
+      "expect": {
+        "sections": ["causes"],
+        "minRows": { "causes": 3 },
+        "citesDocuments": [],
+        "mentionsAny": [["VPN"], ["ekipman", "monitör", "dizüstü"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

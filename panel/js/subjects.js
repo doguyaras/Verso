@@ -53,6 +53,8 @@ export function summaryModel(summary) {
     { label: 'Soru ve cevap', value: count(history.turns) },
     { label: 'Puan', value: count(history.feedback) },
     { label: 'Kullanım günü', value: count(history.activeDays) },
+    // ADR-0057: skill runs keep the form inputs the person typed.
+    { label: 'Beceri çalıştırması (girdileriyle)', value: count(history.skillRuns) },
     { label: 'Kişisel belge (dosya, sayfa, parça ve vektörleriyle)', value: personal },
   ];
   const kept = [
@@ -78,6 +80,7 @@ export function deletionModel(result) {
   const rows = [
     { label: 'Silinen konuşma', value: count(history.conversations) },
     { label: 'Silinen soru ve cevap', value: count(history.turns) },
+    { label: 'Silinen beceri çalıştırması', value: count(history.skillRuns) },
     { label: 'Silinen kişisel belge', value: count(result?.personalDocumentsDeleted) },
     { label: 'Başka hesaplarda karartılan cevap', value: count(result?.answersRedacted) },
   ];

@@ -16,6 +16,7 @@ import { markUnverified, prune, tintSentences, writeMarked } from '../highlight.
 import { icon, logo } from '../icons.js';
 import { canApprove, memoryBadge } from '../knowledge.js';
 import { procedureModel } from '../skills.js';
+import { slashMatches, slashTarget } from '../skilllib.js';
 import { reasoningModel } from '../reasoning.js';
 import { ROLES } from '../roles.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
@@ -434,6 +435,85 @@ function turn(question, content) {
   return el('article', { class: 'turn', tabindex: -1, 'aria-labelledby': id }, userTurn(question, id), botTurn(content));
 }
 
+/**
+ * The "/" commands of the question box (ADR-0057): a text that starts with "/" opens a listbox of the task skills
+ * ("Beceriler") whose slash command matches what follows; ArrowUp/ArrowDown move, Enter or a click opens the chosen
+ * skill's form with the rest of the text prefilled, Escape closes the list. Decision: while the list shows a match,
+ * Enter takes the highlighted skill; after Escape, or when no skill matches, Enter sends the text as a question
+ * exactly as before. The skill list is read once per visit, only after a "/" is typed.
+ */
+function slashPicker(field, ctx) {
+  let skills = null;
+  let matches = [];
+  let active = 0;
+  let dismissed = false;
+  const list = el('ul', { class: 'slash-picker', role: 'listbox', id: 'slash-picker', 'aria-label': 'Beceriler', hidden: true });
+  field.setAttribute('aria-controls', 'slash-picker');
+  const open = () => !list.hidden && matches.length > 0;
+  const close = () => {
+    list.hidden = true;
+    field.removeAttribute('aria-activedescendant');
+  };
+  const choose = (skill) => {
+    const target = slashTarget(skill, field.value);
+    close();
+    ctx.navigate('beceriler', target);
+  };
+  const draw = () => {
+    if (!matches.length) {
+      close();
+      return;
+    }
+    list.replaceChildren(...matches.map((skill, index) => el('li', { role: 'option', id: `slash-option-${index}`,
+      'aria-selected': String(index === active), onmousedown: (event) => event.preventDefault(), onclick: () => choose(skill) },
+    el('code', {}, `/${skill.slash}`), el('span', {}, skill.name))));
+    list.hidden = false;
+    field.setAttribute('aria-activedescendant', `slash-option-${active}`);
+  };
+  field.addEventListener('input', async () => {
+    if (!field.value.startsWith('/')) {
+      dismissed = false;
+      close();
+      return;
+    }
+    if (dismissed) return;
+    if (skills === null) {
+      skills = [];
+      skills = (await ctx.withAuth(() => api.listTaskSkills()).catch(() => [])) ?? [];
+    }
+    if (!field.value.startsWith('/') || dismissed) return;
+    matches = slashMatches(skills, field.value);
+    active = 0;
+    draw();
+  });
+  return {
+    list,
+    /** True when the key belonged to the open list (the caller then does nothing else with it). */
+    handleKey(event) {
+      if (!open()) return false;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        active = (active + (event.key === 'ArrowDown' ? 1 : matches.length - 1)) % matches.length;
+        draw();
+        return true;
+      }
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        choose(matches[active]);
+        return true;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        dismissed = true;
+        close();
+        return true;
+      }
+      return false;
+    },
+  };
+}
+
 export function renderAsk(ctx) {
   const { main } = ctx;
   const { productName } = CONFIG.deployment;
@@ -455,7 +535,9 @@ export function renderAsk(ctx) {
     counter.textContent = `${field.value.length} / ${MAX_CHARS}`;
   };
   field.addEventListener('input', resize);
+  const slash = slashPicker(field, ctx);
   field.addEventListener('keydown', (event) => {
+    if (slash.handleKey(event)) return;
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       if (!busy) form.requestSubmit(); // Enter never stops a running question; only the stop button does
@@ -470,6 +552,7 @@ export function renderAsk(ctx) {
     } else ask(field.value.trim());
   } }, field, send,
   el('div', { class: 'meta' }, el('span', {}, icon('info', 'sm'), disclosureLine(productName)), counter));
+  form.append(slash.list); // positioned above the composer (panel.css .slash-picker)
 
   const prefill = (value) => {
     field.value = value;

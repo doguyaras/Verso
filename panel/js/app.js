@@ -15,6 +15,7 @@ import { isDark, prefs, startNewConversation } from './store.js';
 import { cardSpotlight, navIndicator, transition } from './motion.js';
 import { initials, openMenu, toast } from './ui.js';
 import { renderAsk } from './screens/ask.js';
+import { renderBeceriler } from './screens/beceriler.js';
 import { renderDocuments } from './screens/documents.js';
 import { openHistory } from './screens/history.js';
 import { renderChunks } from './screens/chunks.js';
@@ -34,7 +35,7 @@ import { renderTrust } from './screens/trust.js';
 // One automatic sign-in after a 401, then the sign-in screen: a token the API keeps refusing (wrong issuer or
 // audience, clock skew) must not bounce the browser between the panel and the IdP forever.
 const AUTO_SIGN_IN = 'verso.panel.auto';
-const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, setup: renderSetup, system: renderSystem,
+const RENDER = { overview: renderOverview, documents: renderDocuments, ask: renderAsk, beceriler: renderBeceriler, setup: renderSetup, system: renderSystem,
   insights: renderInsights, collections: renderCollections, chunks: renderChunks, subjects: renderSubjects,
   connectors: renderConnectors, trust: renderTrust, knowledge: renderKnowledge, health: renderHealth, skills: renderSkills,
   systemmap: renderSystemMap };
@@ -199,6 +200,8 @@ function accountMenu(anchor, placement) {
     'separator',
     // Phones have no menu column: the history and the screens kept out of the tab bar are reached from here.
     { label: 'Konuşma geçmişi', glyph: 'history', onSelect: showHistory },
+    // ADR-0057: the skill library is out of the tab bar; phones reach it here.
+    ...(canOpen('beceriler', roles) ? [{ label: 'Beceriler', glyph: 'sparkles', onSelect: () => navigate('beceriler') }] : []),
     ...(canOpen('system', roles) ? [{ label: 'Sistem ve güvenlik', glyph: 'server', onSelect: () => navigate('system') }] : []),
     ...adminItems(),
     'separator',
@@ -244,6 +247,7 @@ function paletteSources() {
       startNewConversation();
       navigate('ask', { focus: true });
     } },
+    { label: 'Beceri çalıştır', glyph: 'sparkles', keywords: 'beceri form rapor özet premortem ihale sözleşme', run: () => navigate('beceriler') },
     { label: 'Belge yükle', glyph: 'upload', keywords: 'yükle dosya pdf word', run: () => navigate('documents', { upload: true }) },
     { label: 'Açık temaya geç', glyph: 'sun', keywords: 'tema görünüm', run: () => setTheme('light') },
     { label: 'Koyu temaya geç', glyph: 'moon', keywords: 'tema görünüm karanlık', run: () => setTheme('dark') },

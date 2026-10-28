@@ -42,13 +42,13 @@ class PrivacyArchitectureTest {
                 .should().haveSimpleNameEndingWith("ServiceImpl").check(classes);
     }
 
-    /** AGENTS.md section 4: other modules only through document-api, qa-api and audit-api. */
+    /** AGENTS.md section 4: other modules only through document-api, qa-api, audit-api and work-api. */
     @Test
     void module_whenImported_usesOnlyTheOtherModulesApis() {
         noClasses().that().resideInAPackage(ROOT + "..")
                 .should().dependOnClassesThat(resideInAPackage("com.verso..")
                         .and(resideOutsideOfPackages(ROOT + "..", "com.verso.platform..", "com.verso.document.api..",
-                                "com.verso.qa.api..", "com.verso.audit.api..")))
+                                "com.verso.qa.api..", "com.verso.audit.api..", "com.verso.work.api..")))
                 .check(classes);
     }
 

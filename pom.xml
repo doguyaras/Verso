@@ -25,6 +25,8 @@
     <module>services/mcp/mcp-core</module>
     <module>services/connector/connector-api</module>
     <module>services/connector/connector-core</module>
+    <module>services/work/work-api</module>
+    <module>services/work/work-core</module>
     <module>verso-app</module>
   </modules>
 
@@ -187,6 +189,16 @@
       <dependency>
         <groupId>com.verso</groupId>
         <artifactId>connector-core</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>work-api</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.verso</groupId>
+        <artifactId>work-core</artifactId>
         <version>${revision}</version>
       </dependency>
       <dependency>

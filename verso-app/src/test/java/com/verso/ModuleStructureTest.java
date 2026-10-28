@@ -24,8 +24,10 @@ class ModuleStructureTest {
 
     /** Application modules (ADR-0001): document, qa, audit (ADR-0026), privacy (ADR-0034) mcp (ADR-0031) and connector (ADR-0038); qa uses
      * document's named interface "api", document and qa publish to audit's "api" (audit depends on neither), privacy
-     * uses the "api" of the other three, mcp the "api" of document, qa (ADR-0053) and audit, connector the "api" of document and audit (none depends on privacy, mcp or connector). */
-    private static final Set<String> EXPECTED_MODULES = Set.of("document", "qa", "audit", "privacy", "mcp", "connector");
+     * uses the "api" of the other three, mcp the "api" of document, qa (ADR-0053) and audit, connector the "api" of document and audit, work (ADR-0057) the "api" of document and audit, and privacy also
+     * work's "api" (WorkSubjects; none depends on privacy, mcp or connector). */
+    private static final Set<String> EXPECTED_MODULES = Set.of("document", "qa", "audit", "privacy", "mcp", "connector",
+            "work");
 
     static ApplicationModules productionModules() {
         return ApplicationModules.of(VersoApp.class, resideInAPackage("com.verso.platform.."));

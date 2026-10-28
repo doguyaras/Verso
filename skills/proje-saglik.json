@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "id": "proje-saglik",
+  "version": "1.0.0",
+  "name": "Proje sağlık değerlendirmesi",
+  "description": "Bir projenin plan, durum raporu, RAID kaydı ve toplantı notlarından alan bazında (kapsam, takvim, maliyet, kalite, kaynak, risk) kırmızı-sarı-yeşil durum çıkarır; RAID değişikliklerini ve yönetimden beklenen kararları listeler.",
+  "category": "PROJECT",
+  "slash": "proje",
+  "inputs": [
+    { "key": "project", "label": "Proje adı", "type": "TEXT", "required": true, "maxLength": 200, "maxItems": null, "options": null, "help": "Belgelerde geçen adıyla.", "placeholder": "Ör. Depo terminal yenileme" },
+    { "key": "period", "label": "Dönem", "type": "TEXT", "required": false, "maxLength": 60, "maxItems": null, "options": null, "help": null, "placeholder": "Ör. Ekim 2026" },
+    { "key": "statusNotes", "label": "Ek durum notları", "type": "LONG_TEXT", "required": false, "maxLength": 15000, "maxItems": null, "options": null, "help": "Belgelerde olmayan güncel durum, RAID değişiklikleri.", "placeholder": null },
+    { "key": "projectCollections", "label": "Proje bilgi alanları", "type": "COLLECTIONS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": null, "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{project}} durum risk sorun", "{{project}} plan takvim", "{{statusNotes}}"], "maxPassages": 12, "documentsInput": null, "collectionsInput": "projectCollections", "scopeCollections": null },
+  "steps": [
+    {
+      "key": "topla",
+      "title": "Kaynakları alanlara göre topla",
+      "instruction": "{{project}} projesi için numaralı kaynakları ve ek notları kapsam, takvim, maliyet, kalite, kaynak ve risk alanlarına göre grupla. Her alan için kaynakta yazan somut durum bilgisini ve kaynak numarasını not al; bilgi yoksa \"bilgi yok\" yaz. RAID (risk, varsayım, sorun, bağımlılık) öğelerini ayrı not et.",
+      "maxChars": 5000
+    },
+    {
+      "key": "degerlendir",
+      "title": "Durumu ve kararları yaz",
+      "instruction": "Notlardan her alan için bir satır yaz. Durum yalnız Yeşil, Sarı, Kırmızı ya da Değerlendirilemez olabilir; bilgi yoksa durum Değerlendirilemez, kanıt yerine değerlendirilemez de. Durumu tahmin etme ve kaynakta olmayan bir durum uydurma. RAID tablosuna yeni, değişen ya da kapanan öğeleri yaz. Yönetimden beklenen kararları ayrıca listele. Tarih, tutar ve yüzdeleri yalnız kaynaklardan al.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "areas", "title": "Alan bazında durum", "kind": "ROWS", "minRows": 1, "maxRows": 8, "maxLength": null,
+        "columns": [
+          { "key": "area", "label": "Alan", "maxLength": 40, "allowed": null },
+          { "key": "status", "label": "Durum", "maxLength": 20, "allowed": ["Yeşil", "Sarı", "Kırmızı", "Değerlendirilemez"] },
+          { "key": "reason", "label": "Gerekçe", "maxLength": 400, "allowed": null }
+        ] },
+      { "key": "raid", "title": "RAID değişiklikleri", "kind": "ROWS", "minRows": 0, "maxRows": 20, "maxLength": null,
+        "columns": [
+          { "key": "type", "label": "Tür", "maxLength": 12, "allowed": ["Risk", "Varsayım", "Sorun", "Bağımlılık"] },
+          { "key": "item", "label": "Öğe", "maxLength": 300, "allowed": null },
+          { "key": "change", "label": "Değişiklik", "maxLength": 200, "allowed": null }
+        ] },
+      { "key": "decisions", "title": "Beklenen kararlar", "kind": "ROWS", "minRows": 0, "maxRows": 10, "maxLength": null,
+        "columns": [ { "key": "decision", "label": "Karar", "maxLength": 300, "allowed": null } ] },
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 }
+    ]
+  },
+  "maxOutputChars": 12000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Her durum rengi kaynaktaki somut bilgiye dayanıyor; bilgi yoksa Değerlendirilemez." },
+    { "key": "coverage", "name": "Kapsam", "description": "Bütün alanlar ve bütün kaynak türleri (plan, rapor, RAID, tutanak) kullanılmış." },
+    { "key": "no-invented-status", "name": "Uydurma durum yok", "description": "Kaynakta olmayan ilerleme veya sorun yazılmamış." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Beklenen kararlar karar vericinin hemen ele alabileceği netlikte." },
+    { "key": "length", "name": "Uzunluk", "description": "Bir sayfayı aşmayan, gerekçeleri kısa bir değerlendirme." }
+  ],
+  "framework": { "name": "PMI proje sağlık incelemesi ve RAID", "reference": "PMI, PMBOK Guide 7th ed. (2021) performans alanları; RAID kaydı (Risks, Assumptions, Issues, Dependencies); PRINCE2 aşama sonu değerlendirmesi" },
+  "disclaimer": "Taslak — proje yöneticisinin ve sponsorun incelemesi için.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": []
+}

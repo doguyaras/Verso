@@ -41,14 +41,14 @@ import { collapse, excerptRange, pageHeading, pageNav } from '../panel/js/pagevi
 test('roles: a user without Verso roles is a verso-user and sees no system screen', () => {
   const roles = rolesOf({ realm_access: { roles: ['offline_access', 'default-roles-verso'] } });
   assert.deepEqual(roles, [ROLES.USER]);
-  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents', 'setup']);
+  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'beceriler', 'documents', 'setup']);
   assert.equal(canOpen('system', roles), false);
 });
 
 test('roles: an operator also sees the system screen; unknown screens are closed', () => {
   const roles = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'documents', 'setup', 'system']);
-  assert.ok(screensFor(roles).length <= 5, 'at most five screens (ADR-0015)');
+  assert.deepEqual(screensFor(roles), ['overview', 'ask', 'beceriler', 'documents', 'setup', 'system']);
+  assert.ok(screensFor(roles).length <= 6, 'at most five screens (ADR-0015) plus Beceriler (ADR-0057)');
   assert.ok(screensFor(roles).filter((id) => SCREENS[id].tab !== false).length <= 4, 'four tabs at most on mobile');
   assert.equal(canOpen('nothing', roles), false);
   for (const screen of Object.values(SCREENS)) assert.ok(screen.roles.length > 0);
@@ -1027,7 +1027,7 @@ test('roles: the dashboard is gated on /v1/info roles only; a verso-admin realm 
   assert.equal(canOpen('insights', fromToken), false);
   const admin = withServerRoles(user, { roles: ['verso-admin', 'verso-user'] });
   assert.deepEqual(admin, [ROLES.USER, ROLES.ADMIN]);
-  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills', 'systemmap']);
+  assert.deepEqual(screensFor(admin), ['overview', 'ask', 'beceriler', 'documents', 'setup', 'insights', 'collections', 'chunks', 'subjects', 'connectors', 'trust', 'knowledge', 'health', 'skills', 'systemmap']);
   assert.equal(SCREENS.insights.tab, false, 'phones reach it from the account menu, the tab bar keeps four tabs');
   const both = withServerRoles(rolesOf({ realm_access: { roles: ['verso-operator'] } }), { roles: ['verso-admin'] });
   assert.ok(screensFor(both).filter((id) => SCREENS[id].tab !== false).length <= 4);
@@ -1731,8 +1731,8 @@ test('admin group: only verso-admin (from /v1/info) sees the "Yönetim" screens;
   const { ADMIN_GROUP, adminScreens } = await import('../panel/js/roles.js');
   const user = rolesOf({ realm_access: { roles: [] } });
   const operator = rolesOf({ realm_access: { roles: ['verso-operator'] } });
-  assert.deepEqual(screensFor(user), ['overview', 'ask', 'documents', 'setup']);
-  assert.deepEqual(screensFor(operator), ['overview', 'ask', 'documents', 'setup', 'system']);
+  assert.deepEqual(screensFor(user), ['overview', 'ask', 'beceriler', 'documents', 'setup']);
+  assert.deepEqual(screensFor(operator), ['overview', 'ask', 'beceriler', 'documents', 'setup', 'system']);
   for (const roles of [user, operator, rolesOf({ realm_access: { roles: ['verso-admin'] } })]) {
     assert.deepEqual(adminScreens(roles), [], 'the token alone opens no admin screen');
     for (const id of ['subjects', 'chunks', 'connectors', 'knowledge', 'health', 'skills', 'systemmap']) assert.equal(canOpen(id, roles), false, id);
@@ -1778,15 +1778,16 @@ test('kvkk: the sub is checked with the server\'s pattern, exactly as typed; the
 test('kvkk: the summary says what a deletion deletes, keeps and reports; missing fields count as zero', async () => {
   const { summaryModel, deletionModel } = await import('../panel/js/subjects.js');
   const summary = {
-    history: { conversations: 2, turns: 7, feedback: 1, activeDays: 3 },
+    history: { conversations: 2, turns: 7, feedback: 1, activeDays: 3, skillRuns: 4 },
     documents: { personalCount: 1, personal: [{ id: 'p1', fileName: 'izin.pdf' }], collectionCount: 1,
       collection: [{ id: 'c1', fileName: 'ortak.pdf', collectionId: 'k' }], grantedCollections: ['k'], createdCollections: [], listsTruncated: false },
     auditEventsAsActor: 42,
   };
   const model = summaryModel(summary);
-  assert.deepEqual(model.deleted.map((r) => r.value), [2, 7, 1, 3, 1]);
+  assert.deepEqual(model.deleted.map((r) => r.value), [2, 7, 1, 3, 4, 1]);
   assert.deepEqual(model.kept.map((r) => r.value), [1, 1, 0, 42]);
-  assert.match(model.deleted[4].label, /Kişisel belge/);
+  assert.match(model.deleted[4].label, /Beceri çalıştırması/, 'ADR-0057: skill runs keep form inputs');
+  assert.match(model.deleted[5].label, /Kişisel belge/);
   assert.match(model.kept[3].label, /Denetim kaydı/);
   assert.deepEqual(model.collectionDocuments.map((d) => d.id), ['c1'], 'the kept collection documents are listed');
   assert.deepEqual([model.truncated, model.nothingToDelete, model.nothingFound], [false, false, false]);
@@ -1795,9 +1796,9 @@ test('kvkk: the summary says what a deletion deletes, keeps and reports; missing
   assert.equal(summaryModel({ documents: { listsTruncated: true } }).truncated, true);
   assert.equal(summaryModel({ history: { turns: 'x' } }).deleted[1].value, 0, 'a non-number is not shown as a count');
 
-  const result = deletionModel({ historyDeleted: { conversations: 2, turns: 7 }, personalDocumentsDeleted: 1, answersRedacted: 3,
+  const result = deletionModel({ historyDeleted: { conversations: 2, turns: 7, skillRuns: 5 }, personalDocumentsDeleted: 1, answersRedacted: 3,
     kept: { documents: { collectionCount: 1, collection: [{ id: 'c1' }] }, auditEventsAsActor: 42 } });
-  assert.deepEqual(result.rows.map((r) => r.value), [2, 7, 1, 3]);
+  assert.deepEqual(result.rows.map((r) => r.value), [2, 7, 5, 1, 3]);
   assert.equal(result.repeated, false);
   assert.deepEqual(result.kept.kept.map((r) => r.value), [1, 0, 0, 42]);
   assert.equal(deletionModel({ historyDeleted: {}, personalDocumentsDeleted: 0, answersRedacted: 0 }).repeated, true,
@@ -2805,4 +2806,313 @@ test('reasoning (ADR-0055): stages, the trace as plain text, the not-found parts
   assert.match(ask, /el\('details', \{ class: 'reasoning-steps' \}/, 'collapsible "Nasıl araştırıldı"');
   assert.match(ask, /'Belgeler arasında çelişki'/);
   assert.doesNotMatch(readFileSync('panel/js/reasoning.js', 'utf8'), /innerHTML|insertAdjacentHTML|\.style\b|setAttribute\('style'/);
+});
+
+// ---------- "Beceriler": the task-skill library (ADR-0057); not "Prosedürler" (ADR-0053) ----------
+const SKILL_FILES = readdirSync('skills').filter((f) => f.endsWith('.json'));
+const skillDefinition = (file) => JSON.parse(readFileSync(`skills/${file}`, 'utf8'));
+const GALLERY = [
+  { id: 'toplanti-karar-aksiyon', name: 'Toplantı notu → karar ve aksiyon', description: 'Notlardan kararlar', category: 'PRODUCTIVITY', slash: 'toplanti', grounded: true },
+  { id: 'premortem', name: 'Pre-mortem', description: 'Projenin başarısız olduğunu varsayın', category: 'PROJECT', slash: 'premortem', grounded: true },
+  { id: 'sozlesme-on-inceleme', name: 'Sözleşme ön incelemesi', description: 'İMZA öncesi risk maddeleri', category: 'LEGAL_COMPLIANCE', slash: 'sozlesme', compliance: true },
+  { id: 'proje-saglik', name: 'Proje sağlık değerlendirmesi', description: 'RAID ve RAG', category: 'PROJECT', slash: 'proje' },
+];
+
+test('beceriler: the screen is for every user, apart from "Prosedürler", with its own unique "g" key', () => {
+  for (const roles of [rolesOf({}), rolesOf({ realm_access: { roles: ['verso-operator'] } })]) assert.equal(canOpen('beceriler', roles), true);
+  assert.equal(SCREENS.beceriler.title, 'Beceriler');
+  assert.equal(SCREENS.skills.title, 'Prosedürler', 'the procedures keep their name');
+  assert.deepEqual(SCREENS.skills.roles, [ROLES.ADMIN]);
+  assert.equal(SCREENS.beceriler.tab, false, 'the tab bar keeps its four tabs');
+  const keys = Object.values(SCREENS).map((s) => s.key);
+  assert.equal(new Set(keys).size, keys.length);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /beceriler: renderBeceriler/);
+  assert.match(app, /canOpen\('beceriler', roles\) \? \[\{ label: 'Beceriler'/, 'phones reach it from the account menu');
+  assert.match(app, /canOpen\('skills', roles\) \? \[\{ label: 'Prosedürler'/);
+});
+
+test('beceriler: the gallery filters by category and searches name, description and /command in Turkish case', async () => {
+  const { categoriesOf, categoryLabel, CATEGORIES, filterSkills } = await import('../panel/js/skilllib.js');
+  assert.deepEqual(Object.keys(CATEGORIES), ['PRODUCTIVITY', 'SALES', 'LEGAL_COMPLIANCE', 'PROJECT', 'QUALITY_CUSTOMER', 'PROCESS']);
+  assert.equal(categoryLabel('SALES'), 'Teklif ve ihale');
+  assert.equal(categoryLabel('X'), 'Diğer');
+  assert.deepEqual(categoriesOf(GALLERY), ['PRODUCTIVITY', 'LEGAL_COMPLIANCE', 'PROJECT']);
+  assert.deepEqual(filterSkills(GALLERY, { category: 'PROJECT' }).map((s) => s.id), ['premortem', 'proje-saglik']);
+  assert.deepEqual(filterSkills(GALLERY, { query: 'imza' }).map((s) => s.id), ['sozlesme-on-inceleme'], 'İ folds to i (tr)');
+  assert.deepEqual(filterSkills(GALLERY, { query: 'TOPLANTI' }).map((s) => s.id), ['toplanti-karar-aksiyon']);
+  assert.deepEqual(filterSkills(GALLERY, { query: '/pre' }).map((s) => s.id), ['premortem']);
+  assert.deepEqual(filterSkills(GALLERY, { category: 'SALES', query: 'x' }), []);
+  assert.equal(filterSkills(GALLERY).length, 4);
+  assert.deepEqual(filterSkills(null), []);
+});
+
+test('beceriler: every repository skill becomes a form: one field per input, required, limits and options kept', async () => {
+  const { counterText, emptyValues, formModel, prefillKey, validateForm } = await import('../panel/js/skilllib.js');
+  assert.ok(SKILL_FILES.length >= 10, 'the ten P1 skills');
+  for (const file of SKILL_FILES) {
+    const definition = skillDefinition(file);
+    const model = formModel(definition);
+    assert.equal(model.skillId, definition.id);
+    assert.deepEqual(model.fields.map((f) => f.key), definition.inputs.map((i) => i.key), file);
+    for (const [index, field] of model.fields.entries()) {
+      const input = definition.inputs[index];
+      assert.equal(field.required, input.required === true, `${file} ${field.key}`);
+      assert.equal(field.type, input.type);
+      if (input.type === 'TEXT' || input.type === 'LONG_TEXT') assert.equal(field.maxLength, input.maxLength, `${file} ${field.key}`);
+      if (input.type === 'SELECT') assert.deepEqual(field.options.map((o) => o.value), input.options.map((o) => o.value));
+      if (input.type === 'DOCUMENTS') assert.equal(field.picker, 'documents');
+      if (input.type === 'COLLECTIONS') assert.equal(field.picker, 'collections');
+      assert.equal(field.multiline, input.type === 'LONG_TEXT');
+    }
+    const empty = emptyValues(model);
+    const problems = validateForm(model, empty);
+    for (const field of model.fields) assert.equal(Boolean(problems[field.key]), field.required, `${file} ${field.key}: only required fields complain`);
+    assert.ok(prefillKey(model), `${file}: a slash command has a text field to fill`);
+    assert.ok(counterText(model.fields.find((f) => f.key === prefillKey(model)), '').endsWith(' / ' + model.fields.find((f) => f.key === prefillKey(model)).maxLength));
+  }
+});
+
+test('beceriler: form validation in Turkish and the request body ({ inputs }) leave nothing personal behind', async () => {
+  const { emptyValues, formModel, runBody, validateForm } = await import('../panel/js/skilllib.js');
+  const model = formModel({ id: 'x', inputs: [
+    { key: 'notes', label: 'Notlar', type: 'LONG_TEXT', required: true, maxLength: 10 },
+    { key: 'project', label: 'Proje', type: 'TEXT', required: false, maxLength: 5 },
+    { key: 'tone', label: 'Ton', type: 'SELECT', required: true, options: [{ value: 'resmi', label: 'Resmî' }, { value: 'sade', label: 'Sade' }] },
+    { key: 'docs', label: 'Belgeler', type: 'DOCUMENTS', required: false, maxItems: 2 },
+    { key: 'areas', label: 'Alanlar', type: 'COLLECTIONS', required: true, maxItems: 1 },
+  ] });
+  const values = emptyValues(model, 'çok uzun bir not metni');
+  assert.equal(values.notes, 'çok uzun b', 'the prefill is cut at the field limit');
+  assert.deepEqual(values.docs, []);
+  values.project = 'abcdef';
+  values.tone = 'kaba';
+  values.docs = ['1', '2', '3'];
+  assert.deepEqual(validateForm(model, values), { project: 'En çok 5 karakter.', tone: 'Listeden bir seçenek seçin.',
+    docs: 'En çok 2 seçim yapılabilir.', areas: 'En az bir seçim yapın.' });
+  assert.equal(validateForm(model, { ...values, notes: '   ' }).notes, 'Bu alan zorunlu.');
+  const ok = { notes: ' not ', project: '', tone: 'sade', docs: [], areas: ['c1'] };
+  assert.deepEqual(validateForm(model, ok), {});
+  assert.deepEqual(runBody(model, ok), { inputs: { notes: 'not', tone: 'sade', areas: ['c1'] } }, 'empty optional fields are left out');
+});
+
+test('beceriler: "/" commands match by prefix, then by containment; the rest of the text prefills the form', async () => {
+  const { slashMatches, slashQuery, slashTarget } = await import('../panel/js/skilllib.js');
+  assert.equal(slashQuery('izin kaç gün?'), null, 'a question is not a command');
+  assert.deepEqual(slashQuery('/'), { command: '', rest: '' });
+  assert.deepEqual(slashQuery('/Toplanti  Pazartesi notları\nikinci satır'), { command: 'toplanti', rest: 'Pazartesi notları\nikinci satır' });
+  assert.deepEqual(slashMatches(GALLERY, '/').map((s) => s.slash), ['toplanti', 'premortem', 'sozlesme', 'proje'], 'all on a bare "/"');
+  assert.deepEqual(slashMatches(GALLERY, '/pr').map((s) => s.slash), ['premortem', 'proje']);
+  assert.deepEqual(slashMatches(GALLERY, '/mortem').map((s) => s.slash), ['premortem'], 'then containment');
+  assert.deepEqual(slashMatches(GALLERY, '/yok'), []);
+  assert.deepEqual(slashMatches(GALLERY, 'pr'), []);
+  assert.equal(slashMatches(GALLERY, '/', 2).length, 2);
+  assert.deepEqual(slashTarget(GALLERY[1], '/premortem Yeni ERP geçişi'), { skillId: 'premortem', prefill: 'Yeni ERP geçişi' });
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /if \(slash\.handleKey\(event\)\) return;/, 'the picker sees the key before the question is sent');
+  assert.match(ask, /role: 'listbox'/);
+  assert.match(ask, /ctx\.navigate\('beceriler', target\)/);
+  for (const key of ['ArrowDown', 'ArrowUp', 'Enter', 'Escape']) assert.ok(ask.includes(`'${key}'`), key);
+});
+
+const RUN_DEFINITION = { id: 'premortem', name: 'Pre-mortem', disclaimer: 'Taslak — proje ekibinin incelemesi için.', output: { sections: [
+  { key: 'causes', title: 'Nedenler', kind: 'ROWS', columns: [{ key: 'cause', label: 'Neden' }, { key: 'impact', label: 'Etki' }] },
+  { key: 'summary', title: 'Özet', kind: 'TEXT' },
+] } };
+const RUN = {
+  id: 'r1', skillId: 'premortem', skillName: 'Pre-mortem', status: 'DRAFT', stage: 'FINISHED', disclaimer: 'Taslak — proje ekibinin incelemesi için.',
+  edited: false, rating: null,
+  output: { sections: [
+    { key: 'summary', text: 'Takvim riski yüksek.', evidence: [2], notAssessable: false, rows: null },
+    { key: 'causes', rows: [
+      { cells: { cause: 'Yedekleme 03:00 sonrası', impact: 'Yüksek' }, evidence: [1, 2], notAssessable: false, unverified: ['03:00'] },
+      { cells: { cause: 'Bütçe', impact: 'Orta' }, evidence: [], notAssessable: true, unverified: [] },
+    ] },
+  ] },
+  citations: [
+    { number: 1, kind: 'PASSAGE', documentId: 'd1', passageId: 'p1', fileName: 'bt-operasyon-runbook.pdf', page: 3, unit: 'PAGE', excerpt: 'Yedekleme…', accessible: true },
+    { number: 2, kind: 'INPUT', inputKey: 'charter', excerpt: 'Proje tanımı…', accessible: true },
+    { number: 3, kind: 'PASSAGE', documentId: 'd2', fileName: null, page: 1, unit: 'PAGE', excerpt: null, accessible: false },
+  ],
+  checks: { repaired: true, rows: 3, notAssessable: 1, unverified: 1, unreadableCitation: 0, withinLength: true, disclaimerPresent: true },
+};
+
+test('beceriler: the run view keeps the schema order, maps evidence to sources and flags "değerlendirilemez" and unverified anchors', async () => {
+  const { NOT_ASSESSABLE, runView } = await import('../panel/js/skilllib.js');
+  assert.equal(NOT_ASSESSABLE, 'değerlendirilemez');
+  const view = runView(RUN, RUN_DEFINITION);
+  assert.equal(view.statusLabel, 'Taslak');
+  assert.equal(view.disclaimer, 'Taslak — proje ekibinin incelemesi için.');
+  assert.deepEqual(view.sections.map((s) => s.key), ['causes', 'summary'], 'the definition\'s order, not the output\'s');
+  const [causes, summary] = view.sections;
+  assert.deepEqual(causes.columns.map((c) => c.label), ['Neden', 'Etki']);
+  assert.deepEqual(causes.rows[0].cells.map((c) => c.value), ['Yedekleme 03:00 sonrası', 'Yüksek']);
+  assert.deepEqual(causes.rows[0].evidence.map((e) => e.label), ['[1] bt-operasyon-runbook.pdf · s. 3', '[2] Girdiniz']);
+  assert.deepEqual(causes.rows[0].evidence[0].drawer, { documentId: 'd1', fileName: 'bt-operasyon-runbook.pdf', page: 3, unit: 'PAGE', excerpt: 'Yedekleme…' });
+  assert.equal(causes.rows[0].evidence[1].drawer, null, 'the user\'s own input opens no page drawer');
+  assert.deepEqual(causes.rows[0].unverified, ['03:00']);
+  assert.equal(causes.rows[1].notAssessable, true);
+  assert.deepEqual(causes.rows[1].evidence, []);
+  assert.equal(summary.text, 'Takvim riski yüksek.');
+  assert.equal(view.citations[2].label, '[3] erişilemiyor');
+  assert.equal(view.citations[2].drawer, null);
+  assert.deepEqual(view.checks.map((c) => c.ok), [true, true, false, true, true, true]);
+  assert.match(view.checks[0].note, /düzeltme/);
+  assert.deepEqual([view.canEdit, view.canApprove, view.canExport, view.canRate], [true, true, true, true]);
+  const approved = runView({ ...RUN, status: 'APPROVED' }, RUN_DEFINITION);
+  assert.equal(approved.statusLabel, 'Onaylandı');
+  assert.equal(approved.canApprove, false);
+  const withoutDefinition = runView(RUN, null);
+  assert.deepEqual(withoutDefinition.sections.find((s) => s.key === 'causes').columns.map((c) => c.key), ['cause', 'impact']);
+});
+
+test('beceriler: stages read in Turkish, stream events update the run, failures are words', async () => {
+  const { applyEvent, failureText, runView, stageLabel, stageSteps, STAGES, statusLabel } = await import('../panel/js/skilllib.js');
+  assert.deepEqual(STAGES, ['QUEUED', 'RETRIEVING', 'GENERATING', 'REPAIRING', 'CHECKING', 'FINISHED']);
+  assert.equal(stageLabel({ stage: 'QUEUED' }), 'Sırada');
+  assert.equal(stageLabel({ stage: 'RETRIEVING' }), 'Belgeler aranıyor');
+  assert.equal(stageLabel({ stage: 'GENERATING', step: 2, stepCount: 3, stepTitle: '5 Neden' }), 'Adım 2/3: 5 Neden');
+  assert.equal(stageLabel({ stage: 'REPAIRING' }), 'Çıktı düzeltiliyor');
+  assert.equal(stageLabel({ stage: 'CHECKING' }), 'Kontroller');
+  assert.deepEqual(stageSteps('GENERATING').map((s) => s.state), ['done', 'done', 'current', 'todo', 'todo'], 'no repair step unless it runs');
+  assert.equal(stageSteps('REPAIRING').length, 6);
+  let run = { id: 'r', status: 'RUNNING', stage: 'QUEUED', citations: [] };
+  run = applyEvent(run, 'stage', { stage: 'GENERATING', step: 1, stepCount: 2, stepTitle: 'Riskler' });
+  assert.equal(runView(run, null).stage, 'Adım 1/2: Riskler');
+  assert.equal(runView(run, null).running, true);
+  assert.equal(runView(run, null).canEdit, false);
+  run = applyEvent(run, 'done', { status: 'FAILED', failureCode: 'MODEL_BUSY' });
+  assert.equal(run.status, 'FAILED');
+  assert.equal(runView(run, null).failure, 'Model meşgul; birkaç dakika sonra yeniden deneyin.');
+  assert.equal(applyEvent(run, 'other', { status: 'DRAFT' }), run);
+  for (const code of ['MODEL_UNAVAILABLE', 'MODEL_BUSY', 'OUTPUT_INVALID', 'RETRIEVAL_FAILED', 'INTERRUPTED']) {
+    assert.ok(failureText(code) && !failureText(code).includes('_'), code);
+  }
+  assert.equal(failureText('NEW_CODE'), 'Çalışma tamamlanamadı.');
+  assert.deepEqual(['RUNNING', 'DRAFT', 'APPROVED', 'FAILED'].map(statusLabel), ['Çalışıyor', 'Taslak', 'Onaylandı', 'Başarısız']);
+});
+
+test('beceriler: edits are immutable and come back as a SkillOutput without the server\'s unverified marks', async () => {
+  const { editBody, markNotAssessable, removeRow, setCell, setText } = await import('../panel/js/skilllib.js');
+  const before = JSON.stringify(RUN.output);
+  let output = setCell(RUN.output, 'causes', 0, 'impact', 'Orta');
+  output = setText(output, 'summary', 'Yeni özet.');
+  output = markNotAssessable(output, 'causes', 1, false, [1]);
+  output = markNotAssessable(output, 'causes', 0, true);
+  assert.equal(JSON.stringify(RUN.output), before, 'the run is not changed in place');
+  const body = editBody(output);
+  const causes = body.output.sections.find((s) => s.key === 'causes');
+  assert.deepEqual(causes.rows[0], { cells: { cause: 'Yedekleme 03:00 sonrası', impact: 'Orta' }, evidence: [], notAssessable: true, unverified: null });
+  assert.deepEqual(causes.rows[1], { cells: { cause: 'Bütçe', impact: 'Orta' }, evidence: [1], notAssessable: false, unverified: null });
+  assert.equal(body.output.sections.find((s) => s.key === 'summary').text, 'Yeni özet.');
+  assert.equal(removeRow(output, 'causes', 0).sections.find((s) => s.key === 'causes').rows.length, 1);
+  assert.equal(setCell(RUN.output, 'none', 0, 'x', 'y').sections.length, 2, 'an unknown section changes nothing');
+});
+
+test('beceriler: export names are safe, the download is injected (never a real one here), ratings are 1-5', async () => {
+  const { EXPORTS, exportFileName, exportRun, ratingBody, ratingLabel, RATINGS } = await import('../panel/js/skilllib.js');
+  const day = new Date('2026-10-28T10:00:00Z');
+  assert.equal(exportFileName('premortem', 'MARKDOWN', day), 'premortem-2026-10-28.md');
+  assert.equal(exportFileName('../../etc', 'JSON', day), 'etc-2026-10-28.json');
+  assert.equal(exportFileName('', 'X', day), 'beceri-2026-10-28.md');
+  assert.deepEqual(Object.keys(EXPORTS), ['MARKDOWN', 'JSON']);
+  const saved = [];
+  const blob = { size: 3 };
+  assert.equal(exportRun(blob, 'sop-taslagi', 'JSON', (b, name) => saved.push([b, name]), day), 'sop-taslagi-2026-10-28.json');
+  assert.deepEqual(saved, [[blob, 'sop-taslagi-2026-10-28.json']]);
+  assert.deepEqual(RATINGS, [1, 2, 3, 4, 5]);
+  assert.deepEqual(ratingBody('4'), { rating: 4 });
+  for (const bad of [0, 6, 2.5, 'x', null]) assert.equal(ratingBody(bad), null, String(bad));
+  assert.equal(ratingLabel(5), '5 / 5');
+  assert.equal(ratingLabel(null), 'Puanlanmadı');
+  const screen = readFileSync('panel/js/screens/beceriler.js', 'utf8');
+  assert.match(screen, /exportRun\(blob, run\.skillId, format, saveFile\)/, 'the screen passes the real saver; tests pass a recorder');
+});
+
+test('beceriler: admin rows and the JSON editor parse without evaluating anything', async () => {
+  const { adminRows, parseDefinition } = await import('../panel/js/skilllib.js');
+  assert.deepEqual(adminRows([{ skill: { id: 'a', name: 'A', category: 'PROJECT', origin: 'BUILT_IN' }, enabled: true },
+    { skill: { id: 'b', name: 'B', category: 'PROCESS', origin: 'CUSTOM' }, enabled: false, customSkillId: 'u', state: 'DRAFT', customVersion: 2 }]), [
+    { id: 'a', name: 'A', category: 'Proje yönetimi', origin: 'Hazır', enabled: true, state: '', customSkillId: null, version: null },
+    { id: 'b', name: 'B', category: 'Süreç ve prosedür', origin: 'Kuruma özel', enabled: false, state: 'Taslak', customSkillId: 'u', version: 2 }]);
+  assert.deepEqual(parseDefinition('{"id":"x"}'), { definition: { id: 'x' } });
+  assert.match(parseDefinition('{id:').error, /JSON okunamadı/);
+  assert.match(parseDefinition('[1]').error, /nesnesi/);
+  assert.match(parseDefinition('null').error, /nesnesi/);
+});
+
+test('api: skill-library calls go to the documented paths; inputs travel in the body, never in the URL', async () => {
+  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+  tokenEndpoint(calls);
+  await completeSignIn();
+  const sent = [];
+  globalThis.fetch = async (url, init = {}) => {
+    sent.push([init.method ?? 'GET', url, init.body ?? null]);
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({}), blob: async () => ({}) };
+  };
+  await api.listTaskSkills();
+  await api.getTaskSkill('a/b');
+  await api.startSkillRun('premortem', { inputs: { charter: 'gizli metin' } });
+  await api.listSkillRuns(-1, 1000);
+  await api.getSkillRun('r/1');
+  await api.editSkillRun('r1', { output: { sections: [] } });
+  await api.approveSkillRun('r1');
+  await api.rateSkillRun('r1', { rating: 4 });
+  await api.exportSkillRun('r1', 'JSON');
+  await api.exportSkillRun('r1', 'x&format=HTML');
+  await api.deleteSkillRun('r1');
+  await api.setTaskSkillEnabled('premortem', 'yes');
+  await api.validateCustomSkill({ id: 'x' });
+  await api.approveCustomSkill('c1');
+  assert.deepEqual(sent, [
+    ['GET', '/v1/skills', null],
+    ['GET', '/v1/skills/a%2Fb', null],
+    ['POST', '/v1/skills/premortem/runs', '{"inputs":{"charter":"gizli metin"}}'],
+    ['GET', '/v1/skill-runs?page=0&size=100', null],
+    ['GET', '/v1/skill-runs/r%2F1', null],
+    ['PUT', '/v1/skill-runs/r1/output', '{"output":{"sections":[]}}'],
+    ['POST', '/v1/skill-runs/r1/approve', null],
+    ['POST', '/v1/skill-runs/r1/rating', '{"rating":4}'],
+    ['GET', '/v1/skill-runs/r1/export?format=JSON', null],
+    ['GET', '/v1/skill-runs/r1/export?format=MARKDOWN', null],
+    ['DELETE', '/v1/skill-runs/r1', null],
+    ['PUT', '/v1/admin/task-skills/premortem/enabled', '{"enabled":false}'],
+    ['POST', '/v1/admin/custom-skills/validate', '{"definition":{"id":"x"}}'],
+    ['POST', '/v1/admin/custom-skills/c1/approve', null]]);
+  assert.ok(sent.every(([, url]) => !url.includes('gizli')), 'no input in a URL');
+  globalThis.fetch = async () => ({ ok: false, status: 409, headers: { get: () => null }, json: async () => ({ error: { code: 15011 } }) });
+  await assert.rejects(api.startSkillRun('premortem', { inputs: {} }), (error) => error instanceof ApiError && error.code === 15011 && error.message === MESSAGES[15011]);
+  signOut();
+});
+
+test('beceriler: every error code of the work module has a Turkish message in words', () => {
+  for (let code = 15001; code <= 15017; code++) {
+    assert.ok(MESSAGES[code], String(code));
+    assert.doesNotMatch(MESSAGES[code], /[A-Z]{2,}_[A-Z]/, `${code}: words, not the constant`);
+  }
+  if (existsSync('docs/api-work-integration-v1.md')) {
+    for (const m of readFileSync('docs/api-work-integration-v1.md', 'utf8').matchAll(/^\| (15\d{3}) \|/gm)) assert.ok(MESSAGES[Number(m[1])], m[1]);
+  }
+});
+
+test('beceriler screen: no markup, inline style, eval or browser storage; the admin part is role-gated and hides on 403', () => {
+  for (const file of ['skilllib.js', 'screens/beceriler.js']) {
+    const source = readFileSync(`panel/js/${file}`, 'utf8');
+    assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|document\.write|\.style\b|style=|setAttribute\('style'|style:\s*'/, file);
+    assert.doesNotMatch(source, /\beval\(|new Function|localStorage|sessionStorage|indexedDB|document\.cookie/, file);
+    assert.doesNotMatch(source, /console\./, file);
+    assert.doesNotMatch(source, /location\.(hash|search|href)\s*=(?!=)|URLSearchParams/, `${file}: nothing in the URL`);
+  }
+  const screen = readFileSync('panel/js/screens/beceriler.js', 'utf8');
+  assert.match(screen, /const admin = \(ctx\.roles \?\? \[\]\)\.includes\(ROLES\.ADMIN\);/);
+  assert.match(screen, /admin \? adminCard\(\) : null/, 'only verso-admin gets the admin part');
+  assert.match(screen, /error\.status === 403/);
+  assert.match(screen, /'Bu bölüm yöneticiler içindir\.'/);
+  assert.match(screen, /Prosedürler ekranı ayrıdır/, 'the copy tells the two apart');
+  assert.match(screen, /api\.skillRunEvents\(/, 'progress comes from the event stream');
+  assert.match(screen, /setTimeout\(reload, POLL_MS\)/, 'and falls back to reading the run');
+  assert.match(screen, /openPageDrawer\(citation\.drawer/, 'document sources reuse the page drawer');
+  assert.match(screen, /return \(\) => disposeRun\(\);/, 'leaving the screen stops the stream and the polling');
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  for (const name of ['.skill-lib-cards', '.skill-lib-table', '.slash-picker', '.skill-lib-disclaimer']) assert.ok(css.includes(name), name);
 });

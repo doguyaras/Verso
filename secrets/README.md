@@ -17,6 +17,8 @@ Compose bu klasördeki dosyaları container içinde `/run/secrets/<AD>` olarak b
 | `SECRET_DB_AUDIT_PASSWORD` | postgres (init), uygulama | `svc_audit`: `audit` şemasında yalnız INSERT ve SELECT; denetim kaydı (ADR-0026) |
 | `SECRET_DB_CONNECTOR_MIGRATE_PASSWORD` | postgres (init), `migrate` | `svc_connector_migrate`: `connector` şemasının sahibi, DDL (ADR-0038) |
 | `SECRET_DB_CONNECTOR_PASSWORD` | postgres (init), uygulama | `svc_connector`: `connector` şemasında yalnız DML; bağlayıcı ayarları ve dosya eşitleme durumu (ADR-0038) |
+| `SECRET_DB_WORK_MIGRATE_PASSWORD` | postgres (init), `migrate` | `svc_work_migrate`: `work` şemasının sahibi, DDL (ADR-0057) |
+| `SECRET_DB_WORK_PASSWORD` | postgres (init), uygulama | `svc_work`: `work` şemasında yalnız DML; beceri çalıştırmaları, girdileri ve kuruma özel beceriler (ADR-0057) |
 | `SECRET_DB_BACKUP_PASSWORD` | backup servisi | `verso_backup`: `pg_read_all_data`, yalnız okuma |
 | `SECRET_BACKUP_ENCRYPTION_KEY` | backup servisi, restore provası | Yedek dosyalarının gpg (AES256) parolası |
 | `SECRET_DB_KEYCLOAK_PASSWORD` | postgres (init), keycloak | `keycloak` rolü: demo IdP'nin kendi veritabanı (ADR-0010) |

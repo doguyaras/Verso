@@ -26,4 +26,5 @@ cleanup
 "${DC[@]}" run --rm --no-TTY restore-flyway-qa
 "${DC[@]}" run --rm --no-TTY restore-flyway-audit
 "${DC[@]}" run --rm --no-TTY restore-flyway-connector
+"${DC[@]}" run --rm --no-TTY restore-flyway-work
 echo "restore-drill: OK seconds=$(( $(date +%s) - started ))"

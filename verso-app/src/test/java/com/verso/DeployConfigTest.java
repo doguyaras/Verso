@@ -40,9 +40,12 @@ class DeployConfigTest {
                     "SECRET_DB_AUDIT_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_AUDIT_MIGRATE_PASSWORD"),
                     "SECRET_DB_CONNECTOR_PASSWORD=" + VersoPostgres.secret("SECRET_DB_CONNECTOR_PASSWORD"),
                     "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_CONNECTOR_MIGRATE_PASSWORD"),
+                    "SECRET_DB_WORK_PASSWORD=" + VersoPostgres.secret("SECRET_DB_WORK_PASSWORD"),
+                    "SECRET_DB_WORK_MIGRATE_PASSWORD=" + VersoPostgres.secret("SECRET_DB_WORK_MIGRATE_PASSWORD"),
                     "verso.qa.datasource.maximum-pool-size=2",
                     "verso.audit.datasource.maximum-pool-size=2",
                     "verso.connector.datasource.maximum-pool-size=2",
+                    "verso.work.datasource.maximum-pool-size=2",
                     // Compose gives every model setting too (x-db-env); the provider is read by auto-configuration conditions.
                     "VERSO_AI_MODE=local", "VERSO_CHAT_PROVIDER=ollama",
                     "verso.document.datasource.maximum-pool-size=2")
@@ -93,6 +96,24 @@ class DeployConfigTest {
         assertThat(jdbc.queryForObject(
                 "select tableowner from pg_tables where schemaname = 'audit' and tablename = 'flyway_schema_history'",
                 String.class)).isEqualTo("svc_audit_migrate");
+    }
+
+    /** ADR-0057: the same for the work module, resolved from verso.yml exactly like compose resolves it. */
+    @Test
+    void deployConfig_whenFedLikeCompose_connectsTheWorkModuleAsItsOwnRole() throws java.sql.SQLException {
+        try (java.sql.Connection work = java.sql.DriverManager.getConnection(
+                environment.getRequiredProperty("verso.work.datasource.url"),
+                environment.getRequiredProperty("verso.work.datasource.username"),
+                environment.getRequiredProperty("verso.work.datasource.password"));
+             java.sql.Statement st = work.createStatement();
+             java.sql.ResultSet rs = st.executeQuery("select current_user, current_setting('search_path')")) {
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(1)).isEqualTo("svc_work");
+            assertThat(rs.getString(2)).isEqualTo("work, extensions");
+        }
+        assertThat(jdbc.queryForObject(
+                "select tableowner from pg_tables where schemaname = 'work' and tablename = 'flyway_schema_history'",
+                String.class)).isEqualTo("svc_work_migrate");
     }
 
     /** ADR-0038: the same for the connector module, resolved from verso.yml exactly like compose resolves it. */

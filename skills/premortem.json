@@ -1,0 +1,64 @@
+{
+  "formatVersion": 1,
+  "id": "premortem",
+  "version": "1.0.0",
+  "name": "Pre-mortem (başarısızlık öncesi analiz)",
+  "description": "Projenin başarısız olduğunu varsayarak olası nedenleri sıralar, en önemlilerini 5 Neden ile köküne indirir ve her biri için erken uyarı işaretleri ile önlemler önerir. Şirketin geçmiş olay ve ders kayıtlarına dayanır.",
+  "category": "PROJECT",
+  "slash": "premortem",
+  "inputs": [
+    { "key": "charter", "label": "Proje tanımı", "type": "LONG_TEXT", "required": true, "maxLength": 15000, "maxItems": null, "options": null, "help": "Amaç, kapsam, takvim, ekip ve bilinen kısıtlar.", "placeholder": null },
+    { "key": "horizon", "label": "Değerlendirme ufku", "type": "SELECT", "required": true, "maxLength": null, "maxItems": null,
+      "options": [ { "value": "3-ay", "label": "3 ay sonra" }, { "value": "6-ay", "label": "6 ay sonra" }, { "value": "1-yil", "label": "1 yıl sonra" } ],
+      "help": null, "placeholder": null },
+    { "key": "historyCollections", "label": "Geçmiş olay ve ders alanları", "type": "COLLECTIONS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": "Olay sonrası incelemeler, runbook'lar, ders kayıtları.", "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{charter}}", "olay sonrası inceleme kök neden ders"], "maxPassages": 10, "documentsInput": null, "collectionsInput": "historyCollections", "scopeCollections": null },
+  "steps": [
+    {
+      "key": "basarisizlik",
+      "title": "Başarısızlığı hayal et",
+      "instruction": "Bugünden {{horizon}} sonra projenin açıkça başarısız olduğunu varsay. Proje tanımına ve numaralı kaynaklardaki geçmiş olaylara bakarak bu başarısızlığın en çok on olası nedenini yaz. Her neden somut olsun ve projenin kendi kapsamına, ekibine ya da şirketin geçmişine bağlansın; genel proje riskleri yazma. Kaynakla bağlantılıysa kaynak numarasını not et.",
+      "maxChars": 4000
+    },
+    {
+      "key": "bes-neden",
+      "title": "En önemli nedenleri 5 Neden ile incele",
+      "instruction": "Önceki adımın nedenlerinden etki ve olasılık bakımından en önemli üç ila beşini seç. Her biri için 5 Neden zinciri kur (en çok beş halka) ve kök nedeni tek cümleyle yaz. Zincirde kaynakta olmayan bir olguyu kesin bilgi gibi sunma; varsayım olduğunu belirt.",
+      "maxChars": 4000
+    },
+    {
+      "key": "onlemler",
+      "title": "Sırala, erken uyarıları ve önlemleri yaz",
+      "instruction": "Önceki adımlardan sıralı başarısızlık nedenleri tablosunu yaz: neden, kök neden, olasılık ve etki (Yüksek, Orta, Düşük), erken uyarı işareti ve önlem. Erken uyarı işareti ölçülebilir ya da gözlemlenebilir olsun. Bir neden şirket kaynaklarındaki geçmiş bir olaya dayanıyorsa onu kanıt göster; yalnız proje tanımına dayanıyorsa girdi kaynağını göster; hiçbir dayanağı yoksa değerlendirilemez de. Sayı ve süreleri yalnız kaynaklardan al. Kısa yaz.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "causes", "title": "Sıralı başarısızlık nedenleri", "kind": "ROWS", "minRows": 3, "maxRows": 10, "maxLength": null,
+        "columns": [
+          { "key": "cause", "label": "Neden", "maxLength": 300, "allowed": null },
+          { "key": "rootCause", "label": "Kök neden", "maxLength": 300, "allowed": null },
+          { "key": "likelihood", "label": "Olasılık", "maxLength": 10, "allowed": ["Yüksek", "Orta", "Düşük"] },
+          { "key": "impact", "label": "Etki", "maxLength": 10, "allowed": ["Yüksek", "Orta", "Düşük"] },
+          { "key": "earlySignal", "label": "Erken uyarı işareti", "maxLength": 300, "allowed": null },
+          { "key": "mitigation", "label": "Önlem", "maxLength": 400, "allowed": null }
+        ] },
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 }
+    ]
+  },
+  "maxOutputChars": 10000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Nedenler proje tanımına ya da şirketin geçmiş kayıtlarına bağlı; dayanaksız olan değerlendirilemez." },
+    { "key": "specificity", "name": "Özgüllük", "description": "Genel proje riskleri değil, bu projeye ve şirkete özgü nedenler (araştırma: RiskGPT genelleştiriyor)." },
+    { "key": "root-cause-depth", "name": "Kök neden derinliği", "description": "5 Neden zinciri belirtiyi değil kontrol edilebilir bir kök nedeni buluyor." },
+    { "key": "actionability", "name": "Uygulanabilirlik", "description": "Erken uyarılar gözlemlenebilir, önlemler sahiplenilebilir." },
+    { "key": "length", "name": "Uzunluk", "description": "En çok on satır, kısa hücreler." }
+  ],
+  "framework": { "name": "Klein pre-mortem, 5 Neden, ISO 31000 risk değerlendirmesi", "reference": "Gary Klein, Performing a Project Premortem, Harvard Business Review (Eylül 2007); ISO 31000:2018 6.4 risk değerlendirmesi; PMI Practice Standard for Project Risk Management" },
+  "disclaimer": "Taslak — proje ekibinin birlikte kalibre etmesi için; ekip toplantısının yerini tutmaz.",
+  "compliance": false,
+  "attribution": null,
+  "forbiddenPhrases": []
+}

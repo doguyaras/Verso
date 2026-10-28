@@ -1,0 +1,38 @@
+{
+  "skillId": "gereksinim-kalitesi",
+  "cases": [
+    {
+      "name": "belirsiz-hikayeler",
+      "documents": [],
+      "inputs": {
+        "requirements": "Depo calisani olarak toplama listesini hizli gormek istiyorum.\nYonetici olarak raporlarin kolay anlasilir olmasini istiyorum.\nSistem kullanici dostu olmali ve her seyi desteklemelidir.",
+        "style": "hikaye"
+      },
+      "expect": {
+        "sections": ["items", "ambiguities", "summary"],
+        "minRows": { "items": 3, "ambiguities": 2 },
+        "citesDocuments": [],
+        "mentionsAny": [["hızlı", "hizli"], ["kolay"], ["kullanıcı dostu", "kullanici dostu"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "sistem-gereksinimleri-belgeyle",
+      "documents": ["erp-satin-alma-kilavuzu.pdf"],
+      "inputs": {
+        "requirements": "Sistem satin alma talebini uygun kisiye yonlendirmelidir.\nSistem 100.000 TL'yi asan talepleri Finans Direktoru onayina gondermelidir.",
+        "style": "gereksinim",
+        "context": "ERP satin alma modulu"
+      },
+      "expect": {
+        "sections": ["items", "summary"],
+        "minRows": { "items": 2 },
+        "citesDocuments": [],
+        "mentionsAny": [["uygun"], ["100.000 TL", "100000 TL"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}

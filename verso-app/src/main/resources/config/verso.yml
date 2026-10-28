@@ -646,6 +646,36 @@ verso:
     show-document-names: ${VERSO_MCP_SHOW_DOCUMENT_NAMES:true}
     # Browser origins allowed to call /mcp; none: every request with an Origin header is refused (DNS rebinding).
     allowed-origins: []
+  # Skill library (ADR-0057): the module's own schema "work", its own pool as svc_work (DML) and its own Flyway as
+  # svc_work_migrate (owner, DDL), like connector. Passwords from /run/secrets (SECRET_DB_WORK_PASSWORD,
+  # SECRET_DB_WORK_MIGRATE_PASSWORD), no fallback. Model calls go through the SkillModel port on the installation's chat
+  # model (same provider, mode and egress as the question path); starting values, see WorkProperties.
+  work:
+    datasource:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      username: svc_work
+      password: ${SECRET_DB_WORK_PASSWORD}
+      maximum-pool-size: 3
+      minimum-idle: 0
+      connection-timeout: 2s
+    flyway:
+      url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?logServerErrorDetail=false
+      user: svc_work_migrate
+      password: ${SECRET_DB_WORK_MIGRATE_PASSWORD}
+      locations: classpath:db/migration/work
+      schema: work
+    # One run holds one model slot for its 1-4 step calls and at most one repair; a new run waits this long, then 503.
+    model-concurrency: 1
+    model-wait: 2s
+    call-timeout: 180s
+    failure-threshold: 3
+    open-for: 30s
+    # Runs keep their form inputs: the same KVKK storage limit as the conversation history (ADR-0023).
+    retention-days: ${VERSO_HISTORY_RETENTION_DAYS:90}
+    retention-batch: 500
+    search-top-k: 40
+    stream-poll: 700ms
+    max-stream: 20m
 logging:
   level:
     # The PDF parser warns about fonts and broken objects; its messages can quote document content (llm-rules 2.1).

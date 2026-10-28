@@ -119,5 +119,30 @@ public enum AuditAction {
     /** A verso-admin accepted a suggested relation of the system model (ADR-0054). */
     SYSTEM_SUGGESTION_ACCEPTED,
     /** A verso-admin rejected a suggested relation of the system model (ADR-0054). */
-    SYSTEM_SUGGESTION_REJECTED
+    SYSTEM_SUGGESTION_REJECTED,
+    /** A user started a task skill run (ADR-0057); the target is the run, the detail BUILT_IN or CUSTOM. Never an input. */
+    TASK_SKILL_RUN_STARTED,
+    /**
+     * A run ended (system actor of the runner); the detail is DRAFT or the failure word, the citation list the
+     * documents of its sources. Never the output.
+     */
+    TASK_SKILL_RUN_FINISHED,
+    /** The owner edited a run's output. */
+    TASK_SKILL_RUN_EDITED,
+    /** The owner marked a run "onaylandı". */
+    TASK_SKILL_RUN_APPROVED,
+    /** The owner rated a run; the detail is RATING_1 .. RATING_5. */
+    TASK_SKILL_RUN_RATED,
+    /** The owner exported a run; the detail is MARKDOWN or JSON. */
+    TASK_SKILL_RUN_EXPORTED,
+    /** The owner deleted a run. */
+    TASK_SKILL_RUN_DELETED,
+    /** A verso-admin switched a task skill on or off; the detail is ENABLED or DISABLED. */
+    TASK_SKILL_TOGGLED,
+    /** A verso-admin saved a customer-authored skill as a new draft version; the detail is CREATED or VERSION. */
+    TASK_SKILL_CUSTOM_SAVED,
+    /** A verso-admin approved a customer-authored skill's current version. */
+    TASK_SKILL_CUSTOM_APPROVED,
+    /** A verso-admin archived a customer-authored skill. */
+    TASK_SKILL_CUSTOM_ARCHIVED
 }

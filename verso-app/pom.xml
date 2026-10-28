@@ -47,6 +47,11 @@
       <groupId>com.verso</groupId>
       <artifactId>connector-core</artifactId>
     </dependency>
+    <!-- Skill library (ADR-0057): task skills, their runs and customer-authored skills; its own schema "work". -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>work-core</artifactId>
+    </dependency>
     <!-- KVKK data-subject requests and answer redaction (ADR-0034): no schema of its own, only the other modules' apis. -->
     <dependency>
       <groupId>com.verso</groupId>

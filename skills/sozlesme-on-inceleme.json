@@ -1,0 +1,63 @@
+{
+  "formatVersion": 1,
+  "id": "sozlesme-on-inceleme",
+  "version": "1.0.0",
+  "name": "Sözleşme ön incelemesi",
+  "description": "Bir sözleşme metnindeki riskli maddeleri şirketin politika ve standart şartlarıyla karşılaştırır: madde, risk düzeyi, şirket kuralından sapma ve önerilen düzeltme. Hukuki görüş değildir; hukuk incelemesine hazırlık listesidir.",
+  "category": "LEGAL_COMPLIANCE",
+  "slash": "sozlesme",
+  "inputs": [
+    { "key": "contract", "label": "Sözleşme metni", "type": "LONG_TEXT", "required": true, "maxLength": 30000, "maxItems": null, "options": null, "help": "Sözleşmenin metnini ya da incelenecek maddelerini yapıştırın.", "placeholder": null },
+    { "key": "role", "label": "Şirketin rolü", "type": "SELECT", "required": true, "maxLength": null, "maxItems": null,
+      "options": [ { "value": "alici", "label": "Alıcı / müşteri" }, { "value": "satici", "label": "Satıcı / tedarikçi" }, { "value": "diger", "label": "Diğer (gizlilik, iş birliği)" } ],
+      "help": null, "placeholder": null },
+    { "key": "playbookCollections", "label": "Politika ve standart şart alanları", "type": "COLLECTIONS", "required": false, "maxLength": null, "maxItems": 5, "options": null, "help": "Şirket politikaları, standart sözleşme şablonları, önceki sözleşmeler.", "placeholder": null }
+  ],
+  "grounding": { "queries": ["{{contract}}", "sözleşme standart şartlar politika {{role}}"], "maxPassages": 10, "documentsInput": null, "collectionsInput": "playbookCollections", "scopeCollections": null },
+  "steps": [
+    {
+      "key": "maddeler",
+      "title": "Riskli maddeleri bul",
+      "instruction": "Sözleşmeyi madde madde oku; şirketin {{role}} rolü açısından riskli olabilecek maddeleri (sorumluluk sınırı, cezai şart, fesih, gizlilik, kişisel veri, bilgi güvenliği, ödeme, süre) not et. Her not için madde numarası ve maddenin kısa alıntısını yaz. Yorum yapma.",
+      "maxChars": 5000
+    },
+    {
+      "key": "karsilastir",
+      "title": "Şirket kurallarıyla karşılaştır",
+      "instruction": "Önceki adımda bulunan her maddeyi numaralı kaynaklardaki şirket politikası ve standart şartlarla karşılaştır. Sapma sütununa yalnız kaynakta yazan kuralı ve sözleşmenin ondan nasıl ayrıldığını yaz; kaynakta karşılığı yoksa kanıt yerine değerlendirilemez de ve hukuki sonuç çıkarma. Risk düzeyi yalnız Yüksek, Orta veya Düşük olabilir. Önerilen düzeltme, hukuk biriminin değerlendireceği bir öneri olarak yazılır. Sözleşmenin geçerli, uyumlu ya da güvenli olduğu sonucuna asla varma. Sayı, süre ve madde numaralarını yalnız kaynaklardan ve sözleşmeden al.",
+      "maxChars": null
+    }
+  ],
+  "output": {
+    "sections": [
+      { "key": "clauses", "title": "Riskli maddeler", "kind": "ROWS", "minRows": 0, "maxRows": 30, "maxLength": null,
+        "columns": [
+          { "key": "clause", "label": "Madde", "maxLength": 300, "allowed": null },
+          { "key": "risk", "label": "Risk düzeyi", "maxLength": 10, "allowed": ["Yüksek", "Orta", "Düşük"] },
+          { "key": "deviation", "label": "Şirket kuralından sapma", "maxLength": 500, "allowed": null },
+          { "key": "redline", "label": "Önerilen düzeltme", "maxLength": 500, "allowed": null }
+        ] },
+      { "key": "questions", "title": "Hukuk birimine sorular", "kind": "ROWS", "minRows": 0, "maxRows": 15, "maxLength": null,
+        "columns": [ { "key": "question", "label": "Soru", "maxLength": 300, "allowed": null } ] },
+      { "key": "summary", "title": "Özet", "kind": "TEXT", "columns": null, "minRows": null, "maxRows": null, "maxLength": 600 }
+    ]
+  },
+  "maxOutputChars": 16000,
+  "rubric": [
+    { "key": "groundedness", "name": "Dayanaklılık", "description": "Her sapma hem sözleşme maddesine hem şirket kaynağına dayanıyor; kaynağı olmayan değerlendirilemez." },
+    { "key": "coverage", "name": "Kapsam", "description": "Sorumluluk, fesih, gizlilik, kişisel veri ve ödeme gibi ana risk alanları incelenmiş." },
+    { "key": "no-legal-conclusion", "name": "Hukuki sonuç yok", "description": "Çıktı uyumluluk ya da geçerlilik hükmü vermiyor; hukuk incelemesine bırakıyor." },
+    { "key": "specificity", "name": "Özgüllük", "description": "Öneriler maddeye özgü, genel tavsiye değil." },
+    { "key": "length", "name": "Uzunluk", "description": "Hücreler kısa; madde metni gereksiz yere tekrarlanmıyor." }
+  ],
+  "framework": { "name": "Sözleşme oyun kitabı (playbook) karşılaştırması", "reference": "Kurumsal sözleşme playbook pratiği: standart pozisyon, kabul edilebilir sapma, düzeltme önerisi; 6098 sayılı Türk Borçlar Kanunu ve 6698 sayılı KVKK yalnız bağlam" },
+  "disclaimer": "Ön inceleme taslağı — hukuk incelemesi için; hukuki görüş değildir.",
+  "compliance": true,
+  "attribution": {
+    "source": "anthropics/knowledge-work-plugins",
+    "license": "Apache-2.0",
+    "url": "https://github.com/anthropics/knowledge-work-plugins",
+    "note": "Clause-by-clause review against a company playbook follows the Legal plugin's contract-review idea; rewritten in Turkish, no text copied."
+  },
+  "forbiddenPhrases": ["tamamen uyumlu", "hukuken geçerlidir", "hiçbir risk yoktur", "imzalanabilir"]
+}

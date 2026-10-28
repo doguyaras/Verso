@@ -86,10 +86,11 @@ class ComposeConfigTest {
     void migrationPassword_whenComposed_reachesOnlyTheOneShotMigrateService() {
         // One application role per module schema (ADR-0023); never a migration role.
         assertThat(secrets("verso-app")).containsExactly("SECRET_DB_DOCUMENT_PASSWORD", "SECRET_DB_QA_PASSWORD", "SECRET_DB_AUDIT_PASSWORD",
-                "SECRET_DB_CONNECTOR_PASSWORD");
+                "SECRET_DB_CONNECTOR_PASSWORD", "SECRET_DB_WORK_PASSWORD");
         assertThat(environment("verso-app")).containsEntry("SPRING_FLYWAY_ENABLED", "false");
         assertThat(secrets("migrate")).containsExactly("SECRET_DB_DOCUMENT_MIGRATE_PASSWORD", "SECRET_DB_QA_MIGRATE_PASSWORD",
-                "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD");
+                "SECRET_DB_AUDIT_MIGRATE_PASSWORD", "SECRET_DB_CONNECTOR_MIGRATE_PASSWORD",
+                "SECRET_DB_WORK_MIGRATE_PASSWORD");
         assertThat(service("migrate")).containsEntry("restart", "no");
         assertThat(secrets("keycloak")).as("the IdP gets its own secrets only").containsExactlyInAnyOrder(
                 "SECRET_DB_KEYCLOAK_PASSWORD", "SECRET_KEYCLOAK_ADMIN_PASSWORD", "SECRET_KEYCLOAK_CI_CLIENT_SECRET",

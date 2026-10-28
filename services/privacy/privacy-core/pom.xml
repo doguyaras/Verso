@@ -33,6 +33,11 @@
       <groupId>com.verso</groupId>
       <artifactId>qa-api</artifactId>
     </dependency>
+    <!-- Skill runs hold the caller's form inputs (ADR-0057): counted and erased through WorkSubjects. -->
+    <dependency>
+      <groupId>com.verso</groupId>
+      <artifactId>work-api</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.verso</groupId>
       <artifactId>audit-api</artifactId>

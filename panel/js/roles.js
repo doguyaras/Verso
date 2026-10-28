@@ -20,6 +20,10 @@ const TOKEN_ROLES = Object.freeze([ROLES.USER, ROLES.OPERATOR]);
 export const SCREENS = Object.freeze({
   overview: { title: 'Genel bakış', short: 'Özet', icon: 'home', key: 'o', roles: [ROLES.USER, ROLES.OPERATOR] },
   ask: { title: 'Soru sor', short: 'Sor', icon: 'chat', key: 's', roles: [ROLES.USER, ROLES.OPERATOR] },
+  // ADR-0057: the task-skill library (guided forms, structured cited drafts) for every user. One more screen than
+  // ADR-0015's five for an operator; kept out of the tab bar (phones reach it from the palette, the account menu and
+  // the "/" commands of "Soru sor"). Not "Prosedürler" (ADR-0053, verso-admin, below).
+  beceriler: { title: 'Beceriler', short: 'Beceri', icon: 'sparkles', key: 'c', roles: [ROLES.USER, ROLES.OPERATOR], tab: false },
   documents: { title: 'Bilgi kaynakları', short: 'Kaynaklar', icon: 'files', key: 'b', roles: [ROLES.USER, ROLES.OPERATOR] },
   setup: { title: 'Kurulum durumu', short: 'Kurulum', icon: 'flag', key: 'k', roles: [ROLES.USER, ROLES.OPERATOR], tab: false },
   system: { title: 'Sistem ve güvenlik', short: 'Sistem', icon: 'server', key: 'y', roles: [ROLES.OPERATOR] },

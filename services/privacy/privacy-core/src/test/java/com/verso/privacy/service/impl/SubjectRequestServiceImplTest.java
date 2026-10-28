@@ -63,12 +63,13 @@ class SubjectRequestServiceImplTest {
     private final DocumentSubjects documents = mock(DocumentSubjects.class);
     private final DocumentCatalog catalog = mock(DocumentCatalog.class);
     private final AuditSubjects audit = mock(AuditSubjects.class);
+    private final com.verso.work.api.WorkSubjects work = mock(com.verso.work.api.WorkSubjects.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private SubjectRequestServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new SubjectRequestServiceImpl(qa, documents, catalog, audit, events, JSON,
+        service = new SubjectRequestServiceImpl(qa, work, documents, catalog, audit, events, JSON,
                 Clock.fixed(Instant.parse("2026-10-24T10:00:00Z"), ZoneOffset.UTC));
         when(qa.count(SUB)).thenReturn(new SubjectHistoryCounts(1, 2, 1, 1));
         when(documents.find(SUB)).thenReturn(new SubjectDocuments(0, List.of(), 0, List.of(), List.of(), List.of()));
@@ -101,6 +102,8 @@ class SubjectRequestServiceImplTest {
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
         when(qa.deleteHistory(SUB)).thenReturn(new SubjectHistoryCounts(2, 5, 1, 3));
+        // ADR-0057: the subject's skill runs (with their form inputs) go with the history.
+        when(work.deleteRuns(SUB)).thenReturn(4L);
         when(documents.personalDocumentIds(SUB, DocumentSubjects.MAX_DELETE_BATCH))
                 .thenReturn(List.of(a, b)).thenReturn(List.of());
         when(qa.redactAnswersCiting(List.of(a, b))).thenReturn(1);
@@ -118,6 +121,8 @@ class SubjectRequestServiceImplTest {
         order.verify(events).publishEvent(any(Object.class));
         assertThat(response.historyDeleted().conversations()).isEqualTo(2);
         assertThat(response.historyDeleted().activeDays()).isEqualTo(3);
+        assertThat(response.historyDeleted().skillRuns()).isEqualTo(4);
+        verify(work).deleteRuns(SUB);
         assertThat(response.personalDocumentsDeleted()).isEqualTo(2);
         assertThat(response.answersRedacted()).isEqualTo(1);
         assertThat(response.kept().documents().collectionCount()).isOne();

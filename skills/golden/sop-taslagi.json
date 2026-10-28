@@ -1,0 +1,47 @@
+{
+  "skillId": "sop-taslagi",
+  "cases": [
+    {
+      "name": "satin-alma-talebi",
+      "documents": ["satin-alma-proseduru.pdf", "erp-satin-alma-kilavuzu.pdf"],
+      "inputs": {
+        "process": "Satin alma talebi ve onayi",
+        "interviewNotes": "Satin alma ekibi: talepler portalda aciliyor, teklifler bize geliyor. Bolumler tedarikciyle fiyat konusmamali."
+      },
+      "expect": {
+        "sections": ["purpose", "roles", "steps", "controls", "records", "openIssues"],
+        "minRows": { "steps": 3, "controls": 1 },
+        "citesDocuments": ["satin-alma-proseduru.pdf"],
+        "mentionsAny": [["50.000 TL"], ["Finans Direktörü", "Finans Direktoru"], ["üç", "uc tedarikci"]],
+        "forbids": ["yürürlüktedir"],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "cihaz-kaybi-bildirimi",
+      "documents": ["bilgi-guvenligi.pdf"],
+      "inputs": { "process": "Kayip veya calinan sirket cihazinin bildirilmesi" },
+      "expect": {
+        "sections": ["purpose", "steps"],
+        "minRows": { "steps": 2 },
+        "citesDocuments": ["bilgi-guvenligi.pdf"],
+        "mentionsAny": [["iki saat", "2 saat"], ["4444", "güvenlik@ornek.example", "guvenlik@ornek.example"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    },
+    {
+      "name": "depo-is-guvenligi",
+      "documents": ["isg-depo-proseduru.pdf"],
+      "inputs": { "process": "Depoda forklift kullanimi ve is guvenligi kontrolleri" },
+      "expect": {
+        "sections": ["steps", "controls"],
+        "minRows": { "steps": 2 },
+        "citesDocuments": ["isg-depo-proseduru.pdf"],
+        "mentionsAny": [["forklift"]],
+        "forbids": [],
+        "notAssessableAllowed": true
+      }
+    }
+  ]
+}
