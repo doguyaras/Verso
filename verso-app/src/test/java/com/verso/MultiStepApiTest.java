@@ -87,7 +87,7 @@ class MultiStepApiTest {
         TestChatModel.INSTANCE.reset();
         circuit.reset();
         while (worker.isPaused()) Thread.sleep(50);
-        ready(owner, "izin.pdf", "topic-leave Yıllık izin 20 iş günüdür.");
+        ready(owner, "izin.pdf", "topic-leave Yillik izin 20 is gunudur.");
         ready(owner, "masraf.pdf", "topic-travel Otel gecelik limiti 4000 TL tutarındadır.");
         // Another account's document: no sub-question of the owner may reach it (ADR-0028).
         ready(other, "sevkiyat.pdf", "topic-ship MarkerForeign shipments are approved by the warehouse lead.");
