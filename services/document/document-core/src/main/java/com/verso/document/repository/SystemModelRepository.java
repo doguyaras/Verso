@@ -165,6 +165,15 @@ public class SystemModelRepository {
                 .param("version", version).query(UUID.class).optional();
     }
 
+    /**
+     * Takes the document row lock (waiting for a holder), so ingestion-triggered and backfill extraction of the same
+     * document serialise; the state read after it sees what the earlier holder committed (READ COMMITTED).
+     */
+    public void lockDocument(UUID documentId) {
+        jdbc.sql("SELECT id FROM document.document WHERE id = :id FOR NO KEY UPDATE").param("id", documentId)
+                .query(UUID.class).optional();
+    }
+
     /** READY documents waiting for a model of this version, over all accounts: a gauge, no id leaves. */
     public long pendingCount(int version) {
         return jdbc.sql("""

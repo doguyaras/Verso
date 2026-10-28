@@ -46,6 +46,8 @@ public class SystemModelIndexer {
     @Transactional(propagation = Propagation.MANDATORY)
     public Outcome index(UUID documentId, Instant now) {
         long started = System.nanoTime();
+        // Serialise with any concurrent extraction of this document, then decide on what that one committed.
+        repository.lockDocument(documentId);
         List<ChunkRow> chunks = repository.chunks(documentId);
         String digest = SystemModelPlan.digest(chunks.stream().map(ChunkRow::sha256).toList());
         if (!SystemModelPlan.needsExtraction(repository.state(documentId).orElse(null), SystemModelExtractor.VERSION,

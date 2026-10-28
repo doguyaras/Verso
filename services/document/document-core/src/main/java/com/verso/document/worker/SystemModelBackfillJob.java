@@ -61,16 +61,17 @@ public class SystemModelBackfillJob {
     public int runOnce() {
         int done = 0;
         while (done < properties.backfillBatch()) {
-            Optional<UUID> next;
+            Optional<Boolean> next;
             UUID[] taken = new UUID[1];
             try {
                 next = transaction.execute(status -> {
                     Optional<UUID> id = repository.lockNextPending(SystemModelExtractor.VERSION);
-                    id.ifPresent(documentId -> {
+                    // The candidate query can run on a snapshot older than another instance's commit, so the row
+                    // may already be done: the indexer re-checks under the lock and says CURRENT, which is not counted.
+                    return id.map(documentId -> {
                         taken[0] = documentId;
-                        indexer.index(documentId, clock.instant());
+                        return indexer.index(documentId, clock.instant()) == SystemModelIndexer.Outcome.EXTRACTED;
                     });
-                    return id;
                 });
             } catch (RuntimeException e) {
                 if (taken[0] == null) throw e;
@@ -79,10 +80,10 @@ public class SystemModelBackfillJob {
                 log.error("System model extraction failed: code=SYSTEM_MODEL_EXTRACTION_FAILED documentId={} "
                         + "exceptionType={}", taken[0], e.getClass().getSimpleName());
                 transaction.executeWithoutResult(status -> indexer.markEmpty(taken[0], clock.instant()));
-                next = Optional.of(taken[0]);
+                next = Optional.of(true);
             }
             if (next == null || next.isEmpty()) break;
-            done++;
+            if (next.get()) done++;
         }
         return done;
     }
