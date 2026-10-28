@@ -98,6 +98,7 @@
 
 ## Yeniden değerlendirme koşulu
 
+- **Ölçüldü (2026-10-28, `gemma4:e2b`, GPU; `docs/evidence/cok-adimli-akil-yurutme.md`):** koşul tutmadı, bayrak kapalı kalır. Çok adımlı sette açık kol tüm-kaynaklar-atıfta 0,80 → 0,70, olgu oranı 0,895 → 0,842, p95 2,9 → 10,3 sn; kapı 19/20 ve tek adımlıda 3/140 ateşledi, tek adımlı sonuç kötüleşmedi. Bulut modunda ya da daha büyük yerel modelle yeniden ölçülür.
 - Açmak için: `--compare` ölçümünde çok adımlı setin tüm-kaynaklar-atıfta oranı ve olgu oranı kapalı kola göre açıkça yükselir, kısmi sorularda "bulunamadı" söylenir ve tek adımlı sette (yanlış ateşleme %2) sonuç kötüleşmez; GPU'da ateşleyen sorunun p95'i ADR-0008 bütçesinde kalır.
 - `fallback_invalid` oranı %30'u geçerse: prompt örnekleri ya da (ölçerek) bulut modunda bulut ayrıştırması.
 - Gerçek kullanıcı sorularında kapı isabeti setten belirgin düşükse: varlık kapısı ağırlığı ya da kararsız sorular için LLM sınıflandırıcı (ayrı ölçüm).

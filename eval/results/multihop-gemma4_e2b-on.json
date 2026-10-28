@@ -1,0 +1,388 @@
+{
+  "measuredAt": "2026-10-28T11:18:37.323Z",
+  "commit": "813e2b96608c",
+  "summary": {
+    "mode": "local",
+    "chatModel": "gemma4:e2b",
+    "arm": "on",
+    "questions": 20,
+    "samples": "samples",
+    "errors": 0,
+    "decomposedRate": 0.95,
+    "sourceHitRate": 0.842,
+    "allSourcesCitedRate": 0.7,
+    "factRate": 0.842,
+    "allFactsRate": 0.75,
+    "partialStatesMissing": 1,
+    "contradictionNotes": 0,
+    "latencyMs": {
+      "p50": 3532,
+      "p95": 10333,
+      "max": 11687
+    }
+  },
+  "questions": [
+    {
+      "id": "mh-01",
+      "status": 200,
+      "ms": 6019,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Alt soru 1: BT Service Desk'in ilk yanıt süresi nedir?\nP1 olayları için nöbetçi mühendis 15 dakika içinde olayı üstlenir ve olay köprüsünü (telefon konferansı) açar [1].\n\nAlt soru 2: Müşteri destek ekibinin ilk yanıt süresi nedir?\nCRM'de müşteri kayıtlarının önceliğine göre ilk yanıt süreleri şöyledir:\n*   P1 Acil: 1 saat [3]\n*   P2 Yüksek: 4 saat [3]\n*   P3 Normal: 1 iş günü [3]\n*   P4 Düşük: 2 iş günü [3]\nAltın sözleşmeli müşterilerin P1 ve P2 kayıtlarında ilk yanıt süreleri yarıya iner (P1 için 30 dakika, P2 için 2 saat) [3].\n\nAlt soru 3: BT Service Desk ile müşteri destek ekibinin ilk yanıt süreleri arasındaki fark nedir?\nKritik (P1) bir olayda BT Service Desk'in ilk yanıt süresi 15 dakika iken, müşteri destek ekibinin ilk yanıt süresi P1 için 1 saattir [1][3].\n\nSoru: Kritik (P1) bir olayda BT Service Desk ile müşteri destek ekibinin ilk yanıt süreleri arasındaki fark nedir?\nBT Service Desk'in ilk yanıt süresi 15 dakika iken, müşteri destek ekibinin ilk yanıt süresi 1 saattır [1][3].",
+      "steps": 3,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-02",
+      "status": 200,
+      "ms": 5710,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "P1 olaylarında iç BT tarafındaki çözüm hedefi, nöbetçi mühendisin 15 dakika içinde olayı üstlenmesi ve 30 dakika içinde geçici çözüm bulunamazsa BT Operasyon Müdürü'nün çağrılmasıdır. Olay 2 saati aşarsa BT Direktörü bilgilendirilir ve etkilenen bölümlere her 30 dakikada bir durum e-postası gönderilir [1]. Müşteri kayıtlarındaki çözüm hedefi ise P1 Acil önceliği için ilk yanıt süresinin 1 saat ve çözüm hedefinin 8 saat olmasıdır [2].\n\nKarşılaştırma:\n*   **İç BT Çözüm Hedefi:** Olayın üstlenilmesi, geçici çözüm süresi ve eskalasyon süreçlerine odaklanmıştır [1].\n*   **Müşteri Kayıtları Çözüm Hedefi:** Müşterinin operasyonunun durması veya güvenlik riski durumunda ilk yanıt süresi (1 saat) ve nihai çözüm hedefi (8 saat) ile belirlenmiştir [2].",
+      "steps": 3,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-03",
+      "status": 200,
+      "ms": 10333,
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3",
+        "satin-alma-proseduru.pdf#1",
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Alt soru 1: Yaklaşık 500.000 TL'lik bir alım için satın alma prosedüründeki onaylar nelerdir?\n[[BELGE 1]]'e göre, KDV hariç tutara göre onay basamakları şunlardır:\n*   1.000.000 TL üzeri için: Bölüm yöneticisi, Satın Alma Müdürü, Finans Direktörü ve Yönetim Kurulu kararı (karar numarası talebe girilmeden sipariş açılamaz) [1].\n*   Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [1].\n\n[[BELGE 2]]'ye göre, 500.000 TL'yi aşan alımlar ihale komitesi tarafından değerlendirilir [2].\n\nAlt soru 2: ERP'deki onay basamakları nelerdir?\n[[BELGE 3]]'e göre ERP satın alma rolleri şunlardır:\n*   SAT-TALEP: talep oluşturur ve kendi taleplerini izler [3].\n*   SAT-UZMAN: teklif karşılaştırma, sipariş ve iade belgelerini oluşturur [3].\n*   SAT-ONAY: onay iş listesini görür; tutar yetkisi kullanıcı ana verisinde tanımlıdır [3].\n*   SAT-ADMIN: onay hiyerarşisini, belge numaralandırmasını ve tolerans parametrelerini yönetir [3].\n\nAlt soru 3: Satın alma prosedüründeki onaylar ile ERP'deki onay basamakları arasında nasıl bir uyum vardır ve hangi üst düzey yönetici devreye girer?\nSatın alma prosedüründeki onaylar ile ERP'deki onay basamakları arasında tutara göre bir uyum bulunmaktadır [1] ve ERP'de roller tanımlanmıştır [3].\n\nYaklaşık 500.000 TL'lik bir alım için satın alma prosedüründeki onaylar, KDV hariç tutara göre Bölüm yöneticisi, Satın Alma Müdürü, Finans Direktörü ve Yönetim Kurulu kararı gerektirir [1]. Ayrıca, bilgi teknolojisi taleplerinde BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [1]. ERP'deki onay",
+      "steps": 3,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-04",
+      "status": 200,
+      "ms": 3260,
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2",
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Alt soru 1: Depoda sayılan miktar ile ön bildirim arasındaki fark yüzde kaç kadar kabul edilir?\nSayılan miktar ile ASN miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir [1]. Fark yüzde 2'yi aşarsa WMS kabulü \"kabul farkı\" durumunda bekletir [1].\n\nAlt soru 2: ERP tarafında siparişe göre fazla teslimat toleransı nedir?\nSipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E058) ve fazla miktar tedarikçiye iade edilir [3].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-05",
+      "status": 200,
+      "ms": 11687,
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3",
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Onaylanan müşteri siparişleri WMS'e ERP'den aktarılır ve bu aktarım her 5 dakikada bir çalışır [2]. Gönderilmiş (60) bir sipariş için ERP, depo yönetim sistemine (WMS) beklenen teslimat kaydını her 15 dakikada bir aktarır [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-06",
+      "status": 200,
+      "ms": 2685,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#1",
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Alt soru 1: Kurumsal parolaların minimum karakter sayısı nedir?\nKurumsal hesap parolaları en az on iki karakter uzunluğunda olmalıdır [1].\n\nAlt soru 2: Bir kullanıcı art arda hatalı deneme yaptığında hesap ne kadar süre kilitli kalır?\nArt arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir [2].\n\nKurumsal parolalar en az on iki karakter olmalı ve art arda 5 hatalı deneme sonucunda hesap 30 dakika kilitlenir [1][2].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-07",
+      "status": 200,
+      "ms": 3887,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2",
+        "bt-operasyon-runbook.pdf#5"
+      ],
+      "answer": "Alt soru 1: Şirket dizüstü bilgisayarı kaybolduğunda çalışan en geç ne kadar sürede bildirim yapmalıdır?\nÇalışan, şirket dizüstü bilgisayarı, telefon veya erişim kartı kaybolduğunda veya çalındığında durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirmelidir [1].\n\nAlt soru 2: Cihaz bulunamazsa Service Desk ne zaman uzaktan silme komutu gönderir?\nCihaz, Service Desk bildirimi alındıktan sonra, 7 gün içinde bulunamazsa uzaktan silme komutu gönderilir [4].\n\nŞirket dizüstü bilgisayarı kaybolduğunda çalışan en geç iki saat içinde Bilgi Güvenliği ekibine bildirmelidir [1]. Cihaz bulunamazsa Service Desk, cihaz 7 gün içinde bulunamazsa uzaktan silme komutu gönderir [4].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-08",
+      "status": 200,
+      "ms": 5104,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#3",
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "Alt soru 1: 25.000 TL'yi aşan bir masrafı kim onaylar?\n25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekmektedir [1].\n\nAlt soru 2: 1.000.000 TL'yi aşan bir satın alma kimin kararıyla yapılır?\n1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [4].\n\nAlt soru 3: İki üst onay makamı birbirinden nasıl ayrılır?\n100.000 TL'ye kadar olan alımları Satın Alma Müdürü onaylar [4]. 100.000 TL ile 1.000.000 TL arasındaki alımlar Finans Direktörü onayına gider [4]. 1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [4].\n\nÖzetle, 25.000 TL'yi aşan masraflar Genel Müdür onayı gerektirir [1]. 1.000.000 TL'yi aşan satın almalar Yönetim Kurulu kararıyla yapılır [4]. İki üst onay makamı, 100.000 TL'ye kadar olan alımlarda Satın Alma Müdürü, 100.000 TL ile 1.000.000 TL arasındaki alımlarda ise Finans Direktörü onayını içerir [4].",
+      "steps": 3,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-09",
+      "status": 200,
+      "ms": 4001,
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#3",
+        "isg-depo-proseduru.pdf#3",
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Bir rafta kırmızı sınıf hasar bulunduğunda WMS'te yapılacak işlemler ve bu durumun kaldırılması aşağıdaki gibidir:\n\n**Kırmızı Sınıf Hasar Durumunda Yapılacak İşlem:**\nKırmızı sınıf hasar ciddi hasar anlamına gelir. Bu durumda raf derhal boşaltılır ve kullanım dışı bırakılır; WMS'te lokasyonlar bloke edilir [1][2].\n\n**Bloke Durumunu Kaldırabilecek Rol:**\nBloke durumuna (sayım farkı veya hasar nedeniyle kilitli) bir stok satırını yalnızca stok kontrol uzmanı alabilir ve yalnız o kaldırabilir [3].\n\n**Özet:**\nBir rafta kırmızı sınıf hasar bulunduğunda raf derhal boşaltılır ve kullanım dışı bırakılır; WMS'te lokasyonlar bloke edilir [1][2]. Bu bloke durumunu yalnızca stok kontrol uzmanı kaldırabilir [3].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-10",
+      "status": 200,
+      "ms": 2615,
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4",
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "Alt soru 1: A sınıfı ürünlerin sayımı hangi sıklıkla yapılır?\nA sınıfı ürünlerin sayımı yıl sonunda bütün depoda tam sayım yapılır [1].\n\nAlt soru 2: İSG ile kalite göstergelerinde sayım doğruluğu için hedef nedir?\nDöngüsel sayım sonuçlarından kayıp günlü iş kazası yılda sıfır olmak hedeftir [2].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 0,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-11",
+      "status": 200,
+      "ms": 2898,
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4",
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Alt soru 1: Müşteriden iade edilen ürün depoya ulaştıktan sonra hangi alana alınır?\nMüşteriden iade edilen ürün depoya ulaştığında karantina lokasyonuna alınır [1].\n\nAlt soru 2: Kalite birimi karantinadaki ürünü en geç ne kadar sürede inceler?\nKalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler [2].\n\nMüşteriden iade edilen ürün depoya ulaştıktan sonra karantina lokasyonuna alınır ve kalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler [1][2].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-12",
+      "status": 200,
+      "ms": 3985,
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Alt soru 1: Çözülen bir BT kaydı ile çözüldü durumuna geçen bir müşteri destek kaydı ne kadar iş günü sonra kapanır?\n\"Çözüldü\" durumundaki kayıt 5 iş günü sonra kendiliğinden \"Kapatıldı\" olur [1].\n\nAlt soru 2: Çözülen bir BT kaydı ile çözüldü durumuna geçen bir müşteri destek kaydı ile kapanma arasındaki fark nedir?\n\"Çözüldü\" durumundaki kayıt 5 iş günü sonra kendiliğinden \"Kapatıldı\" olur [1].\n\nSoru: Çözülen bir BT kaydı ile çözüldü durumuna geçen bir müşteri destek kaydı kendiliğinden kaç iş günü sonra kapanır, aradaki fark nedir?\nÇözülen bir BT kaydı ile çözüldü durumuna geçen bir müşteri destek kaydı 5 iş günü sonra kendiliğinden \"Kapatıldı\" olur [1].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-13",
+      "status": 200,
+      "ms": 4317,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#1",
+        "bt-operasyon-runbook.pdf#6",
+        "musteri-destek-sureci.pdf#1"
+      ],
+      "answer": "BT Service Desk'in telefon hattı hafta içi 08.00–20.00 arasında hizmet verir; bu saatler dışında hat nöbetçi mühendise yönlenir ve yalnızca P1 ve P2 olaylar kabul edilir [1]. Nöbetçi mühendisler hafta içi 20.00–08.00 arasında ve hafta sonu bütün gün nöbettedir [2]. Müşteri çağrı merkezi hafta içi 08.00–20.00, cumartesi 09.00–17.00 arasında hizmet verir [3]. BT Service Desk'in telefon hattı cumartesi günü de nöbetçi mühendisler tarafından hizmet verilir [2].",
+      "steps": 3,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-14",
+      "status": 200,
+      "ms": 3888,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4",
+        "musteri-destek-sureci.pdf#5"
+      ],
+      "answer": "Alt soru 1: Çalışanın özlük dosyasının saklama süresi nedir?\nÇalışanın özlük dosyasının saklama süresi, e-posta için 1 yıl olarak belirtilmiştir [1].\n\nAlt soru 2: Müşteri destek kayıtlarının saklama süresi nedir?\nKapatılan kayıtlar 3 yıl saklanır, ardından anonimleştirilir [3].\n\nAlt soru 3: Çalışanın özlük dosyası ile kapatılmış müşteri destek kayıtları arasındaki saklama süresi farkı nedir?\nÇalışanın özlük dosyası için saklama süresi 1 yıldır [1], kapatılmış müşteri destek kayıtları ise 3 yıl saklanır [3].",
+      "steps": 3,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-15",
+      "status": 200,
+      "ms": 2368,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Evden çalışan bir kişi VPN ile aynı anda en fazla iki cihazdan bağlanabilir [1]. Haftada en fazla iki gün uzaktan çalışabilir [4].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-16",
+      "status": 200,
+      "ms": 3532,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#2",
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Alt soru 1: Yıllık puanlamada yüz üzerinden altmışın altında kalan tedarikçiye ne olur?\nMevcut tedarikçiler yılda bir kez kalite, teslim süresi ve fiyat ölçütleriyle puanlanır; yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez [1].\n\nAlt soru 2: ERP'de bloke edilmiş bir tedarikçinin blokesini kim kaldırabilir?\nVekil tanımlı değilse talep bir üst yöneticiye çıkar; onaycı izne çıkmadan önce ERP'deki \"Vekalet\" ekranından vekil tanımlanır; bir vekalet en fazla 30 gün geçerlidir ve vekil kendi açtığı talebi onaylayamaz [3].\n\nÖzetle, yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez [1]. ERP'de bloke edilmiş bir tedarikçinin blokesini, vekil tanımlı değilse talep bir üst yöneticiye çıkar ve vekil tanımlanır [3].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-17",
+      "status": 200,
+      "ms": 3371,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#1",
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Alt soru 1 için:\n50.000 TL ve üzerindeki alımlar için en az üç tedarikçiden yazılı teklif alınır [1]. 200.000 TL, 50.000 TL'nin üzerinde olduğu için en az üç tedarikçiden teklif gerekir [1].\n\nAlt soru 2 için:\nBilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [4].\n\nÖzetle, 200.000 TL'lik bir bilgi teknolojisi donanımı için en az üç tedarikçiden teklif gerekir [1] ve ERP'de onay akışına ilk basamak olarak BT Mimari ekibi eklenir [4].",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-18",
+      "status": 200,
+      "ms": 2827,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#3",
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Alt soru 1 için:\nYıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır [2].\n\nAlt soru 2 için:\nDoğum yapan çalışana doğumdan önce sekiz, doğumdan sonra sekiz hafta olmak üzere toplam on altı hafta ücretli doğum izni verilir [4].\n\nYıllık izin talebi başlangıçtan en az on beş gün önce yapılmalı ve doğum yapan çalışana toplam on altı hafta ücretli izin verilir.",
+      "steps": 2,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-19",
+      "status": 200,
+      "ms": 3296,
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#2"
+      ],
+      "answer": "Alt soru 1: Uzaktan çalışana ev interneti için aylık ne kadar destek ödenir?\n[[BELGE 1]] Uzaktan çalışan her çalışana ev internet gideri için aylık 500 TL destek ödenir. [1]\n\nAlt soru 2: Kıdem tazminatı nasıl hesaplanır?\n[[BELGE 3]] Kıdem tazminatı hesaplaması hakkında bilgi bulunmamaktadır. [ ]\n\nSoru: Uzaktan çalışana ev interneti için aylık ne kadar destek ödenir ve kıdem tazminatı nasıl hesaplanır?\nUzaktan çalışana ev internet gideri için aylık 500 TL destek ödenir [1]. Kıdem tazminatı hesaplaması hakkında bilgi bulunmamaktadır [ ].",
+      "steps": 2,
+      "partial": true,
+      "sources": 1,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0,
+      "statesMissing": true
+    },
+    {
+      "id": "mh-20",
+      "status": 200,
+      "ms": 2478,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "İstanbul'daki gecelik otel limiti, yurt içinde gecelik otel limiti İstanbul için 4.000 TL'dir [1]. Çalışanların yıllık maaş zammı oranı hakkında bilgi, belgelerde bulunmamaktadır.",
+      "steps": 2,
+      "partial": true,
+      "sources": 1,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0,
+      "statesMissing": true
+    }
+  ]
+}

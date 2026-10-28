@@ -1,0 +1,121 @@
+{
+  "measuredAt": "2026-10-28T11:18:37.324Z",
+  "commit": "813e2b96608c",
+  "off": {
+    "mode": "local",
+    "chatModel": "gemma4:e2b",
+    "arm": "off",
+    "questions": 20,
+    "samples": "samples",
+    "errors": 0,
+    "decomposedRate": 0,
+    "sourceHitRate": 0.868,
+    "allSourcesCitedRate": 0.8,
+    "factRate": 0.895,
+    "allFactsRate": 0.85,
+    "partialStatesMissing": 1,
+    "contradictionNotes": 0,
+    "latencyMs": {
+      "p50": 1592,
+      "p95": 2910,
+      "max": 20058
+    }
+  },
+  "on": {
+    "mode": "local",
+    "chatModel": "gemma4:e2b",
+    "arm": "on",
+    "questions": 20,
+    "samples": "samples",
+    "errors": 0,
+    "decomposedRate": 0.95,
+    "sourceHitRate": 0.842,
+    "allSourcesCitedRate": 0.7,
+    "factRate": 0.842,
+    "allFactsRate": 0.75,
+    "partialStatesMissing": 1,
+    "contradictionNotes": 0,
+    "latencyMs": {
+      "p50": 3532,
+      "p95": 10333,
+      "max": 11687
+    }
+  },
+  "changed": [
+    {
+      "id": "mh-02",
+      "sourceHits": [
+        1,
+        1
+      ],
+      "factHits": [
+        0,
+        1
+      ],
+      "ms": [
+        2004,
+        5710
+      ]
+    },
+    {
+      "id": "mh-03",
+      "sourceHits": [
+        2,
+        1
+      ],
+      "factHits": [
+        2,
+        2
+      ],
+      "ms": [
+        2910,
+        10333
+      ]
+    },
+    {
+      "id": "mh-10",
+      "sourceHits": [
+        2,
+        2
+      ],
+      "factHits": [
+        1,
+        0
+      ],
+      "ms": [
+        1203,
+        2615
+      ]
+    },
+    {
+      "id": "mh-14",
+      "sourceHits": [
+        0,
+        1
+      ],
+      "factHits": [
+        2,
+        1
+      ],
+      "ms": [
+        1475,
+        3888
+      ]
+    },
+    {
+      "id": "mh-16",
+      "sourceHits": [
+        2,
+        1
+      ],
+      "factHits": [
+        2,
+        1
+      ],
+      "ms": [
+        1516,
+        3532
+      ]
+    }
+  ]
+}

@@ -1,0 +1,386 @@
+{
+  "measuredAt": "2026-10-28T11:18:37.322Z",
+  "commit": "813e2b96608c",
+  "summary": {
+    "mode": "local",
+    "chatModel": "gemma4:e2b",
+    "arm": "off",
+    "questions": 20,
+    "samples": "samples",
+    "errors": 0,
+    "decomposedRate": 0,
+    "sourceHitRate": 0.868,
+    "allSourcesCitedRate": 0.8,
+    "factRate": 0.895,
+    "allFactsRate": 0.85,
+    "partialStatesMissing": 1,
+    "contradictionNotes": 0,
+    "latencyMs": {
+      "p50": 1592,
+      "p95": 2910,
+      "max": 20058
+    }
+  },
+  "questions": [
+    {
+      "id": "mh-01",
+      "status": 200,
+      "ms": 20058,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Kritik (P1) bir olay için ilk yanıt süreleri şunlardır:\n\n*   **BT Service Desk:** 15 dakika [1]\n*   **Müşteri Destek Ekibi:** 1 saat [2]\n\nBu durumda, BT Service Desk'in ilk yanıt süresi, müşteri destek ekibinin ilk yanıt süresinden daha kısadır [1][2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-02",
+      "status": 200,
+      "ms": 2004,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "P1 olayları için iç BT tarafındaki çözüm hedefi, olay açıldığında nöbetçi mühendisin 15 dakika içinde olayı üstlenmesi ve 30 dakika içinde geçici çözüm bulunamaması durumunda BT Operasyon Müdürü'nün köprüye çağrılması ile ilgilidir [1].\n\nMüşteri kayıtlarındaki P1 olayları için çözüm hedefi ise 8 saattir [2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 0,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-03",
+      "status": 200,
+      "ms": 2910,
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3",
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "Yaklaşık 500.000 TL'lik bir alım için satın alma prosedüründeki onay basamakları ve ERP'deki karşılığı şu şekildedir:\n\n*   **Tutar Aralığı:** 100.000 TL ile 1.000.000 TL arası [1].\n*   **Onay Basamakları:** Bölüm yöneticisi, Satın Alma Müdürü ve Finans Direktörü [1][5].\n\nBu tutar aralığı için, onay akışında **Finans Direktörü** devreye girmektedir [1][5].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-04",
+      "status": 200,
+      "ms": 1987,
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2",
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Depoda sayılan miktar ile ön bildirim (ASN) miktarı arasındaki fark yüzde 2'ye kadar ise kabul tamamlanır ve fark otomatik olarak kaydedilir [3]. Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir; bunu aşan miktar için mal kabul engellenir (SAT-E058) ve fazla miktar tedarikçiye iade edilir [1]. Hizmet alımlarında fazla teslim toleransı sıfırdır [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-05",
+      "status": 200,
+      "ms": 1912,
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3",
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "*   Onaylanan müşteri siparişleri ERP'den WMS'e bir sevkiyat emri olarak aktarılır ve bu aktarım her 5 dakikada bir çalışır [2].\n*   Gönderilmiş (60) bir sipariş için ERP, depo yönetim sistemine (WMS) her 15 dakikada bir beklenen teslimat kaydı aktarır [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-06",
+      "status": 200,
+      "ms": 1568,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#1",
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalı; büyük harf, küçük harf, rakam ve özel karakter içermelidir [1]. Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir [2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-07",
+      "status": 200,
+      "ms": 1595,
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2",
+        "bt-operasyon-runbook.pdf#5"
+      ],
+      "answer": "Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir [2]. Cihaz 7 gün içinde bulunamazsa uzaktan silme komutu gönderilir [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-08",
+      "status": 200,
+      "ms": 2123,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#3",
+        "erp-satin-alma-kilavuzu.pdf#3",
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekir [3]. 1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [1][2].\n\nBu iki üst onay makamı arasındaki ayrım şöyledir:\n*   **25.000 TL üzeri masraflar:** Genel Müdür onayına tabidir [3].\n*   **1.000.000 TL üzeri alımlar:** Yönetim Kurulu kararıyla yapılır [1][2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-09",
+      "status": 200,
+      "ms": 1806,
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#3",
+        "isg-depo-proseduru.pdf#3",
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Kırmızı sınıf hasar durumunda raf derhal boşaltılır ve kullanım dışı bırakılır; WMS'te lokasyonlar bloke edilir [1][3]. Bloke bir lokasyondaki ürün toplama listelerinde görünmez [2]. Bloke durumunu yalnız stok kontrol uzmanı alabilir ve yalnız o kaldırabilir [2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-10",
+      "status": 200,
+      "ms": 1203,
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4",
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "A sınıfı ürünlerin sayımı üç ayda bir yapılır [1]. Döngüsel sayım sonuçlarından kayıp günlü iş kazası için yılda sıfır hedef bulunmaktadır [2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-11",
+      "status": 200,
+      "ms": 1181,
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4",
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Müşteriden iade edilen ürün depoya ulaştığında karantina lokasyonuna alınır [2]. Kalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-12",
+      "status": 200,
+      "ms": 1282,
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Çözüldü durumundaki kayıt 5 iş günü sonra kendiliğinden \"Kapatıldı\" olur [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-13",
+      "status": 200,
+      "ms": 1832,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#1",
+        "musteri-destek-sureci.pdf#1"
+      ],
+      "answer": "BT Service Desk'in telefon hattı hafta içi 08.00–20.00 arasında analist bakar; bu saatler dışında hat nöbetçi mühendise yönlenir ve yalnız P1 ve P2 olaylar kabul edilir [3]. Çağrı merkezi hafta içi 08.00–20.00, cumartesi 09.00–17.00 arasında hizmet verir [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-14",
+      "status": 200,
+      "ms": 1475,
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır; kapatılan kayıtlar ise 3 yıl saklanır, ardından anonimleştirilir [3].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 0,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-15",
+      "status": 200,
+      "ms": 1104,
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2",
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Evden çalışan bir kişi VPN ile aynı anda en fazla iki cihazdan bağlanabilir [1]. Haftada en fazla iki gün uzaktan çalışılabilir [2].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-16",
+      "status": 200,
+      "ms": 1516,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#2",
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "Yıllık puanlamada yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez [2]. Satın alma uzmanı başka bir tedarikçi seçer; blokeyi yalnız Satın Alma Müdürü kaldırabilir [3].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-17",
+      "status": 200,
+      "ms": 1864,
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#1",
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "200.000 TL'lik bir bilgi teknolojisi donanımı alınacaksa, 50.000 TL ve üzeri alımlar için en az üç tedarikçiden yazılı teklif alınır [4]. Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-18",
+      "status": 200,
+      "ms": 1592,
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#3",
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Yıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır [3]. Doğum yapan çalışana doğumdan önce sekiz, doğumdan sonra sekiz hafta olmak üzere toplam on altı hafta ücretli doğum izni verilir [1].",
+      "steps": 0,
+      "partial": false,
+      "sources": 2,
+      "sourceHits": 2,
+      "factHits": 2,
+      "notFoundSteps": 0,
+      "contradictions": 0
+    },
+    {
+      "id": "mh-19",
+      "status": 200,
+      "ms": 1405,
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#2"
+      ],
+      "answer": "Uzaktan çalışanlara ev interneti için aylık 500 TL destek ödenir [1]. Kıdem tazminatı hakkında bilgi belgelerde bulunmamaktadır.",
+      "steps": 0,
+      "partial": true,
+      "sources": 1,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0,
+      "statesMissing": true
+    },
+    {
+      "id": "mh-20",
+      "status": 200,
+      "ms": 1287,
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "İstanbul'da yurt içinde gecelik otel limiti 4.000 TL'dir [1]. Çalışanların yıllık maaş zammı oranı hakkında bilgi belgelerde bulunmamaktadır.",
+      "steps": 0,
+      "partial": true,
+      "sources": 1,
+      "sourceHits": 1,
+      "factHits": 1,
+      "notFoundSteps": 0,
+      "contradictions": 0,
+      "statesMissing": true
+    }
+  ]
+}

@@ -180,6 +180,7 @@ try {
       row.found = body.found;
       row.citations = body.citations.map((c) => `${c.fileName}#${c.page}`);
       row.answer = body.answer;
+      row.steps = body.reasoning?.steps?.length ?? 0; // ADR-0055: > 0 when the gate fired and the question was decomposed
       if (SET === 'multihop') {
         scoreMultihop(q, row, body);
       } else if (q.answerable) {
