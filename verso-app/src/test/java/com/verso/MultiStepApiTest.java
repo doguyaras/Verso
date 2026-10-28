@@ -88,7 +88,7 @@ class MultiStepApiTest {
         circuit.reset();
         while (worker.isPaused()) Thread.sleep(50);
         ready(owner, "izin.pdf", "topic-leave Yillik izin 20 is gunudur.");
-        ready(owner, "masraf.pdf", "topic-travel Otel gecelik limiti 4000 TL tutarındadır.");
+        ready(owner, "masraf.pdf", "topic-travel Otel gecelik limiti 4000 TL tutarindadir.");
         // Another account's document: no sub-question of the owner may reach it (ADR-0028).
         ready(other, "sevkiyat.pdf", "topic-ship MarkerForeign shipments are approved by the warehouse lead.");
         root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
