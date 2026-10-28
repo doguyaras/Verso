@@ -156,7 +156,8 @@ export async function renderActivity(ctx) {
     const items = page.items.filter((i) => i.category !== 'APPROVAL' || state.category === 'APPROVAL');
     const groups = groupByDay(visibleItems(items, state.expanded));
     const hidden = items.length - visibleItems(items, state.expanded).length;
-    // An empty list has one way out: back to every category and status over the longest range.
+    // An empty list has one way out: back to every category and status over the longest range or, with no filter on,
+    // to the assistant whose answers fill it.
     const widen = el('button', { class: 'button secondary', type: 'button', onclick: () => {
       Object.assign(state, { category: '', status: '', days: RANGES.at(-1), page: 0 });
       load();
@@ -167,7 +168,8 @@ export async function renderActivity(ctx) {
         el('ul', { class: 'activity-lines' }, g.items.map((item) => line(ctx, item, open)))))
         : emptyState('clock', 'Bu aralıkta etkinlik yok', state.category === 'RUN' && !page.sources.includes('work')
           ? 'Beceri çalışmaları, beceri modülü kurulduğunda burada görünür.'
-          : 'Seçili süzgeçlerle eşleşen bir şey yok.', filtersActive(state) ? widen : null),
+          : filtersActive(state) ? 'Seçili süzgeçlerle eşleşen bir şey yok.' : 'Asistana bir soru sorduğunuzda ilk etkinlik burada görünür.',
+          filtersActive(state) ? widen : el('a', { class: 'button secondary', href: '#/ask' }, 'Asistana sor')),
       hidden > 0 ? el('button', { class: 'button ghost activity-more', type: 'button', onclick: () => {
         state.expanded = true;
         load();
