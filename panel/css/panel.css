@@ -882,6 +882,9 @@ table.table { width: 100%; border-collapse: separate; border-spacing: 0; font-si
   .cite { height: 22px; padding: 0 8px; border-radius: var(--r-full); vertical-align: 1px; font-weight: 600; letter-spacing: .01em; }
   .cite .cite-n { display: none; }
   .cite .cite-chip { display: inline; white-space: nowrap; }
+  /* before the first question there is no source column: the box and the bar stay centred under the welcome */
+  .chat:has(> .thread > .welcome) { max-width: 820px; }
+  .chat:has(> .thread > .welcome) .composer, .chat:has(> .thread > .welcome) .chat-bar { margin-left: 0; margin-right: 0; }
 }
 
 /* ---------- drawer, dialog, palette, toasts ---------- */

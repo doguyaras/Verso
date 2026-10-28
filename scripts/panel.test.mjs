@@ -3584,3 +3584,8 @@ test('Sadeleştirme, Beceriler: category filter chips, compact cards, history an
   const css = readFileSync('panel/css/panel.css', 'utf8');
   assert.match(css, /\.skill-lib-line \{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/);
 });
+
+test('panel.css: before the first question the ask box is not pushed aside for a source column that is not there yet', () => {
+  const css = readFileSync(new URL('../panel/css/panel.css', import.meta.url), 'utf8');
+  assert.match(css, /\.chat:has\(> \.thread > \.welcome\) \.composer, \.chat:has\(> \.thread > \.welcome\) \.chat-bar \{ margin-left: 0; margin-right: 0; \}/);
+});
