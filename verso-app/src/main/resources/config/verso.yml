@@ -125,6 +125,12 @@ spring:
       # The local chat model on a CPU-only host (ADR-0008: 90 s); also bounds an embedding batch, whose lease is
       # renewed after every batch.
       read-timeout: 90s
+      # The blocking clients (the Ollama client, the connectors) stay on the JDK HttpClient. Boot would otherwise pick
+      # Apache HttpClient 5 as soon as it is on the classpath (the model gateway's Bedrock module brings it, ADR-0056),
+      # which changes how a refused address surfaces: FilteredHostException unwrapped instead of a
+      # ResourceAccessException (OllamaChatClientTest), and every caller's failure handling with it.
+      imperative:
+        factory: jdk
 
 # Access tokens (ADR-0005, reference 9.2): ES256 only, exact issuer, the API audience, sub as the account. The issuer
 # is the public URL inside the tokens; the keys come from the IdP's internal address (no discovery at startup).

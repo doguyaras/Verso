@@ -50,7 +50,7 @@ Verso kurumlara yapay zekâ altyapısı olarak kuruluyor; kurumların çoğu ken
 
 - **Olumlu:** kurum kendi sağlayıcısını kod değiştirmeden panelden bağlar; görev başına model, yedek, bütçe ve kullanım tek yerde; gizlilik süzgeci için kanca hazır.
 - **Olumsuz / kabul edilen risk:**
-  - Bağımlılık yüzeyi büyüdü (AWS SDK, google-genai ve Guava): aylık SBOM/Grype taramasının kapsamında. Yakınsama için Guava 33.4.0-jre, httpclient 4.5.14, checker-qual 3.55.1 sabitlendi.
+  - Bağımlılık yüzeyi büyüdü (AWS SDK, google-genai ve Guava): aylık SBOM/Grype taramasının kapsamında. Yakınsama için Guava 33.7.2-jre, httpclient 4.5.14, checker-qual 3.55.1 sabitlendi.
   - KEK kaybolursa kayıtlı anahtarlar açılamaz (yeniden girilir); çevrimiçi yeniden sarma yok (`secrets/README.md`).
   - Bütçe sayımı instance'lar arası kesin değildir (yukarıda).
   - Sağlayıcıların ZDR / veri bölgesi koşulları Verso'da saklanmıyor; VKED 5.6'da kurum doldurur.

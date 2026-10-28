@@ -259,12 +259,13 @@
         <version>3.0.1</version>
       </dependency>
       <!-- Convergence (ADR-0056): the model gateway's Google GenAI and Bedrock clients. google-auth asks for three
-           Guava versions (29/30 android, 33.4.0 android and jre); the newest jre build wins. The AWS apache-client
+           Guava versions (29/30 android, 33.4.0 android and jre); one jre build wins: 33.7.2-jre, the first release
+           with GHSA-xxph-c9ww-hj94 fixed (HIGH, deserialization memory exhaustion; OSV 2026-10-28). The AWS apache-client
            asks for httpclient 4.5.13, Google's http client for 4.5.14; the newer patch wins. -->
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>33.4.0-jre</version>
+        <version>33.7.2-jre</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
