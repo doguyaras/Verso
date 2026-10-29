@@ -1,5 +1,6 @@
 package com.verso.support;
 
+import com.verso.document.worker.ChunkContext;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,7 +109,8 @@ public final class TestEmbeddingModel implements EmbeddingModel {
      * Texts that carry a marker like {@code topic-leave} point (almost) in one direction per topic, so a question and a
      * passage about the same topic are similar and different topics are not; everything else is pseudo-random.
      */
-    private float[] vector(String text) {
+    private float[] vector(String input) {
+        String text = withoutContextHeader(input);
         java.util.regex.Matcher topic = TOPIC.matcher(text);
         if (topic.find()) {
             float[] vector = new float[dimensions];
@@ -130,6 +132,18 @@ public final class TestEmbeddingModel implements EmbeddingModel {
         for (int i = 0; i < vector.length; i++) vector[i] *= scale;
         if (nan) vector[0] = Float.NaN;
         return vector;
+    }
+
+    /**
+     * Ingestion and the context header backfill embed "header + blank line + chunk text" (ADR-0061). The double embeds
+     * the chunk text alone, so a test that asks a passage's text verbatim still gets cosine 1 and a topic marker in a
+     * title does not move another page's chunks. The input itself is tested in IngestionWorkerContextTest; what the
+     * header does to real bge-m3 vectors is measured by the eval (RetrievalEvalTest, scripts/eval.mjs).
+     */
+    static String withoutContextHeader(String text) {
+        int separator = text.indexOf(ChunkContext.SEPARATOR);
+        if (separator < 0 || separator > ChunkContext.MAX_HEADER_CHARS) return text;
+        return text.substring(separator + ChunkContext.SEPARATOR.length());
     }
 
     private static long seed(String text) {

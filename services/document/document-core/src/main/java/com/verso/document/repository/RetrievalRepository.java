@@ -29,6 +29,13 @@ public class RetrievalRepository {
     static final String TEXT_SEARCH_CONFIG = "turkish";
 
     /**
+     * A chunk's terms for the full-text rank: its context header (ADR-0061, V7; the document title and section, so a
+     * question naming a centre by "HÜBAUM" reaches every chunk of that regulation) and its own text. Matching reads
+     * both vectors with OR, so each side uses its own GIN index; a chunk indexed before ADR-0061 has no header vector.
+     */
+    static final String CHUNK_TERMS = "(COALESCE(c.header_vector, ''::tsvector) || c.search_vector)";
+
+    /**
      * Chunk c belongs to a document one of the reader's principals reaches (ADR-0028): one probe of document_principal's
      * primary key per chunk, the same predicate as DocumentRepository.READABLE. Measured against a text[] column with a
      * GIN index on the chunks (docs/evidence/paylasimli-alanlar-dogrulama.md).
@@ -71,8 +78,8 @@ public class RetrievalRepository {
 
     /**
      * Reciprocal Rank Fusion of two candidate lists in one statement (ADR-0022): the {@code vectorK} nearest chunks by
-     * cosine distance and the {@code lexicalK} best chunks by ts_rank_cd for the question's terms (OR), both among the
-     * reader's chunks only. A chunk scores Σ 1 / (rrfK + rank) over the lists it is in; ties go to the higher cosine
+     * cosine distance and the {@code lexicalK} best chunks by ts_rank_cd for the question's terms (OR) over the chunk's
+     * text and its context header (ADR-0061), both among the reader's chunks only. A chunk scores Σ 1 / (rrfK + rank) over the lists it is in; ties go to the higher cosine
      * similarity. The cosine similarity of every returned chunk is computed, also of one only the full-text list found:
      * the answerability rule reads it, never the fused score. The final select checks access again (defence in depth).
      */
@@ -90,12 +97,12 @@ public class RetrievalRepository {
                                   LIMIT :vectorK) v
                         ), lex AS (
                             SELECT l.id, row_number() OVER (ORDER BY l.score DESC, l.id) AS rank
-                            FROM (SELECT c.id, ts_rank_cd(c.search_vector, query.terms) AS score
+                            FROM (SELECT c.id, ts_rank_cd(%3$s, query.terms) AS score
                                   FROM document.document_chunk c
                                   JOIN document.document d ON d.id = c.document_id
                                   CROSS JOIN (SELECT %2$s AS terms) query
                                   WHERE %1$s AND c.embedding_model = :model AND d.status = 'READY'
-                                    AND c.search_vector @@ query.terms
+                                    AND (c.search_vector @@ query.terms OR c.header_vector @@ query.terms)
                                   ORDER BY score DESC, c.id
                                   LIMIT :lexicalK) l
                         ), fused AS (
@@ -113,7 +120,7 @@ public class RetrievalRepository {
                         WHERE %1$s
                         ORDER BY f.score DESC, similarity DESC, c.id
                         LIMIT :k
-                        """.formatted(READABLE_CHUNK, OR_QUERY))
+                        """.formatted(READABLE_CHUNK, OR_QUERY, CHUNK_TERMS))
                 .param("q", vector).param("principals", principals).param("model", model)
                 .param("question", queryText(questionText))
                 .param("vectorK", vectorK).param("lexicalK", lexicalK).param("rrfK", rrfK).param("k", topK)
@@ -185,6 +192,10 @@ public class RetrievalRepository {
      * chunk contains (ADR-0022). Each term is counted only up to {@code cap}: a term found that often is common, and
      * counting it exactly would cost a scan of most of a large space. Chunks that share no term are absent. Chunks
      * outside the reader's principals are neither looked up nor counted (ADR-0028).
+     *
+     * <p>The chunk's own text only, not its context header (ADR-0061): the answerability gate's thresholds were chosen
+     * on this definition, and a title term every chunk of a document carries would make the gate's lower threshold
+     * apply to any question naming the document. The header helps rank candidates; it does not open the gate.
      */
     public Map<UUID, Long> rarestSharedTermCounts(String[] principals, String model, String questionText,
                                                   List<UUID> chunkIds, long cap) {

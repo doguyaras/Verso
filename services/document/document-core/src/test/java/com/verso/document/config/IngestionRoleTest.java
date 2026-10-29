@@ -2,7 +2,9 @@ package com.verso.document.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.verso.document.repository.ContextIndexRepository;
 import com.verso.document.repository.IngestionRepository;
+import com.verso.document.worker.ContextHeaderBackfillJob;
 import com.verso.document.worker.DoclingClient;
 import com.verso.document.worker.DoclingParser;
 import com.verso.document.worker.DocumentOutboxRelayJob;
@@ -28,7 +30,8 @@ class IngestionRoleTest {
 
     static final List<Class<?>> WORKER_BEANS = List.of(IngestionWorker.class, IngestionTransactionService.class,
             IngestionRepository.class, DocumentTextExtractor.class, PdfTextExtractor.class, DocxTextExtractor.class,
-            PlainTextExtractor.class, DoclingParser.class, DoclingClient.class, PageChunker.class, IngestionMetrics.class);
+            PlainTextExtractor.class, DoclingParser.class, DoclingClient.class, PageChunker.class, IngestionMetrics.class,
+            ContextIndexRepository.class, ContextHeaderBackfillJob.class);
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnIngestion

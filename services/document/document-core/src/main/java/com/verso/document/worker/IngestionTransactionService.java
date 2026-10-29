@@ -64,8 +64,20 @@ public class IngestionTransactionService {
 
     @Transactional
     public void storePages(Claim claim, List<String> pages, Instant now) {
+        storePages(claim, pages, null, now);
+    }
+
+    /** The pages and, when known, the index title (ADR-0061), in the transaction that drops the file. */
+    @Transactional
+    public void storePages(Claim claim, List<String> pages, String indexTitle, Instant now) {
         hold(claim, now);
         repository.replacePagesAndDropFile(claim.documentId(), pages);
+        if (indexTitle != null) repository.storeIndexTitle(claim.documentId(), indexTitle);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> loadIndexTitle(Claim claim) {
+        return repository.loadIndexTitle(claim.documentId());
     }
 
     @Transactional
@@ -75,8 +87,15 @@ public class IngestionTransactionService {
 
     @Transactional
     public void complete(Claim claim, int pageCount, List<StoredChunk> chunks, String model, Instant now) {
+        complete(claim, pageCount, chunks, model, ChunkContext.indexVersion(true), now);
+    }
+
+    /** {@code contextVersion}: ChunkContext.indexVersion of the headers the chunks were indexed with (ADR-0061). */
+    @Transactional
+    public void complete(Claim claim, int pageCount, List<StoredChunk> chunks, String model, int contextVersion,
+                         Instant now) {
         hold(claim, now);
-        repository.complete(claim, pageCount, chunks, model, now);
+        repository.complete(claim, pageCount, chunks, model, contextVersion, now);
     }
 
     @Transactional

@@ -597,6 +597,17 @@ verso:
       backfill-enabled: true
       backfill-interval: 1m
       backfill-batch: 50
+    # Contextual chunk headers (ADR-0061): every chunk is embedded and full-text indexed with its document's title and
+    # section (never shown, never in an excerpt). The backfill re-embeds READY documents indexed without headers or
+    # with another header version, a few per run, while no upload waits; documents stay searchable meanwhile.
+    # embed-header false keeps the header in the full-text index only (ADR-0022 measured a name prefix lowering
+    # cosines); changing it re-indexes every document.
+    context-header:
+      embed-header: true
+      backfill-enabled: true
+      backfill-interval: 30s
+      backfill-batch: 5
+      backfill-lease: 10m
     # Optional cross-encoder reranker (ADR-0043): a HF TEI sidecar with bge-reranker-v2-m3 reorders the fused top-N
     # before the top-k are kept. Off unless deploy/compose.reranker.yaml runs it (VERSO_RERANKER_ENABLED). Every
     # failure keeps the fused order; the answerability gate reads the same passage either way.

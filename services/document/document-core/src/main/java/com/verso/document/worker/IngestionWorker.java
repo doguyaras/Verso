@@ -1,6 +1,7 @@
 package com.verso.document.worker;
 
 import com.verso.document.api.enums.DocumentFailureReason;
+import com.verso.document.config.ContextHeaderProperties;
 import com.verso.document.config.DocumentProperties;
 import com.verso.document.repository.IngestionRepository.Claim;
 import com.verso.document.repository.IngestionRepository.StoredChunk;
@@ -50,12 +51,13 @@ public class IngestionWorker implements SmartLifecycle {
     private final DocumentProperties properties;
     private final Clock clock;
     private final IngestionMetrics metrics;
+    private final boolean embedHeader;
     private volatile boolean running;
     private volatile Instant pausedUntil = Instant.MIN;
 
     public IngestionWorker(IngestionTransactionService tx, DocumentTextExtractor extractor, PageChunker chunker,
                            EmbeddingModel embeddingModel, DocumentProperties properties, Clock clock,
-                           IngestionMetrics metrics) {
+                           IngestionMetrics metrics, ContextHeaderProperties contextHeader) {
         this.tx = tx;
         this.extractor = extractor;
         this.chunker = chunker;
@@ -63,6 +65,7 @@ public class IngestionWorker implements SmartLifecycle {
         this.properties = properties;
         this.clock = clock;
         this.metrics = java.util.Objects.requireNonNull(metrics, "metrics");
+        this.embedHeader = contextHeader.embedHeader();
         metrics.registerPause(this::paused);
     }
 
@@ -103,7 +106,11 @@ public class IngestionWorker implements SmartLifecycle {
             // Parsed in an earlier attempt: the stored pages are used as they are, whichever parser produced them.
             String parser = "STORED";
             long parseMs = 0;
-            if (pages.isEmpty()) {
+            String title;
+            if (!pages.isEmpty()) {
+                List<String> stored = pages;
+                title = tx.loadIndexTitle(claim).orElseGet(() -> DocumentTitle.of(stored, null, claim.fileName()));
+            } else {
                 byte[] file = tx.loadFile(claim).orElseThrow(
                         () -> new IngestionRejectedException(DocumentTextExtractor.unreadable(claim.format())));
                 long parseStarted = System.nanoTime();
@@ -117,12 +124,17 @@ public class IngestionWorker implements SmartLifecycle {
                     log.warn("Document parsed without the sidecar: documentId={} reason={} parseMs={}",
                             claim.documentId(), extraction.fallback(), parseMs);
                 }
-                tx.storePages(claim, pages, clock.instant());
+                // ADR-0061: the PDF metadata title is known only now, while the file exists; the title is kept.
+                title = DocumentTitle.of(pages, extraction.metadataTitle(), claim.fileName());
+                tx.storePages(claim, pages, title, clock.instant());
             }
             List<Chunk> chunks = chunker.chunk(pages);
             if (chunks.isEmpty()) throw new IngestionRejectedException(DocumentFailureReason.NO_TEXT);
-            List<StoredChunk> stored = embed(claim, chunks);
-            tx.complete(claim, pages.size(), stored, properties.embeddingModel(), clock.instant());
+            List<String> headers = ChunkContext.headers(title, pages,
+                    chunks.stream().map(c -> new ChunkContext.Located(c.pageNumber(), c.content())).toList());
+            List<StoredChunk> stored = embed(claim, chunks, headers);
+            tx.complete(claim, pages.size(), stored, properties.embeddingModel(),
+                    ChunkContext.indexVersion(embedHeader), clock.instant());
             metrics.record(IngestionMetrics.Outcome.READY);
             indexSystemModel(claim);
             log.info("Document ingestion finished: documentId={} pages={} chunks={} parser={} parseMs={} attempts={} "
@@ -144,15 +156,21 @@ public class IngestionWorker implements SmartLifecycle {
         }
     }
 
-    private List<StoredChunk> embed(Claim claim, List<Chunk> chunks) {
+    /** Embeds header + chunk text (ADR-0061); the stored content stays the chunk text alone. */
+    private List<StoredChunk> embed(Claim claim, List<Chunk> chunks, List<String> headers) {
         int batch = properties.ingestion().embeddingBatch();
         List<StoredChunk> stored = new ArrayList<>(chunks.size());
         for (int from = 0; from < chunks.size(); from += batch) {
             if (!running) throw new Stopping();
+            int start = from;
             List<Chunk> slice = chunks.subList(from, Math.min(chunks.size(), from + batch));
             List<float[]> vectors;
             try {
-                vectors = embeddingModel.embed(slice.stream().map(Chunk::content).toList());
+                List<String> inputs = new ArrayList<>(slice.size());
+                for (int i = 0; i < slice.size(); i++) {
+                    inputs.add(ChunkContext.embeddingInput(headers.get(start + i), slice.get(i).content(), embedHeader));
+                }
+                vectors = embeddingModel.embed(inputs);
             } catch (RuntimeException e) {
                 throw new ModelFailure(isNonTransient(e), e.getClass().getSimpleName());
             }
@@ -164,7 +182,8 @@ public class IngestionWorker implements SmartLifecycle {
                 // Another model or a wrong configuration: storing it would mix incomparable vectors (llm-rules 6.1).
                 if (vector.length != properties.embeddingDimensions()) throw new ModelFailure(true, "WRONG_DIMENSIONS");
                 Chunk chunk = slice.get(i);
-                stored.add(new StoredChunk(chunk.pageNumber(), chunk.chunkIndex(), chunk.content(), vector));
+                stored.add(new StoredChunk(chunk.pageNumber(), chunk.chunkIndex(), chunk.content(), vector,
+                        headers.get(start + i)));
             }
             Instant now = clock.instant();
             tx.extendLease(claim, now, now.plus(properties.ingestion().lease()));

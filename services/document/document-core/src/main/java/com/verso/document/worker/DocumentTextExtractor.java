@@ -31,9 +31,14 @@ public class DocumentTextExtractor {
 
     /**
      * The texts and where they came from; {@code fallback} names the sidecar failure when the JDK text was kept
-     * although the sidecar was asked, otherwise null.
+     * although the sidecar was asked, otherwise null. {@code metadataTitle} is a PDF's own title (ADR-0061), null for
+     * other formats and when the file has none.
      */
-    public record Extraction(List<String> texts, Parser parser, Failure fallback) {
+    public record Extraction(List<String> texts, Parser parser, Failure fallback, String metadataTitle) {
+
+        public Extraction(List<String> texts, Parser parser, Failure fallback) {
+            this(texts, parser, fallback, null);
+        }
     }
 
     /** The sidecar was temporarily unavailable for a file only it can read; the worker retries with backoff. */
@@ -71,27 +76,30 @@ public class DocumentTextExtractor {
         if (docling.handles(format)) {
             return format == DocumentFormat.PDF ? pdfWithSidecar(content, stopping) : docxWithSidecar(content, stopping);
         }
-        List<String> texts = switch (format) {
-            case PDF -> pdf.extract(content);
-            case DOCX -> docx.extract(content);
-            case TXT -> plain.extract(content, false);
-            case MD -> plain.extract(content, true);
+        return switch (format) {
+            case PDF -> {
+                PdfTextExtractor.Read read = pdf.extractWithTitle(content);
+                yield new Extraction(read.texts(), Parser.JDK, null, read.title());
+            }
+            case DOCX -> new Extraction(docx.extract(content), Parser.JDK, null);
+            case TXT -> new Extraction(plain.extract(content, false), Parser.JDK, null);
+            case MD -> new Extraction(plain.extract(content, true), Parser.JDK, null);
         };
-        return new Extraction(texts, Parser.JDK, null);
     }
 
     private Extraction pdfWithSidecar(byte[] content, BooleanSupplier stopping) {
-        List<String> jdk = pdf.read(content);
+        PdfTextExtractor.Read read = pdf.readWithTitle(content);
+        List<String> jdk = read.texts();
         boolean jdkText = jdk.stream().anyMatch(page -> !page.isEmpty());
         Result result = docling.pdfPages(content, jdk.size(), stopping);
-        if (result.ok()) return new Extraction(result.texts(), Parser.DOCLING, null);
+        if (result.ok()) return new Extraction(result.texts(), Parser.DOCLING, null, read.title());
         if (result.failure() == Failure.CANCELLED) throw new ExtractionStoppedException();
         if (!jdkText) {
             if (result.failure().temporary()) throw new SidecarUnavailableException(result.failure());
             throw new IngestionRejectedException(result.failure() == Failure.TOO_MUCH_TEXT
                     ? DocumentFailureReason.TOO_MUCH_TEXT : DocumentFailureReason.NO_TEXT);
         }
-        return new Extraction(jdk, Parser.JDK, result.failure());
+        return new Extraction(jdk, Parser.JDK, result.failure(), read.title());
     }
 
     private Extraction docxWithSidecar(byte[] content, BooleanSupplier stopping) {

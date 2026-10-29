@@ -24,6 +24,23 @@ class PdfTextExtractorTest {
         assertThat(pages.get(2)).isEqualTo("Third page gamma.");
     }
 
+    /** ADR-0061: the information dictionary's title is a source of the index title; absent stays null. */
+    @Test
+    void extractWithTitle_readsTheMetadataTitle() throws Exception {
+        byte[] plain = TestPdfs.pages("Body text.");
+        byte[] titled;
+        try (org.apache.pdfbox.pdmodel.PDDocument document = org.apache.pdfbox.Loader.loadPDF(plain);
+             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            document.getDocumentInformation().setTitle("  Depo\tIslemleri  Kilavuzu ");
+            document.save(out);
+            titled = out.toByteArray();
+        }
+
+        assertThat(extractor.extractWithTitle(titled).title()).isEqualTo("Depo Islemleri Kilavuzu");
+        assertThat(extractor.extractWithTitle(titled).texts()).containsExactly("Body text.");
+        assertThat(extractor.extractWithTitle(plain).title()).isNull();
+    }
+
     @Test
     void extract_whenPasswordProtected_isRejectedAsEncrypted() {
         assertRejected(TestPdfs.encrypted("hidden text"), DocumentFailureReason.ENCRYPTED);

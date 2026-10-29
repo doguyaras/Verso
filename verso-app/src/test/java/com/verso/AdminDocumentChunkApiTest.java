@@ -114,6 +114,29 @@ class AdminDocumentChunkApiTest {
         }
     }
 
+    /**
+     * ADR-0061: the context header is index input only. Page 2 never repeats the title; its chunk text in the API is
+     * its own text, although the stored header carries the title, and neither header nor title reaches a log line.
+     */
+    @Test
+    void chunks_neverCarryTheContextHeader() throws Exception {
+        UUID id = ready(adminSub, "merkez.pdf", DocumentFormat.PDF,
+                TestPdfs.pages("HEADERMARKER RESEARCH CENTRE (HDRMRK) REGULATION", "Second page text."));
+        assertThat(jdbc.queryForObject("SELECT context_header FROM document.document_chunk WHERE document_id = ? "
+                + "AND page_number = 2", String.class, id)).contains("(HDRMRK)");
+
+        HttpResponse<String> response = get(admin, id, "");
+
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+        List<String> pageTwo = JsonPath.read(response.body(), "$.data[?(@.number == 2)].text");
+        assertThat(pageTwo).containsExactly("Second page text.");
+        assertThat(response.body()).doesNotContain("Headermarker", "\\n\\nSecond");
+        for (ILoggingEvent event : appender.list) {
+            assertThat(event.getFormattedMessage() + event.getMDCPropertyMap())
+                    .doesNotContain("HDRMRK", "Headermarker", "HEADERMARKER");
+        }
+    }
+
     /** ADR-0016: sections of a document without pages carry the SECTION unit. */
     @Test
     void chunks_whenTheDocumentHasSections_carryTheSectionUnit() throws Exception {

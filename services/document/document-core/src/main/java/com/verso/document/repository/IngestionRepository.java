@@ -25,12 +25,37 @@ import org.springframework.stereotype.Repository;
 @ConditionalOnIngestion
 public class IngestionRepository {
 
-    /** A claimed document: what the worker needs, nothing more. */
-    public record Claim(UUID documentId, String accountId, DocumentFormat format, UUID token, int attempts) {
+    /**
+     * A claimed document: what the worker needs, nothing more. The file name is one source of the index title
+     * (ADR-0061); never logged (llm-rules 2.1).
+     */
+    public record Claim(UUID documentId, String accountId, DocumentFormat format, UUID token, int attempts,
+                        String fileName) {
+
+        public Claim(UUID documentId, String accountId, DocumentFormat format, UUID token, int attempts) {
+            this(documentId, accountId, format, token, attempts, null);
+        }
+
+        @Override
+        public String toString() {
+            return "Claim[documentId=" + documentId + ", attempts=" + attempts + "]";
+        }
     }
 
-    /** One chunk ready to store: its page, position, text and vector. */
-    public record StoredChunk(int pageNumber, int chunkIndex, String content, float[] embedding) {
+    /**
+     * One chunk ready to store: its page, position, text, vector and the context header its vector was computed with
+     * (ADR-0061; null for a chunk indexed without one).
+     */
+    public record StoredChunk(int pageNumber, int chunkIndex, String content, float[] embedding, String contextHeader) {
+
+        public StoredChunk(int pageNumber, int chunkIndex, String content, float[] embedding) {
+            this(pageNumber, chunkIndex, content, embedding, null);
+        }
+
+        @Override
+        public String toString() {
+            return "StoredChunk[pageNumber=" + pageNumber + ", chunkIndex=" + chunkIndex + "]";
+        }
     }
 
     /** The ingestion queue across all accounts (no account in it): for metrics and alerts (ADR-0014). */
@@ -84,12 +109,12 @@ public class IngestionRepository {
                         SET status = 'PROCESSING', claim_token = :token, locked_until = :until,
                             attempts = d.attempts + 1, updated_at = :now
                         FROM candidate WHERE d.id = candidate.id
-                        RETURNING d.id, d.account_id, d.format, d.attempts
+                        RETURNING d.id, d.account_id, d.format, d.attempts, d.file_name
                         """)
                 .param("now", Timestamp.from(now)).param("until", Timestamp.from(lockedUntil)).param("token", token)
                 .query((rs, n) -> new Claim(rs.getObject("id", UUID.class), rs.getString("account_id"),
                         DocumentFormat.valueOf(rs.getString("format")), token,
-                        rs.getInt("attempts")))
+                        rs.getInt("attempts"), rs.getString("file_name")))
                 .optional();
     }
 
@@ -118,6 +143,18 @@ public class IngestionRepository {
                 .param("id", documentId).query((rs, n) -> rs.getString("content")).list();
     }
 
+    /** The index title stored with the pages (ADR-0061); empty for a document parsed before it or not parsed yet. */
+    public Optional<String> loadIndexTitle(UUID documentId) {
+        return jdbc.sql("SELECT index_title FROM document.document WHERE id = :id AND index_title IS NOT NULL")
+                .param("id", documentId).query(String.class).optional();
+    }
+
+    /** Stored with the pages, because the PDF metadata title it may come from is gone with the file. */
+    public void storeIndexTitle(UUID documentId, String title) {
+        jdbc.sql("UPDATE document.document SET index_title = :title WHERE id = :id")
+                .param("title", title).param("id", documentId).update();
+    }
+
     /** Replaces the pages (a retried claim may have stored some) and drops the PDF: ADR-0011, kept only until parsed. */
     public void replacePagesAndDropFile(UUID documentId, List<String> pages) {
         jdbc.sql("DELETE FROM document.document_page WHERE document_id = :id").param("id", documentId).update();
@@ -130,29 +167,61 @@ public class IngestionRepository {
         jdbc.sql("DELETE FROM document.document_file WHERE document_id = :id").param("id", documentId).update();
     }
 
-    /** Stores the chunks (replacing any of an earlier attempt) and marks the document READY. Call under holdClaim. */
-    public void complete(Claim claim, int pageCount, List<StoredChunk> chunks, String model, Instant now) {
+    /**
+     * Stores the chunks (replacing any of an earlier attempt) and marks the document READY, indexed with context
+     * headers of {@code contextVersion} (ADR-0061). Call under holdClaim.
+     */
+    public void complete(Claim claim, int pageCount, List<StoredChunk> chunks, String model, int contextVersion,
+                         Instant now) {
         dropSystemModel(claim.documentId());
         jdbc.sql("DELETE FROM document.document_chunk WHERE document_id = :id").param("id", claim.documentId()).update();
-        List<Object[]> rows = new ArrayList<>(chunks.size());
-        for (StoredChunk chunk : chunks) {
-            rows.add(new Object[]{claim.documentId(), claim.accountId(), chunk.pageNumber(), chunk.chunkIndex(),
-                    chunk.content(), vectorLiteral(chunk.embedding()), model});
-        }
-        for (int from = 0; from < rows.size(); from += INSERT_BATCH) {
-            template.batchUpdate("INSERT INTO document.document_chunk (document_id, account_id, page_number, chunk_index, "
-                            + "content, embedding, embedding_model) VALUES (?, ?, ?, ?, ?, CAST(? AS extensions.vector), ?)",
-                    rows.subList(from, Math.min(rows.size(), from + INSERT_BATCH)));
-        }
+        insertChunks(template, claim.documentId(), claim.accountId(), null, chunks, model);
+        // Current only when every chunk was indexed with a header; otherwise the backfill takes the document.
+        Integer version = !chunks.isEmpty() && chunks.stream().allMatch(c -> c.contextHeader() != null)
+                ? contextVersion : null;
         jdbc.sql("""
                         UPDATE document.document
                         SET status = 'READY', page_count = :pages, chunk_count = :chunks, embedding_model = :model,
+                            context_version = :contextVersion, context_locked_until = NULL,
                             claim_token = NULL, locked_until = NULL, updated_at = :now
                         WHERE id = :id AND claim_token = :token
                         """)
                 .param("pages", pageCount).param("chunks", chunks.size()).param("model", model)
+                .param("contextVersion", version, java.sql.Types.INTEGER)
                 .param("now", Timestamp.from(now)).param("id", claim.documentId()).param("token", claim.token())
                 .update();
+    }
+
+    /**
+     * Inserts chunks in batches with their context header and its full-text vector (ADR-0061; V7 checks that the two
+     * agree, so both come from one parameter). {@code ids} keeps existing chunk ids when the backfill re-indexes a
+     * document (the qa module refers to chunks by id); null lets the database generate them.
+     */
+    static void insertChunks(JdbcTemplate template, UUID documentId, String accountId, List<UUID> ids,
+                             List<StoredChunk> chunks, String model) {
+        String columns = "document_id, account_id, page_number, chunk_index, content, embedding, embedding_model, "
+                + "context_header, header_vector";
+        String values = "?, ?, ?, ?, ?, CAST(? AS extensions.vector), ?, CAST(? AS text), to_tsvector('"
+                + RetrievalRepository.TEXT_SEARCH_CONFIG + "', CAST(? AS text))";
+        String sql = ids == null
+                ? "INSERT INTO document.document_chunk (" + columns + ") VALUES (" + values + ")"
+                : "INSERT INTO document.document_chunk (id, " + columns + ") VALUES (?, " + values + ")";
+        List<Object[]> rows = new ArrayList<>(chunks.size());
+        for (int i = 0; i < chunks.size(); i++) {
+            StoredChunk chunk = chunks.get(i);
+            Object[] row = {documentId, accountId, chunk.pageNumber(), chunk.chunkIndex(), chunk.content(),
+                    vectorLiteral(chunk.embedding()), model, chunk.contextHeader(), chunk.contextHeader()};
+            if (ids != null) {
+                Object[] withId = new Object[row.length + 1];
+                withId[0] = ids.get(i);
+                System.arraycopy(row, 0, withId, 1, row.length);
+                row = withId;
+            }
+            rows.add(row);
+        }
+        for (int from = 0; from < rows.size(); from += INSERT_BATCH) {
+            template.batchUpdate(sql, rows.subList(from, Math.min(rows.size(), from + INSERT_BATCH)));
+        }
     }
 
     /** Gives up: FAILED with a reason, and every derived piece of content is removed (data minimisation, ADR-0011). */
@@ -164,7 +233,7 @@ public class IngestionRepository {
         jdbc.sql("""
                         UPDATE document.document
                         SET status = 'FAILED', failure_reason = :reason, claim_token = NULL, locked_until = NULL,
-                            updated_at = :now
+                            index_title = NULL, context_version = NULL, updated_at = :now
                         WHERE id = :id AND claim_token = :token
                         """)
                 .param("reason", reason.name()).param("now", Timestamp.from(now))

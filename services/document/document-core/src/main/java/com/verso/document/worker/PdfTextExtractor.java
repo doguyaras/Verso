@@ -70,11 +70,23 @@ public class PdfTextExtractor {
         this.properties = properties;
     }
 
+    /**
+     * The page texts and the title from the PDF's document information (null when absent): the title is one of the
+     * sources of the context header (ADR-0061) and only known while the file exists.
+     */
+    public record Read(List<String> texts, String title) {
+    }
+
     /** Text of every page, index = page number - 1; a page without text is an empty string. */
     public List<String> extract(byte[] pdf) {
-        List<String> texts = read(pdf);
-        if (texts.stream().allMatch(String::isEmpty)) throw rejected(DocumentFailureReason.NO_TEXT);
-        return texts;
+        return extractWithTitle(pdf).texts();
+    }
+
+    /** {@link #extract} with the metadata title. */
+    public Read extractWithTitle(byte[] pdf) {
+        Read read = readWithTitle(pdf);
+        if (read.texts().stream().allMatch(String::isEmpty)) throw rejected(DocumentFailureReason.NO_TEXT);
+        return read;
     }
 
     /**
@@ -82,6 +94,11 @@ public class PdfTextExtractor {
      * read by OCR (ADR-0032). Every other limit applies unchanged, before the file can reach the sidecar.
      */
     public List<String> read(byte[] pdf) {
+        return readWithTitle(pdf).texts();
+    }
+
+    /** {@link #read} with the metadata title. */
+    public Read readWithTitle(byte[] pdf) {
         MemoryUsageSetting memory = MemoryUsageSetting.setupMainMemoryOnly(properties.parserMemory().toBytes());
         try (PDDocument document = Loader.loadPDF(pdf, "", null, null, memory.streamCache)) {
             int pages = document.getNumberOfPages();
@@ -100,7 +117,7 @@ public class PdfTextExtractor {
                 if (total > properties.maxTextChars()) throw rejected(DocumentFailureReason.TOO_MUCH_TEXT);
                 texts.add(text);
             }
-            return texts;
+            return new Read(texts, metadataTitle(document));
         } catch (InvalidPasswordException e) {
             throw rejected(DocumentFailureReason.ENCRYPTED);
         } catch (StackOverflowError e) {
@@ -110,6 +127,20 @@ public class PdfTextExtractor {
             if (e instanceof IngestionRejectedException rejected) throw rejected;
             // A malformed file can surface as any IOException or runtime exception inside the parser.
             throw rejected(DocumentFailureReason.NOT_A_PDF);
+        }
+    }
+
+    /** The information dictionary's title, bounded and without control characters; null when absent or unreadable. */
+    static String metadataTitle(PDDocument document) {
+        try {
+            String title = document.getDocumentInformation().getTitle();
+            if (title == null) return null;
+            String clean = title.replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").strip();
+            if (clean.isEmpty()) return null;
+            return clean.length() > 300 ? clean.substring(0, 300) : clean;
+        } catch (RuntimeException e) {
+            // A malformed information dictionary must not fail the document: the title has other sources.
+            return null;
         }
     }
 
