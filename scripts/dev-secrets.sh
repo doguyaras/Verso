@@ -47,6 +47,10 @@ chmod 700 "$DIR" 2>/dev/null || true
 created=0
 for name in "${NAMES[@]}"; do
   file="$DIR/$name"
+  # compose mounts a missing secret as an empty directory Docker creates: replace it (scripts/secrets-check.js)
+  if [ -d "$file" ]; then
+    rmdir "$file" 2>/dev/null || { echo "dev-secrets: $file is a non-empty directory; move it away first" >&2; exit 1; }
+  fi
   if [ -s "$file" ]; then continue; fi
   value="$(head -c 96 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)"
   [ "${#value}" -eq 40 ] || { echo "dev-secrets: random source failed" >&2; exit 1; }

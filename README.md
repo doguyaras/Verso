@@ -54,6 +54,12 @@ git clone https://github.com/doguyaras/Verso.git && cd Verso
 bash scripts/dev-secrets.sh
 ```
 
+Açmadan önce secret dosyalarını denetleyin. Eksik bir dosyanın yerine Docker boş bir dizin oluşturur ve yığın ilgisiz bir hatayla düşer. Kontrol eksik, boş ya da dizine dönmüş dosyayı adıyla söyler; overlay kullanıyorsanız onu da verin (`node scripts/secrets-check.js compose.yaml deploy/compose.smb.yaml`):
+
+```bash
+node scripts/secrets-check.js
+```
+
 ```bash
 docker compose up -d --build --wait
 ```

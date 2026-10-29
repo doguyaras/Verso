@@ -48,6 +48,7 @@ jobs:
           node --test scripts/review-gate.test.js
           node --test scripts/repo-hygiene.test.js
           node --test scripts/keycloak-start.test.js
+          node --test scripts/secrets-check.test.js
           node --test scripts/ollama-pull.test.js
           node --test scripts/ollama-serve.test.js
           node --test scripts/panel.test.mjs
