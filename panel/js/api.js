@@ -498,6 +498,8 @@ export const api = {
   modelRoutes: () => request('/v1/admin/model-gateway/routes'),
   setModelRoute: (task, entries) => request(`/v1/admin/model-gateway/routes/${encodeURIComponent(task)}`, json('PUT', { entries })),
   setModelSettings: (userModelChoice) => request('/v1/admin/model-gateway/settings', json('PUT', { userModelChoice: userModelChoice === true })),
+  // ADR-0059: sends only the masking switch, so the model choice is left as it is.
+  setModelMasking: (on) => request('/v1/admin/model-gateway/settings', json('PUT', { piiMasking: on === true })),
   modelPrices: () => request('/v1/admin/model-gateway/prices'),
   setModelPrice: (price) => request('/v1/admin/model-gateway/prices', json('PUT', price)),
   modelBudgets: () => request('/v1/admin/model-gateway/budgets'),

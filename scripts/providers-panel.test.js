@@ -92,6 +92,21 @@ test('providers: the usage card never names a person and says why teams are hidd
   assert.equal(usageSummary(null), null);
 });
 
+test('providers: the masking line (ADR-0059) gives counts by type, never values; absent on an older server', async () => {
+  const { maskedNote, usageSummary } = await load('panel/js/providers.js');
+  assert.equal(maskedNote({ maskedValues: 5, masked: { IBAN: 1, TCKN: 3, PHONE: 1 } }),
+    'Bu ay bulut çağrılarında 5 değer maskelendi (TCKN 3, IBAN 1, telefon 1).');
+  assert.equal(maskedNote({ maskedValues: 0, masked: {} }), 'Bu ay bulut çağrılarında 0 değer maskelendi.');
+  assert.equal(maskedNote({ requests: 1 }), null);
+  assert.equal(usageSummary({ requests: 0, maskedValues: 2, masked: { EMAIL: 2 } }).maskedNote,
+    'Bu ay bulut çağrılarında 2 değer maskelendi (e-posta 2).');
+  const screen = readFileSync(path.join(ROOT, 'panel/js/screens/providers.js'), 'utf8');
+  assert.match(screen, /api\.setModelMasking\(event\.target\.checked\)/);
+  assert.match(screen, /routes\.piiMasking !== false/, 'shown as on unless the server says off');
+  const api = readFileSync(path.join(ROOT, 'panel/js/api.js'), 'utf8');
+  assert.match(api, /setModelMasking: \(on\) => request\('\/v1\/admin\/model-gateway\/settings', json\('PUT', \{ piiMasking: on === true \}\)\)/);
+});
+
 test('trust: enabled external connections are open paths; an unreadable list is not "none"', async () => {
   const { externalPaths, gatewayLine } = await load('panel/js/trust.js');
   const t = { ai: { mode: 'cloud', chatModel: 'x' }, models: { known: true, connections: [

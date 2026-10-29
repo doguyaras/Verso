@@ -228,7 +228,7 @@ public class ModelGatewayAdmin {
     public ModelRoutingResponse routing() {
         Map<ModelTask, List<ModelRouteEntry>> routes = repository.routes();
         return new ModelRoutingResponse(routes, ai.chatModel(), repository.userModelChoice(),
-                gateway.cipher().available());
+                gateway.cipher().available(), repository.piiMasking());
     }
 
     /**
@@ -268,12 +268,25 @@ public class ModelGatewayAdmin {
         return routing();
     }
 
-    public ModelRoutingResponse setUserModelChoice(boolean on) {
+    /**
+     * The gateway's switches; a null leaves that one unchanged. Turning personal data masking on or off (ADR-0059) is
+     * its own audit word, so the trail shows when cloud calls started carrying raw values.
+     */
+    public ModelRoutingResponse setSettings(Boolean userModelChoice, Boolean piiMasking) {
         db.inTransaction(tx -> {
-            repository.setUserModelChoice(on, clock.instant());
-            audit.gatewayChangedInTransaction("SETTINGS");
+            if (userModelChoice != null) {
+                repository.setUserModelChoice(userModelChoice, clock.instant());
+                audit.gatewayChangedInTransaction("SETTINGS");
+            }
+            if (piiMasking != null) {
+                repository.setPiiMasking(piiMasking, clock.instant());
+                audit.gatewayChangedInTransaction(piiMasking ? "PII_MASKING_ON" : "PII_MASKING_OFF");
+            }
             return null;
         });
+        if (Boolean.FALSE.equals(piiMasking)) {
+            log.warn("Model gateway personal data masking turned off: code=PII_MASKING_OFF");
+        }
         gateway.invalidate();
         return routing();
     }
@@ -383,9 +396,11 @@ public class ModelGatewayAdmin {
             states.add(new ModelUsageResponse.BudgetState(b.scope(), b.scopeKey(), b.hardLimit(), b.softLimit(),
                     spent, state));
         }
+        Map<String, Long> masked = repository.maskedByType(wanted);
+        long maskedValues = masked.values().stream().mapToLong(Long::longValue).sum();
         audit.modelUsageViewed();
         return new ModelUsageResponse(wanted, requests, prompt, completion, cost, rows, teams, hidden,
-                properties.minTeamUsers(), states);
+                properties.minTeamUsers(), states, maskedValues, masked);
     }
 
     // ---------------------------------------------------------------------------------------------- helpers

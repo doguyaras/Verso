@@ -110,7 +110,8 @@ public class ModelGatewayController {
 
     @PutMapping("/settings")
     public ResponseEntity<ModelRoutingResponse> settings(@Valid @RequestBody ModelGatewaySettingsRequest request) {
-        return ResponseEntity.ok().cacheControl(NO_STORE).body(admin.setUserModelChoice(request.userModelChoice()));
+        return ResponseEntity.ok().cacheControl(NO_STORE).body(admin.setSettings(request.userModelChoice(),
+                request.piiMasking()));
     }
 
     @GetMapping("/prices")

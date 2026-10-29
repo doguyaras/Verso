@@ -24,12 +24,22 @@ import org.springframework.stereotype.Repository;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class ModelGatewayRepository {
 
-    /** One call to record (the egress log columns included). */
+    /**
+     * One call to record (the egress log columns included).
+     *
+     * @param maskedCounts distinct values the privacy filter replaced, by type (ADR-0059); counts only, never values
+     */
     public record Usage(String month, UUID connectionId, String model, String task, String taskDetail, String team,
                         boolean external,
                         String outcome, int promptTokens, int completionTokens, BigDecimal cost,
-                        List<String> sentCategories, String filterPolicy) {
+                        List<String> sentCategories, String filterPolicy, Map<String, Integer> maskedCounts) {
+        public Usage {
+            maskedCounts = Map.copyOf(maskedCounts);
+        }
     }
+
+    /** Masked-value type names are fixed words (TCKN, IBAN, ...): anything else never reaches the JSON column. */
+    private static final java.util.regex.Pattern MASK_TYPE = java.util.regex.Pattern.compile("[A-Z]{1,16}");
 
     /** A budget row with the months its limits were already reported. */
     public record BudgetRow(String scope, String scopeKey, BigDecimal hardLimit, BigDecimal softLimit,
@@ -84,6 +94,17 @@ public class ModelGatewayRepository {
 
     public void setUserModelChoice(boolean on, Instant now) {
         db.jdbc().sql("UPDATE qa.model_gateway_setting SET user_model_choice = :on, updated_at = :now WHERE id = 1")
+                .param("on", on).param("now", Timestamp.from(now)).update();
+    }
+
+    /** ADR-0059: personal data masking of external calls; on when the row is missing (the safe default). */
+    public boolean piiMasking() {
+        return db.jdbc().sql("SELECT pii_masking FROM qa.model_gateway_setting WHERE id = 1")
+                .query(Boolean.class).optional().orElse(true);
+    }
+
+    public void setPiiMasking(boolean on, Instant now) {
+        db.jdbc().sql("UPDATE qa.model_gateway_setting SET pii_masking = :on, updated_at = :now WHERE id = 1")
                 .param("on", on).param("now", Timestamp.from(now)).update();
     }
 
@@ -159,15 +180,40 @@ public class ModelGatewayRepository {
     public void insertUsage(Usage u) {
         db.jdbc().sql("""
                         INSERT INTO qa.model_usage (month, connection_id, model, task, task_detail, team, external, outcome,
-                            prompt_tokens, completion_tokens, cost, sent_categories, filter_policy)
+                            prompt_tokens, completion_tokens, cost, sent_categories, filter_policy, masked_counts)
                         VALUES (:month, :connection, :model, :task, :detail, :team, :external, :outcome, :prompt, :completion,
-                                :cost, :categories, :policy)""")
+                                :cost, :categories, :policy, CAST(:masked AS jsonb))""")
                 .param("month", u.month()).param("connection", u.connectionId()).param("model", u.model())
                 .param("task", u.task()).param("detail", u.taskDetail()).param("team", u.team())
                 .param("external", u.external())
                 .param("outcome", u.outcome()).param("prompt", u.promptTokens()).param("completion", u.completionTokens())
                 .param("cost", u.cost()).param("categories", u.sentCategories().toArray(String[]::new))
-                .param("policy", u.filterPolicy()).update();
+                .param("policy", u.filterPolicy()).param("masked", maskedJson(u.maskedCounts())).update();
+    }
+
+    static String maskedJson(Map<String, Integer> counts) {
+        StringBuilder json = new StringBuilder("{");
+        counts.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+            if (!MASK_TYPE.matcher(e.getKey()).matches() || e.getValue() == null || e.getValue() < 0) {
+                throw new IllegalArgumentException("Masked count type or value out of range");
+            }
+            if (json.length() > 1) json.append(',');
+            json.append('"').append(e.getKey()).append("\":").append(e.getValue());
+        });
+        return json.append('}').toString();
+    }
+
+    /** ADR-0059: distinct values masked in the month's external calls, by type (counts only; test calls excluded). */
+    public Map<String, Long> maskedByType(String month) {
+        Map<String, Long> totals = new java.util.TreeMap<>();
+        db.jdbc().sql("""
+                        SELECT m.key AS type, sum(m.value::bigint) AS total
+                        FROM qa.model_usage u, jsonb_each_text(u.masked_counts) m
+                        WHERE u.month = :month AND u.task <> 'TEST'
+                        GROUP BY m.key""")
+                .param("month", month)
+                .query((rs, n) -> totals.put(rs.getString("type"), rs.getLong("total"))).list();
+        return totals;
     }
 
     public BigDecimal spentByConnection(String month, UUID connectionId) {

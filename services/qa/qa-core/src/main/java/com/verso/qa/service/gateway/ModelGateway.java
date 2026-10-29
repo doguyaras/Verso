@@ -81,9 +81,14 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
     /** What the gateway read from the database, at one moment. */
     record Snapshot(Map<ModelTask, List<ModelRouteEntry>> routes, Map<UUID, ModelConnection> connections,
                     Map<String, ModelPrice> prices, Map<String, BigDecimal[]> budgets, boolean userModelChoice,
-                    Instant loadedAt) {
+                    boolean piiMasking, Instant loadedAt) {
+        /** Before the first read: masking on (ADR-0059: the safe default when the setting is not known). */
         static Snapshot empty() {
-            return new Snapshot(Map.of(), Map.of(), Map.of(), Map.of(), false, Instant.EPOCH);
+            return new Snapshot(Map.of(), Map.of(), Map.of(), Map.of(), false, true, Instant.EPOCH);
+        }
+
+        Snapshot at(Instant loaded) {
+            return new Snapshot(routes, connections, prices, budgets, userModelChoice, piiMasking, loaded);
         }
     }
 
@@ -101,7 +106,8 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
     private final CallerGroups groups;
     private final Clock clock;
     private final MeterRegistry registry;
-    private final ModelRequestFilter filter = new ModelRequestFilter.PassThrough();
+    private final ModelRequestFilter masking = new PiiMaskingFilter();
+    private final ModelRequestFilter passThrough = new ModelRequestFilter.PassThrough();
     private final Map<String, ChatModel> clients = new ConcurrentHashMap<>();
     private final Counter recordFailed;
     private volatile Snapshot snapshot = Snapshot.empty();
@@ -262,14 +268,16 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
         }
     }
 
+    /** The admin's masking switch (ADR-0059), read with the routes; on unless turned off. */
     @Override
     public ModelRequestFilter filter() {
-        return filter;
+        return snapshot().piiMasking() ? masking : passThrough;
     }
 
     @Override
     public void record(RoutedChatModel.Candidate candidate, ModelTask task, String detail, String team, String account,
-                       String outcome, Usage usage, List<ModelRequestFilter.EgressCategory> sent) {
+                       String outcome, Usage usage, List<ModelRequestFilter.EgressCategory> sent,
+                       ModelRequestFilter.Filtered filtered) {
         String month = month();
         UUID connectionId = candidate.connection() == null ? null : candidate.connection().id();
         int prompt = usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
@@ -283,10 +291,14 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
                 .register(registry).increment(prompt);
         Counter.builder("verso.model.gateway.tokens").tag("task", task.name()).tag("type", "completion")
                 .register(registry).increment(completion);
+        ModelRequestFilter.Filtered applied = candidate.external() ? filtered : ModelRequestFilter.Filtered.NONE;
+        // Counts by type only (ADR-0059); the type is a fixed word, never a value.
+        applied.masked().forEach((type, n) -> Counter.builder("verso.model.gateway.masked").tag("type", type)
+                .register(registry).increment(n));
         try {
             repository.insertUsage(new ModelGatewayRepository.Usage(month, connectionId, candidate.model(),
                     task.name(), detail, team, candidate.external(), outcome, prompt, completion, cost,
-                    sent.stream().map(Enum::name).toList(), candidate.external() ? filter.policy() : "NONE"));
+                    sent.stream().map(Enum::name).toList(), applied.policy(), applied.masked()));
             if (team != null && account != null && kek.available()) {
                 repository.reach(month, team, reachDigest(month, team, account));
             }
@@ -389,7 +401,8 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
                     : "FAILED", usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens(),
                     usage == null || usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens(),
                     BigDecimal.ZERO, connection.external() ? List.of("TEST_PROMPT") : List.of(),
-                    connection.external() ? filter.policy() : "NONE"));
+                    // The fixed test sentence carries no personal data and is sent as is.
+                    connection.external() ? passThrough.policy() : "NONE", Map.of()));
         } catch (RuntimeException e) {
             recordFailed.increment();
         }
@@ -439,8 +452,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
                 log.warn("Model gateway settings not read, the last ones stay: reason=DATABASE exceptionType={}",
                         e.getClass().getSimpleName());
                 // Try again after the TTL, not on every call.
-                snapshot = new Snapshot(current.routes(), current.connections(), current.prices(), current.budgets(),
-                        current.userModelChoice(), clock.instant());
+                snapshot = current.at(clock.instant());
             }
             return snapshot;
         } finally {
@@ -450,9 +462,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
 
     /** After an admin change on this instance: the next call reads the database. */
     public void invalidate() {
-        Snapshot current = snapshot;
-        snapshot = new Snapshot(current.routes(), current.connections(), current.prices(), current.budgets(),
-                current.userModelChoice(), Instant.EPOCH);
+        snapshot = snapshot.at(Instant.EPOCH);
     }
 
     private Snapshot load() {
@@ -464,7 +474,7 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
         repository.budgets().forEach(b -> budgets.put(budgetKey(b.scope(), b.scopeKey()),
                 new BigDecimal[]{b.hardLimit(), b.softLimit()}));
         return new Snapshot(repository.routes(), Map.copyOf(byId), Map.copyOf(prices), Map.copyOf(budgets),
-                repository.userModelChoice(), clock.instant());
+                repository.userModelChoice(), repository.piiMasking(), clock.instant());
     }
 
     private void dropStaleClients(Snapshot s) {

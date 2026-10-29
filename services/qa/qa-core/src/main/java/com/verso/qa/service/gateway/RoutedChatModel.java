@@ -43,9 +43,13 @@ public final class RoutedChatModel implements ChatModel {
 
         ModelRequestFilter filter();
 
-        /** @param usage null when the provider reported none (or the call failed) */
+        /**
+         * @param usage    null when the provider reported none (or the call failed)
+         * @param filtered the privacy filter's policy and masking counts; {@link ModelRequestFilter.Filtered#NONE} for a
+         *                 local call
+         */
         void record(Candidate candidate, ModelTask task, String detail, String team, String account, String outcome,
-                    Usage usage, List<ModelRequestFilter.EgressCategory> sent);
+                    Usage usage, List<ModelRequestFilter.EgressCategory> sent, ModelRequestFilter.Filtered filtered);
     }
 
     private final Hooks hooks;
@@ -79,19 +83,21 @@ public final class RoutedChatModel implements ChatModel {
             Candidate candidate = candidates.get(step);
             if (hooks.overBudget(candidate, team)) {
                 blocked = true;
-                hooks.record(candidate, task, detail, team, account, "BLOCKED", null, List.of());
+                hooks.record(candidate, task, detail, team, account, "BLOCKED", null, List.of(),
+                        ModelRequestFilter.Filtered.NONE);
                 continue;
             }
             List<ModelRequestFilter.EgressCategory> sent = sent(candidate);
-            ModelRequestFilter.Call call = call(candidate, sent);
+            ModelRequestFilter.Exchange exchange = open(candidate, sent);
             try {
-                Prompt outgoing = candidate.external() ? hooks.filter().beforeSend(prompt, call) : prompt;
+                // Fail closed: a filter failure throws here, before anything is sent (ADR-0059).
+                Prompt outgoing = exchange == null ? prompt : exchange.beforeSend(prompt);
                 ChatResponse response = hooks.client(candidate).call(outgoing);
-                ChatResponse incoming = candidate.external() ? hooks.filter().afterReceive(response, call) : response;
-                hooks.record(candidate, task, detail, team, account, "OK", usageOf(incoming), sent);
+                ChatResponse incoming = exchange == null ? response : exchange.afterReceive(response);
+                hooks.record(candidate, task, detail, team, account, "OK", usageOf(incoming), sent, filtered(exchange));
                 return incoming;
             } catch (RuntimeException e) {
-                hooks.record(candidate, task, detail, team, account, "FAILED", null, sent);
+                hooks.record(candidate, task, detail, team, account, "FAILED", null, sent, filtered(exchange));
                 last = e;
                 // The caller gave up (its time bound interrupted this thread; OkHttp turns that into an
                 // InterruptedIOException and may clear the flag): no next model, nothing more leaves (llm-review L1).
@@ -123,17 +129,25 @@ public final class RoutedChatModel implements ChatModel {
         Candidate candidate = candidates.get(step);
         return Flux.defer(() -> {
             if (hooks.overBudget(candidate, team)) {
-                hooks.record(candidate, task, detail, team, account, "BLOCKED", null, List.of());
+                hooks.record(candidate, task, detail, team, account, "BLOCKED", null, List.of(),
+                        ModelRequestFilter.Filtered.NONE);
                 return attempt(prompt, step + 1, true);
             }
             List<ModelRequestFilter.EgressCategory> sent = sent(candidate);
-            ModelRequestFilter.Call call = call(candidate, sent);
+            ModelRequestFilter.Exchange exchange = open(candidate, sent);
             AtomicBoolean emitted = new AtomicBoolean();
             AtomicReference<Usage> usage = new AtomicReference<>();
             AtomicBoolean recorded = new AtomicBoolean();
-            Prompt outgoing = candidate.external() ? hooks.filter().beforeSend(prompt, call) : prompt;
-            return hooks.client(candidate).stream(outgoing)
-                    .map(chunk -> candidate.external() ? hooks.filter().afterReceive(chunk, call) : chunk)
+            Prompt outgoing;
+            try {
+                // Fail closed: a filter failure ends the stream before anything is sent (ADR-0059).
+                outgoing = exchange == null ? prompt : exchange.beforeSend(prompt);
+            } catch (RuntimeException e) {
+                hooks.record(candidate, task, detail, team, account, "FAILED", null, sent, filtered(exchange));
+                return Flux.error(e);
+            }
+            Flux<ChatResponse> answer = hooks.client(candidate).stream(outgoing);
+            return (exchange == null ? answer : exchange.afterReceive(answer))
                     .doOnNext(chunk -> {
                         emitted.set(true);
                         Usage u = usageOf(chunk);
@@ -142,18 +156,21 @@ public final class RoutedChatModel implements ChatModel {
                     })
                     .doOnComplete(() -> {
                         if (recorded.compareAndSet(false, true)) {
-                            hooks.record(candidate, task, detail, team, account, "OK", usage.get(), sent);
+                            hooks.record(candidate, task, detail, team, account, "OK", usage.get(), sent,
+                                    filtered(exchange));
                         }
                     })
                     .doOnCancel(() -> {
                         // The client left: the tokens produced so far are not known; the call still counts.
                         if (recorded.compareAndSet(false, true)) {
-                            hooks.record(candidate, task, detail, team, account, "OK", usage.get(), sent);
+                            hooks.record(candidate, task, detail, team, account, "OK", usage.get(), sent,
+                                    filtered(exchange));
                         }
                     })
                     .onErrorResume(error -> {
                         if (recorded.compareAndSet(false, true)) {
-                            hooks.record(candidate, task, detail, team, account, "FAILED", null, sent);
+                            hooks.record(candidate, task, detail, team, account, "FAILED", null, sent,
+                                    filtered(exchange));
                         }
                         boolean retryable = FailureClassifier.classify(error) == FailureClassifier.Kind.RETRYABLE;
                         if (emitted.get() || !retryable || step == candidates.size() - 1) return Flux.error(error);
@@ -176,9 +193,14 @@ public final class RoutedChatModel implements ChatModel {
         return candidate.external() ? ModelRequestFilter.EgressCategory.of(task) : List.of();
     }
 
-    private ModelRequestFilter.Call call(Candidate candidate, List<ModelRequestFilter.EgressCategory> sent) {
-        return new ModelRequestFilter.Call(task, candidate.connection() == null ? null : candidate.connection().id(),
-                sent);
+    /** The privacy filter of one attempt; null for a local candidate (nothing leaves, nothing is filtered). */
+    private ModelRequestFilter.Exchange open(Candidate candidate, List<ModelRequestFilter.EgressCategory> sent) {
+        if (!candidate.external()) return null;
+        return hooks.filter().open(new ModelRequestFilter.Call(task, candidate.connection().id(), sent));
+    }
+
+    private static ModelRequestFilter.Filtered filtered(ModelRequestFilter.Exchange exchange) {
+        return exchange == null ? ModelRequestFilter.Filtered.NONE : exchange.filtered();
     }
 
     static Usage usageOf(ChatResponse response) {

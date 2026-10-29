@@ -204,12 +204,19 @@ export async function renderProviders(ctx) {
         const done = await call(() => api.setModelSettings(event.target.checked));
         if (done) toast(event.target.checked ? 'Kullanıcılar cevap modelini seçebilir.' : 'Model seçimi kapatıldı.', 'good');
       } });
+    // ADR-0059: Turkish personal data is replaced by placeholders before a cloud call; on unless the admin turns it off.
+    const masking = el('input', { type: 'checkbox', checked: routes.piiMasking !== false ? true : undefined,
+      onchange: async (event) => {
+        const done = await call(() => api.setModelMasking(event.target.checked));
+        if (done) toast(event.target.checked ? 'Kişisel veriler bulut çağrılarından önce maskelenecek.' : 'Maskeleme kapatıldı: bulut çağrıları kişisel veriyi olduğu gibi taşır.', event.target.checked ? 'good' : 'bad');
+      } });
     fill(routing,
       el('p', {}, 'Her görev önce birincil modeli dener; sağlayıcı 5xx ya da 429 dönerse sıradaki yedeğe geçer. '
         + 'Rota boşsa kurulumun yerleşik modeli çalışır.'),
       rows,
       el('p', { class: 'stat-note' }, EMBEDDING_NOTE),
       el('label', { class: 'toggle-line' }, choice, ' Kullanıcılar cevap rotasındaki modeller arasından seçebilsin'),
+      el('label', { class: 'toggle-line' }, masking, ' Bulut çağrılarında kişisel verileri maskele (TCKN, VKN, IBAN, kart, telefon, e-posta, plaka)'),
       routes.keyStoreReady ? null : el('div', { class: 'notice bad' }, icon('alert', 'sm'),
         el('div', { class: 'grow' }, 'Anahtar deposu kurulu değil (SECRET_MODEL_GATEWAY_KEK). Anahtarlı bağlantı eklenemez.')));
   }
@@ -233,6 +240,7 @@ export async function renderProviders(ctx) {
       summary?.budgets.length ? el('ul', { class: 'plain-list' }, summary.budgets.map((b) =>
         el('li', {}, pill({ label: b.state, tone: b.tone }), ` ${b.label}: ${b.text}`))) : null,
       summary ? el('p', { class: 'stat-note' }, summary.teamNote) : null,
+      summary?.maskedNote ? el('p', { class: 'stat-note' }, summary.maskedNote) : null,
       connections.length ? el('form', { class: 'inline-form', onsubmit: async (event) => {
         event.preventDefault();
         const saved = await call(() => api.setModelPrice({ connectionId: connectionSelect.value, model: model.value.trim(),

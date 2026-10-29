@@ -72,6 +72,87 @@ class ModelGatewayTest {
                 mock(ObjectProvider.class), mock(ObjectProvider.class));
     }
 
+    /** The gateway with its provider clients replaced by {@code clients} (by model name); everything else is real. */
+    @SuppressWarnings("unchecked")
+    private ModelGateway gatewayWith(Map<String, ChatModel> clients) {
+        when(connections.list()).thenReturn(List.of(cloud, local));
+        when(groups.current()).thenReturn(List.of("satis"));
+        QaProperties qa = new QaProperties(5, 0.47, 0.44, 0.045, 0.50, 1500, 1, Duration.ofMillis(300), 2,
+                Duration.ofSeconds(15), Duration.ofSeconds(2), Duration.ofSeconds(2));
+        return new ModelGateway(connections, repository, builtIn, new VersoAiProperties(AiMode.CLOUD, "builtin-chat",
+                "e"), qa, new QaGatewayProperties(Duration.ofSeconds(5), Duration.ofSeconds(10), 5, 13),
+                new UsageMetricsProperties("Europe/Istanbul", false, false, 3, 20, 366),
+                LocalKeyEncryptionKey.ofSecret("q".repeat(40)), audit, groups, clock, new SimpleMeterRegistry(),
+                mock(ObjectProvider.class), mock(ObjectProvider.class)) {
+            @Override
+            public ChatModel client(RoutedChatModel.Candidate candidate) {
+                return clients.get(candidate.model());
+            }
+        };
+    }
+
+    private static final String RAW_PROMPT = "Başvuru sahibi: TC 10000000146, IBAN TR33 0006 1005 1978 6457 8413 26, "
+            + "telefon 0532 123 45 67, e-posta ayse.yilmaz@ornek.com.tr, araç 34 ABC 123, kart 4111 1111 1111 1111, "
+            + "hatalı vergi no 1234567891, doğrusu VKN 4840847211. Sipariş 4821-77 ve 15.01.2024 tarihli talep.";
+
+    @Test
+    void cloudCall_sendsNoRawValue_restoresTheAnswer_andRecordsCountsOnly_whileALocalCallIsUnchanged() {
+        when(repository.piiMasking()).thenReturn(true);
+        routes(new ModelRouteEntry(cloud.id(), "m1"));
+        RoutedChatModelTest.EchoModel cloudClient = new RoutedChatModelTest.EchoModel("Kayıt [TCKN_1], [PHONE_1] ve ",
+                "[IBAN_1] ile eşleşti.");
+        RoutedChatModelTest.EchoModel localClient = new RoutedChatModelTest.EchoModel("yerel");
+        ModelGateway gateway = gatewayWith(Map.of("m1", cloudClient, "m2", localClient));
+        org.mockito.ArgumentCaptor<ModelGatewayRepository.Usage> usage =
+                org.mockito.ArgumentCaptor.forClass(ModelGatewayRepository.Usage.class);
+
+        String answer = gateway.route(ModelTask.ANSWER, null).call(new org.springframework.ai.chat.prompt.Prompt(
+                List.of(new org.springframework.ai.chat.messages.SystemMessage("Sen bir asistansın."),
+                        new org.springframework.ai.chat.messages.UserMessage(RAW_PROMPT)))).getResult().getOutput()
+                .getText();
+
+        String sent = cloudClient.sent.getFirst();
+        assertThat(sent).doesNotContain("10000000146", "TR33 0006 1005 1978 6457 8413 26", "0532 123 45 67",
+                "ayse.yilmaz@ornek.com.tr", "34 ABC 123", "4111 1111 1111 1111", "4840847211");
+        assertThat(sent).contains("[TCKN_1]", "[IBAN_1]", "[PHONE_1]", "[EMAIL_1]", "[PLATE_1]", "[CARD_1]",
+                "[VKN_1]", "vergi no 1234567891", "Sipariş 4821-77", "15.01.2024", "Sen bir asistansın.");
+        assertThat(answer).isEqualTo("Kayıt 10000000146, 0532 123 45 67 ve TR33 0006 1005 1978 6457 8413 26 ile "
+                + "eşleşti.");
+        verify(repository).insertUsage(usage.capture());
+        assertThat(usage.getValue().filterPolicy()).isEqualTo("PII_PSEUDONYMISE");
+        assertThat(usage.getValue().maskedCounts()).containsExactlyInAnyOrderEntriesOf(Map.of("TCKN", 1, "IBAN", 1,
+                "PHONE", 1, "EMAIL", 1, "PLATE", 1, "CARD", 1, "VKN", 1));
+        assertThat(usage.getValue().toString()).doesNotContain("10000000146", "ayse.yilmaz");
+
+        // The same prompt to a local connection leaves it exactly as it was, and nothing is counted as masked.
+        routes(new ModelRouteEntry(local.id(), "m2"));
+        gateway.invalidate();
+        gateway.route(ModelTask.ANSWER, null).call(new org.springframework.ai.chat.prompt.Prompt(
+                new org.springframework.ai.chat.messages.UserMessage(RAW_PROMPT)));
+        assertThat(localClient.sent).containsExactly(RAW_PROMPT);
+        verify(repository, times(2)).insertUsage(usage.capture());
+        assertThat(usage.getValue().filterPolicy()).isEqualTo("NONE");
+        assertThat(usage.getValue().maskedCounts()).isEmpty();
+    }
+
+    @Test
+    void cloudCall_withMaskingTurnedOff_isSentAsIs_andSaysSo() {
+        when(repository.piiMasking()).thenReturn(false);
+        routes(new ModelRouteEntry(cloud.id(), "m1"));
+        RoutedChatModelTest.EchoModel cloudClient = new RoutedChatModelTest.EchoModel("tamam");
+        ModelGateway gateway = gatewayWith(Map.of("m1", cloudClient));
+        org.mockito.ArgumentCaptor<ModelGatewayRepository.Usage> usage =
+                org.mockito.ArgumentCaptor.forClass(ModelGatewayRepository.Usage.class);
+
+        gateway.route(ModelTask.ANSWER, null).call(new org.springframework.ai.chat.prompt.Prompt(
+                new org.springframework.ai.chat.messages.UserMessage(RAW_PROMPT)));
+
+        assertThat(cloudClient.sent).containsExactly(RAW_PROMPT);
+        verify(repository).insertUsage(usage.capture());
+        assertThat(usage.getValue().filterPolicy()).isEqualTo("PASS_THROUGH");
+        assertThat(usage.getValue().maskedCounts()).isEmpty();
+    }
+
     private void routes(ModelRouteEntry... entries) {
         when(repository.routes()).thenReturn(Map.of(ModelTask.ANSWER, List.of(entries)));
     }
@@ -151,7 +232,7 @@ class ModelGatewayTest {
     @Test
     void team_isTheFirstGroupWithABudget_elseTheFirstGroup() {
         ModelGateway.Snapshot snapshot = new ModelGateway.Snapshot(Map.of(), Map.of(), Map.of(),
-                Map.of("TEAM/satis", new BigDecimal[]{BigDecimal.ONE, null}), false, Instant.EPOCH);
+                Map.of("TEAM/satis", new BigDecimal[]{BigDecimal.ONE, null}), false, true, Instant.EPOCH);
 
         assertThat(ModelGateway.team(snapshot, List.of("satis", "finans"))).isEqualTo("satis");
         assertThat(ModelGateway.team(snapshot, List.of("ik", "finans"))).isEqualTo("finans");
@@ -171,8 +252,9 @@ class ModelGatewayTest {
         RoutedChatModel.Candidate paid = ((RoutedChatModel) gateway.route(ModelTask.ANSWER, null)).candidates().getFirst();
 
         gateway.record(paid, ModelTask.ANSWER, null, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of(
-                ModelRequestFilter.EgressCategory.QUESTION));
-        gateway.record(paid, ModelTask.ANSWER, null, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of());
+                ModelRequestFilter.EgressCategory.QUESTION), ModelRequestFilter.Filtered.NONE);
+        gateway.record(paid, ModelTask.ANSWER, null, "satis", "acct", "OK", new DefaultUsage(1000, 200), List.of(),
+                ModelRequestFilter.Filtered.NONE);
 
         // 1000 × 3 / 1M + 200 × 15 / 1M = 0.006
         assertThat(ModelGateway.cost(new ModelPrice(cloud.id(), "m1", new BigDecimal("3"), new BigDecimal("15"), "USD"),

@@ -56,8 +56,14 @@ class RoutedChatModelTest {
             return overBudget.contains(candidate.model());
         }
 
+        final List<ModelRequestFilter.Filtered> filters = new ArrayList<>();
+        /** null: a counting pass-through; else the real filter under test. */
+        ModelRequestFilter filter;
+
         @Override
         public ModelRequestFilter filter() {
+            if (filter != null) return filter;
+            ModelRequestFilter.Exchange inner = new ModelRequestFilter.PassThrough().open(null);
             return new ModelRequestFilter() {
                 @Override
                 public String policy() {
@@ -65,24 +71,41 @@ class RoutedChatModelTest {
                 }
 
                 @Override
-                public Prompt beforeSend(Prompt prompt, Call call) {
-                    filtered.set(filtered.get() + 1);
-                    return prompt;
-                }
+                public Exchange open(Call call) {
+                    return new Exchange() {
+                        @Override
+                        public Prompt beforeSend(Prompt prompt) {
+                            filtered.set(filtered.get() + 1);
+                            return prompt;
+                        }
 
-                @Override
-                public ChatResponse afterReceive(ChatResponse response, Call call) {
-                    return response;
+                        @Override
+                        public ChatResponse afterReceive(ChatResponse response) {
+                            return response;
+                        }
+
+                        @Override
+                        public Flux<ChatResponse> afterReceive(Flux<ChatResponse> stream) {
+                            return inner.afterReceive(stream);
+                        }
+
+                        @Override
+                        public Filtered filtered() {
+                            return new Filtered("TEST", Map.of());
+                        }
+                    };
                 }
             };
         }
 
         @Override
         public void record(RoutedChatModel.Candidate candidate, ModelTask task, String detail, String team, String account,
-                           String outcome, Usage usage, List<ModelRequestFilter.EgressCategory> categories) {
+                           String outcome, Usage usage, List<ModelRequestFilter.EgressCategory> categories,
+                           ModelRequestFilter.Filtered applied) {
             records.add(candidate.model() + ":" + outcome + (usage == null ? "" : ":" + usage.getPromptTokens() + "/"
                     + usage.getCompletionTokens()));
             sent.add(categories);
+            filters.add(applied);
         }
     }
 
@@ -243,6 +266,92 @@ class RoutedChatModelTest {
 
         assertThatThrownBy(() -> route(hooks, "ext").stream(PROMPT).collectList().block())
                 .isInstanceOf(ModelBudgetExceededException.class);
+    }
+
+    /** Remembers every prompt it was sent and streams {@code chunks} back (ADR-0059 round trips). */
+    static final class EchoModel implements ChatModel {
+        final List<String> sent = new ArrayList<>();
+        final List<String> chunks;
+
+        EchoModel(String... chunks) {
+            this.chunks = List.of(chunks);
+        }
+
+        @Override
+        public ChatResponse call(Prompt prompt) {
+            sent.add(prompt.getContents());
+            return answer(String.join("", chunks), 5, 2);
+        }
+
+        @Override
+        public Flux<ChatResponse> stream(Prompt prompt) {
+            sent.add(prompt.getContents());
+            List<ChatResponse> out = new ArrayList<>();
+            for (int i = 0; i < chunks.size(); i++) {
+                out.add(answer(chunks.get(i), i == chunks.size() - 1 ? 5 : 0, i == chunks.size() - 1 ? 2 : 0));
+            }
+            return Flux.fromIterable(out);
+        }
+    }
+
+    private static final Prompt PERSONAL = new Prompt(List.of(new UserMessage(
+            "Müşterinin TC kimlik numarası 10000000146, e-postası ayse.yilmaz@ornek.com.tr; durumu nedir?")));
+
+    @Test
+    void stream_withMasking_restoresAPlaceholderSplitAcrossChunks_andRecordsCountsOnly() {
+        FakeHooks hooks = new FakeHooks();
+        hooks.filter = new PiiMaskingFilter();
+        EchoModel cloud = new EchoModel("Kayıt [TC", "KN_", "1] için e-posta [EMAIL_1", "] doğrulandı. [");
+        hooks.models.put("ext", cloud);
+
+        String answer = String.join("", route(hooks, "ext").stream(PERSONAL)
+                .map(r -> r.getResult().getOutput().getText()).collectList().block());
+
+        assertThat(cloud.sent).singleElement().satisfies(sent -> assertThat(sent)
+                .doesNotContain("10000000146", "ayse.yilmaz@ornek.com.tr").contains("[TCKN_1]", "[EMAIL_1]"));
+        assertThat(answer).isEqualTo("Kayıt 10000000146 için e-posta ayse.yilmaz@ornek.com.tr doğrulandı. [");
+        assertThat(hooks.records).as("the usage of the provider's last chunk, not the flush chunk")
+                .containsExactly("ext:OK:5/2");
+        assertThat(hooks.filters).singleElement().satisfies(f -> {
+            assertThat(f.policy()).isEqualTo("PII_PSEUDONYMISE");
+            assertThat(f.masked()).containsExactlyInAnyOrderEntriesOf(Map.of("TCKN", 1, "EMAIL", 1));
+        });
+    }
+
+    @Test
+    void call_withMasking_onALocalModel_sendsThePromptUnchanged_andRecordsNoFilter() {
+        FakeHooks hooks = new FakeHooks();
+        hooks.filter = new PiiMaskingFilter();
+        EchoModel local = new EchoModel("tamam");
+        hooks.models.put("local", local);
+
+        route(hooks, "local").call(PERSONAL);
+
+        assertThat(local.sent).containsExactly(PERSONAL.getContents());
+        assertThat(hooks.filters).containsExactly(ModelRequestFilter.Filtered.NONE);
+    }
+
+    @Test
+    void call_whenTheFilterFails_sendsNothing_andDoesNotFallBack() {
+        FakeHooks hooks = new FakeHooks();
+        hooks.filter = new PiiMaskingFilter();
+        EchoModel cloud = new EchoModel("x");
+        EchoModel second = new EchoModel("y");
+        hooks.models.put("ext-a", cloud);
+        hooks.models.put("ext-b", second);
+        // A tool response is a message kind the filter cannot rewrite: it must refuse, never send it unmasked.
+        Prompt tool = new Prompt(List.of(new UserMessage("10000000146"),
+                org.springframework.ai.chat.messages.ToolResponseMessage.builder().responses(List.of(
+                        new org.springframework.ai.chat.messages.ToolResponseMessage.ToolResponse("1", "t",
+                                "10000000146"))).build()));
+
+        assertThatThrownBy(() -> route(hooks, "ext-a", "ext-b").call(tool)).isInstanceOf(IllegalStateException.class)
+                .hasMessageNotContaining("10000000146");
+        assertThatThrownBy(() -> route(hooks, "ext-a").stream(tool).collectList().block())
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(cloud.sent).isEmpty();
+        assertThat(second.sent).isEmpty();
+        assertThat(hooks.records).containsExactly("ext-a:FAILED", "ext-a:FAILED");
     }
 
     @Test

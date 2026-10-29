@@ -159,7 +159,7 @@ Aşağıdaki "Verso gerçekleri" bölümleri kodla ve ADR'lerle doğrulanmışt�
 | Mistral AI | Varsayılan AB barındırma | **Kurum hukuk birimi teyit etmeli** |
 | OpenAI uyumlu (vLLM, llama.cpp, ağ geçidi) / Ollama | İç ağdaysa kurum içi; dış adresse o sunucunun yeri | Dış adres bir alıcıdır; Bölüm 2'deki tabloya eklenir. **Kurum hukuk birimi teyit etmeli** |
 
-- Kurumun seçtiği sağlayıcılar, bölgeler ve sözleşme / ZDR durumu: {{MODEL_SAGLAYICILARI}}; aktarım mekanizması: {{MODEL_AKTARIM_MEKANIZMASI}}. Takma adlandırma (ileride eklenecek kişisel veri maskeleme) aktarımı kişisel veri olmaktan çıkarmaz; yalnız riski azaltır.
+- Kurumun seçtiği sağlayıcılar, bölgeler ve sözleşme / ZDR durumu: {{MODEL_SAGLAYICILARI}}; aktarım mekanizması: {{MODEL_AKTARIM_MEKANIZMASI}}. Takma adlandırma (ADR-0059: TCKN, VKN, IBAN, kart, telefon, e-posta ve plaka bulut çağrısından önce yer tutucuyla değiştirilir; isim ve adres değiştirilmez; yönetici kapatabilir) aktarımı kişisel veri olmaktan çıkarmaz; yalnız riski azaltır.
 
 ## 6. Hukuki sebep, aydınlatma, haklar
 

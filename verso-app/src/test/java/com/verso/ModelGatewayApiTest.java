@@ -190,7 +190,7 @@ class ModelGatewayApiTest {
         assertThat(QaTables.count("SELECT count(*) FROM qa.model_usage WHERE task = 'ANSWER' AND outcome = 'OK' "
                 + "AND connection_id = ?::uuid AND prompt_tokens = 10 AND completion_tokens = 5 AND external "
                 + "AND sent_categories = ARRAY['SYSTEM_INSTRUCTIONS','QUESTION','PASSAGES'] "
-                + "AND filter_policy = 'PASS_THROUGH'", b)).isEqualTo(2);
+                + "AND filter_policy = 'PII_PSEUDONYMISE' AND masked_counts = '{}'::jsonb", b)).isEqualTo(2);
         HttpResponse<String> usage = send("GET", "/v1/admin/model-gateway/usage", admin, null);
         assertThat(usage.statusCode()).isEqualTo(200);
         assertThat(usage.body()).doesNotContain(account).contains("\"minTeamUsers\":5");
@@ -250,7 +250,11 @@ class ModelGatewayApiTest {
         assertThat(send("GET", "/v1/models", user, null).body()).contains("\"enabled\":false");
         assertThat(ask(QUESTION, b + "/claude-x").statusCode()).isEqualTo(400);
 
-        send("PUT", "/v1/admin/model-gateway/settings", admin, "{\"userModelChoice\":true}");
+        HttpResponse<String> settings = send("PUT", "/v1/admin/model-gateway/settings", admin,
+                "{\"userModelChoice\":true}");
+        // ADR-0059: a client that sends only the model choice leaves masking as it was (on by default).
+        assertThat(settings.body()).contains("\"userModelChoice\":true", "\"piiMasking\":true");
+        assertThat(send("PUT", "/v1/admin/model-gateway/settings", admin, "{}").statusCode()).isEqualTo(400);
         HttpResponse<String> choices = send("GET", "/v1/models", user, null);
         assertThat(choices.body()).contains("\"enabled\":true", b + "/claude-x").doesNotContain("127.0.0.1")
                 .doesNotContain("Hint");

@@ -11,9 +11,11 @@ import java.util.Map;
  *                        model left (all disabled); an admin may also put it into a route as a step
  * @param userModelChoice whether users may pick among the answer route's models
  * @param keyStoreReady   whether the key-encryption key is present (/run/secrets); without it no key can be stored
+ * @param piiMasking      whether Turkish personal data is replaced by placeholders before a cloud call (ADR-0059;
+ *                        added later, on by default)
  */
 public record ModelRoutingResponse(Map<ModelTask, List<ModelRouteEntry>> routes, String builtInModel,
-                                   boolean userModelChoice, boolean keyStoreReady) {
+                                   boolean userModelChoice, boolean keyStoreReady, boolean piiMasking) {
     public ModelRoutingResponse {
         routes = Map.copyOf(routes);
     }

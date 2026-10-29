@@ -2,15 +2,16 @@ package com.verso.qa.service.gateway;
 
 import com.verso.qa.api.dto.ModelTask;
 import java.util.List;
+import java.util.Map;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import reactor.core.publisher.Flux;
 
 /**
- * The privacy gateway hook (ADR-0056): a filter chain around every call to an EXTERNAL connection. The request passes
- * through {@link #beforeSend} in order, the response (or every streamed chunk) through {@link #afterReceive} in
- * reverse order. The next step plugs the Turkish PII pseudonymisation in here (TCKN, VKN, IBAN, phone, plate, then
- * names via a local NER model): mask before send with session-consistent placeholders, unmask after receive. Until
- * then the only filter is {@link PassThrough}.
+ * The privacy gateway hook (ADR-0056): every call to an EXTERNAL connection opens one {@link Exchange}; the request
+ * passes through {@link Exchange#beforeSend}, the response (or the stream) through {@code afterReceive}. An exchange
+ * holds the state of exactly one call (ADR-0059: the placeholder mapping) and is dropped with it. Local calls never
+ * open one.
  *
  * <p>Rules for a filter: never log the prompt or the answer (llm-rules 2.1); never send anything new out (a filter
  * runs inside the installation); fail closed (an exception stops the call, it never sends the unfiltered prompt).
@@ -20,9 +21,34 @@ public interface ModelRequestFilter {
     /** The name stored with every external call ({@code qa.model_usage.filter_policy}). */
     String policy();
 
-    Prompt beforeSend(Prompt prompt, Call call);
+    Exchange open(Call call);
 
-    ChatResponse afterReceive(ChatResponse response, Call call);
+    /** One external call's filtering. */
+    interface Exchange {
+        Prompt beforeSend(Prompt prompt);
+
+        ChatResponse afterReceive(ChatResponse response);
+
+        /** A streamed answer; may emit one last chunk of its own when text was held back. */
+        Flux<ChatResponse> afterReceive(Flux<ChatResponse> stream);
+
+        /** What the usage row records about the filtering: the policy and counts only. */
+        Filtered filtered();
+    }
+
+    /**
+     * What a call's filter did, for the usage row (ADR-0059).
+     *
+     * @param masked distinct values replaced by a placeholder, by type ({@code TCKN}, {@code IBAN}, ...); never values
+     */
+    record Filtered(String policy, Map<String, Integer> masked) {
+        /** A local call: nothing left the installation, nothing was filtered. */
+        public static final Filtered NONE = new Filtered("NONE", Map.of());
+
+        public Filtered {
+            masked = Map.copyOf(masked);
+        }
+    }
 
     /**
      * What one external call is about: the task, the connection and the kinds of data it carries (the egress log).
@@ -53,22 +79,39 @@ public interface ModelRequestFilter {
         }
     }
 
-    /** Sends and returns everything unchanged; the policy is recorded so the egress log says so. */
+    /** Sends and returns everything unchanged (the admin turned masking off); the policy says so in the egress log. */
     final class PassThrough implements ModelRequestFilter {
+
+        static final String POLICY = "PASS_THROUGH";
 
         @Override
         public String policy() {
-            return "PASS_THROUGH";
+            return POLICY;
         }
 
         @Override
-        public Prompt beforeSend(Prompt prompt, Call call) {
-            return prompt;
-        }
+        public Exchange open(Call call) {
+            return new Exchange() {
+                @Override
+                public Prompt beforeSend(Prompt prompt) {
+                    return prompt;
+                }
 
-        @Override
-        public ChatResponse afterReceive(ChatResponse response, Call call) {
-            return response;
+                @Override
+                public ChatResponse afterReceive(ChatResponse response) {
+                    return response;
+                }
+
+                @Override
+                public Flux<ChatResponse> afterReceive(Flux<ChatResponse> stream) {
+                    return stream;
+                }
+
+                @Override
+                public Filtered filtered() {
+                    return new Filtered(POLICY, Map.of());
+                }
+            };
         }
     }
 }

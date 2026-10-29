@@ -34,9 +34,9 @@ Kurumun kendi model sağlayıcısını ve API anahtarını bağladığı yöneti
 ## Rotalar ve ayarlar
 | Uç | Gövde | Yanıt |
 |---|---|---|
-| `GET …/routes` | – | `{routes: {ANSWER: [...], FOLLOW_UP: [...], DECOMPOSITION: [...], SKILL_CONDENSE: [...], SKILL_RUN: [...], EMBEDDING: []}, builtInModel, userModelChoice, keyStoreReady}` |
+| `GET …/routes` | – | `{routes: {ANSWER: [...], FOLLOW_UP: [...], DECOMPOSITION: [...], SKILL_CONDENSE: [...], SKILL_RUN: [...], EMBEDDING: []}, builtInModel, userModelChoice, keyStoreReady, piiMasking}` (`piiMasking` sonradan eklendi, ADR-0059) |
 | `PUT …/routes/{task}` | `{"entries": [{"connectionId": "…"\|null, "model": "…"}]}` (en çok 5; ilk birincil, sonrakiler yedek; `connectionId: null` yerleşik model) | Güncel rotalar. `EMBEDDING` ya da bilinmeyen/kapalı bağlantı, listede olmayan model, tekrar eden adım `400 11096`; local modda dış bağlantı `409 11091` |
-| `PUT …/settings` | `{"userModelChoice": true\|false}` (zorunlu) | Güncel rotalar |
+| `PUT …/settings` | `{"userModelChoice": true\|false, "piiMasking": true\|false}`: iki alan da isteğe bağlı, yok ya da `null` olan ayar değişmez, en az biri zorunlu (ikisi de yoksa `400`). Yalnız `userModelChoice` gönderen eski istemci aynen çalışır | Güncel rotalar |
 
 Yedeğe yalnız 5xx, 429 ve ağ hatasında geçilir; akışta yalnız ilk token'dan önce. Rota boşsa (ya da rotadaki bütün bağlantılar kapalıysa) yerleşik model cevaplar.
 
@@ -47,7 +47,9 @@ Yedeğe yalnız 5xx, 429 ve ağ hatasında geçilir; akışta yalnız ilk token'
 | `DELETE …/prices/{connectionId}?model=` | – | `204` |
 | `GET` / `PUT …/budgets` | `{scope: CONNECTION\|TEAM, scopeKey, hardLimit, softLimit?}` | Bütçe listesi / kaydedilen bütçe; uyarı sınırı üst sınırdan büyükse `400 11098` |
 | `DELETE …/budgets/{scope}?key=` | – | `204` |
-| `GET …/usage?month=YYYY-MM` | ay (varsayılan bu ay) | `{month, requests, promptTokens, completionTokens, cost, rows[], teams[], hiddenTeams, minTeamUsers, budgets[]}`; geçersiz ay `400 11099` |
+| `GET …/usage?month=YYYY-MM` | ay (varsayılan bu ay) | `{month, requests, promptTokens, completionTokens, cost, rows[], teams[], hiddenTeams, minTeamUsers, budgets[], maskedValues, masked}`; geçersiz ay `400 11099` |
+
+`maskedValues` ve `masked` (ADR-0059, sonradan eklendi): ayın bulut çağrılarında kişisel veri süzgecinin yer tutucuyla değiştirdiği değer sayısı, toplam ve türe göre (`{"TCKN": 3, "IBAN": 1}`; türler `TCKN`, `VKN`, `IBAN`, `CARD`, `EMAIL`, `PHONE`, `PLATE`). Çağrı başına farklı değer sayısıdır, çağrılar boyunca toplanır; değerlerin kendisi hiçbir yerde yoktur.
 
 `rows[]`: `{connectionId, connectionName, model, task, requests, promptTokens, completionTokens, cost, failures}` (bağlantı silinmişse `connectionName` `null`). `teams[]`: yalnız o ay en az `minTeamUsers` farklı kullanıcısı olan ekipler; kişi bazında satır **yoktur**. `budgets[].state` ∈ `OK`, `SOFT`, `HARD`.
 

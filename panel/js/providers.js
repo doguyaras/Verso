@@ -132,11 +132,23 @@ export function routeEntries(values, builtInModel) {
 }
 
 /** The value dashboard's model card: totals, the top rows and the budgets; teams only as the server sends them. */
+// ADR-0059: the masked-value types the server reports, in the words the admin reads.
+const MASKED_LABELS = { TCKN: 'TCKN', VKN: 'VKN', IBAN: 'IBAN', CARD: 'kart', EMAIL: 'e-posta', PHONE: 'telefon', PLATE: 'plaka' };
+
+/** "Bu ay N değer maskelendi (TCKN 3, IBAN 1)": counts only; null when the server sent none (older server). */
+export function maskedNote(usage) {
+  if (!usage || typeof usage.maskedValues !== 'number') return null;
+  const parts = Object.entries(usage.masked ?? {}).filter(([, n]) => typeof n === 'number' && n > 0)
+    .sort((a, b) => b[1] - a[1]).map(([type, n]) => `${MASKED_LABELS[type] ?? type} ${n}`);
+  return `Bu ay bulut çağrılarında ${usage.maskedValues} değer maskelendi${parts.length ? ` (${parts.join(', ')})` : ''}.`;
+}
+
 export function usageSummary(usage) {
   if (!usage || typeof usage !== 'object') return null;
   const money = (v) => (typeof v === 'number' ? v.toLocaleString('tr-TR', { maximumFractionDigits: 2 }) : String(v ?? '0'));
   return {
     month: usage.month,
+    maskedNote: maskedNote(usage),
     totals: [
       { label: 'Model çağrısı', value: String(usage.requests ?? 0) },
       { label: 'Girdi token', value: String(usage.promptTokens ?? 0) },

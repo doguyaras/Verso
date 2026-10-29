@@ -155,7 +155,10 @@ public enum AuditAction {
     MODEL_CONNECTION_TESTED,
     /** A verso-admin deleted a connection and its stored key. */
     MODEL_CONNECTION_DELETED,
-    /** A verso-admin changed the gateway: the detail is ROUTE_&lt;TASK&gt;, SETTINGS, PRICE or BUDGET. */
+    /**
+     * A verso-admin changed the gateway: the detail is ROUTE_&lt;TASK&gt;, SETTINGS, PRICE, BUDGET, or PII_MASKING_ON /
+     * PII_MASKING_OFF (ADR-0059).
+     */
     MODEL_GATEWAY_CHANGED,
     /** A monthly budget reached a limit (system actor); the detail is SOFT or HARD, the target the scope. */
     MODEL_BUDGET_LIMIT_REACHED,
