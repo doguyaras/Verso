@@ -68,22 +68,30 @@ async function api(path, init = {}) {
 }
 
 async function upload(file) {
-  const form = new FormData();
-  form.append('file', new Blob([readFileSync(join(SAMPLES_DIR, file))], { type: 'application/pdf' }), file);
-  const res = await api('/v1/documents', { method: 'POST', body: form });
-  if (res.status !== 201) throw new Error(`upload ${file}: ${res.status}`);
-  return (await res.json()).id;
+  // A large SAMPLES_DIR (eval-data/external, 200 PDFs) outruns the per-account queue (20 PENDING/PROCESSING: 429) and
+  // the concurrent-upload bound (503): wait and send the same file again.
+  for (let attempt = 0; ; attempt++) {
+    const form = new FormData();
+    form.append('file', new Blob([readFileSync(join(SAMPLES_DIR, file))], { type: 'application/pdf' }), file);
+    const res = await api('/v1/documents', { method: 'POST', body: form });
+    if (res.status === 201) return (await res.json()).id;
+    if ((res.status === 429 || res.status === 503) && attempt < 2000) {
+      await new Promise((r) => setTimeout(r, 5000));
+      continue;
+    }
+    throw new Error(`upload ${file}: ${res.status}`);
+  }
 }
 
 async function waitReady(ids) {
-  const deadline = Date.now() + 10 * 60_000;
+  const deadline = Date.now() + Number(process.env.READY_TIMEOUT_MIN ?? 10) * 60_000;
   while (Date.now() < deadline) {
     const states = await Promise.all(ids.map(async (id) => (await (await api(`/v1/documents/${id}`)).json()).status));
     if (states.every((s) => s === 'READY')) return;
     if (states.includes('FAILED')) throw new Error('a sample failed to ingest');
     await new Promise((r) => setTimeout(r, 3000));
   }
-  throw new Error('samples not READY in 10 minutes');
+  throw new Error(`samples not READY in ${process.env.READY_TIMEOUT_MIN ?? 10} minutes`);
 }
 
 const percentile = (values, p) => {
@@ -97,7 +105,9 @@ const SET = args.includes('--set') ? args[args.indexOf('--set') + 1] : 'default'
 const COMPARE = args.includes('--compare');
 if (!['default', 'multihop'].includes(SET)) throw new Error(`unknown --set ${SET} (default | multihop)`);
 if (COMPARE && SET !== 'multihop') throw new Error('--compare needs --set multihop');
-const set = JSON.parse(readFileSync(join(ROOT, SET === 'multihop' ? 'eval/multihop-set.json' : 'eval/eval-set.json'), 'utf8'));
+// EVAL_SET_FILE: another question set in the same format (eval-data/external/questions.json or questions-multihop.json).
+const set = JSON.parse(readFileSync(process.env.EVAL_SET_FILE
+  || join(ROOT, SET === 'multihop' ? 'eval/multihop-set.json' : 'eval/eval-set.json'), 'utf8'));
 /** An explicit "not in the documents" for one part of the answer (ADR-0055 writes "… için belgelerde bilgi bulunamadı"). */
 const statesMissing = (answer) => /bulunamad|bulunmamakta|yer alm(a|ı)m/.test(tr(answer));
 
@@ -149,8 +159,9 @@ function multihopSummary(rows, arm) {
 
 const files = readdirSync(SAMPLES_DIR).filter((f) => f.endsWith('.pdf')).sort();
 // Leftovers of an earlier run would be cited too: this account starts empty.
-for (const doc of (await (await api("/v1/documents?size=100")).json()).data ?? []) {
-  await api(`/v1/documents/${doc.id}`, { method: 'DELETE' });
+for (let round = 0, page; round < 10 && (page = (await (await api('/v1/documents?size=100')).json()).data ?? []).length;) {
+  round++;
+  for (const doc of page) await api(`/v1/documents/${doc.id}`, { method: 'DELETE' });
 }
 const ids = [];
 for (const f of files) ids.push(await upload(f));

@@ -30,3 +30,8 @@ deploy/**/*.env*
 
 # demo.sh writes the question body here while it runs
 demo-question.tmp
+
+# External evaluation corpus (eval-data/external): downloaded documents and the generated question set stay local;
+# only the manifest (sources, licences, counts, loading steps) enters git.
+/eval-data/external/*
+!/eval-data/external/MANIFEST.md
