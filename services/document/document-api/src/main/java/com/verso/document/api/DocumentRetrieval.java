@@ -6,6 +6,7 @@ import com.verso.document.api.dto.Reader;
 import com.verso.document.api.dto.RetrievedPassage;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.UUID;
 
 /**
@@ -64,4 +65,19 @@ public interface DocumentRetrieval {
      * @param passageId a {@link RetrievedPassage#passageId()}
      */
     Optional<Passage> passage(Reader reader, UUID passageId);
+
+    /** ADR-0060: whether {@link #relevance(String, String)} can score at all (the reranker of ADR-0043 is on). */
+    default boolean rerankerEnabled() {
+        return false;
+    }
+
+    /**
+     * ADR-0060: the reranker's relevance of {@code text} to {@code question}, a sigmoid score in 0..1, under the
+     * reranker's own deadline, bulkhead and circuit breaker (ADR-0043). Empty when the reranker is off, skipped or
+     * failed: a caller that uses it as a check must treat empty as "not confirmed". A remote call to the internal
+     * sidecar; neither text is logged.
+     */
+    default OptionalDouble relevance(String question, String text) {
+        return OptionalDouble.empty();
+    }
 }

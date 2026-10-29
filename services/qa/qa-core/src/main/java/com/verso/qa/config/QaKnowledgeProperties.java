@@ -20,6 +20,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param archivedRetention   archived cards (with their bindings, disputes and golden case) are deleted this long
  *                            after their last change
  * @param eval                the nightly golden-set check
+ * @param rerankCheck         the optional second check of a matching card with the reranker (ADR-0060)
  */
 @ConfigurationProperties("verso.qa.knowledge")
 public record QaKnowledgeProperties(
@@ -30,7 +31,8 @@ public record QaKnowledgeProperties(
         @DefaultValue("false") boolean twoPersonRule,
         @DefaultValue("3") int disputeThreshold,
         @DefaultValue("365d") Duration archivedRetention,
-        @DefaultValue Eval eval) {
+        @DefaultValue Eval eval,
+        @DefaultValue RerankCheck rerankCheck) {
 
     public QaKnowledgeProperties {
         if (matchThreshold < 0.80 || matchThreshold > 1) {
@@ -53,6 +55,29 @@ public record QaKnowledgeProperties(
     /** Verifications a card needs in one cycle. */
     public int requiredVerifiers() {
         return twoPersonRule ? 2 : 1;
+    }
+
+    /**
+     * ADR-0060: after the cosine threshold and the key-facts guard, the reranker (ADR-0043) scores the pair (new
+     * question, card question) and the card answers only at or above {@code minScore}. Off by default, like the
+     * reranker itself; it needs {@code verso.document.reranker.enabled}. Any reranker failure rejects the card (the
+     * question then takes the normal path), never the other way round.
+     *
+     * @param enabled  score a matching card with the reranker before serving it
+     * @param minScore the reranker's relevance (0..1, sigmoid) at or above which the card may answer; a starting value,
+     *                 not measured on a GPU install yet
+     */
+    public record RerankCheck(
+            @DefaultValue("false") boolean enabled,
+            @DefaultValue("0.80") double minScore) {
+
+        public static final RerankCheck OFF = new RerankCheck(false, 0.80);
+
+        public RerankCheck {
+            if (!(minScore > 0 && minScore < 1)) {
+                throw new IllegalStateException("verso.qa.knowledge.rerank-check.min-score must be between 0 and 1");
+            }
+        }
     }
 
     /**

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -83,18 +85,33 @@ public class PassageReranker {
      */
     public Optional<List<Integer>> order(String question, List<String> texts) {
         if (!properties.enabled() || texts.size() < 2) return Optional.empty();
+        return guarded(question, texts, client::rank);
+    }
+
+    /**
+     * ADR-0060: the relevance of {@code text} to {@code question} (sigmoid, 0..1), under the same deadline, bulkhead and
+     * circuit breaker as {@link #order}; empty when the reranker is off, skipped or failed. A caller that uses the
+     * score as a check must treat empty as "not confirmed".
+     */
+    public OptionalDouble score(String question, String text) {
+        if (!properties.enabled()) return OptionalDouble.empty();
+        Optional<double[]> scores = guarded(question, List.of(text), client::scores);
+        return scores.isPresent() ? OptionalDouble.of(scores.get()[0]) : OptionalDouble.empty();
+    }
+
+    private <T> Optional<T> guarded(String question, List<String> texts, BiFunction<String, List<String>, T> rerank) {
         if (clock.instant().isBefore(openUntil)) return skipped(Outcome.CIRCUIT_OPEN);
         if (!inFlight.tryAcquire()) return skipped(Outcome.BUSY);
         List<String> cut = texts.stream().map(this::cut).toList();
         // Whoever claims "started" owns the release: the task when it runs, the caller when it cancels a task that
         // never started (the same pattern as the question embedding, DocumentRetrievalServiceImpl).
         AtomicBoolean started = new AtomicBoolean();
-        Future<List<Integer>> call;
+        Future<T> call;
         try {
             call = VIRTUAL.submit(() -> {
                 if (!started.compareAndSet(false, true)) return null;
                 try {
-                    return client.rank(question, cut);
+                    return rerank.apply(question, cut);
                 } finally {
                     inFlight.release();
                 }
@@ -105,11 +122,11 @@ public class PassageReranker {
         }
         long begin = System.nanoTime();
         try {
-            List<Integer> order = call.get(properties.timeout().toMillis(), TimeUnit.MILLISECONDS);
+            T result = call.get(properties.timeout().toMillis(), TimeUnit.MILLISECONDS);
             failures.set(0);
             duration.record(System.nanoTime() - begin, TimeUnit.NANOSECONDS);
             outcomes.get(Outcome.RERANKED).increment();
-            return Optional.of(order);
+            return Optional.of(result);
         } catch (TimeoutException e) {
             cancel(call, started);
             return failed(Outcome.TIMEOUT);
@@ -136,12 +153,12 @@ public class PassageReranker {
         if (started.compareAndSet(false, true)) inFlight.release();
     }
 
-    private Optional<List<Integer>> skipped(Outcome outcome) {
+    private <T> Optional<T> skipped(Outcome outcome) {
         outcomes.get(outcome).increment();
         return Optional.empty();
     }
 
-    private Optional<List<Integer>> failed(Outcome outcome) {
+    private <T> Optional<T> failed(Outcome outcome) {
         outcomes.get(outcome).increment();
         int count = failures.incrementAndGet();
         if (count >= properties.circuitFailures()) {

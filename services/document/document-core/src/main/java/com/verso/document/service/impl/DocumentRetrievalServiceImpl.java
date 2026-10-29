@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -214,6 +215,18 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
         Optional<Candidate> found = readOnly.execute(status -> repository.passage(principals, passageId));
         return found == null ? Optional.empty() : found.map(c -> new Passage(c.chunkId(), c.documentId(), c.fileName(),
                 c.pageNumber(), c.unit(), c.content(), c.collectionId(), c.collectionName()));
+    }
+
+    @Override
+    public boolean rerankerEnabled() {
+        return reranker.enabled();
+    }
+
+    /** ADR-0060: no transaction is open here; the reranker's own guards bound the call (ADR-0043). */
+    @Override
+    public OptionalDouble relevance(String question, String text) {
+        if (question == null || text == null || question.isBlank() || text.isBlank()) return OptionalDouble.empty();
+        return reranker.score(question, text);
     }
 
     /**

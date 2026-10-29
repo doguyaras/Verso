@@ -493,7 +493,7 @@ public class QuestionServiceImpl implements QuestionService {
             throw e;
         }
         if (memory.enabled()) {
-            Optional<Served> served = memory.lookup(reader, embedding);
+            Optional<Served> served = memory.lookup(reader, embedding, question);
             if (served.isPresent()) return new Found(null, served.get(), elapsedMs(started), embedding);
         }
         return new Found(retrieve(reader, question, embedding, started), null, 0, embedding);

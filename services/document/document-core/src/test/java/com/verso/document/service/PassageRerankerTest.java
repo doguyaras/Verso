@@ -44,9 +44,17 @@ class PassageRerankerTest {
         final AtomicInteger calls = new AtomicInteger();
         final List<List<String>> sent = new ArrayList<>();
         volatile Answer answer = texts -> List.of(2, 0, 1);
+        volatile double score = 0.93;
 
         interface Answer {
             List<Integer> rank(List<String> texts) throws Exception;
+        }
+
+        @Override
+        double[] scores(String query, List<String> texts) {
+            // The same script decides failures, so both calls share the breaker's behaviour.
+            rank(query, texts);
+            return new double[] {score};
         }
 
         ScriptedClient(RerankerProperties properties) {
@@ -106,6 +114,40 @@ class PassageRerankerTest {
         assertThat(reranker.order(QUESTION, TEXTS)).contains(List.of(2, 0, 1));
         assertThat(count("reranked")).isEqualTo(1);
         assertThat(registry.get("verso.retrieval.rerank.duration").timer().count()).isEqualTo(1);
+    }
+
+    @Test
+    void score_ADR0060_returnsTheSidecarsScore_andEveryFailureIsEmpty() {
+        assertThat(reranker.score(QUESTION, "Gizli kart sorusu")).hasValue(0.93);
+        assertThat(client.sent.getLast()).containsExactly("Gizli kart sorusu");
+
+        client.answer = texts -> {
+            throw new RerankException(Failure.TIMEOUT);
+        };
+        assertThat(reranker.score(QUESTION, "Gizli kart sorusu")).isEmpty();
+        assertThat(count("reranked")).isEqualTo(1);
+        assertThat(count("timeout")).isEqualTo(1);
+        assertThat(logs.list).extracting(ILoggingEvent::getFormattedMessage)
+                .noneMatch(m -> m.contains("Gizli"));
+    }
+
+    @Test
+    void score_sharesTheBreakerWithOrder_andIsEmptyWhenDisabled() {
+        client.answer = texts -> {
+            throw new RerankException(Failure.UNAVAILABLE);
+        };
+        reranker.order(QUESTION, TEXTS);
+        reranker.order(QUESTION, TEXTS);
+        reranker.score(QUESTION, "kart");
+        assertThat(reranker.open()).isTrue();
+        client.answer = texts -> List.of(0);
+        assertThat(reranker.score(QUESTION, "kart")).as("open circuit").isEmpty();
+        assertThat(client.calls).hasValue(3);
+
+        RerankerProperties off = properties(false, Duration.ofSeconds(2), 4);
+        ScriptedClient idle = new ScriptedClient(off);
+        assertThat(new PassageReranker(idle, off, clock, new SimpleMeterRegistry()).score(QUESTION, "kart")).isEmpty();
+        assertThat(idle.calls).hasValue(0);
     }
 
     @Test

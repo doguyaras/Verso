@@ -103,6 +103,28 @@ class RerankerClientTest {
     }
 
     @Test
+    void scores_returnEachTextsSigmoidScoreByItsIndex() {
+        assertThat(client().scores("q", List.of("a", "b", "c"))).containsExactly(0.5, 0.1, 0.9);
+        answer = "[{\"index\": 0, \"score\": 0.97}]";
+        assertThat(client().scores("q", List.of("kart sorusu"))).containsExactly(0.97);
+    }
+
+    @Test
+    void scores_whenAScoreIsMissingOrOutsideZeroToOne_failAsInvalid_whileRankStillOnlyNeedsTheIndexes() {
+        String missing = "[{\"index\": 0}, {\"index\": 1, \"score\": 0.2}]";
+        for (String body : List.of(missing, "[{\"index\": 0, \"score\": 1.5}, {\"index\": 1, \"score\": 0.2}]",
+                "[{\"index\": 0, \"score\": -0.1}, {\"index\": 1, \"score\": 0.2}]",
+                "[{\"index\": 0, \"score\": \"0.9\"}, {\"index\": 1, \"score\": 0.2}]")) {
+            answer = body;
+            assertThatThrownBy(() -> client().scores("q", List.of("a", "b"))).as(body)
+                    .isInstanceOfSatisfying(RerankException.class,
+                            e -> assertThat(e.failure()).isEqualTo(Failure.INVALID_RESPONSE));
+        }
+        answer = missing;
+        assertThat(client().rank("q", List.of("a", "b"))).containsExactly(0, 1);
+    }
+
+    @Test
     void rank_whenTheAnswerIsBroken_failsWithAFixedKind() {
         assertFailure(500, answer, Failure.UNAVAILABLE);
         assertFailure(429, answer, Failure.UNAVAILABLE);

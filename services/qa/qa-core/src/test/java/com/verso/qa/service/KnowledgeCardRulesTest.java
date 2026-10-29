@@ -10,6 +10,7 @@ import com.verso.document.api.enums.SourceUnit;
 import com.verso.qa.api.dto.KnowledgeCardState;
 import com.verso.qa.api.dto.KnowledgeStaleReason;
 import com.verso.qa.config.QaKnowledgeProperties;
+import com.verso.qa.config.QaKnowledgeProperties.RerankCheck;
 import com.verso.qa.repository.KnowledgeCardRepository.Binding;
 import com.verso.qa.repository.KnowledgeCardRepository.Candidate;
 import com.verso.qa.service.KnowledgeCardRules.BindingState;
@@ -112,11 +113,18 @@ class KnowledgeCardRulesTest {
     @Test
     void disputeThreshold_belowTwo_isRefusedAtStartup() {
         assertThatThrownBy(() -> new QaKnowledgeProperties(true, 0.93, 3, Duration.ofDays(90), false, 1,
-                Duration.ofDays(365), eval())).hasMessageContaining("dispute-threshold");
+                Duration.ofDays(365), eval(), RerankCheck.OFF)).hasMessageContaining("dispute-threshold");
         assertThatThrownBy(() -> new QaKnowledgeProperties(true, 0.5, 3, Duration.ofDays(90), false, 3,
-                Duration.ofDays(365), eval())).hasMessageContaining("match-threshold");
-        assertThat(new QaKnowledgeProperties(true, 0.93, 3, Duration.ofDays(90), true, 3, Duration.ofDays(365), eval())
-                .requiredVerifiers()).isEqualTo(2);
+                Duration.ofDays(365), eval(), RerankCheck.OFF)).hasMessageContaining("match-threshold");
+        assertThat(new QaKnowledgeProperties(true, 0.93, 3, Duration.ofDays(90), true, 3, Duration.ofDays(365), eval(),
+                RerankCheck.OFF).requiredVerifiers()).isEqualTo(2);
+    }
+
+    @Test
+    void rerankCheck_minScoreOutsideZeroToOne_isRefusedAtStartup() {
+        assertThatThrownBy(() -> new RerankCheck(true, 0)).hasMessageContaining("rerank-check.min-score");
+        assertThatThrownBy(() -> new RerankCheck(true, 1)).hasMessageContaining("rerank-check.min-score");
+        assertThat(RerankCheck.OFF.enabled()).isFalse();
     }
 
     // ---------------------------------------------------------------- matching

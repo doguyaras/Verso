@@ -251,10 +251,19 @@ verso:
     # unexpired card's question is answered with the card ("uzman onaylı"), but only when the caller can read every
     # document it cites and every bound chunk still has its hash. Off (VERSO_QA_KNOWLEDGE_ENABLED=false): no question is
     # answered from a card (cards can still be made and checked). Starting values; 0.95 measured on the eval v2 paraphrase set (docs/evidence/onayli-bilgi-dogrulama.md), re-measure per customer.
+    # ADR-0060: above the threshold a card answers only when its question carries every key fact of the new one
+    # (numbers, amounts, dates, codes, quoted terms, negation; in-process, not a setting). The threshold stays 0.95:
+    # with the guard, 0.90 still let differently-intended questions through (docs/evidence/kart-eslesme-olcumu.md).
     knowledge:
       enabled: ${VERSO_QA_KNOWLEDGE_ENABLED:true}
       match-threshold: 0.95
       match-candidates: 3
+      # Optional second check with the reranker (ADR-0043): the pair (new question, card question) must score at least
+      # min-score, and no score (reranker failed or skipped) means no card. Needs verso.document.reranker.enabled, or
+      # the application does not start. min-score is a starting value, not measured on a GPU install.
+      rerank-check:
+        enabled: false
+        min-score: 0.80
       verification-cadence: 90d
       # Two different admins must verify a card before it is served (high-impact domains: HR, finance, safety).
       two-person-rule: ${VERSO_QA_KNOWLEDGE_TWO_PERSON_RULE:false}

@@ -82,6 +82,28 @@ public class RerankerClient {
      * drop, repeat or invent a passage.
      */
     List<Integer> rank(String query, List<String> texts) {
+        return ranked(query, texts).stream().map(Ranked::index).toList();
+    }
+
+    /**
+     * ADR-0060: the relevance of each of {@code texts} to {@code query}, by index, each a sigmoid score in 0..1. A score
+     * that is missing, not finite or outside 0..1 makes the whole answer invalid: a caller compares it with a threshold.
+     */
+    double[] scores(String query, List<String> texts) {
+        double[] scores = new double[texts.size()];
+        for (Ranked item : ranked(query, texts)) {
+            double score = item.score();
+            if (!(score >= 0 && score <= 1)) throw new RerankException(Failure.INVALID_RESPONSE);
+            scores[item.index()] = score;
+        }
+        return scores;
+    }
+
+    /** One item of the answer: a candidate's index and its score (NaN when the answer has none). */
+    private record Ranked(int index, double score) {
+    }
+
+    private List<Ranked> ranked(String query, List<String> texts) {
         if (client == null) throw new IllegalStateException("the reranker is disabled");
         // truncate: TEI cuts a pair longer than the model's window instead of failing it; raw_scores false: sigmoid.
         Map<String, Object> body = Map.of("query", query, "texts", texts, "truncate", true, "raw_scores", false,
@@ -97,14 +119,15 @@ public class RerankerClient {
             throw new RerankException(Failure.INVALID_RESPONSE);
         }
         boolean[] seen = new boolean[texts.size()];
-        List<Integer> order = new ArrayList<>(texts.size());
+        List<Ranked> order = new ArrayList<>(texts.size());
         for (JsonNode item : answer) {
             JsonNode index = item.path("index");
             if (!index.isIntegralNumber()) throw new RerankException(Failure.INVALID_RESPONSE);
             int i = index.asInt();
             if (i < 0 || i >= seen.length || seen[i]) throw new RerankException(Failure.INVALID_RESPONSE);
             seen[i] = true;
-            order.add(i);
+            JsonNode score = item.path("score");
+            order.add(new Ranked(i, score.isNumber() ? score.asDouble() : Double.NaN));
         }
         return order;
     }
