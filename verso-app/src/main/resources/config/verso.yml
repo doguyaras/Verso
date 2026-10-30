@@ -195,9 +195,11 @@ verso:
     lexical-min-similarity: 0.44
     specific-term-max-share: 0.045
     # Once the gate is open: the most similar passage and every passage at or above this go into the prompt. With all
-    # five passages (or a 0.44 floor) the model said "bulunamadı" to 10-11 of 28 unanswerable questions, with this
-    # 17 of 28 (ADR-0022, end-to-end eval on GPU).
-    passage-min-similarity: 0.50
+    # five passages (or a 0.44 floor) the model said "bulunamadı" to 10-11 of 28 unanswerable questions, with 0.50
+    # 17 of 28 (ADR-0022). The context header in the embedding (ADR-0061) raised the cosines of on-topic passages, so
+    # 0.50 let more of them in and the model answered on-topic unanswerable questions; 0.55 brought refusals back
+    # (external set 30 -> 34 of 45, internal 20 -> 22 of 28) and raised the citation hit on the external set (ADR-0063).
+    passage-min-similarity: 0.55
     max-passage-chars: 1500
     # Chat calls in flight per instance. 1 by default: on a CPU host a second concurrent answer only doubles both waits
     # and starves the question embeddings (phase 8, docs/capacity.md). The shared tier (ADR-0051) raises it together

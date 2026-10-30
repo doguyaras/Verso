@@ -16,7 +16,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                         the most similar passage names a specific question term. Below this floor the model is not
  *                         asked whatever the terms say
  * @param passageMinSimilarity once the gate is open, the prompt gets the most similar passage and every other passage
- *                         at or above this similarity; weaker ones stay out
+ *                         at or above this similarity; weaker ones stay out. Measured with the context header in the
+ *                         embedding (ADR-0063): it decides more refusals than the gate thresholds do
  * @param specificTermMaxShare a question term in at most this share of the account's chunks counts as specific (a
  *                         code, an abbreviation); 0 turns the lexical branch off. Must stay below
  *                         DocumentRetrieval.TERM_SHARE_LIMIT, above which shares are not counted
@@ -37,7 +38,7 @@ public record QaProperties(
         @DefaultValue("0.47") double minSimilarity,
         @DefaultValue("0.44") double lexicalMinSimilarity,
         @DefaultValue("0.045") double specificTermMaxShare,
-        @DefaultValue("0.50") double passageMinSimilarity,
+        @DefaultValue("0.55") double passageMinSimilarity,
         @DefaultValue("1500") int maxPassageChars,
         @DefaultValue("1") int chatConcurrency,
         @DefaultValue("5s") Duration chatWait,

@@ -1,0 +1,3850 @@
+{
+  "measuredAt": "2026-10-30T13:18:22.325Z",
+  "commit": "ba3cbc292e59",
+  "summary": {
+    "mode": "local",
+    "chatModel": "gemma4:e2b",
+    "questions": 140,
+    "samples": "samples",
+    "ingestionWallMs": 18262,
+    "errors": 0,
+    "answerable": 112,
+    "foundRate": 0.83,
+    "citationHitRate": 0.768,
+    "citationPrecision": 0.905,
+    "factAccuracy": 0.759,
+    "unanswerable": 28,
+    "notFoundAccuracy": 0.75,
+    "notFoundOrOwnRefusal": 0.786,
+    "gate": {
+      "minSimilarity": 0.47,
+      "lexicalMinSimilarity": 0.44,
+      "specificTermMaxShare": 0.045,
+      "passageMinSimilarity": 0.6
+    },
+    "gateBlockedAnswerable": 3,
+    "stoppedByThreshold": 6,
+    "decidedByModel": 22,
+    "modelNotFoundAccuracy": 0.682,
+    "latencyMs": {
+      "p50": 369,
+      "p95": 693,
+      "max": 1128
+    }
+  },
+  "questions": [
+    {
+      "id": "izin-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 688,
+      "gate": {
+        "best": 0.6291,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "izin-yonetmeligi.pdf#2 0.6291",
+          "izin-yonetmeligi.pdf#1 0.6279",
+          "izin-yonetmeligi.pdf#3 0.5426",
+          "isg-depo-proseduru.pdf#2 0.4995",
+          "uzaktan-calisma.pdf#1 0.493"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "Beş yıldan az hizmeti olan çalışan yılda yirmi iş günü yıllık izin kullanır [2].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false
+    },
+    {
+      "id": "izin-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 499,
+      "gate": {
+        "best": 0.6566,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "izin-yonetmeligi.pdf#2 0.6566",
+          "izin-yonetmeligi.pdf#1 0.6178",
+          "izin-yonetmeligi.pdf#3 0.5382",
+          "bt-operasyon-runbook.pdf#4 0.466",
+          "isg-depo-proseduru.pdf#5 0.5011"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#1"
+      ],
+      "answer": "On beş yıldan fazla hizmeti olanlar yılda yirmi altı iş günü izin kullanır [2].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 286,
+      "gate": {
+        "best": 0.5679,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "izin-yonetmeligi.pdf#1 0.5626",
+          "izin-yonetmeligi.pdf#2 0.5496",
+          "izin-yonetmeligi.pdf#3 0.5679",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5143",
+          "isg-depo-proseduru.pdf#2 0.5033"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "izin-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 295,
+      "gate": {
+        "best": 0.7347,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "izin-yonetmeligi.pdf#2 0.7347",
+          "uzaktan-calisma.pdf#1 0.4895",
+          "izin-yonetmeligi.pdf#1 0.5285",
+          "depo-yonetim-kilavuzu.pdf#6 0.4511",
+          "bt-operasyon-runbook.pdf#3 0.4591"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Eşi doğum yapan çalışana beş iş günü babalık izni verilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 305,
+      "gate": {
+        "best": 0.6867,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "izin-yonetmeligi.pdf#2 0.6867",
+          "izin-yonetmeligi.pdf#1 0.5355",
+          "uzaktan-calisma.pdf#1 0.4459",
+          "izin-yonetmeligi.pdf#3 0.4652",
+          "depo-yonetim-kilavuzu.pdf#3 0.4034"
+        ]
+      },
+      "found": false,
+      "citations": [
+        "izin-yonetmeligi.pdf#2"
+      ],
+      "answer": "Doğum izni toplam on altı haftadır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "izin-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 322,
+      "gate": {
+        "best": 0.6866,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "izin-yonetmeligi.pdf#1 0.5936",
+          "izin-yonetmeligi.pdf#3 0.6866",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4943",
+          "erp-satin-alma-kilavuzu.pdf#3 0.4866",
+          "izin-yonetmeligi.pdf#2 0.572"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "izin-yonetmeligi.pdf#3"
+      ],
+      "answer": "Yıllık izin talepleri, iznin başlangıç tarihinden en az on beş gün önce İK portalı üzerinden yapılmalıdır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 466,
+      "gate": {
+        "best": 0.6372,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "masraf-politikasi.pdf#1 0.6372",
+          "masraf-politikasi.pdf#2 0.5915",
+          "izin-yonetmeligi.pdf#2 0.5299",
+          "izin-yonetmeligi.pdf#1 0.4686",
+          "uzaktan-calisma.pdf#2 0.4643"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#1"
+      ],
+      "answer": "İş seyahatinde günlük yemek limiti kişi başı 900 TL'dir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 213,
+      "gate": {
+        "best": 0.5753,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "masraf-politikasi.pdf#3 0.5753",
+          "masraf-politikasi.pdf#1 0.5633",
+          "depo-yonetim-kilavuzu.pdf#2 0.5328",
+          "bt-operasyon-runbook.pdf#3 0.4932",
+          "depo-yonetim-kilavuzu.pdf#2 0.4939"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "masraf-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 496,
+      "gate": {
+        "best": 0.6163,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "masraf-politikasi.pdf#2 0.6163",
+          "masraf-politikasi.pdf#1 0.5812",
+          "isg-depo-proseduru.pdf#5 0.4141",
+          "izin-yonetmeligi.pdf#2 0.4547",
+          "kvkk-aydinlatma.pdf#1 0.4022"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "Kişisel araçla yapılan iş yolculuklarında kilometre başına 9 TL yakıt ve yıpranma bedeli ödenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 501,
+      "gate": {
+        "best": 0.6016,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "masraf-politikasi.pdf#2 0.6016",
+          "masraf-politikasi.pdf#1 0.4721",
+          "masraf-politikasi.pdf#3 0.4312",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4147",
+          "bilgi-guvenligi.pdf#1 0.3867"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#2"
+      ],
+      "answer": "Ankara için yurt içinde gecelik otel limiti 4.000 TL'dir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "masraf-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 355,
+      "gate": {
+        "best": 0.6311,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "masraf-politikasi.pdf#3 0.6311",
+          "satin-alma-proseduru.pdf#2 0.5201",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5208",
+          "masraf-politikasi.pdf#1 0.5224",
+          "erp-satin-alma-kilavuzu.pdf#6 0.4245"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#3"
+      ],
+      "answer": "25.000 TL'yi aşan masraflar için Genel Müdür onayı gerekir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 403,
+      "gate": {
+        "best": 0.6137,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bilgi-guvenligi.pdf#1 0.6137",
+          "bt-operasyon-runbook.pdf#3 0.4589",
+          "bt-operasyon-runbook.pdf#1 0.4255",
+          "bt-operasyon-runbook.pdf#2 0.4142",
+          "erp-satin-alma-kilavuzu.pdf#1 0.4159"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#1"
+      ],
+      "answer": "Kurumsal hesap parolaları en az on iki karakter uzunluğunda olmalıdır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 305,
+      "gate": {
+        "best": 0.5555,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bilgi-guvenligi.pdf#1 0.5555",
+          "bt-operasyon-runbook.pdf#3 0.5187",
+          "bt-operasyon-runbook.pdf#4 0.4363",
+          "bt-operasyon-runbook.pdf#3 0.5237",
+          "bt-operasyon-runbook.pdf#2 0.4957"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#1"
+      ],
+      "answer": "Kurumsal hesap parolaları doksan günde bir değiştirilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 624,
+      "gate": {
+        "best": 0.6678,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "bilgi-guvenligi.pdf#2 0.6678",
+          "bt-operasyon-runbook.pdf#5 0.6263",
+          "bt-operasyon-runbook.pdf#5 0.5293",
+          "bt-operasyon-runbook.pdf#2 0.5024",
+          "musteri-destek-sureci.pdf#4 0.5271"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Şirkete ait dizüstü bilgisayar, telefon veya erişim kartı kaybolduğunda ya da çalındığında, çalışan durumu en geç iki saat içinde Bilgi Güvenliği ekibine bildirir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 363,
+      "gate": {
+        "best": 0.5681,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bilgi-guvenligi.pdf#2 0.5681",
+          "depo-yonetim-kilavuzu.pdf#4 0.5466",
+          "musteri-destek-sureci.pdf#5 0.5338",
+          "kvkk-aydinlatma.pdf#1 0.4803",
+          "bilgi-guvenligi.pdf#1 0.5012"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Şirket verileri dört sınıfa ayrılır: Kamuya Açık, İç Kullanım, Gizli ve Çok Gizli [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "guvenlik-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 299,
+      "gate": {
+        "best": 0.6072,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bilgi-guvenligi.pdf#3 0.6072",
+          "bt-operasyon-runbook.pdf#4 0.4228",
+          "izin-yonetmeligi.pdf#1 0.4123",
+          "isg-depo-proseduru.pdf#4 0.4142",
+          "bt-operasyon-runbook.pdf#4 0.4133"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#3"
+      ],
+      "answer": "Oltalama tatbikatı yılda iki kez yapılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "uzaktan-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 338,
+      "gate": {
+        "best": 0.6171,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "uzaktan-calisma.pdf#1 0.6171",
+          "izin-yonetmeligi.pdf#1 0.524",
+          "bt-operasyon-runbook.pdf#4 0.4801",
+          "bt-operasyon-runbook.pdf#2 0.4829",
+          "bt-operasyon-runbook.pdf#3 0.4602"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Haftada en fazla iki gün uzaktan çalışabilirsiniz [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "uzaktan-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 467,
+      "gate": {
+        "best": 0.5037,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "uzaktan-calisma.pdf#1 0.5037",
+          "musteri-destek-sureci.pdf#1 0.4768",
+          "musteri-destek-sureci.pdf#1 0.4064",
+          "bt-operasyon-runbook.pdf#4 0.4074",
+          "musteri-destek-sureci.pdf#3 0.3968"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#1"
+      ],
+      "answer": "Çekirdek çalışma saatleri 10.00 ile 16.00 arasında olmak zorundadır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "uzaktan-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 311,
+      "gate": {
+        "best": 0.6215,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "uzaktan-calisma.pdf#2 0.6215",
+          "musteri-destek-sureci.pdf#1 0.4547",
+          "satin-alma-proseduru.pdf#2 0.4778",
+          "musteri-destek-sureci.pdf#1 0.4398",
+          "musteri-destek-sureci.pdf#5 0.4553"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "uzaktan-calisma.pdf#2"
+      ],
+      "answer": "Ev interneti için aylık 500 TL destek ödenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "kvkk-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 306,
+      "gate": {
+        "best": 0.6755,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "kvkk-aydinlatma.pdf#2 0.6755",
+          "izin-yonetmeligi.pdf#2 0.4906",
+          "bt-operasyon-runbook.pdf#4 0.5187",
+          "musteri-destek-sureci.pdf#2 0.461",
+          "izin-yonetmeligi.pdf#1 0.4769"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "kvkk-aydinlatma.pdf#2"
+      ],
+      "answer": "Özlük dosyası, iş ilişkisinin sona ermesinden itibaren on yıl saklanır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "kvkk-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 224,
+      "gate": {
+        "best": 0.5688,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#2 0.4699",
+          "kvkk-aydinlatma.pdf#2 0.5688",
+          "musteri-destek-sureci.pdf#5 0.4696",
+          "bt-operasyon-runbook.pdf#6 0.4521",
+          "musteri-destek-sureci.pdf#4 0.4281"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "kvkk-aydinlatma.pdf#2"
+      ],
+      "answer": "Kamera kayıtları otuz gün sonra kendiliğinden silinir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "kvkk-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 355,
+      "gate": {
+        "best": 0.534,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "kvkk-aydinlatma.pdf#3 0.534",
+          "depo-yonetim-kilavuzu.pdf#6 0.4569",
+          "musteri-destek-sureci.pdf#4 0.5144",
+          "isg-depo-proseduru.pdf#5 0.4405",
+          "musteri-destek-sureci.pdf#1 0.4416"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "kvkk-aydinlatma.pdf#3"
+      ],
+      "answer": "Başvurular en geç otuz gün içinde ücretsiz olarak sonuçlandırılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "satin-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 669,
+      "gate": {
+        "best": 0.5857,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "satin-alma-proseduru.pdf#1 0.5857",
+          "satin-alma-proseduru.pdf#2 0.5765",
+          "masraf-politikasi.pdf#3 0.5368",
+          "masraf-politikasi.pdf#2 0.5292",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5095"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#1"
+      ],
+      "answer": "50.000 TL ve üzerindeki alımlarda en az üç tedarikçiden yazılı teklif alınır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "satin-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 428,
+      "gate": {
+        "best": 0.5493,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "satin-alma-proseduru.pdf#2 0.5493",
+          "erp-satin-alma-kilavuzu.pdf#3 0.4821",
+          "satin-alma-proseduru.pdf#1 0.447",
+          "bt-operasyon-runbook.pdf#1 0.3679",
+          "musteri-destek-sureci.pdf#3 0.3812"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "1.000.000 TL'yi aşan alımlar Yönetim Kurulu kararıyla yapılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "satin-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 432,
+      "gate": {
+        "best": 0.5044,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "satin-alma-proseduru.pdf#2 0.5044",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4864",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4749",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4642",
+          "erp-satin-alma-kilavuzu.pdf#4 0.4491"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "satin-alma-proseduru.pdf#2"
+      ],
+      "answer": "Yüz üzerinden altmışın altında kalan tedarikçiyle sözleşme yenilenmez [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 265,
+      "gate": {
+        "best": 0.5157,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bilgi-guvenligi.pdf#1 0.4375",
+          "musteri-destek-sureci.pdf#1 0.4363",
+          "bilgi-guvenligi.pdf#2 0.4142",
+          "kvkk-aydinlatma.pdf#1 0.4231",
+          "masraf-politikasi.pdf#1 0.5157"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 395,
+      "gate": {
+        "best": 0.5846,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#1 0.5816",
+          "bilgi-guvenligi.pdf#1 0.5846",
+          "erp-satin-alma-kilavuzu.pdf#1 0.5663",
+          "kvkk-aydinlatma.pdf#1 0.5748",
+          "izin-yonetmeligi.pdf#1 0.5526"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 54,
+      "gate": {
+        "best": 0.4374,
+        "share": 0.08,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "izin-yonetmeligi.pdf#1 0.4293",
+          "izin-yonetmeligi.pdf#2 0.4374",
+          "izin-yonetmeligi.pdf#3 0.4308",
+          "isg-depo-proseduru.pdf#5 0.4256",
+          "uzaktan-calisma.pdf#2 0.4179"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-4",
+      "answerable": false,
+      "status": 200,
+      "ms": 251,
+      "gate": {
+        "best": 0.5108,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#1 0.4389",
+          "bt-operasyon-runbook.pdf#1 0.4254",
+          "masraf-politikasi.pdf#2 0.5108",
+          "bilgi-guvenligi.pdf#1 0.4221",
+          "bt-operasyon-runbook.pdf#2 0.4211"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-5",
+      "answerable": false,
+      "status": 200,
+      "ms": 225,
+      "gate": {
+        "best": 0.5095,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "izin-yonetmeligi.pdf#1 0.4651",
+          "uzaktan-calisma.pdf#1 0.5095",
+          "izin-yonetmeligi.pdf#2 0.4952",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4811",
+          "erp-satin-alma-kilavuzu.pdf#3 0.4236"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-6",
+      "answerable": false,
+      "status": 200,
+      "ms": 106,
+      "gate": {
+        "best": 0.404,
+        "share": 1,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#1 0.2961",
+          "masraf-politikasi.pdf#2 0.404",
+          "erp-satin-alma-kilavuzu.pdf#1 0.2682",
+          "masraf-politikasi.pdf#1 0.3159",
+          "bt-operasyon-runbook.pdf#1 0.3127"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-7",
+      "answerable": false,
+      "status": 200,
+      "ms": 50,
+      "gate": {
+        "best": 0.4649,
+        "share": 1,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "uzaktan-calisma.pdf#2 0.4649",
+          "musteri-destek-sureci.pdf#1 0.4611",
+          "musteri-destek-sureci.pdf#2 0.4566",
+          "musteri-destek-sureci.pdf#1 0.4436",
+          "musteri-destek-sureci.pdf#4 0.4491"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "yok-8",
+      "answerable": false,
+      "status": 200,
+      "ms": 39,
+      "gate": {
+        "best": 0.458,
+        "share": 1,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.4163",
+          "bilgi-guvenligi.pdf#1 0.4307",
+          "bilgi-guvenligi.pdf#2 0.4287",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4015",
+          "masraf-politikasi.pdf#2 0.458"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "depo-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 508,
+      "gate": {
+        "best": 0.6241,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#3 0.6241",
+          "depo-yonetim-kilavuzu.pdf#3 0.5789",
+          "depo-yonetim-kilavuzu.pdf#4 0.513",
+          "depo-yonetim-kilavuzu.pdf#3 0.5235",
+          "depo-yonetim-kilavuzu.pdf#4 0.4906"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "Sevkiyat emri onaylandığında stok düşmez; stok, sevkiyat emri onaylandığında değil, toplama tamamlanıp koli kapatıldığında düşer [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 273,
+      "gate": {
+        "best": 0.5404,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#5 0.5404",
+          "depo-yonetim-kilavuzu.pdf#2 0.5279",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5047",
+          "depo-yonetim-kilavuzu.pdf#2 0.4933",
+          "depo-yonetim-kilavuzu.pdf#3 0.5233"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "depo-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 400,
+      "gate": {
+        "best": 0.6508,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#3 0.6508",
+          "depo-yonetim-kilavuzu.pdf#3 0.5771",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5372",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5551",
+          "depo-yonetim-kilavuzu.pdf#6 0.5248"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "İptal edilen sevkiyat emrindeki rezervasyon en geç 15 dakika içinde kendiliğinden kaldırılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 411,
+      "gate": {
+        "best": 0.6329,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#2 0.6329",
+          "depo-yonetim-kilavuzu.pdf#2 0.4681",
+          "bilgi-guvenligi.pdf#2 0.4535",
+          "musteri-destek-sureci.pdf#4 0.4849",
+          "izin-yonetmeligi.pdf#3 0.4761"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Tedarikçi, sevkiyattan en geç 24 saat önce ön bildirim (ASN) gönderir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 380,
+      "gate": {
+        "best": 0.6261,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#2 0.6261",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5592",
+          "depo-yonetim-kilavuzu.pdf#3 0.5533",
+          "depo-yonetim-kilavuzu.pdf#3 0.5319",
+          "musteri-destek-sureci.pdf#4 0.5314"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Sayılan miktar ile ASN miktarı arasındaki fark yüzde 2'yi aşarsa WMS kabulü \"kabul farkı\" durumunda bekletir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 499,
+      "gate": {
+        "best": 0.5728,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#2 0.5728",
+          "isg-depo-proseduru.pdf#3 0.5274",
+          "musteri-destek-sureci.pdf#4 0.5593",
+          "depo-yonetim-kilavuzu.pdf#2 0.5212",
+          "isg-depo-proseduru.pdf#3 0.5189"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Kabul alanındaki ürünler kabulden sonra en geç 4 saat içinde yerleştirilmelidir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-7",
+      "answerable": true,
+      "status": 200,
+      "ms": 252,
+      "gate": {
+        "best": 0.5816,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#2 0.5816",
+          "bt-operasyon-runbook.pdf#1 0.4674",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5007",
+          "musteri-destek-sureci.pdf#4 0.5594",
+          "depo-yonetim-kilavuzu.pdf#2 0.4621"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#2"
+      ],
+      "answer": "Kalite birimi karantinadaki ürünü en geç 3 iş günü içinde inceler [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-8",
+      "answerable": true,
+      "status": 200,
+      "ms": 351,
+      "gate": {
+        "best": 0.5224,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#4 0.5224",
+          "depo-yonetim-kilavuzu.pdf#3 0.5177",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5155",
+          "depo-yonetim-kilavuzu.pdf#2 0.496",
+          "depo-yonetim-kilavuzu.pdf#2 0.5028"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Evet, kabul alanında bekleyen ürün eldeki stoğa dahildir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-9",
+      "answerable": true,
+      "status": 200,
+      "ms": 230,
+      "gate": {
+        "best": 0.5572,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#4 0.5572",
+          "depo-yonetim-kilavuzu.pdf#3 0.524",
+          "depo-yonetim-kilavuzu.pdf#3 0.4396",
+          "depo-yonetim-kilavuzu.pdf#5 0.4562",
+          "depo-yonetim-kilavuzu.pdf#4 0.4494"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "Bloke edilmiş bir stok satırının blokesini yalnız stok kontrol uzmanı kaldırabilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-10",
+      "answerable": true,
+      "status": 200,
+      "ms": 373,
+      "gate": {
+        "best": 0.5534,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#4 0.5534",
+          "bt-operasyon-runbook.pdf#1 0.4511",
+          "depo-yonetim-kilavuzu.pdf#4 0.4279",
+          "depo-yonetim-kilavuzu.pdf#1 0.4316",
+          "depo-yonetim-kilavuzu.pdf#2 0.4063"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#4"
+      ],
+      "answer": "B sınıfı ürünler üç ayda bir sayılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-11",
+      "answerable": true,
+      "status": 200,
+      "ms": 332,
+      "gate": {
+        "best": 0.5356,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#4 0.5313",
+          "satin-alma-proseduru.pdf#2 0.4962",
+          "masraf-politikasi.pdf#3 0.5356",
+          "erp-satin-alma-kilavuzu.pdf#3 0.4914",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4153"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "masraf-politikasi.pdf#3"
+      ],
+      "answer": "5.000 TL'ye kadar olan masrafları doğrudan yönetici onaylar [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "depo-12",
+      "answerable": true,
+      "status": 200,
+      "ms": 660,
+      "gate": {
+        "best": 0.6602,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#5 0.6602",
+          "depo-yonetim-kilavuzu.pdf#5 0.6098",
+          "depo-yonetim-kilavuzu.pdf#1 0.5236",
+          "depo-yonetim-kilavuzu.pdf#3 0.5129",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5042"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "WMS-204 hatası \"Yetersiz kullanılabilir stok\" anlamına gelir [1]. Bu durumda ürün rezerve edilebilir veya bloke edilebilir; stok durumunu sorgulayın ve vardiya sorumlusuna bildirin [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-13",
+      "answerable": true,
+      "status": 200,
+      "ms": 350,
+      "gate": {
+        "best": 0.5416,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#3 0.5078",
+          "depo-yonetim-kilavuzu.pdf#3 0.5383",
+          "bt-operasyon-runbook.pdf#4 0.4713",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4897",
+          "isg-depo-proseduru.pdf#4 0.5416"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "depo-14",
+      "answerable": true,
+      "status": 200,
+      "ms": 361,
+      "gate": {
+        "best": 0.6086,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#3 0.6086",
+          "depo-yonetim-kilavuzu.pdf#3 0.5427",
+          "musteri-destek-sureci.pdf#2 0.4997",
+          "depo-yonetim-kilavuzu.pdf#6 0.4768",
+          "bt-operasyon-runbook.pdf#4 0.46"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#3"
+      ],
+      "answer": "Kargo firmalarına aynı gün teslim için koliler en geç saat 16.30'da kapatılmalıdır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-15",
+      "answerable": true,
+      "status": 200,
+      "ms": 403,
+      "gate": {
+        "best": 0.6014,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#5 0.6014",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5582",
+          "depo-yonetim-kilavuzu.pdf#5 0.5169",
+          "bt-operasyon-runbook.pdf#4 0.5483",
+          "musteri-destek-sureci.pdf#5 0.5148"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "Terminal kayıtları 60 dakikaya kadar yerelde tutar ve bağlantı gelince gönderir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-16",
+      "answerable": true,
+      "status": 200,
+      "ms": 298,
+      "gate": {
+        "best": 0.5698,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#6 0.5676",
+          "isg-depo-proseduru.pdf#5 0.5698",
+          "bt-operasyon-runbook.pdf#4 0.534",
+          "depo-yonetim-kilavuzu.pdf#4 0.5159",
+          "isg-depo-proseduru.pdf#1 0.4819"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "depo-17",
+      "answerable": true,
+      "status": 200,
+      "ms": 36,
+      "gate": {
+        "best": 0.4625,
+        "share": 0.0667,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "musteri-destek-sureci.pdf#2 0.4312",
+          "depo-yonetim-kilavuzu.pdf#1 0.3996",
+          "erp-satin-alma-kilavuzu.pdf#1 0.4307",
+          "depo-yonetim-kilavuzu.pdf#1 0.4625",
+          "depo-yonetim-kilavuzu.pdf#5 0.4177"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "depo-18",
+      "answerable": true,
+      "status": 200,
+      "ms": 341,
+      "gate": {
+        "best": 0.4592,
+        "share": 0.0267,
+        "decision": "SPECIFIC_TERM",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#1 0.4592",
+          "depo-yonetim-kilavuzu.pdf#1 0.3056",
+          "depo-yonetim-kilavuzu.pdf#3 0.2897",
+          "isg-depo-proseduru.pdf#5 0.3267",
+          "masraf-politikasi.pdf#1 0.3072"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "FEFO, son kullanma tarihi en yakın olan ürünün önce sevk edilmesi kuralıdır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-19",
+      "answerable": true,
+      "status": 200,
+      "ms": 319,
+      "gate": {
+        "best": 0.6025,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#5 0.6025",
+          "depo-yonetim-kilavuzu.pdf#5 0.5874",
+          "depo-yonetim-kilavuzu.pdf#6 0.574",
+          "depo-yonetim-kilavuzu.pdf#1 0.5414",
+          "isg-depo-proseduru.pdf#4 0.5356"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#5"
+      ],
+      "answer": "Bütün depoda yeni toplama başlatılamıyorsa P1 öncelikle bildirilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "depo-20",
+      "answerable": true,
+      "status": 200,
+      "ms": 291,
+      "gate": {
+        "best": 0.6343,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#1 0.6343",
+          "depo-yonetim-kilavuzu.pdf#5 0.5806",
+          "depo-yonetim-kilavuzu.pdf#5 0.5285",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5138",
+          "bt-operasyon-runbook.pdf#3 0.5044"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "El terminali 10 dakika işlem yapılmazsa oturumu kilitler [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 372,
+      "gate": {
+        "best": 0.6119,
+        "share": 0.08,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#2 0.6119",
+          "erp-satin-alma-kilavuzu.pdf#1 0.5087",
+          "erp-satin-alma-kilavuzu.pdf#1 0.4641",
+          "satin-alma-proseduru.pdf#1 0.5017",
+          "erp-satin-alma-kilavuzu.pdf#5 0.496"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Satın alma talebinde durum kodu 20, \"Onay bekliyor\" anlamına gelir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 508,
+      "gate": {
+        "best": 0.6067,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#2 0.5787",
+          "erp-satin-alma-kilavuzu.pdf#2 0.6067",
+          "satin-alma-proseduru.pdf#2 0.5457",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5207",
+          "satin-alma-proseduru.pdf#1 0.5087"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Durum 60'taki bir sipariş iptal edilemez, yalnız kapatılabilir (85). Kapatma için gerekçe yazılır ve Satın Alma Müdürü onayı gerekir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 235,
+      "gate": {
+        "best": 0.5557,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#2 0.5557",
+          "izin-yonetmeligi.pdf#3 0.5387",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5265",
+          "musteri-destek-sureci.pdf#4 0.5555",
+          "musteri-destek-sureci.pdf#3 0.5116"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "erp-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 369,
+      "gate": {
+        "best": 0.6051,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.6051",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5072",
+          "izin-yonetmeligi.pdf#1 0.5714",
+          "depo-yonetim-kilavuzu.pdf#6 0.4955",
+          "bt-operasyon-runbook.pdf#2 0.4954"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Vekalet en fazla 30 gün geçerlidir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 315,
+      "gate": {
+        "best": 0.5671,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.5671",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5632",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4743",
+          "erp-satin-alma-kilavuzu.pdf#3 0.4754",
+          "musteri-destek-sureci.pdf#4 0.4832"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Kullanım yüzde 100'ü aşacaksa talep gönderimi engellenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 683,
+      "gate": {
+        "best": 0.5921,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#5 0.5921",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5711",
+          "erp-satin-alma-kilavuzu.pdf#6 0.4483",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4459",
+          "erp-satin-alma-kilavuzu.pdf#4 0.455"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "SAT-E027 hatası, maliyet merkezinin yıllık bütçesinin yüzde 100'ünü aşması durumunda ortaya çıkar. Ek bütçe onayı gelmeden talep gönderilemez [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-7",
+      "answerable": true,
+      "status": 200,
+      "ms": 326,
+      "gate": {
+        "best": 0.6404,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#5 0.6404",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5233",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5101",
+          "bt-operasyon-runbook.pdf#2 0.5499",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5135"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#5"
+      ],
+      "answer": "Kurlar her iş günü 15.45'te yüklenir; bu saatten sonra yeniden deneyin [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-8",
+      "answerable": true,
+      "status": 200,
+      "ms": 473,
+      "gate": {
+        "best": 0.7157,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 5,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#4 0.7157",
+          "erp-satin-alma-kilavuzu.pdf#3 0.6333",
+          "erp-satin-alma-kilavuzu.pdf#2 0.6215",
+          "erp-satin-alma-kilavuzu.pdf#5 0.6385",
+          "erp-satin-alma-kilavuzu.pdf#2 0.6124"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Sipariş miktarının yüzde 5'ine kadar fazla teslimat kabul edilebilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-9",
+      "answerable": true,
+      "status": 200,
+      "ms": 679,
+      "gate": {
+        "best": 0.6307,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 3,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#2 0.6149",
+          "musteri-destek-sureci.pdf#4 0.6151",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5924",
+          "erp-satin-alma-kilavuzu.pdf#5 0.6307",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5764"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Sipariş tutarı onaylı talep tutarını aştığı için yeniden onayda (durum 55) olur [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "erp-10",
+      "answerable": true,
+      "status": 200,
+      "ms": 1128,
+      "gate": {
+        "best": 0.7119,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 3,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.7119",
+          "erp-satin-alma-kilavuzu.pdf#6 0.646",
+          "erp-satin-alma-kilavuzu.pdf#3 0.6551",
+          "erp-satin-alma-kilavuzu.pdf#1 0.5583",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5683"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "1.000.000 TL üzeri tutarlar için Yönetim Kurulu kararı gereklidir [1].\n\nAncak, tutar 1.000.000 TL'nin altında olduğu için, 100.000 TL ile 1.000.000 TL arası aralığındaki onay basamakları uygulanır: Bölüm yöneticisi, Satın Alma Müdürü, Finans Direktörü [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-11",
+      "answerable": true,
+      "status": 200,
+      "ms": 526,
+      "gate": {
+        "best": 0.5367,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.5367",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5032",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4857",
+          "erp-satin-alma-kilavuzu.pdf#6 0.5037",
+          "izin-yonetmeligi.pdf#3 0.5248"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Bilgi teknolojisi donanımı ve yazılım lisansı taleplerinde, tutardan bağımsız olarak BT Mimari ekibinin teknik onayı ilk basamak olarak eklenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-12",
+      "answerable": true,
+      "status": 200,
+      "ms": 356,
+      "gate": {
+        "best": 0.4486,
+        "share": 0.0267,
+        "decision": "SPECIFIC_TERM",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#4 0.4486",
+          "erp-satin-alma-kilavuzu.pdf#4 0.4296",
+          "erp-satin-alma-kilavuzu.pdf#1 0.4102",
+          "isg-depo-proseduru.pdf#2 0.3799",
+          "erp-satin-alma-kilavuzu.pdf#1 0.416"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "Mal kabul WMS'te tamamlandığında ERP'de mal kabul belgesi (MK) otomatik oluşur [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-13",
+      "answerable": true,
+      "status": 200,
+      "ms": 525,
+      "gate": {
+        "best": 0.574,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#6 0.574",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5544",
+          "erp-satin-alma-kilavuzu.pdf#1 0.524",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5367",
+          "erp-satin-alma-kilavuzu.pdf#1 0.4743"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Bir kullanıcı aynı anda SAT-UZMAN ve SAT-ONAY rolüne sahip olamaz (görevler ayrılığı) [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-14",
+      "answerable": true,
+      "status": 200,
+      "ms": 381,
+      "gate": {
+        "best": 0.6319,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#6 0.6319",
+          "depo-yonetim-kilavuzu.pdf#6 0.5721",
+          "erp-satin-alma-kilavuzu.pdf#6 0.5349",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5539",
+          "musteri-destek-sureci.pdf#4 0.622"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "erp-15",
+      "answerable": true,
+      "status": 200,
+      "ms": 374,
+      "gate": {
+        "best": 0.6034,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#2 0.6034",
+          "erp-satin-alma-kilavuzu.pdf#1 0.5417",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5751",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5376",
+          "satin-alma-proseduru.pdf#1 0.5371"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#2"
+      ],
+      "answer": "Taslak durumunda 30 gün bekleyen talepler kendiliğinden iptal edilir (durum 95) [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-16",
+      "answerable": true,
+      "status": 200,
+      "ms": 407,
+      "gate": {
+        "best": 0.5207,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#6 0.5207",
+          "erp-satin-alma-kilavuzu.pdf#4 0.4476",
+          "depo-yonetim-kilavuzu.pdf#2 0.4764",
+          "musteri-destek-sureci.pdf#2 0.4585",
+          "depo-yonetim-kilavuzu.pdf#4 0.4755"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#6"
+      ],
+      "answer": "Ayın son iş günü saat 18.00'den sonra girilen mal kabul o aya kaydedilmez, bir sonraki aya geçer [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "erp-17",
+      "answerable": true,
+      "status": 200,
+      "ms": 421,
+      "gate": {
+        "best": 0.6012,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.6012",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5717",
+          "erp-satin-alma-kilavuzu.pdf#2 0.52",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5279",
+          "depo-yonetim-kilavuzu.pdf#3 0.5691"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Müşteri, kayıt \"Çözüldü\" durumundayken çözümü kabul etmediğini bildirirse kayıt \"Yeniden açıldı\" durumuna geçer ve aynı uzmana atanır [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "erp-18",
+      "answerable": true,
+      "status": 200,
+      "ms": 794,
+      "gate": {
+        "best": 0.6611,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 3,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#4 0.6179",
+          "depo-yonetim-kilavuzu.pdf#5 0.5965",
+          "erp-satin-alma-kilavuzu.pdf#4 0.6611",
+          "depo-yonetim-kilavuzu.pdf#5 0.6307",
+          "depo-yonetim-kilavuzu.pdf#3 0.5914"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#4"
+      ],
+      "answer": "WMS, tekrar eden mesajı mesaj numarasından tanıyıp reddeder, bu nedenle aynı mesaj elle iki kez gönderilmez [2].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 526,
+      "gate": {
+        "best": 0.6678,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "bt-operasyon-runbook.pdf#2 0.6678",
+          "bt-operasyon-runbook.pdf#1 0.6244",
+          "musteri-destek-sureci.pdf#3 0.532",
+          "bt-operasyon-runbook.pdf#1 0.5254",
+          "bt-operasyon-runbook.pdf#4 0.5206"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "P1 olayında nöbetçi mühendis 15 dakika içinde olayı üstlenir ve olay köprüsünü (telefon konferansı) açar [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": true
+    },
+    {
+      "id": "bt-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 355,
+      "gate": {
+        "best": 0.5127,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#4 0.5127",
+          "bt-operasyon-runbook.pdf#1 0.4637",
+          "depo-yonetim-kilavuzu.pdf#5 0.4469",
+          "bt-operasyon-runbook.pdf#4 0.4834",
+          "bt-operasyon-runbook.pdf#1 0.4315"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "bt-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 315,
+      "gate": {
+        "best": 0.6394,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#5 0.6394",
+          "bt-operasyon-runbook.pdf#4 0.5649",
+          "bt-operasyon-runbook.pdf#6 0.5826",
+          "bt-operasyon-runbook.pdf#3 0.5639",
+          "musteri-destek-sureci.pdf#2 0.5142"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#5"
+      ],
+      "answer": "Yazıcı sorunları için kayıt P3 açılır [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "bt-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 693,
+      "gate": {
+        "best": 0.5928,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#2 0.5928",
+          "bt-operasyon-runbook.pdf#1 0.5688",
+          "bt-operasyon-runbook.pdf#1 0.5141",
+          "musteri-destek-sureci.pdf#3 0.4658",
+          "bt-operasyon-runbook.pdf#3 0.4729"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "30 dakika içinde geçici çözüm bulunamazsa BT Operasyon Müdürü köprüye çağrılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 224,
+      "gate": {
+        "best": 0.4881,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#6 0.4881",
+          "depo-yonetim-kilavuzu.pdf#6 0.4746",
+          "bt-operasyon-runbook.pdf#4 0.46",
+          "bt-operasyon-runbook.pdf#1 0.4609",
+          "bt-operasyon-runbook.pdf#6 0.4759"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "bt-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 286,
+      "gate": {
+        "best": 0.6051,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#2 0.6051",
+          "bilgi-guvenligi.pdf#1 0.475",
+          "bt-operasyon-runbook.pdf#2 0.5216",
+          "bilgi-guvenligi.pdf#2 0.4225",
+          "musteri-destek-sureci.pdf#1 0.3974"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Bir kullanıcı aynı anda en fazla iki cihazdan bağlanabilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-7",
+      "answerable": true,
+      "status": 200,
+      "ms": 416,
+      "gate": {
+        "best": 0.5775,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#2 0.5775",
+          "bt-operasyon-runbook.pdf#2 0.4808",
+          "bilgi-guvenligi.pdf#1 0.4404",
+          "depo-yonetim-kilavuzu.pdf#5 0.4447",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4301"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Kullanıcının bulunduğu ağ VPN trafiğini engelliyor. Kullanıcıdan telefonunun mobil veri paylaşımıyla denemesi istenir; sorun sürerse kayıt P3 açılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-8",
+      "answerable": true,
+      "status": 200,
+      "ms": 784,
+      "gate": {
+        "best": 0.6027,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bilgi-guvenligi.pdf#2 0.5514",
+          "bt-operasyon-runbook.pdf#2 0.6027",
+          "bilgi-guvenligi.pdf#1 0.5381",
+          "uzaktan-calisma.pdf#2 0.4989",
+          "bt-operasyon-runbook.pdf#5 0.5444"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "\"Sertifika süresi doldu\" hatası için cihaz sertifikası 1 yıl geçerlidir ve süresi dolmadan 14 gün önce kullanıcıya uyarı gelir [1]. Süresi dolan sertifika, cihaz ofiste kablolu ağa bağlanınca kendiliğinden yenilenir; uzaktaki kullanıcı için Service Desk geçici erişim kodu üretir, kod 24 saat geçerlidir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-9",
+      "answerable": true,
+      "status": 200,
+      "ms": 420,
+      "gate": {
+        "best": 0.6348,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#3 0.6348",
+          "bt-operasyon-runbook.pdf#3 0.549",
+          "bilgi-guvenligi.pdf#1 0.5153",
+          "erp-satin-alma-kilavuzu.pdf#4 0.4968",
+          "isg-depo-proseduru.pdf#2 0.4663"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Art arda 5 hatalı parola denemesinde hesap 30 dakika kilitlenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-10",
+      "answerable": true,
+      "status": 200,
+      "ms": 361,
+      "gate": {
+        "best": 0.5898,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#3 0.5898",
+          "bt-operasyon-runbook.pdf#3 0.5723",
+          "bt-operasyon-runbook.pdf#2 0.5507",
+          "bt-operasyon-runbook.pdf#2 0.4971",
+          "depo-yonetim-kilavuzu.pdf#4 0.4718"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Kilit süresi dolunca kendiliğinden açılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false
+    },
+    {
+      "id": "bt-11",
+      "answerable": true,
+      "status": 200,
+      "ms": 696,
+      "gate": {
+        "best": 0.5836,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#3 0.5836",
+          "bt-operasyon-runbook.pdf#3 0.5559",
+          "depo-yonetim-kilavuzu.pdf#5 0.4983",
+          "depo-yonetim-kilavuzu.pdf#5 0.4579",
+          "bt-operasyon-runbook.pdf#2 0.4754"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Self servisi kullanamayan kullanıcılar Service Desk'i arayabilir. Analist kimliği doğrulamak için personel sicil numarasını sorar ve kullanıcının yöneticisini sistemdeki numarasından geri arar; yöneticiye ulaşılamazsa sıfırlama yapılmaz. Parola telefonda söylenmez [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-12",
+      "answerable": true,
+      "status": 200,
+      "ms": 399,
+      "gate": {
+        "best": 0.6471,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "bt-operasyon-runbook.pdf#3 0.6471",
+          "bt-operasyon-runbook.pdf#3 0.5641",
+          "bt-operasyon-runbook.pdf#2 0.6308",
+          "bt-operasyon-runbook.pdf#2 0.5383",
+          "bilgi-guvenligi.pdf#1 0.5776"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3",
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Geçici parola 24 saat geçerlidir [1][2].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-13",
+      "answerable": true,
+      "status": 200,
+      "ms": 517,
+      "gate": {
+        "best": 0.5971,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#4 0.5971",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5375",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5387",
+          "erp-satin-alma-kilavuzu.pdf#3 0.506",
+          "depo-yonetim-kilavuzu.pdf#5 0.4908"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4"
+      ],
+      "answer": "ERP veritabanı yedekleri 90 gün saklanmaktadır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-14",
+      "answerable": true,
+      "status": 200,
+      "ms": 321,
+      "gate": {
+        "best": 0.5869,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#4 0.5869",
+          "bilgi-guvenligi.pdf#2 0.5102",
+          "uzaktan-calisma.pdf#2 0.4673",
+          "kvkk-aydinlatma.pdf#2 0.4965",
+          "bt-operasyon-runbook.pdf#5 0.4923"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#4"
+      ],
+      "answer": "Kullanıcı dizüstü bilgisayarları yedeklenmez; dosyalar kurumsal bulut klasörüyle eşitlenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-15",
+      "answerable": true,
+      "status": 200,
+      "ms": 459,
+      "gate": {
+        "best": 0.5486,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#6 0.5057",
+          "bt-operasyon-runbook.pdf#4 0.5486",
+          "isg-depo-proseduru.pdf#5 0.4765",
+          "bt-operasyon-runbook.pdf#6 0.5076",
+          "bt-operasyon-runbook.pdf#3 0.4278"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Planlı bakım her ayın ikinci cumartesi günü 22.00 ile 02.00 arasında yapılır.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": true
+    },
+    {
+      "id": "bt-16",
+      "answerable": true,
+      "status": 200,
+      "ms": 62,
+      "gate": {
+        "best": 0.4358,
+        "share": 0.0133,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "bt-operasyon-runbook.pdf#4 0.4358",
+          "bt-operasyon-runbook.pdf#1 0.3659",
+          "depo-yonetim-kilavuzu.pdf#6 0.3167",
+          "bt-operasyon-runbook.pdf#5 0.3584",
+          "bt-operasyon-runbook.pdf#4 0.3286"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "bt-17",
+      "answerable": true,
+      "status": 200,
+      "ms": 529,
+      "gate": {
+        "best": 0.5773,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#3 0.5773",
+          "depo-yonetim-kilavuzu.pdf#6 0.5394",
+          "izin-yonetmeligi.pdf#3 0.5765",
+          "izin-yonetmeligi.pdf#2 0.5349",
+          "musteri-destek-sureci.pdf#4 0.5406"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#3"
+      ],
+      "answer": "Yeni çalışanın hesabı için talep, işe başlama tarihinden en az 3 iş günü önce gelmelidir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-18",
+      "answerable": true,
+      "status": 200,
+      "ms": 337,
+      "gate": {
+        "best": 0.6295,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#5 0.6295",
+          "bt-operasyon-runbook.pdf#2 0.5462",
+          "bilgi-guvenligi.pdf#2 0.56",
+          "bt-operasyon-runbook.pdf#2 0.4753",
+          "bt-operasyon-runbook.pdf#3 0.5451"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#5"
+      ],
+      "answer": "Cihaz 7 gün içinde bulunamazsa uzaktan silme komutu gönderilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-19",
+      "answerable": true,
+      "status": 200,
+      "ms": 626,
+      "gate": {
+        "best": 0.6786,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#6 0.6786",
+          "bt-operasyon-runbook.pdf#2 0.5783",
+          "bt-operasyon-runbook.pdf#4 0.5193",
+          "bt-operasyon-runbook.pdf#3 0.5285",
+          "bt-operasyon-runbook.pdf#2 0.5495"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#6"
+      ],
+      "answer": "Nöbetçi mühendis telefonu 5 dakika içinde açılmazsa çağrı yedek nöbetçiye geçer [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "bt-20",
+      "answerable": true,
+      "status": 200,
+      "ms": 305,
+      "gate": {
+        "best": 0.5916,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.5667",
+          "bt-operasyon-runbook.pdf#2 0.5916",
+          "bt-operasyon-runbook.pdf#6 0.5232",
+          "bt-operasyon-runbook.pdf#2 0.5171",
+          "musteri-destek-sureci.pdf#2 0.5041"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "bt-21",
+      "answerable": true,
+      "status": 200,
+      "ms": 303,
+      "gate": {
+        "best": 0.6,
+        "share": 0.0933,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#1 0.5689",
+          "bt-operasyon-runbook.pdf#1 0.5552",
+          "musteri-destek-sureci.pdf#3 0.6",
+          "bt-operasyon-runbook.pdf#2 0.5286",
+          "bt-operasyon-runbook.pdf#3 0.5589"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "crm-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 1017,
+      "gate": {
+        "best": 0.7117,
+        "share": 0.08,
+        "decision": "SIMILARITY",
+        "prompt": 3,
+        "top": [
+          "musteri-destek-sureci.pdf#2 0.7117",
+          "musteri-destek-sureci.pdf#3 0.6817",
+          "musteri-destek-sureci.pdf#3 0.6401",
+          "musteri-destek-sureci.pdf#1 0.5775",
+          "musteri-destek-sureci.pdf#1 0.5876"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Evet, \"Müşteri bekleniyor\" durumundaki kayıtta müşteriye 3. ve 6. günlerde hatırlatma gönderilir. Müşteri 7 gün içinde yanıt vermezse kayıt \"Çözüldü\" durumuna alınır ve kapanış nedeni \"müşteriden yanıt gelmedi\" olarak işaretlenir [1]. Bir kaydı \"Üçüncü taraf bekleniyor\" durumuna almak SLA'yı durdurmaz [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false
+    },
+    {
+      "id": "crm-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 820,
+      "gate": {
+        "best": 0.6777,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 5,
+        "top": [
+          "musteri-destek-sureci.pdf#2 0.6373",
+          "musteri-destek-sureci.pdf#4 0.6485",
+          "musteri-destek-sureci.pdf#2 0.6777",
+          "musteri-destek-sureci.pdf#1 0.6099",
+          "musteri-destek-sureci.pdf#4 0.6649"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Müşteri \"Müşteri bekleniyor\" durumundaki kayıtta müşteriye 3. ve 6. günlerde hatırlatma gönderilir. Müşteri 7 gün içinde yanıt vermezse kayıt \"Çözüldü\" durumuna alınır ve kapanış nedeni \"müşteriden yanıt gelmedi\" olarak işaretlenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 416,
+      "gate": {
+        "best": 0.615,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "musteri-destek-sureci.pdf#3 0.615",
+          "bt-operasyon-runbook.pdf#1 0.6047",
+          "musteri-destek-sureci.pdf#4 0.5619",
+          "bt-operasyon-runbook.pdf#2 0.5799",
+          "musteri-destek-sureci.pdf#5 0.5508"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Müşteri şikâyetlerinde P1 kaydın çözüm hedefi 8 saattir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 473,
+      "gate": {
+        "best": 0.6039,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#3 0.6039",
+          "bt-operasyon-runbook.pdf#1 0.5386",
+          "musteri-destek-sureci.pdf#1 0.494",
+          "musteri-destek-sureci.pdf#4 0.5178",
+          "musteri-destek-sureci.pdf#2 0.5215"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Altın sözleşmeli müşterilerin P1 kayıtlarında ilk yanıt süresi 30 dakika olmalıdır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 289,
+      "gate": {
+        "best": 0.6108,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#5 0.6108",
+          "musteri-destek-sureci.pdf#3 0.5966",
+          "musteri-destek-sureci.pdf#4 0.5586",
+          "musteri-destek-sureci.pdf#2 0.5547",
+          "musteri-destek-sureci.pdf#5 0.5606"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "crm-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 528,
+      "gate": {
+        "best": 0.5676,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.5676",
+          "musteri-destek-sureci.pdf#3 0.5504",
+          "musteri-destek-sureci.pdf#2 0.5525",
+          "musteri-destek-sureci.pdf#5 0.5436",
+          "musteri-destek-sureci.pdf#1 0.5085"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Müşteri, kayıt \"Çözüldü\" durumundayken çözümü kabul etmediğini bildirirse kayıt \"Yeniden açıldı\" durumuna geçer ve aynı uzmana atanır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-7",
+      "answerable": true,
+      "status": 200,
+      "ms": 376,
+      "gate": {
+        "best": 0.634,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.634",
+          "musteri-destek-sureci.pdf#3 0.5358",
+          "musteri-destek-sureci.pdf#2 0.533",
+          "musteri-destek-sureci.pdf#5 0.5038",
+          "musteri-destek-sureci.pdf#1 0.4834"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Yeniden açılan bir P2 kaydın çözülmesi için 1 iş günü vardır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-8",
+      "answerable": true,
+      "status": 200,
+      "ms": 396,
+      "gate": {
+        "best": 0.638,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.638",
+          "musteri-destek-sureci.pdf#2 0.5643",
+          "musteri-destek-sureci.pdf#1 0.5302",
+          "bt-operasyon-runbook.pdf#4 0.5228",
+          "musteri-destek-sureci.pdf#1 0.5167"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Bir kayıt en fazla iki kez yeniden açılabilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-9",
+      "answerable": true,
+      "status": 200,
+      "ms": 423,
+      "gate": {
+        "best": 0.6938,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.5799",
+          "musteri-destek-sureci.pdf#4 0.6938",
+          "erp-satin-alma-kilavuzu.pdf#4 0.575",
+          "depo-yonetim-kilavuzu.pdf#6 0.5119",
+          "musteri-destek-sureci.pdf#1 0.5149"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Hasarlı teslimat bildirimlerinde müşteriden teslimattan sonraki 48 saat içinde fotoğraf istenir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": false
+    },
+    {
+      "id": "crm-10",
+      "answerable": true,
+      "status": 200,
+      "ms": 383,
+      "gate": {
+        "best": 0.5355,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#5 0.5355",
+          "musteri-destek-sureci.pdf#3 0.467",
+          "musteri-destek-sureci.pdf#1 0.4474",
+          "musteri-destek-sureci.pdf#4 0.4422",
+          "musteri-destek-sureci.pdf#2 0.4347"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#5"
+      ],
+      "answer": "3 ve altı puan veren müşteriyi takım lideri 2 iş günü içinde arar [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-11",
+      "answerable": true,
+      "status": 200,
+      "ms": 307,
+      "gate": {
+        "best": 0.6055,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#5 0.6055",
+          "musteri-destek-sureci.pdf#2 0.5906",
+          "musteri-destek-sureci.pdf#4 0.5645",
+          "musteri-destek-sureci.pdf#1 0.578",
+          "musteri-destek-sureci.pdf#3 0.5196"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Kapatılan kayıtlar 3 yıl saklanır, sonra anonimleştirilir.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": true
+    },
+    {
+      "id": "crm-12",
+      "answerable": true,
+      "status": 200,
+      "ms": 523,
+      "gate": {
+        "best": 0.6584,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 2,
+        "top": [
+          "musteri-destek-sureci.pdf#2 0.6584",
+          "musteri-destek-sureci.pdf#1 0.5449",
+          "musteri-destek-sureci.pdf#3 0.5328",
+          "musteri-destek-sureci.pdf#2 0.6361",
+          "musteri-destek-sureci.pdf#5 0.5306"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#2"
+      ],
+      "answer": "Evet, bir kaydı \"Üçüncü taraf bekleniyor\" durumuna almak SLA'yı durdurmaz [2].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "crm-13",
+      "answerable": true,
+      "status": 200,
+      "ms": 363,
+      "gate": {
+        "best": 0.4954,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#6 0.466",
+          "musteri-destek-sureci.pdf#1 0.4729",
+          "bt-operasyon-runbook.pdf#3 0.4834",
+          "bt-operasyon-runbook.pdf#6 0.4954",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4589"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#6"
+      ],
+      "answer": "Nöbetçi mühendis hafta sonu bütün gün nöbettedir [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "crm-14",
+      "answerable": true,
+      "status": 200,
+      "ms": 330,
+      "gate": {
+        "best": 0.6846,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.6846",
+          "musteri-destek-sureci.pdf#4 0.5571",
+          "bt-operasyon-runbook.pdf#4 0.5191",
+          "isg-depo-proseduru.pdf#5 0.5198",
+          "isg-depo-proseduru.pdf#5 0.5299"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#4"
+      ],
+      "answer": "Ödeme iadesi kalite onayından sonra en geç 10 iş günü içinde yapılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-1",
+      "answerable": true,
+      "status": 200,
+      "ms": 452,
+      "gate": {
+        "best": 0.605,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#2 0.605",
+          "isg-depo-proseduru.pdf#3 0.4793",
+          "isg-depo-proseduru.pdf#3 0.5586",
+          "isg-depo-proseduru.pdf#1 0.4071",
+          "isg-depo-proseduru.pdf#4 0.4461"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#2"
+      ],
+      "answer": "Raf koridorlarında forklift en fazla 6 km/sa hızla gidebilir [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-2",
+      "answerable": true,
+      "status": 200,
+      "ms": 623,
+      "gate": {
+        "best": 0.6495,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#3 0.6495",
+          "isg-depo-proseduru.pdf#4 0.5616",
+          "isg-depo-proseduru.pdf#3 0.5448",
+          "isg-depo-proseduru.pdf#2 0.4622",
+          "depo-yonetim-kilavuzu.pdf#2 0.4426"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#3"
+      ],
+      "answer": "Ağır palet rafı (C bölgesi) için göz başına azami yük 1.500 kg'dır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-3",
+      "answerable": true,
+      "status": 200,
+      "ms": 435,
+      "gate": {
+        "best": 0.6061,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#3 0.6061",
+          "isg-depo-proseduru.pdf#3 0.4965",
+          "isg-depo-proseduru.pdf#1 0.451",
+          "depo-yonetim-kilavuzu.pdf#4 0.4486",
+          "depo-yonetim-kilavuzu.pdf#2 0.4508"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#3"
+      ],
+      "answer": "Dikmesi 10 mm'den fazla eğilmiş raf kırmızı sınıftadır ve derhal boşaltılır ve kullanım dışı bırakılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-4",
+      "answerable": true,
+      "status": 200,
+      "ms": 276,
+      "gate": {
+        "best": 0.5609,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#3 0.5609",
+          "isg-depo-proseduru.pdf#3 0.5118",
+          "depo-yonetim-kilavuzu.pdf#4 0.4653",
+          "bilgi-guvenligi.pdf#2 0.4171",
+          "depo-yonetim-kilavuzu.pdf#4 0.3653"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "isg-5",
+      "answerable": true,
+      "status": 200,
+      "ms": 417,
+      "gate": {
+        "best": 0.6051,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#3 0.4663",
+          "isg-depo-proseduru.pdf#4 0.6051",
+          "isg-depo-proseduru.pdf#2 0.421",
+          "isg-depo-proseduru.pdf#1 0.4053",
+          "masraf-politikasi.pdf#1 0.4041"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Tek başına bir çalışanın tek başına kaldırabileceği yük en fazla 25 kg'dır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-6",
+      "answerable": true,
+      "status": 200,
+      "ms": 367,
+      "gate": {
+        "best": 0.5224,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#4 0.5224",
+          "isg-depo-proseduru.pdf#1 0.4547",
+          "depo-yonetim-kilavuzu.pdf#5 0.4169",
+          "depo-yonetim-kilavuzu.pdf#2 0.4893",
+          "depo-yonetim-kilavuzu.pdf#3 0.3568"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Paketleme masalarında en az 500 lüks olmalıdır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-7",
+      "answerable": true,
+      "status": 200,
+      "ms": 239,
+      "gate": {
+        "best": 0.5945,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#4 0.5945",
+          "isg-depo-proseduru.pdf#4 0.5099",
+          "isg-depo-proseduru.pdf#5 0.4964",
+          "bilgi-guvenligi.pdf#3 0.4786",
+          "depo-yonetim-kilavuzu.pdf#4 0.4901"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Depoda tahliye tatbikatı yılda iki kez yapılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-8",
+      "answerable": true,
+      "status": 200,
+      "ms": 682,
+      "gate": {
+        "best": 0.5785,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#4 0.5785",
+          "isg-depo-proseduru.pdf#1 0.5284",
+          "izin-yonetmeligi.pdf#1 0.4465",
+          "isg-depo-proseduru.pdf#2 0.4965",
+          "isg-depo-proseduru.pdf#2 0.4803"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "isg-9",
+      "answerable": true,
+      "status": 200,
+      "ms": 337,
+      "gate": {
+        "best": 0.5429,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#5 0.5429",
+          "depo-yonetim-kilavuzu.pdf#6 0.4637",
+          "musteri-destek-sureci.pdf#4 0.4521",
+          "bt-operasyon-runbook.pdf#6 0.4507",
+          "bt-operasyon-runbook.pdf#2 0.4408"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "DÖF kaydının aksiyonları 30 gün içinde tamamlanır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-10",
+      "answerable": true,
+      "status": 200,
+      "ms": 179,
+      "gate": {
+        "best": 0.4611,
+        "share": 1,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.4396",
+          "musteri-destek-sureci.pdf#5 0.4578",
+          "depo-yonetim-kilavuzu.pdf#5 0.4304",
+          "bt-operasyon-runbook.pdf#1 0.4182",
+          "isg-depo-proseduru.pdf#5 0.4611"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "isg-11",
+      "answerable": true,
+      "status": 200,
+      "ms": 639,
+      "gate": {
+        "best": 0.6311,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#5 0.6311",
+          "musteri-destek-sureci.pdf#3 0.5052",
+          "musteri-destek-sureci.pdf#4 0.5284",
+          "musteri-destek-sureci.pdf#2 0.485",
+          "bt-operasyon-runbook.pdf#4 0.4965"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#5"
+      ],
+      "answer": "İSG uzmanı her ramak kala bildirimini 5 iş günü içinde inceler [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-12",
+      "answerable": true,
+      "status": 200,
+      "ms": 568,
+      "gate": {
+        "best": 0.5856,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#4 0.5856",
+          "isg-depo-proseduru.pdf#1 0.5469",
+          "isg-depo-proseduru.pdf#1 0.4642",
+          "depo-yonetim-kilavuzu.pdf#4 0.5135",
+          "isg-depo-proseduru.pdf#4 0.5545"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#4"
+      ],
+      "answer": "Soğuk oda sıcaklığı 30 dakikadan uzun süre sınır dışında kalırsa alarm vardiya sorumlusuna ve Kalite birimine gider; odadaki ürünler WMS'te karantinaya alınır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-13",
+      "answerable": true,
+      "status": 200,
+      "ms": 355,
+      "gate": {
+        "best": 0.5811,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#2 0.5811",
+          "bilgi-guvenligi.pdf#3 0.5044",
+          "isg-depo-proseduru.pdf#5 0.4875",
+          "bt-operasyon-runbook.pdf#4 0.4456",
+          "bt-operasyon-runbook.pdf#4 0.4476"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#2"
+      ],
+      "answer": "Operatör belgesi yenileme eğitimi 5 yılda bir yapılır [1].",
+      "steps": 0,
+      "citationHit": true,
+      "citationsOnPage": 1,
+      "factFound": true
+    },
+    {
+      "id": "isg-14",
+      "answerable": true,
+      "status": 200,
+      "ms": 424,
+      "gate": {
+        "best": 0.6238,
+        "share": 0.04,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#2 0.6238",
+          "isg-depo-proseduru.pdf#1 0.5515",
+          "isg-depo-proseduru.pdf#4 0.4539",
+          "isg-depo-proseduru.pdf#2 0.4402",
+          "isg-depo-proseduru.pdf#4 0.436"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "isg-depo-proseduru.pdf#2"
+      ],
+      "answer": "Akü şarj odasında sigara, açık alev ve cep telefonu kullanımı yasaktır [1].",
+      "steps": 0,
+      "citationHit": false,
+      "citationsOnPage": 0,
+      "factFound": false
+    },
+    {
+      "id": "depo-yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 291,
+      "gate": {
+        "best": 0.5001,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#5 0.5001",
+          "isg-depo-proseduru.pdf#1 0.4939",
+          "depo-yonetim-kilavuzu.pdf#5 0.4658",
+          "isg-depo-proseduru.pdf#4 0.4883",
+          "depo-yonetim-kilavuzu.pdf#1 0.4776"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "depo-yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 314,
+      "gate": {
+        "best": 0.4703,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#1 0.4703",
+          "isg-depo-proseduru.pdf#1 0.4198",
+          "bt-operasyon-runbook.pdf#4 0.4476",
+          "isg-depo-proseduru.pdf#1 0.4318",
+          "isg-depo-proseduru.pdf#4 0.4374"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "depo-yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 570,
+      "gate": {
+        "best": 0.5438,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#5 0.5438",
+          "depo-yonetim-kilavuzu.pdf#3 0.4883",
+          "depo-yonetim-kilavuzu.pdf#5 0.4745",
+          "isg-depo-proseduru.pdf#3 0.4797",
+          "depo-yonetim-kilavuzu.pdf#3 0.459"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde kargo etiket rulosunun kaç etiketlik olduğu bilgisi bulunmamaktadır.",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": true
+    },
+    {
+      "id": "depo-yok-4",
+      "answerable": false,
+      "status": 200,
+      "ms": 509,
+      "gate": {
+        "best": 0.6404,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 3,
+        "top": [
+          "depo-yonetim-kilavuzu.pdf#5 0.6208",
+          "depo-yonetim-kilavuzu.pdf#5 0.6234",
+          "depo-yonetim-kilavuzu.pdf#3 0.5829",
+          "depo-yonetim-kilavuzu.pdf#1 0.6404",
+          "depo-yonetim-kilavuzu.pdf#1 0.5395"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "depo-yonetim-kilavuzu.pdf#1"
+      ],
+      "answer": "Belgelerde WMS el terminali PIN'inin kaç günde bir değiştirilmesi gerektiğine dair bilgi bulunmamaktadır. [3]",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": false
+    },
+    {
+      "id": "erp-yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 274,
+      "gate": {
+        "best": 0.6034,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#1 0.5857",
+          "erp-satin-alma-kilavuzu.pdf#6 0.5897",
+          "erp-satin-alma-kilavuzu.pdf#3 0.6034",
+          "erp-satin-alma-kilavuzu.pdf#2 0.5844",
+          "erp-satin-alma-kilavuzu.pdf#1 0.5702"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "erp-yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 300,
+      "gate": {
+        "best": 0.5739,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#5 0.5739",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5478",
+          "erp-satin-alma-kilavuzu.pdf#2 0.4242",
+          "erp-satin-alma-kilavuzu.pdf#1 0.4005",
+          "depo-yonetim-kilavuzu.pdf#5 0.4755"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "erp-yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 421,
+      "gate": {
+        "best": 0.5644,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.5644",
+          "erp-satin-alma-kilavuzu.pdf#4 0.544",
+          "erp-satin-alma-kilavuzu.pdf#5 0.5474",
+          "erp-satin-alma-kilavuzu.pdf#3 0.5592",
+          "erp-satin-alma-kilavuzu.pdf#1 0.5263"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "erp-yok-4",
+      "answerable": false,
+      "status": 200,
+      "ms": 503,
+      "gate": {
+        "best": 0.5425,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.5425",
+          "satin-alma-proseduru.pdf#2 0.5006",
+          "erp-satin-alma-kilavuzu.pdf#6 0.4793",
+          "erp-satin-alma-kilavuzu.pdf#6 0.5054",
+          "masraf-politikasi.pdf#3 0.4855"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "erp-satin-alma-kilavuzu.pdf#3"
+      ],
+      "answer": "Onaycı 48 saat içinde işlem yapmazsa hatırlatma e-postası gönderilir; 72 saat sonunda talep, onaycının tanımlı vekiline yönlendirilir. Vekil tanımlı değilse talep bir üst yöneticiye çıkar [1].",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": false
+    },
+    {
+      "id": "bt-yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 263,
+      "gate": {
+        "best": 0.5737,
+        "share": 0.0533,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#2 0.5737",
+          "bt-operasyon-runbook.pdf#2 0.5269",
+          "isg-depo-proseduru.pdf#2 0.4153",
+          "bilgi-guvenligi.pdf#1 0.5101",
+          "bt-operasyon-runbook.pdf#1 0.4312"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "bt-yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 50,
+      "gate": {
+        "best": 0.4344,
+        "share": 1,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "bt-operasyon-runbook.pdf#1 0.4227",
+          "bt-operasyon-runbook.pdf#3 0.4344",
+          "bt-operasyon-runbook.pdf#3 0.4197",
+          "bt-operasyon-runbook.pdf#2 0.4049",
+          "depo-yonetim-kilavuzu.pdf#6 0.4181"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "bt-yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 85,
+      "gate": {
+        "best": 0.4491,
+        "share": 0.0533,
+        "decision": "NONE",
+        "prompt": 0,
+        "top": [
+          "bt-operasyon-runbook.pdf#4 0.4491",
+          "musteri-destek-sureci.pdf#1 0.4126",
+          "kvkk-aydinlatma.pdf#1 0.399",
+          "erp-satin-alma-kilavuzu.pdf#5 0.3676",
+          "depo-yonetim-kilavuzu.pdf#1 0.3991"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "bt-yok-4",
+      "answerable": false,
+      "status": 200,
+      "ms": 372,
+      "gate": {
+        "best": 0.6143,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#6 0.6143",
+          "bt-operasyon-runbook.pdf#2 0.4735",
+          "masraf-politikasi.pdf#1 0.4441",
+          "satin-alma-proseduru.pdf#2 0.4586",
+          "depo-yonetim-kilavuzu.pdf#4 0.4711"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#6"
+      ],
+      "answer": "Belgelerde nöbet ödemeleri İnsan Kaynakları prosedürüne göre yapılır [1].",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": false
+    },
+    {
+      "id": "bt-yok-5",
+      "answerable": false,
+      "status": 200,
+      "ms": 423,
+      "gate": {
+        "best": 0.6506,
+        "share": 0.0267,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "bt-operasyon-runbook.pdf#2 0.6506",
+          "bt-operasyon-runbook.pdf#2 0.546",
+          "bilgi-guvenligi.pdf#1 0.5302",
+          "erp-satin-alma-kilavuzu.pdf#1 0.487",
+          "musteri-destek-sureci.pdf#1 0.5013"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bt-operasyon-runbook.pdf#2"
+      ],
+      "answer": "Belgelerde Örnek Connect VPN istemcisinin hangi sürümünün kullanılacağına dair bilgi bulunmamaktadır. [1]",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": false
+    },
+    {
+      "id": "crm-yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 671,
+      "gate": {
+        "best": 0.5369,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#3 0.5369",
+          "musteri-destek-sureci.pdf#2 0.472",
+          "musteri-destek-sureci.pdf#5 0.4783",
+          "musteri-destek-sureci.pdf#3 0.4786",
+          "musteri-destek-sureci.pdf#4 0.4612"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "musteri-destek-sureci.pdf#3"
+      ],
+      "answer": "Altın sözleşmeli müşterilerin P1 kayıtlarında ilk yanıt süresi 30 dakika, P2 kayıtlarında ise 2 saattir [1].",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": false
+    },
+    {
+      "id": "crm-yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 307,
+      "gate": {
+        "best": 0.5418,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#3 0.5418",
+          "musteri-destek-sureci.pdf#1 0.5053",
+          "bt-operasyon-runbook.pdf#1 0.4989",
+          "musteri-destek-sureci.pdf#5 0.5205",
+          "bt-operasyon-runbook.pdf#2 0.4566"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "crm-yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 197,
+      "gate": {
+        "best": 0.4689,
+        "share": 0.0133,
+        "decision": "SPECIFIC_TERM",
+        "prompt": 1,
+        "top": [
+          "erp-satin-alma-kilavuzu.pdf#3 0.4532",
+          "musteri-destek-sureci.pdf#5 0.4689",
+          "musteri-destek-sureci.pdf#1 0.4498",
+          "uzaktan-calisma.pdf#2 0.4152",
+          "erp-satin-alma-kilavuzu.pdf#5 0.4256"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "crm-yok-4",
+      "answerable": false,
+      "status": 200,
+      "ms": 286,
+      "gate": {
+        "best": 0.5558,
+        "share": 0.0667,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "musteri-destek-sureci.pdf#4 0.5558",
+          "erp-satin-alma-kilavuzu.pdf#4 0.5104",
+          "musteri-destek-sureci.pdf#4 0.4641",
+          "depo-yonetim-kilavuzu.pdf#2 0.4583",
+          "depo-yonetim-kilavuzu.pdf#3 0.4579"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "isg-yok-1",
+      "answerable": false,
+      "status": 200,
+      "ms": 313,
+      "gate": {
+        "best": 0.5331,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#2 0.5331",
+          "isg-depo-proseduru.pdf#2 0.4773",
+          "bt-operasyon-runbook.pdf#4 0.4616",
+          "depo-yonetim-kilavuzu.pdf#4 0.4392",
+          "depo-yonetim-kilavuzu.pdf#3 0.4648"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "isg-yok-2",
+      "answerable": false,
+      "status": 200,
+      "ms": 311,
+      "gate": {
+        "best": 0.4795,
+        "share": 0.0133,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#3 0.4795",
+          "isg-depo-proseduru.pdf#4 0.474",
+          "depo-yonetim-kilavuzu.pdf#3 0.3978",
+          "depo-yonetim-kilavuzu.pdf#3 0.3863",
+          "isg-depo-proseduru.pdf#3 0.414"
+        ]
+      },
+      "found": false,
+      "citations": [],
+      "answer": "Belgelerde bu sorunun cevabı bulunamadı.",
+      "steps": 0,
+      "saysNotFound": true,
+      "ownRefusal": false
+    },
+    {
+      "id": "isg-yok-3",
+      "answerable": false,
+      "status": 200,
+      "ms": 996,
+      "gate": {
+        "best": 0.4982,
+        "share": 1,
+        "decision": "SIMILARITY",
+        "prompt": 1,
+        "top": [
+          "isg-depo-proseduru.pdf#5 0.4908",
+          "bilgi-guvenligi.pdf#2 0.4982",
+          "bt-operasyon-runbook.pdf#3 0.4561",
+          "bt-operasyon-runbook.pdf#3 0.4503",
+          "bt-operasyon-runbook.pdf#1 0.4613"
+        ]
+      },
+      "found": true,
+      "citations": [
+        "bilgi-guvenligi.pdf#2"
+      ],
+      "answer": "Belgelerde iş güvenliği uzmanına ulaşılacağı belirtilmemiştir. Cihaz kaybı veya çalınması durumunda Bilgi Güvenliği ekibine güvenlik@ornek.example adresine veya 4444 numaralı iç hatta bildirim yapılmalıdır [1].",
+      "steps": 0,
+      "saysNotFound": false,
+      "ownRefusal": false
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 # ADR-0061: Bağlamsal parça başlığı (yalnız indeks için)
 
-- **Durum:** Kabul edildi. Ölçüm bekliyor: canlı yığında `scripts/eval.mjs` ile iç set (140 soru) ve dış set (200 PDF). Eşikler değişmedi.
+- **Durum:** Kabul edildi. Ölçüldü (2026-10-30): aşağıda "Ölçüm sonucu"; prompt pasaj tabanı ADR-0063 ile 0,55 oldu, kapı eşikleri değişmedi.
 - **Tarih:** 2026-10-29
 - **Karar verenler:** doguyaras. İstek: birbirine çok benzeyen belgeler arasında doğru belgeyi bulmak ve atıflamak.
 - **Genişlettiği:** ADR-0011 (`document_chunk`, alım işçisi), ADR-0022 (hibrit arama; sözcüksel liste), ADR-0054 (sistem modeli; parça değişince yeniden çıkarılır).
 - **İlgili eşik (referans Bölüm 24):** ADR-0022 cevaplanabilirlik kapısı (0,47 / 0,44 + soruya özgü terim). Bu ADR eşiği değiştirmez; kosinüs dağılımına etkisi aşağıda risk olarak yazılı.
-- **Kanıt:** ölçüm yok (aşağıda "Ölçüm planı"). Önceki ilgili ölçüm: `docs/evidence/hibrit-arama-dogrulama.md` bölüm 2 (adım 1, belge adı ön eki).
+- **Kanıt:** `docs/evidence/kapi-kalibrasyonu-olcumu.md` (ADR-0063). Önceki ilgili ölçüm: `docs/evidence/hibrit-arama-dogrulama.md` bölüm 2 (adım 1, belge adı ön eki).
 
 ## Bağlam
 
@@ -161,6 +161,29 @@ Kullanıcı canlı yığında yapacak; sonuç bu ADR'ye ve `docs/evidence/`'a ya
    - cevaplanabilir en düşük ve cevaplanamaz en yüksek kosinüs (kapının kayması).
 5. İç sette gerileme varsa `embed-header: false` ile 2–4 tekrarlanır.
 6. Eşik değişikliği ancak 3–5'in sayılarıyla, ADR-0022'deki çapraz doğrulama yöntemiyle önerilir.
+
+## Ölçüm sonucu (2026-10-30, ADR-0063)
+
+Ayrıntı: `docs/evidence/kapi-kalibrasyonu-olcumu.md`.
+
+| Ölçüm | İç: önce → başlıklı | Dış: önce → başlıklı |
+|---|---|---|
+| Kaynak bulundu | 0,938 → 0,902 | 0,885 → 0,925 |
+| Atıf isabeti | 0,884 → 0,848 | 0,646 → 0,698 |
+| Doğru bilgi | 0,893 → 0,884 | 0,738 → 0,784 |
+| Ret (modelinki dahil) | 0,643 → 0,714 | 0,867 → 0,667 |
+
+Dış set `disambiguation` atıf isabeti 34'ten 42/68'e, merkez yönetmelikleri 24'ten 31/58'e çıktı.
+
+**Kosinüs kayması iki yönde:**
+- İç sette cevaplanabilir en düşük kosinüs 0,450'den 0,436'ya indi. Üç soru kapının altında kaldı: bt-16, isg-10 ve depo-17; kapıdan geçen 109/112.
+- Dış sette dağılım yukarı kaydı: cevaplanabilir ortanca 0,704. Aynı pasajların başlıksız kosinüsünün ortancası 0,673.
+
+**Dış setteki ret düşüşü kapıdan gelmedi.** Kapı orada önce de sonra da en çok 1–2 soruyu durduruyordu. Ret düşüşü prompt'a giren pasajlardan geldi.
+
+**Karar (ADR-0063):**
+- `passage-min-similarity` 0,55 oldu; kapı eşikleri değişmedi.
+- `embed-header: true` kalır. Dış setteki kazanç ADR-0063 ile büyüdü (atıf isabeti 0,731). İç setteki kayıp, kosinüs kaymasından gelen üç soru ve 0,55 tabanının dört doğru bilgi sorusudur.
 
 ## Bilinçli olarak yapılmayanlar
 

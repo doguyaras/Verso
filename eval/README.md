@@ -330,7 +330,34 @@ SAMPLES_DIR=<DIR>/grid OUT=e2e-grid-docling.json node scripts/eval.mjs
 
 ## Eşikler ve karar
 
-### ADR-0022 (geçerli)
+### ADR-0063 (geçerli): başlıklı vektörler
+
+- **Kapı eşikleri değişmedi:** 0,47 / 0,44 / 0,045 (aşağıda ADR-0022).
+  - ADR-0061'den sonra dış sette ret 0,867'den 0,667'ye düşmüştü. Soru başına ölçümde kapı orada önce de sonra da yalnız 1–2 soruyu durduruyordu; retleri chat modeli veriyordu.
+  - Konusu belgede olan cevaplanamazlar (dış 0,51–0,69) cevaplanabilirlerin ortasında kalıyor (dış p10 0,613). Hiçbir kapı ayarı dış setin reddini artırmadı; eşiği 0,52'ye çekmek kısaltmayla sorulan üç merkez sorusunu kaybettirdi.
+  - Kapının başlıksız kosinüse bakması da reddedildi. Ayırma gücü (AUC) iç sette 0,799'dan 0,833'e çıkıyor, dış sette 0,917'den 0,856'ya düşüyor.
+- **`passage-min-similarity` 0,50 → 0,55.** Başlık, konuyu tutan pasajların kosinüsünü yükseltti, prompt'a giren pasaj arttı ve model daha çok "bir şey buldu". Taban iki sette 0,50 / 0,53 / 0,55 / 0,60 ile uçtan uca tarandı:
+
+  | Taban | İç: bulundu / atıf / doğru bilgi / ret | Dış: bulundu / atıf / doğru bilgi / ret |
+  |---|---|---|
+  | 0,50 | 0,902 / 0,848 / 0,884 / 0,714 | 0,925 / 0,698 / 0,784 / 0,667 |
+  | 0,53 | 0,893 / 0,839 / 0,857 / 0,750 | 0,921 / 0,705 / 0,777 / 0,733 |
+  | **0,55** | **0,893 / 0,839 / 0,848 / 0,786** | **0,925 / 0,731 / 0,784 / 0,756** |
+  | 0,60 | 0,830 / 0,768 / 0,759 / 0,786 | 0,908 / 0,725 / 0,777 / 0,867 |
+
+  Kabul edilen bedel: iç sette doğru bilgi −4 soru, bulunma ve atıf isabeti −1 soru.
+- **Ölçüm aracı:** `GATE_PROBE=1 node scripts/eval.mjs` (`scripts/gate-probe.mjs`) her sorunun kapı girdisini cevabın yanına yazar:
+  - en iyi kosinüs, terim payı, karar ve prompt'taki pasaj sayısı;
+  - `GATE_PROBE=only`: soru sormadan yalnız ölçüm;
+  - `GATE_PROBE_SPLIT=1`: ek olarak başlıksız ve yalnız başlık kosinüsü.
+
+  Prob embedding sunucusuna `VERSO_EVAL_OLLAMA_URL` üstünden ulaşır (`deploy/compose.local.yaml` yayınlar), PostgreSQL'e `docker exec` ile. "Kapının durdurduğu" sayısı artık bu probdan gelir; `retrieval.json` yalnız iç sette ve prob yokken okunur.
+- **`RetrievalEvalTest` koruması:** cevaplanabilir kapıdan geçen ≥ 0,97 (ölçülen 0,973, 109/112).
+  - bt-16 (0,4358), isg-10 (0,4611) ve depo-17 (0,4625) başlıkla kapının altına indi: ADR-0061'in kabul edilen bedeli.
+  - Ölçülen diğer değerler, başlıklı vektörlerle: recall@5 0,982, MRR 0,876, duran cevaplanamaz 0,214 (6/28; koruma ≥ 0,20).
+- Ayrıntı: `docs/evidence/kapi-kalibrasyonu-olcumu.md`.
+
+### ADR-0022: kapı (eşikleri geçerli)
 
 - **Kapı** (`AnswerabilityGate`, `verso.qa.*`): en benzer pasajın cosine benzerliği ≥ 0,47 ise ya da ≥ 0,44 ve o pasaj hesabın chunk'larının en çok %4,5'inde geçen bir soru terimini içeriyorsa model çağrılır. Füzyon skoru karara girmez.
 - **Seçim:** ızgara arama. Kısıt: hiçbir cevaplanabilir soru durmasın; amaç: en çok cevaplanamaz soru dursun. T2 için ızgara 0,45'i verdi; CPU ile GPU embedding'i dördüncü basamakta ayrıştığı için 0,44 seçildi (erp-12: 0,4497 / 0,4502).
@@ -339,7 +366,7 @@ SAMPLES_DIR=<DIR>/grid OUT=e2e-grid-docling.json node scripts/eval.mjs
 - **Regresyon korumaları (`RetrievalEvalTest`):**
   - recall@5 ≥ 0,97 (ölçülen 0,982, 110/112; bir soru kaybı kırmızı değil, iki soru kırmızı);
   - MRR ≥ 0,86 (ölçülen 0,877);
-  - cevaplanabilir kapıdan geçen = 1,00;
+  - cevaplanabilir kapıdan geçen = 1,00 (ADR-0063 ile ≥ 0,97);
   - cevaplanamaz kapıda duran ≥ 0,20 (ölçülen 0,25, 7/28; iki soru kaybı kırmızı).
 - Uçtan uca sonuçlar karar için okunur, build'i durdurmaz.
 

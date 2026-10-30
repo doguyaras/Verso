@@ -9,10 +9,13 @@ import com.verso.qa.config.QaProperties;
 import com.verso.qa.service.AnswerabilityGate.Decision;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
-/** llm-rules 3.4, ADR-0022: the two branches of the gate and their edges. */
+/** llm-rules 3.4, ADR-0022, ADR-0063: the two branches of the gate, the prompt floor and their edges. */
 class AnswerabilityGateTest {
 
     private final AnswerabilityGate gate = new AnswerabilityGate(properties(0.47, 0.45, 0.045));
@@ -67,8 +70,8 @@ class AnswerabilityGateTest {
     }
 
     /**
-     * The prompt keeps the fused order and drops passages under passage-min-similarity (0.50), except the most similar
-     * one: a question let through by the specific-term branch (best 0.46) still has its evidence in the prompt.
+     * The prompt keeps the fused order and drops passages under passage-min-similarity (0.50 here), except the most
+     * similar one: a question let through by the specific-term branch (best 0.46) still has its evidence in the prompt.
      */
     @Test
     void promptPassages_keepsTheMostSimilarAndThoseAboveTheFloorInOrder() {
@@ -80,6 +83,29 @@ class AnswerabilityGateTest {
 
         RetrievedPassage evidence = passage(0.46, 0.02);
         assertThat(gate.promptPassages(List.of(lexicalFirst, evidence, passage(0.41, 1.0)))).containsExactly(evidence);
+    }
+
+    /**
+     * ADR-0063: the shipped floor is 0.55, measured with the context header in the embedding (ADR-0061). A passage at
+     * 0.54, which the earlier 0.50 floor let into the prompt, now stays out unless it is the gate's evidence. The
+     * gate's own thresholds did not move.
+     */
+    @Test
+    void promptPassages_withTheDefaults_dropsPassagesBelowTheMeasuredFloor() {
+        QaProperties defaults = new Binder(new MapConfigurationPropertySource(Map.of()))
+                .bindOrCreate("verso.qa", QaProperties.class);
+        assertThat(defaults.passageMinSimilarity()).isEqualTo(0.55);
+        assertThat(defaults.minSimilarity()).isEqualTo(0.47);
+        assertThat(defaults.lexicalMinSimilarity()).isEqualTo(0.44);
+        assertThat(defaults.specificTermMaxShare()).isEqualTo(0.045);
+
+        AnswerabilityGate shipped = new AnswerabilityGate(defaults);
+        RetrievedPassage best = passage(0.68, 1.0);
+        RetrievedPassage edge = passage(0.55, 1.0);
+        RetrievedPassage formerlyIn = passage(0.5499, 1.0);
+        assertThat(shipped.promptPassages(List.of(formerlyIn, best, edge))).containsExactly(best, edge);
+        RetrievedPassage evidence = passage(0.52, 1.0);
+        assertThat(shipped.promptPassages(List.of(passage(0.51, 1.0), evidence))).containsExactly(evidence);
     }
 
     /** A floor above the threshold, or a share the retrieval does not count exactly, is a configuration error. */

@@ -49,7 +49,8 @@ public class AnswerabilityGate {
      * The passages for the prompt once the gate is open, in retrieval (fused) order so citation numbers follow it: the
      * most similar passage, which is the evidence the gate read, and every other one at or above
      * {@code passage-min-similarity}. Weaker passages were measured to give the model more to answer from when the
-     * documents do not hold the answer (ADR-0022: "bulunamadı" 10 of 28 with all five passages, 17 of 28 with this).
+     * documents do not hold the answer (ADR-0022: "bulunamadı" 10 of 28 with all five passages, 17 of 28 with a 0.50
+     * floor; ADR-0063: the floor moved to 0.55 once the context header raised on-topic cosines).
      */
     public List<RetrievedPassage> promptPassages(List<RetrievedPassage> passages) {
         RetrievedPassage best = passages.stream().max(Comparator.comparingDouble(RetrievedPassage::similarity)).orElse(null);

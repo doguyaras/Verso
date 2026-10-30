@@ -209,9 +209,11 @@ class RetrievalEvalTest {
         // below them needs a decision, not a quieter guard.
         assertThat((double) summary.get("recallAt5")).as("recall@5").isGreaterThanOrEqualTo(0.97);
         assertThat((double) summary.get("mrr")).as("MRR").isGreaterThanOrEqualTo(0.86);
-        // Every answerable question reaches the model; the five short abbreviation questions the 0.50 cosine threshold
-        // stopped (set version 2) pass through the specific-term branch.
-        assertThat((double) summary.get("answerablePassGate")).as("answerable questions through the gate").isEqualTo(1.0);
+        // ADR-0022 let every answerable question through. With the context header in the embedding (ADR-0061) three
+        // fall below the gate (bt-16 0.4358, isg-10 0.4611, depo-17 0.4625; 109/112): a measured, accepted loss
+        // (ADR-0063), not a target. One more lost question (108/112 = 0.964) turns this red.
+        assertThat((double) summary.get("answerablePassGate")).as("answerable questions through the gate")
+                .isGreaterThanOrEqualTo(0.97);
         assertThat((double) summary.get("unanswerableStoppedByGate")).as("unanswerable questions stopped by the gate")
                 .isGreaterThanOrEqualTo(0.2);
     }

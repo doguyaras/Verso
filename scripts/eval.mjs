@@ -25,11 +25,20 @@
 //   node scripts/eval.mjs --set multihop             # against the stack as it runs
 //   node scripts/eval.mjs --set multihop --compare   # off vs on: eval/results/multihop-compare-<model>.json
 //
+// Answerability gate (ADR-0063): GATE_PROBE=1 records per question the gate's inputs from the running stack (the most
+// similar passage's cosine and term share, scripts/gate-probe.mjs) next to the answer, and counts the unanswerable
+// questions the gate stopped from them; GATE_PROBE=only measures them without asking (no chat model needed). The probe
+// needs the embedding server on VERSO_EVAL_OLLAMA_URL (default http://localhost:11434, deploy/compose.local.yaml) and
+// `docker exec` on the stack's PostgreSQL (VERSO_POSTGRES_CONTAINER, default verso-postgres-1). GATE_PROBE_SPLIT=1 also
+// scores the passages' own text and header alone (ADR-0061). Without GATE_PROBE the count comes from
+// eval/results/retrieval.json (RetrievalEvalTest), which only describes eval/eval-set.json.
+//
 // No dependencies (Node 24 fetch). Tokens come from the bundled Keycloak's CI client (client credentials).
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { currentGate, probeGate } from './gate-probe.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const API = `http://localhost:${process.env.VERSO_HTTP_PORT ?? 8080}`;
@@ -171,6 +180,31 @@ await waitReady(ids);
 // Upload to READY for all samples (parse + chunk + embed), to the 3 s polling step (ADR-0032 ingestion cost).
 const ingestionWallMs = Math.round(performance.now() - ingestionStarted);
 
+const PROBE = process.env.GATE_PROBE;
+const gate = PROBE ? currentGate(ROOT) : null;
+let probe = null;
+if (PROBE) {
+  try {
+    probe = await probeGate({ questions: set.questions, documentIds: ids, gate, split: process.env.GATE_PROBE_SPLIT === '1',
+      ollamaUrl: process.env.VERSO_EVAL_OLLAMA_URL ?? 'http://localhost:11434',
+      postgres: process.env.VERSO_POSTGRES_CONTAINER ?? 'verso-postgres-1' });
+  } catch (e) {
+    for (const id of ids) await api(`/v1/documents/${id}`, { method: 'DELETE' });
+    throw e;
+  }
+  console.log(`eval: gate probe done for ${probe.size} questions`);
+}
+if (PROBE === 'only') {
+  for (const id of ids) await api(`/v1/documents/${id}`, { method: 'DELETE' });
+  mkdirSync(join(ROOT, 'eval/results'), { recursive: true });
+  const out = join(ROOT, 'eval/results', process.env.OUT ?? 'gate-probe.json');
+  writeFileSync(out, JSON.stringify({ measuredAt: new Date().toISOString(), samples: SAMPLES, gate,
+    questions: set.questions.map((q) => ({ id: q.id, answerable: q.answerable, tags: q.tags ?? [], ...probe.get(q.id) })) },
+  null, 2) + '\n');
+  console.log(`eval: written ${out}`);
+  process.exit(0);
+}
+
 let rows = [];
 let model = 'unknown';
 let mode = 'unknown';
@@ -186,6 +220,7 @@ try {
     const ms = Math.round(performance.now() - started);
     const body = await res.json();
     const row = { id: q.id, answerable: q.answerable, status: res.status, ms };
+    if (probe) row.gate = probe.get(q.id);
     if (res.ok) {
       model = body.model; mode = body.mode;
       row.found = body.found;
@@ -273,6 +308,15 @@ const summary = {
     max: Math.max(...rows.map((r) => r.ms)) },
 };
 function notFoundSplit(unanswerableRows) {
+  if (probe) {
+    // ADR-0063: this run's own gate inputs, on whatever set and samples it measured.
+    const byModel = unanswerableRows.filter((r) => r.gate.decision !== 'NONE');
+    return { gate, gateBlockedAnswerable: answerable.filter((r) => r.gate.decision === 'NONE').length,
+      stoppedByThreshold: unanswerableRows.length - byModel.length, decidedByModel: byModel.length,
+      modelNotFoundAccuracy: ratio(byModel.filter((r) => r.status === 200 && r.saysNotFound).length, byModel.length) };
+  }
+  // retrieval.json is RetrievalEvalTest's measurement of eval/eval-set.json: meaningless for another set.
+  if (process.env.EVAL_SET_FILE) return {};
   let retrieval;
   try {
     retrieval = JSON.parse(readFileSync(join(ROOT, 'eval/results/retrieval.json'), 'utf8'));

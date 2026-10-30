@@ -1,0 +1,3927 @@
+{
+  "measuredAt": "2026-10-30T12:42:40.837Z",
+  "samples": "samples",
+  "gate": {
+    "minSimilarity": 0.47,
+    "lexicalMinSimilarity": 0.44,
+    "specificTermMaxShare": 0.045,
+    "passageMinSimilarity": 0.5
+  },
+  "questions": [
+    {
+      "id": "izin-1",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6291,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "izin-yonetmeligi.pdf#2 0.6291",
+        "izin-yonetmeligi.pdf#1 0.6279",
+        "izin-yonetmeligi.pdf#3 0.5426",
+        "isg-depo-proseduru.pdf#2 0.4995",
+        "uzaktan-calisma.pdf#1 0.493"
+      ],
+      "bestBody": 0.6363,
+      "bestHeader": 0.3292,
+      "topBody": [
+        0.6363,
+        0.6498,
+        0.5613,
+        0.4919,
+        0.5161
+      ],
+      "maxBody": 0.6498
+    },
+    {
+      "id": "izin-2",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6566,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "izin-yonetmeligi.pdf#2 0.6566",
+        "izin-yonetmeligi.pdf#1 0.6178",
+        "izin-yonetmeligi.pdf#3 0.5382",
+        "bt-operasyon-runbook.pdf#4 0.466",
+        "isg-depo-proseduru.pdf#5 0.5011"
+      ],
+      "bestBody": 0.6631,
+      "bestHeader": 0.3509,
+      "topBody": [
+        0.6631,
+        0.6437,
+        0.5488,
+        0.4751,
+        0.5286
+      ],
+      "maxBody": 0.6631
+    },
+    {
+      "id": "izin-3",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5679,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "izin-yonetmeligi.pdf#1 0.5626",
+        "izin-yonetmeligi.pdf#2 0.5496",
+        "izin-yonetmeligi.pdf#3 0.5679",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5143",
+        "isg-depo-proseduru.pdf#2 0.5033"
+      ],
+      "bestBody": 0.5999,
+      "bestHeader": 0.3968,
+      "topBody": [
+        0.5859,
+        0.5574,
+        0.5999,
+        0.5243,
+        0.4987
+      ],
+      "maxBody": 0.5999
+    },
+    {
+      "id": "izin-4",
+      "answerable": true,
+      "tags": [],
+      "best": 0.7347,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "izin-yonetmeligi.pdf#2 0.7347",
+        "uzaktan-calisma.pdf#1 0.4895",
+        "izin-yonetmeligi.pdf#1 0.5285",
+        "depo-yonetim-kilavuzu.pdf#6 0.4511",
+        "bt-operasyon-runbook.pdf#3 0.4591"
+      ],
+      "bestBody": 0.7378,
+      "bestHeader": 0.2932,
+      "topBody": [
+        0.7378,
+        0.5122,
+        0.5554,
+        0.4432,
+        0.4703
+      ],
+      "maxBody": 0.7378
+    },
+    {
+      "id": "izin-5",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6867,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "izin-yonetmeligi.pdf#2 0.6867",
+        "izin-yonetmeligi.pdf#1 0.5355",
+        "uzaktan-calisma.pdf#1 0.4459",
+        "izin-yonetmeligi.pdf#3 0.4652",
+        "depo-yonetim-kilavuzu.pdf#3 0.4034"
+      ],
+      "bestBody": 0.6997,
+      "bestHeader": 0.2932,
+      "topBody": [
+        0.6997,
+        0.5617,
+        0.4659,
+        0.4956,
+        0.3862
+      ],
+      "maxBody": 0.6997
+    },
+    {
+      "id": "izin-6",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6866,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "izin-yonetmeligi.pdf#1 0.5936",
+        "izin-yonetmeligi.pdf#3 0.6866",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4943",
+        "erp-satin-alma-kilavuzu.pdf#3 0.4866",
+        "izin-yonetmeligi.pdf#2 0.572"
+      ],
+      "bestBody": 0.7137,
+      "bestHeader": 0.4879,
+      "topBody": [
+        0.6125,
+        0.7137,
+        0.4992,
+        0.4968,
+        0.5682
+      ],
+      "maxBody": 0.7137
+    },
+    {
+      "id": "masraf-1",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6372,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "masraf-politikasi.pdf#1 0.6372",
+        "masraf-politikasi.pdf#2 0.5915",
+        "izin-yonetmeligi.pdf#2 0.5299",
+        "izin-yonetmeligi.pdf#1 0.4686",
+        "uzaktan-calisma.pdf#2 0.4643"
+      ],
+      "bestBody": 0.6698,
+      "bestHeader": 0.3798,
+      "topBody": [
+        0.6698,
+        0.6199,
+        0.5484,
+        0.4869,
+        0.4633
+      ],
+      "maxBody": 0.6698
+    },
+    {
+      "id": "masraf-2",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5753,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "masraf-politikasi.pdf#3 0.5753",
+        "masraf-politikasi.pdf#1 0.5633",
+        "depo-yonetim-kilavuzu.pdf#2 0.5328",
+        "bt-operasyon-runbook.pdf#3 0.4932",
+        "depo-yonetim-kilavuzu.pdf#2 0.4939"
+      ],
+      "bestBody": 0.5952,
+      "bestHeader": 0.4185,
+      "topBody": [
+        0.5952,
+        0.5935,
+        0.5294,
+        0.5243,
+        0.5072
+      ],
+      "maxBody": 0.5952
+    },
+    {
+      "id": "masraf-3",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6163,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "masraf-politikasi.pdf#2 0.6163",
+        "masraf-politikasi.pdf#1 0.5812",
+        "isg-depo-proseduru.pdf#5 0.4141",
+        "izin-yonetmeligi.pdf#2 0.4547",
+        "kvkk-aydinlatma.pdf#1 0.4022"
+      ],
+      "bestBody": 0.6201,
+      "bestHeader": 0.4535,
+      "topBody": [
+        0.6201,
+        0.611,
+        0.4303,
+        0.4649,
+        0.4145
+      ],
+      "maxBody": 0.6201
+    },
+    {
+      "id": "masraf-4",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6016,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "masraf-politikasi.pdf#2 0.6016",
+        "masraf-politikasi.pdf#1 0.4721",
+        "masraf-politikasi.pdf#3 0.4312",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4147",
+        "bilgi-guvenligi.pdf#1 0.3867"
+      ],
+      "bestBody": 0.618,
+      "bestHeader": 0.3112,
+      "topBody": [
+        0.618,
+        0.4773,
+        0.3964,
+        0.4144,
+        0.3927
+      ],
+      "maxBody": 0.618
+    },
+    {
+      "id": "masraf-5",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6311,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "masraf-politikasi.pdf#3 0.6311",
+        "satin-alma-proseduru.pdf#2 0.5201",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5208",
+        "masraf-politikasi.pdf#1 0.5224",
+        "erp-satin-alma-kilavuzu.pdf#6 0.4245"
+      ],
+      "bestBody": 0.6445,
+      "bestHeader": 0.4176,
+      "topBody": [
+        0.6445,
+        0.5448,
+        0.5424,
+        0.5494,
+        0.4483
+      ],
+      "maxBody": 0.6445
+    },
+    {
+      "id": "guvenlik-1",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6137,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "bilgi-guvenligi.pdf#1 0.6137",
+        "bt-operasyon-runbook.pdf#3 0.4589",
+        "bt-operasyon-runbook.pdf#1 0.4255",
+        "bt-operasyon-runbook.pdf#2 0.4142",
+        "erp-satin-alma-kilavuzu.pdf#1 0.4159"
+      ],
+      "bestBody": 0.6364,
+      "bestHeader": 0.4696,
+      "topBody": [
+        0.6364,
+        0.4634,
+        0.4395,
+        0.4238,
+        0.424
+      ],
+      "maxBody": 0.6364
+    },
+    {
+      "id": "guvenlik-2",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5555,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "bilgi-guvenligi.pdf#1 0.5555",
+        "bt-operasyon-runbook.pdf#3 0.5187",
+        "bt-operasyon-runbook.pdf#4 0.4363",
+        "bt-operasyon-runbook.pdf#3 0.5237",
+        "bt-operasyon-runbook.pdf#2 0.4957"
+      ],
+      "bestBody": 0.5695,
+      "bestHeader": 0.4817,
+      "topBody": [
+        0.5695,
+        0.5566,
+        0.4461,
+        0.5407,
+        0.4936
+      ],
+      "maxBody": 0.5695
+    },
+    {
+      "id": "guvenlik-3",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6678,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bilgi-guvenligi.pdf#2 0.6678",
+        "bt-operasyon-runbook.pdf#5 0.6263",
+        "bt-operasyon-runbook.pdf#5 0.5293",
+        "bt-operasyon-runbook.pdf#2 0.5024",
+        "musteri-destek-sureci.pdf#4 0.5271"
+      ],
+      "bestBody": 0.6537,
+      "bestHeader": 0.5096,
+      "topBody": [
+        0.6537,
+        0.6444,
+        0.5433,
+        0.5028,
+        0.5279
+      ],
+      "maxBody": 0.6537
+    },
+    {
+      "id": "guvenlik-4",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5681,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "bilgi-guvenligi.pdf#2 0.5681",
+        "depo-yonetim-kilavuzu.pdf#4 0.5466",
+        "musteri-destek-sureci.pdf#5 0.5338",
+        "kvkk-aydinlatma.pdf#1 0.4803",
+        "bilgi-guvenligi.pdf#1 0.5012"
+      ],
+      "bestBody": 0.6198,
+      "bestHeader": 0.395,
+      "topBody": [
+        0.6198,
+        0.5313,
+        0.5558,
+        0.4957,
+        0.5254
+      ],
+      "maxBody": 0.6198
+    },
+    {
+      "id": "guvenlik-5",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6072,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "bilgi-guvenligi.pdf#3 0.6072",
+        "bt-operasyon-runbook.pdf#4 0.4228",
+        "izin-yonetmeligi.pdf#1 0.4123",
+        "isg-depo-proseduru.pdf#4 0.4142",
+        "bt-operasyon-runbook.pdf#4 0.4133"
+      ],
+      "bestBody": 0.5875,
+      "bestHeader": 0.3206,
+      "topBody": [
+        0.5875,
+        0.3752,
+        0.4176,
+        0.397,
+        0.3941
+      ],
+      "maxBody": 0.5875
+    },
+    {
+      "id": "uzaktan-1",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6171,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "uzaktan-calisma.pdf#1 0.6171",
+        "izin-yonetmeligi.pdf#1 0.524",
+        "bt-operasyon-runbook.pdf#4 0.4801",
+        "bt-operasyon-runbook.pdf#2 0.4829",
+        "bt-operasyon-runbook.pdf#3 0.4602"
+      ],
+      "bestBody": 0.6495,
+      "bestHeader": 0.4198,
+      "topBody": [
+        0.6495,
+        0.5416,
+        0.4869,
+        0.4785,
+        0.4708
+      ],
+      "maxBody": 0.6495
+    },
+    {
+      "id": "uzaktan-2",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5037,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "uzaktan-calisma.pdf#1 0.5037",
+        "musteri-destek-sureci.pdf#1 0.4768",
+        "musteri-destek-sureci.pdf#1 0.4064",
+        "bt-operasyon-runbook.pdf#4 0.4074",
+        "musteri-destek-sureci.pdf#3 0.3968"
+      ],
+      "bestBody": 0.5218,
+      "bestHeader": 0.3304,
+      "topBody": [
+        0.5218,
+        0.5208,
+        0.4111,
+        0.4262,
+        0.4135
+      ],
+      "maxBody": 0.5218
+    },
+    {
+      "id": "uzaktan-3",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6215,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "uzaktan-calisma.pdf#2 0.6215",
+        "musteri-destek-sureci.pdf#1 0.4547",
+        "satin-alma-proseduru.pdf#2 0.4778",
+        "musteri-destek-sureci.pdf#1 0.4398",
+        "musteri-destek-sureci.pdf#5 0.4553"
+      ],
+      "bestBody": 0.6052,
+      "bestHeader": 0.4051,
+      "topBody": [
+        0.6052,
+        0.4225,
+        0.4408,
+        0.447,
+        0.3847
+      ],
+      "maxBody": 0.6052
+    },
+    {
+      "id": "kvkk-1",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6755,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "kvkk-aydinlatma.pdf#2 0.6755",
+        "izin-yonetmeligi.pdf#2 0.4906",
+        "bt-operasyon-runbook.pdf#4 0.5187",
+        "musteri-destek-sureci.pdf#2 0.461",
+        "izin-yonetmeligi.pdf#1 0.4769"
+      ],
+      "bestBody": 0.7064,
+      "bestHeader": 0.4764,
+      "topBody": [
+        0.7064,
+        0.4746,
+        0.5163,
+        0.4521,
+        0.4928
+      ],
+      "maxBody": 0.7064
+    },
+    {
+      "id": "kvkk-2",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5688,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "musteri-destek-sureci.pdf#2 0.4699",
+        "kvkk-aydinlatma.pdf#2 0.5688",
+        "musteri-destek-sureci.pdf#5 0.4696",
+        "bt-operasyon-runbook.pdf#6 0.4521",
+        "musteri-destek-sureci.pdf#4 0.4281"
+      ],
+      "bestBody": 0.5989,
+      "bestHeader": 0.3711,
+      "topBody": [
+        0.469,
+        0.5989,
+        0.5203,
+        0.4836,
+        0.4516
+      ],
+      "maxBody": 0.5989
+    },
+    {
+      "id": "kvkk-3",
+      "answerable": true,
+      "tags": [],
+      "best": 0.534,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "kvkk-aydinlatma.pdf#3 0.534",
+        "depo-yonetim-kilavuzu.pdf#6 0.4569",
+        "musteri-destek-sureci.pdf#4 0.5144",
+        "isg-depo-proseduru.pdf#5 0.4405",
+        "musteri-destek-sureci.pdf#1 0.4416"
+      ],
+      "bestBody": 0.5897,
+      "bestHeader": 0.2816,
+      "topBody": [
+        0.5897,
+        0.4653,
+        0.5226,
+        0.4725,
+        0.447
+      ],
+      "maxBody": 0.5897
+    },
+    {
+      "id": "satin-1",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5857,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "satin-alma-proseduru.pdf#1 0.5857",
+        "satin-alma-proseduru.pdf#2 0.5765",
+        "masraf-politikasi.pdf#3 0.5368",
+        "masraf-politikasi.pdf#2 0.5292",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5095"
+      ],
+      "bestBody": 0.6018,
+      "bestHeader": 0.4272,
+      "topBody": [
+        0.6018,
+        0.5632,
+        0.5143,
+        0.5197,
+        0.5151
+      ],
+      "maxBody": 0.6018
+    },
+    {
+      "id": "satin-2",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5493,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "satin-alma-proseduru.pdf#2 0.5493",
+        "erp-satin-alma-kilavuzu.pdf#3 0.4821",
+        "satin-alma-proseduru.pdf#1 0.447",
+        "bt-operasyon-runbook.pdf#1 0.3679",
+        "musteri-destek-sureci.pdf#3 0.3812"
+      ],
+      "bestBody": 0.5807,
+      "bestHeader": 0.5228,
+      "topBody": [
+        0.5807,
+        0.5027,
+        0.4885,
+        0.3885,
+        0.3987
+      ],
+      "maxBody": 0.5807
+    },
+    {
+      "id": "satin-3",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5044,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "satin-alma-proseduru.pdf#2 0.5044",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4864",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4749",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4642",
+        "erp-satin-alma-kilavuzu.pdf#4 0.4491"
+      ],
+      "bestBody": 0.5486,
+      "bestHeader": 0.4067,
+      "topBody": [
+        0.5486,
+        0.4889,
+        0.5041,
+        0.4981,
+        0.472
+      ],
+      "maxBody": 0.5486
+    },
+    {
+      "id": "yok-1",
+      "answerable": false,
+      "tags": [],
+      "best": 0.5157,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "bilgi-guvenligi.pdf#1 0.4375",
+        "musteri-destek-sureci.pdf#1 0.4363",
+        "bilgi-guvenligi.pdf#2 0.4142",
+        "kvkk-aydinlatma.pdf#1 0.4231",
+        "masraf-politikasi.pdf#1 0.5157"
+      ],
+      "bestBody": 0.5262,
+      "bestHeader": 0.3215,
+      "topBody": [
+        0.4495,
+        0.433,
+        0.4194,
+        0.4336,
+        0.5262
+      ],
+      "maxBody": 0.5262
+    },
+    {
+      "id": "yok-2",
+      "answerable": false,
+      "tags": [],
+      "best": 0.5846,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#1 0.5816",
+        "bilgi-guvenligi.pdf#1 0.5846",
+        "erp-satin-alma-kilavuzu.pdf#1 0.5663",
+        "kvkk-aydinlatma.pdf#1 0.5748",
+        "izin-yonetmeligi.pdf#1 0.5526"
+      ],
+      "bestBody": 0.5386,
+      "bestHeader": 0.4751,
+      "topBody": [
+        0.5242,
+        0.5386,
+        0.5132,
+        0.5632,
+        0.5325
+      ],
+      "maxBody": 0.5632
+    },
+    {
+      "id": "yok-3",
+      "answerable": false,
+      "tags": [],
+      "best": 0.4374,
+      "share": 0.08,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "izin-yonetmeligi.pdf#1 0.4293",
+        "izin-yonetmeligi.pdf#2 0.4374",
+        "izin-yonetmeligi.pdf#3 0.4308",
+        "isg-depo-proseduru.pdf#5 0.4256",
+        "uzaktan-calisma.pdf#2 0.4179"
+      ],
+      "bestBody": 0.4515,
+      "bestHeader": 0.2223,
+      "topBody": [
+        0.4509,
+        0.4515,
+        0.457,
+        0.4435,
+        0.4165
+      ],
+      "maxBody": 0.457
+    },
+    {
+      "id": "yok-4",
+      "answerable": false,
+      "tags": [],
+      "best": 0.5108,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "musteri-destek-sureci.pdf#1 0.4389",
+        "bt-operasyon-runbook.pdf#1 0.4254",
+        "masraf-politikasi.pdf#2 0.5108",
+        "bilgi-guvenligi.pdf#1 0.4221",
+        "bt-operasyon-runbook.pdf#2 0.4211"
+      ],
+      "bestBody": 0.5081,
+      "bestHeader": 0.4503,
+      "topBody": [
+        0.4551,
+        0.4448,
+        0.5081,
+        0.4491,
+        0.413
+      ],
+      "maxBody": 0.5081
+    },
+    {
+      "id": "yok-5",
+      "answerable": false,
+      "tags": [],
+      "best": 0.5095,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "izin-yonetmeligi.pdf#1 0.4651",
+        "uzaktan-calisma.pdf#1 0.5095",
+        "izin-yonetmeligi.pdf#2 0.4952",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4811",
+        "erp-satin-alma-kilavuzu.pdf#3 0.4236"
+      ],
+      "bestBody": 0.524,
+      "bestHeader": 0.3613,
+      "topBody": [
+        0.4802,
+        0.524,
+        0.5126,
+        0.4932,
+        0.4348
+      ],
+      "maxBody": 0.524
+    },
+    {
+      "id": "yok-6",
+      "answerable": false,
+      "tags": [],
+      "best": 0.404,
+      "share": 1,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#1 0.2961",
+        "masraf-politikasi.pdf#2 0.404",
+        "erp-satin-alma-kilavuzu.pdf#1 0.2682",
+        "masraf-politikasi.pdf#1 0.3159",
+        "bt-operasyon-runbook.pdf#1 0.3127"
+      ],
+      "bestBody": 0.4311,
+      "bestHeader": 0.2482,
+      "topBody": [
+        0.3212,
+        0.4311,
+        0.2702,
+        0.3044,
+        0.3228
+      ],
+      "maxBody": 0.4311
+    },
+    {
+      "id": "yok-7",
+      "answerable": false,
+      "tags": [],
+      "best": 0.4649,
+      "share": 1,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "uzaktan-calisma.pdf#2 0.4649",
+        "musteri-destek-sureci.pdf#1 0.4611",
+        "musteri-destek-sureci.pdf#2 0.4566",
+        "musteri-destek-sureci.pdf#1 0.4436",
+        "musteri-destek-sureci.pdf#4 0.4491"
+      ],
+      "bestBody": 0.4663,
+      "bestHeader": 0.3828,
+      "topBody": [
+        0.4663,
+        0.4505,
+        0.4344,
+        0.4577,
+        0.4221
+      ],
+      "maxBody": 0.4663
+    },
+    {
+      "id": "yok-8",
+      "answerable": false,
+      "tags": [],
+      "best": 0.458,
+      "share": 1,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.4163",
+        "bilgi-guvenligi.pdf#1 0.4307",
+        "bilgi-guvenligi.pdf#2 0.4287",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4015",
+        "masraf-politikasi.pdf#2 0.458"
+      ],
+      "bestBody": 0.4262,
+      "bestHeader": 0.3507,
+      "topBody": [
+        0.4059,
+        0.442,
+        0.3938,
+        0.3634,
+        0.4262
+      ],
+      "maxBody": 0.442
+    },
+    {
+      "id": "depo-1",
+      "answerable": true,
+      "tags": [
+        "showcase"
+      ],
+      "best": 0.6241,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#3 0.6241",
+        "depo-yonetim-kilavuzu.pdf#3 0.5789",
+        "depo-yonetim-kilavuzu.pdf#4 0.513",
+        "depo-yonetim-kilavuzu.pdf#3 0.5235",
+        "depo-yonetim-kilavuzu.pdf#4 0.4906"
+      ],
+      "bestBody": 0.6255,
+      "bestHeader": 0.4458,
+      "topBody": [
+        0.6255,
+        0.6383,
+        0.5248,
+        0.556,
+        0.5253
+      ],
+      "maxBody": 0.6383
+    },
+    {
+      "id": "depo-2",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.5404,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#5 0.5404",
+        "depo-yonetim-kilavuzu.pdf#2 0.5279",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5047",
+        "depo-yonetim-kilavuzu.pdf#2 0.4933",
+        "depo-yonetim-kilavuzu.pdf#3 0.5233"
+      ],
+      "bestBody": 0.5474,
+      "bestHeader": 0.3899,
+      "topBody": [
+        0.5474,
+        0.523,
+        0.5101,
+        0.5026,
+        0.5073
+      ],
+      "maxBody": 0.5474
+    },
+    {
+      "id": "depo-3",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6508,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#3 0.6508",
+        "depo-yonetim-kilavuzu.pdf#3 0.5771",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5372",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5551",
+        "depo-yonetim-kilavuzu.pdf#6 0.5248"
+      ],
+      "bestBody": 0.6773,
+      "bestHeader": 0.4951,
+      "topBody": [
+        0.6773,
+        0.6054,
+        0.5441,
+        0.578,
+        0.5374
+      ],
+      "maxBody": 0.6773
+    },
+    {
+      "id": "depo-4",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "number"
+      ],
+      "best": 0.6329,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#2 0.6329",
+        "depo-yonetim-kilavuzu.pdf#2 0.4681",
+        "bilgi-guvenligi.pdf#2 0.4535",
+        "musteri-destek-sureci.pdf#4 0.4849",
+        "izin-yonetmeligi.pdf#3 0.4761"
+      ],
+      "bestBody": 0.6203,
+      "bestHeader": 0.4664,
+      "topBody": [
+        0.6203,
+        0.4609,
+        0.4394,
+        0.48,
+        0.4711
+      ],
+      "maxBody": 0.6203
+    },
+    {
+      "id": "depo-5",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6261,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#2 0.6261",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5592",
+        "depo-yonetim-kilavuzu.pdf#3 0.5533",
+        "depo-yonetim-kilavuzu.pdf#3 0.5319",
+        "musteri-destek-sureci.pdf#4 0.5314"
+      ],
+      "bestBody": 0.6618,
+      "bestHeader": 0.4341,
+      "topBody": [
+        0.6618,
+        0.5655,
+        0.5412,
+        0.548,
+        0.5035
+      ],
+      "maxBody": 0.6618
+    },
+    {
+      "id": "depo-6",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5728,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#2 0.5728",
+        "isg-depo-proseduru.pdf#3 0.5274",
+        "musteri-destek-sureci.pdf#4 0.5593",
+        "depo-yonetim-kilavuzu.pdf#2 0.5212",
+        "isg-depo-proseduru.pdf#3 0.5189"
+      ],
+      "bestBody": 0.6478,
+      "bestHeader": 0.2847,
+      "topBody": [
+        0.6478,
+        0.5564,
+        0.5989,
+        0.5723,
+        0.5109
+      ],
+      "maxBody": 0.6478
+    },
+    {
+      "id": "depo-7",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5816,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#2 0.5816",
+        "bt-operasyon-runbook.pdf#1 0.4674",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5007",
+        "musteri-destek-sureci.pdf#4 0.5594",
+        "depo-yonetim-kilavuzu.pdf#2 0.4621"
+      ],
+      "bestBody": 0.6543,
+      "bestHeader": 0.2582,
+      "topBody": [
+        0.6543,
+        0.4753,
+        0.5086,
+        0.5737,
+        0.4726
+      ],
+      "maxBody": 0.6543
+    },
+    {
+      "id": "depo-8",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "best": 0.5224,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#4 0.5224",
+        "depo-yonetim-kilavuzu.pdf#3 0.5177",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5155",
+        "depo-yonetim-kilavuzu.pdf#2 0.496",
+        "depo-yonetim-kilavuzu.pdf#2 0.5028"
+      ],
+      "bestBody": 0.5369,
+      "bestHeader": 0.4522,
+      "topBody": [
+        0.5369,
+        0.5419,
+        0.5172,
+        0.5494,
+        0.555
+      ],
+      "maxBody": 0.555
+    },
+    {
+      "id": "depo-9",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "best": 0.5572,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#4 0.5572",
+        "depo-yonetim-kilavuzu.pdf#3 0.524",
+        "depo-yonetim-kilavuzu.pdf#3 0.4396",
+        "depo-yonetim-kilavuzu.pdf#5 0.4562",
+        "depo-yonetim-kilavuzu.pdf#4 0.4494"
+      ],
+      "bestBody": 0.5697,
+      "bestHeader": 0.3886,
+      "topBody": [
+        0.5697,
+        0.5219,
+        0.4746,
+        0.4939,
+        0.4929
+      ],
+      "maxBody": 0.5697
+    },
+    {
+      "id": "depo-10",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5534,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#4 0.5534",
+        "bt-operasyon-runbook.pdf#1 0.4511",
+        "depo-yonetim-kilavuzu.pdf#4 0.4279",
+        "depo-yonetim-kilavuzu.pdf#1 0.4316",
+        "depo-yonetim-kilavuzu.pdf#2 0.4063"
+      ],
+      "bestBody": 0.5729,
+      "bestHeader": 0.305,
+      "topBody": [
+        0.5729,
+        0.4188,
+        0.4488,
+        0.4268,
+        0.4039
+      ],
+      "maxBody": 0.5729
+    },
+    {
+      "id": "depo-11",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.5356,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#4 0.5313",
+        "satin-alma-proseduru.pdf#2 0.4962",
+        "masraf-politikasi.pdf#3 0.5356",
+        "erp-satin-alma-kilavuzu.pdf#3 0.4914",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4153"
+      ],
+      "bestBody": 0.552,
+      "bestHeader": 0.3475,
+      "topBody": [
+        0.5578,
+        0.5022,
+        0.552,
+        0.5096,
+        0.4375
+      ],
+      "maxBody": 0.5578
+    },
+    {
+      "id": "depo-12",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "table"
+      ],
+      "best": 0.6602,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#5 0.6602",
+        "depo-yonetim-kilavuzu.pdf#5 0.6098",
+        "depo-yonetim-kilavuzu.pdf#1 0.5236",
+        "depo-yonetim-kilavuzu.pdf#3 0.5129",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5042"
+      ],
+      "bestBody": 0.6647,
+      "bestHeader": 0.5643,
+      "topBody": [
+        0.6647,
+        0.5413,
+        0.5127,
+        0.4959,
+        0.5097
+      ],
+      "maxBody": 0.6647
+    },
+    {
+      "id": "depo-13",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.5416,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#3 0.5078",
+        "depo-yonetim-kilavuzu.pdf#3 0.5383",
+        "bt-operasyon-runbook.pdf#4 0.4713",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4897",
+        "isg-depo-proseduru.pdf#4 0.5416"
+      ],
+      "bestBody": 0.5695,
+      "bestHeader": 0.4391,
+      "topBody": [
+        0.5278,
+        0.5441,
+        0.4755,
+        0.4872,
+        0.5695
+      ],
+      "maxBody": 0.5695
+    },
+    {
+      "id": "depo-14",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6086,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#3 0.6086",
+        "depo-yonetim-kilavuzu.pdf#3 0.5427",
+        "musteri-destek-sureci.pdf#2 0.4997",
+        "depo-yonetim-kilavuzu.pdf#6 0.4768",
+        "bt-operasyon-runbook.pdf#4 0.46"
+      ],
+      "bestBody": 0.6652,
+      "bestHeader": 0.4031,
+      "topBody": [
+        0.6652,
+        0.5916,
+        0.5451,
+        0.4965,
+        0.4796
+      ],
+      "maxBody": 0.6652
+    },
+    {
+      "id": "depo-15",
+      "answerable": true,
+      "tags": [
+        "number",
+        "table"
+      ],
+      "best": 0.6014,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#5 0.6014",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5582",
+        "depo-yonetim-kilavuzu.pdf#5 0.5169",
+        "bt-operasyon-runbook.pdf#4 0.5483",
+        "musteri-destek-sureci.pdf#5 0.5148"
+      ],
+      "bestBody": 0.6128,
+      "bestHeader": 0.4626,
+      "topBody": [
+        0.6128,
+        0.5657,
+        0.5128,
+        0.5566,
+        0.5309
+      ],
+      "maxBody": 0.6128
+    },
+    {
+      "id": "depo-16",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5698,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#6 0.5676",
+        "isg-depo-proseduru.pdf#5 0.5698",
+        "bt-operasyon-runbook.pdf#4 0.534",
+        "depo-yonetim-kilavuzu.pdf#4 0.5159",
+        "isg-depo-proseduru.pdf#1 0.4819"
+      ],
+      "bestBody": 0.573,
+      "bestHeader": 0.4064,
+      "topBody": [
+        0.6018,
+        0.573,
+        0.5879,
+        0.5444,
+        0.4856
+      ],
+      "maxBody": 0.6018
+    },
+    {
+      "id": "depo-17",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.4625,
+      "share": 0.0667,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "musteri-destek-sureci.pdf#2 0.4312",
+        "depo-yonetim-kilavuzu.pdf#1 0.3996",
+        "erp-satin-alma-kilavuzu.pdf#1 0.4307",
+        "depo-yonetim-kilavuzu.pdf#1 0.4625",
+        "depo-yonetim-kilavuzu.pdf#5 0.4177"
+      ],
+      "bestBody": 0.4737,
+      "bestHeader": 0.2839,
+      "topBody": [
+        0.423,
+        0.4143,
+        0.4584,
+        0.4737,
+        0.4072
+      ],
+      "maxBody": 0.4737
+    },
+    {
+      "id": "depo-18",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.4592,
+      "share": 0.0267,
+      "decision": "SPECIFIC_TERM",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#1 0.4592",
+        "depo-yonetim-kilavuzu.pdf#1 0.3056",
+        "depo-yonetim-kilavuzu.pdf#3 0.2897",
+        "isg-depo-proseduru.pdf#5 0.3267",
+        "masraf-politikasi.pdf#1 0.3072"
+      ],
+      "bestBody": 0.4934,
+      "bestHeader": 0.1874,
+      "topBody": [
+        0.4934,
+        0.3106,
+        0.2998,
+        0.3474,
+        0.3194
+      ],
+      "maxBody": 0.4934
+    },
+    {
+      "id": "depo-19",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "disambiguation"
+      ],
+      "best": 0.6025,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#5 0.6025",
+        "depo-yonetim-kilavuzu.pdf#5 0.5874",
+        "depo-yonetim-kilavuzu.pdf#6 0.574",
+        "depo-yonetim-kilavuzu.pdf#1 0.5414",
+        "isg-depo-proseduru.pdf#4 0.5356"
+      ],
+      "bestBody": 0.6034,
+      "bestHeader": 0.4424,
+      "topBody": [
+        0.6034,
+        0.5884,
+        0.5954,
+        0.5379,
+        0.5825
+      ],
+      "maxBody": 0.6034
+    },
+    {
+      "id": "depo-20",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6343,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#1 0.6343",
+        "depo-yonetim-kilavuzu.pdf#5 0.5806",
+        "depo-yonetim-kilavuzu.pdf#5 0.5285",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5138",
+        "bt-operasyon-runbook.pdf#3 0.5044"
+      ],
+      "bestBody": 0.7121,
+      "bestHeader": 0.2848,
+      "topBody": [
+        0.7121,
+        0.5895,
+        0.536,
+        0.5178,
+        0.5034
+      ],
+      "maxBody": 0.7121
+    },
+    {
+      "id": "erp-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.6119,
+      "share": 0.08,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#2 0.6119",
+        "erp-satin-alma-kilavuzu.pdf#1 0.5087",
+        "erp-satin-alma-kilavuzu.pdf#1 0.4641",
+        "satin-alma-proseduru.pdf#1 0.5017",
+        "erp-satin-alma-kilavuzu.pdf#5 0.496"
+      ],
+      "bestBody": 0.6381,
+      "bestHeader": 0.4427,
+      "topBody": [
+        0.6381,
+        0.5312,
+        0.481,
+        0.5157,
+        0.4832
+      ],
+      "maxBody": 0.6381
+    },
+    {
+      "id": "erp-2",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "best": 0.6067,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#2 0.5787",
+        "erp-satin-alma-kilavuzu.pdf#2 0.6067",
+        "satin-alma-proseduru.pdf#2 0.5457",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5207",
+        "satin-alma-proseduru.pdf#1 0.5087"
+      ],
+      "bestBody": 0.637,
+      "bestHeader": 0.4631,
+      "topBody": [
+        0.5985,
+        0.637,
+        0.5592,
+        0.5508,
+        0.519
+      ],
+      "maxBody": 0.637
+    },
+    {
+      "id": "erp-3",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.5557,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#2 0.5557",
+        "izin-yonetmeligi.pdf#3 0.5387",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5265",
+        "musteri-destek-sureci.pdf#4 0.5555",
+        "musteri-destek-sureci.pdf#3 0.5116"
+      ],
+      "bestBody": 0.5894,
+      "bestHeader": 0.3771,
+      "topBody": [
+        0.5894,
+        0.5425,
+        0.5475,
+        0.5598,
+        0.5225
+      ],
+      "maxBody": 0.5894
+    },
+    {
+      "id": "erp-4",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6051,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.6051",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5072",
+        "izin-yonetmeligi.pdf#1 0.5714",
+        "depo-yonetim-kilavuzu.pdf#6 0.4955",
+        "bt-operasyon-runbook.pdf#2 0.4954"
+      ],
+      "bestBody": 0.6289,
+      "bestHeader": 0.3114,
+      "topBody": [
+        0.6289,
+        0.5281,
+        0.5816,
+        0.4618,
+        0.4935
+      ],
+      "maxBody": 0.6289
+    },
+    {
+      "id": "erp-5",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5671,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.5671",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5632",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4743",
+        "erp-satin-alma-kilavuzu.pdf#3 0.4754",
+        "musteri-destek-sureci.pdf#4 0.4832"
+      ],
+      "bestBody": 0.5858,
+      "bestHeader": 0.3927,
+      "topBody": [
+        0.5858,
+        0.5934,
+        0.4867,
+        0.5033,
+        0.4993
+      ],
+      "maxBody": 0.5934
+    },
+    {
+      "id": "erp-6",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "table"
+      ],
+      "best": 0.5921,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#5 0.5921",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5711",
+        "erp-satin-alma-kilavuzu.pdf#6 0.4483",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4459",
+        "erp-satin-alma-kilavuzu.pdf#4 0.455"
+      ],
+      "bestBody": 0.6062,
+      "bestHeader": 0.4249,
+      "topBody": [
+        0.6062,
+        0.5653,
+        0.4305,
+        0.4399,
+        0.4422
+      ],
+      "maxBody": 0.6062
+    },
+    {
+      "id": "erp-7",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.6404,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#5 0.6404",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5233",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5101",
+        "bt-operasyon-runbook.pdf#2 0.5499",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5135"
+      ],
+      "bestBody": 0.6715,
+      "bestHeader": 0.445,
+      "topBody": [
+        0.6715,
+        0.5429,
+        0.508,
+        0.5313,
+        0.5119
+      ],
+      "maxBody": 0.6715
+    },
+    {
+      "id": "erp-8",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.7157,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#4 0.7157",
+        "erp-satin-alma-kilavuzu.pdf#3 0.6333",
+        "erp-satin-alma-kilavuzu.pdf#2 0.6215",
+        "erp-satin-alma-kilavuzu.pdf#5 0.6385",
+        "erp-satin-alma-kilavuzu.pdf#2 0.6124"
+      ],
+      "bestBody": 0.7086,
+      "bestHeader": 0.5861,
+      "topBody": [
+        0.7086,
+        0.6345,
+        0.5729,
+        0.5888,
+        0.5292
+      ],
+      "maxBody": 0.7086
+    },
+    {
+      "id": "erp-9",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6307,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#2 0.6149",
+        "musteri-destek-sureci.pdf#4 0.6151",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5924",
+        "erp-satin-alma-kilavuzu.pdf#5 0.6307",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5764"
+      ],
+      "bestBody": 0.6265,
+      "bestHeader": 0.3905,
+      "topBody": [
+        0.6307,
+        0.6161,
+        0.6067,
+        0.6265,
+        0.5943
+      ],
+      "maxBody": 0.6307
+    },
+    {
+      "id": "erp-10",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.7119,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.7119",
+        "erp-satin-alma-kilavuzu.pdf#6 0.646",
+        "erp-satin-alma-kilavuzu.pdf#3 0.6551",
+        "erp-satin-alma-kilavuzu.pdf#1 0.5583",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5683"
+      ],
+      "bestBody": 0.7087,
+      "bestHeader": 0.5679,
+      "topBody": [
+        0.7087,
+        0.6452,
+        0.6629,
+        0.5774,
+        0.47
+      ],
+      "maxBody": 0.7087
+    },
+    {
+      "id": "erp-11",
+      "answerable": true,
+      "tags": [
+        "disambiguation"
+      ],
+      "best": 0.5367,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.5367",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5032",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4857",
+        "erp-satin-alma-kilavuzu.pdf#6 0.5037",
+        "izin-yonetmeligi.pdf#3 0.5248"
+      ],
+      "bestBody": 0.5591,
+      "bestHeader": 0.4383,
+      "topBody": [
+        0.5591,
+        0.5131,
+        0.4745,
+        0.5121,
+        0.5189
+      ],
+      "maxBody": 0.5591
+    },
+    {
+      "id": "erp-12",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.4486,
+      "share": 0.0267,
+      "decision": "SPECIFIC_TERM",
+      "prompt": 1,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#4 0.4486",
+        "erp-satin-alma-kilavuzu.pdf#4 0.4296",
+        "erp-satin-alma-kilavuzu.pdf#1 0.4102",
+        "isg-depo-proseduru.pdf#2 0.3799",
+        "erp-satin-alma-kilavuzu.pdf#1 0.416"
+      ],
+      "bestBody": 0.4497,
+      "bestHeader": 0.3607,
+      "topBody": [
+        0.4497,
+        0.4336,
+        0.4045,
+        0.3411,
+        0.4377
+      ],
+      "maxBody": 0.4497
+    },
+    {
+      "id": "erp-13",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.574,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#6 0.574",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5544",
+        "erp-satin-alma-kilavuzu.pdf#1 0.524",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5367",
+        "erp-satin-alma-kilavuzu.pdf#1 0.4743"
+      ],
+      "bestBody": 0.5873,
+      "bestHeader": 0.4337,
+      "topBody": [
+        0.5873,
+        0.5563,
+        0.5389,
+        0.5428,
+        0.4946
+      ],
+      "maxBody": 0.5873
+    },
+    {
+      "id": "erp-14",
+      "answerable": true,
+      "tags": [],
+      "best": 0.6319,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#6 0.6319",
+        "depo-yonetim-kilavuzu.pdf#6 0.5721",
+        "erp-satin-alma-kilavuzu.pdf#6 0.5349",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5539",
+        "musteri-destek-sureci.pdf#4 0.622"
+      ],
+      "bestBody": 0.6703,
+      "bestHeader": 0.3846,
+      "topBody": [
+        0.6703,
+        0.5847,
+        0.5646,
+        0.5912,
+        0.6258
+      ],
+      "maxBody": 0.6703
+    },
+    {
+      "id": "erp-15",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6034,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#2 0.6034",
+        "erp-satin-alma-kilavuzu.pdf#1 0.5417",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5751",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5376",
+        "satin-alma-proseduru.pdf#1 0.5371"
+      ],
+      "bestBody": 0.577,
+      "bestHeader": 0.4784,
+      "topBody": [
+        0.577,
+        0.5378,
+        0.5325,
+        0.5149,
+        0.5513
+      ],
+      "maxBody": 0.577
+    },
+    {
+      "id": "erp-16",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5207,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#6 0.5207",
+        "erp-satin-alma-kilavuzu.pdf#4 0.4476",
+        "depo-yonetim-kilavuzu.pdf#2 0.4764",
+        "musteri-destek-sureci.pdf#2 0.4585",
+        "depo-yonetim-kilavuzu.pdf#4 0.4755"
+      ],
+      "bestBody": 0.5914,
+      "bestHeader": 0.2956,
+      "topBody": [
+        0.5914,
+        0.4614,
+        0.4947,
+        0.478,
+        0.4876
+      ],
+      "maxBody": 0.5914
+    },
+    {
+      "id": "erp-17",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "best": 0.6012,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.6012",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5717",
+        "erp-satin-alma-kilavuzu.pdf#2 0.52",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5279",
+        "depo-yonetim-kilavuzu.pdf#3 0.5691"
+      ],
+      "bestBody": 0.6187,
+      "bestHeader": 0.5082,
+      "topBody": [
+        0.6187,
+        0.5731,
+        0.5354,
+        0.5402,
+        0.5812
+      ],
+      "maxBody": 0.6187
+    },
+    {
+      "id": "erp-18",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "abbreviation"
+      ],
+      "best": 0.6611,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#4 0.6179",
+        "depo-yonetim-kilavuzu.pdf#5 0.5965",
+        "erp-satin-alma-kilavuzu.pdf#4 0.6611",
+        "depo-yonetim-kilavuzu.pdf#5 0.6307",
+        "depo-yonetim-kilavuzu.pdf#3 0.5914"
+      ],
+      "bestBody": 0.6768,
+      "bestHeader": 0.3845,
+      "topBody": [
+        0.6328,
+        0.6052,
+        0.6768,
+        0.58,
+        0.5571
+      ],
+      "maxBody": 0.6768
+    },
+    {
+      "id": "bt-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "abbreviation",
+        "disambiguation"
+      ],
+      "best": 0.6678,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bt-operasyon-runbook.pdf#2 0.6678",
+        "bt-operasyon-runbook.pdf#1 0.6244",
+        "musteri-destek-sureci.pdf#3 0.532",
+        "bt-operasyon-runbook.pdf#1 0.5254",
+        "bt-operasyon-runbook.pdf#4 0.5206"
+      ],
+      "bestBody": 0.661,
+      "bestHeader": 0.5436,
+      "topBody": [
+        0.661,
+        0.576,
+        0.5738,
+        0.5323,
+        0.4934
+      ],
+      "maxBody": 0.661
+    },
+    {
+      "id": "bt-2",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "table",
+        "disambiguation"
+      ],
+      "best": 0.5127,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "bt-operasyon-runbook.pdf#4 0.5127",
+        "bt-operasyon-runbook.pdf#1 0.4637",
+        "depo-yonetim-kilavuzu.pdf#5 0.4469",
+        "bt-operasyon-runbook.pdf#4 0.4834",
+        "bt-operasyon-runbook.pdf#1 0.4315"
+      ],
+      "bestBody": 0.5186,
+      "bestHeader": 0.4191,
+      "topBody": [
+        0.5186,
+        0.4186,
+        0.5144,
+        0.523,
+        0.4447
+      ],
+      "maxBody": 0.523
+    },
+    {
+      "id": "bt-3",
+      "answerable": true,
+      "tags": [
+        "table",
+        "disambiguation"
+      ],
+      "best": 0.6394,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bt-operasyon-runbook.pdf#5 0.6394",
+        "bt-operasyon-runbook.pdf#4 0.5649",
+        "bt-operasyon-runbook.pdf#6 0.5826",
+        "bt-operasyon-runbook.pdf#3 0.5639",
+        "musteri-destek-sureci.pdf#2 0.5142"
+      ],
+      "bestBody": 0.6403,
+      "bestHeader": 0.4134,
+      "topBody": [
+        0.6403,
+        0.5687,
+        0.6118,
+        0.5426,
+        0.5244
+      ],
+      "maxBody": 0.6403
+    },
+    {
+      "id": "bt-4",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.5928,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "bt-operasyon-runbook.pdf#2 0.5928",
+        "bt-operasyon-runbook.pdf#1 0.5688",
+        "bt-operasyon-runbook.pdf#1 0.5141",
+        "musteri-destek-sureci.pdf#3 0.4658",
+        "bt-operasyon-runbook.pdf#3 0.4729"
+      ],
+      "bestBody": 0.5846,
+      "bestHeader": 0.422,
+      "topBody": [
+        0.5846,
+        0.5995,
+        0.5202,
+        0.5134,
+        0.4491
+      ],
+      "maxBody": 0.5995
+    },
+    {
+      "id": "bt-5",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "best": 0.4881,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#6 0.4881",
+        "depo-yonetim-kilavuzu.pdf#6 0.4746",
+        "bt-operasyon-runbook.pdf#4 0.46",
+        "bt-operasyon-runbook.pdf#1 0.4609",
+        "bt-operasyon-runbook.pdf#6 0.4759"
+      ],
+      "bestBody": 0.508,
+      "bestHeader": 0.3302,
+      "topBody": [
+        0.508,
+        0.4679,
+        0.4554,
+        0.4597,
+        0.4709
+      ],
+      "maxBody": 0.508
+    },
+    {
+      "id": "bt-6",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6051,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "bt-operasyon-runbook.pdf#2 0.6051",
+        "bilgi-guvenligi.pdf#1 0.475",
+        "bt-operasyon-runbook.pdf#2 0.5216",
+        "bilgi-guvenligi.pdf#2 0.4225",
+        "musteri-destek-sureci.pdf#1 0.3974"
+      ],
+      "bestBody": 0.6397,
+      "bestHeader": 0.2784,
+      "topBody": [
+        0.6397,
+        0.4978,
+        0.5624,
+        0.42,
+        0.4037
+      ],
+      "maxBody": 0.6397
+    },
+    {
+      "id": "bt-7",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.5775,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "bt-operasyon-runbook.pdf#2 0.5775",
+        "bt-operasyon-runbook.pdf#2 0.4808",
+        "bilgi-guvenligi.pdf#1 0.4404",
+        "depo-yonetim-kilavuzu.pdf#5 0.4447",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4301"
+      ],
+      "bestBody": 0.646,
+      "bestHeader": 0.2675,
+      "topBody": [
+        0.646,
+        0.5307,
+        0.4528,
+        0.4501,
+        0.4342
+      ],
+      "maxBody": 0.646
+    },
+    {
+      "id": "bt-8",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.6027,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "bilgi-guvenligi.pdf#2 0.5514",
+        "bt-operasyon-runbook.pdf#2 0.6027",
+        "bilgi-guvenligi.pdf#1 0.5381",
+        "uzaktan-calisma.pdf#2 0.4989",
+        "bt-operasyon-runbook.pdf#5 0.5444"
+      ],
+      "bestBody": 0.612,
+      "bestHeader": 0.3603,
+      "topBody": [
+        0.55,
+        0.612,
+        0.5564,
+        0.5223,
+        0.5668
+      ],
+      "maxBody": 0.612
+    },
+    {
+      "id": "bt-9",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6348,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "bt-operasyon-runbook.pdf#3 0.6348",
+        "bt-operasyon-runbook.pdf#3 0.549",
+        "bilgi-guvenligi.pdf#1 0.5153",
+        "erp-satin-alma-kilavuzu.pdf#4 0.4968",
+        "isg-depo-proseduru.pdf#2 0.4663"
+      ],
+      "bestBody": 0.6677,
+      "bestHeader": 0.3323,
+      "topBody": [
+        0.6677,
+        0.5481,
+        0.5339,
+        0.5104,
+        0.4754
+      ],
+      "maxBody": 0.6677
+    },
+    {
+      "id": "bt-10",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5898,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "bt-operasyon-runbook.pdf#3 0.5898",
+        "bt-operasyon-runbook.pdf#3 0.5723",
+        "bt-operasyon-runbook.pdf#2 0.5507",
+        "bt-operasyon-runbook.pdf#2 0.4971",
+        "depo-yonetim-kilavuzu.pdf#4 0.4718"
+      ],
+      "bestBody": 0.6106,
+      "bestHeader": 0.4012,
+      "topBody": [
+        0.6106,
+        0.5957,
+        0.5814,
+        0.5208,
+        0.4792
+      ],
+      "maxBody": 0.6106
+    },
+    {
+      "id": "bt-11",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.5836,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "bt-operasyon-runbook.pdf#3 0.5836",
+        "bt-operasyon-runbook.pdf#3 0.5559",
+        "depo-yonetim-kilavuzu.pdf#5 0.4983",
+        "depo-yonetim-kilavuzu.pdf#5 0.4579",
+        "bt-operasyon-runbook.pdf#2 0.4754"
+      ],
+      "bestBody": 0.623,
+      "bestHeader": 0.3716,
+      "topBody": [
+        0.623,
+        0.5642,
+        0.5028,
+        0.4556,
+        0.5026
+      ],
+      "maxBody": 0.623
+    },
+    {
+      "id": "bt-12",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6471,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bt-operasyon-runbook.pdf#3 0.6471",
+        "bt-operasyon-runbook.pdf#3 0.5641",
+        "bt-operasyon-runbook.pdf#2 0.6308",
+        "bt-operasyon-runbook.pdf#2 0.5383",
+        "bilgi-guvenligi.pdf#1 0.5776"
+      ],
+      "bestBody": 0.6595,
+      "bestHeader": 0.4218,
+      "topBody": [
+        0.6595,
+        0.5892,
+        0.6452,
+        0.5465,
+        0.5895
+      ],
+      "maxBody": 0.6595
+    },
+    {
+      "id": "bt-13",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.5971,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "bt-operasyon-runbook.pdf#4 0.5971",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5375",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5387",
+        "erp-satin-alma-kilavuzu.pdf#3 0.506",
+        "depo-yonetim-kilavuzu.pdf#5 0.4908"
+      ],
+      "bestBody": 0.6418,
+      "bestHeader": 0.424,
+      "topBody": [
+        0.6418,
+        0.5363,
+        0.5452,
+        0.4801,
+        0.5208
+      ],
+      "maxBody": 0.6418
+    },
+    {
+      "id": "bt-14",
+      "answerable": true,
+      "tags": [
+        "table"
+      ],
+      "best": 0.5869,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "bt-operasyon-runbook.pdf#4 0.5869",
+        "bilgi-guvenligi.pdf#2 0.5102",
+        "uzaktan-calisma.pdf#2 0.4673",
+        "kvkk-aydinlatma.pdf#2 0.4965",
+        "bt-operasyon-runbook.pdf#5 0.4923"
+      ],
+      "bestBody": 0.6559,
+      "bestHeader": 0.4723,
+      "topBody": [
+        0.6559,
+        0.513,
+        0.4894,
+        0.5223,
+        0.5005
+      ],
+      "maxBody": 0.6559
+    },
+    {
+      "id": "bt-15",
+      "answerable": true,
+      "tags": [],
+      "best": 0.5486,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#6 0.5057",
+        "bt-operasyon-runbook.pdf#4 0.5486",
+        "isg-depo-proseduru.pdf#5 0.4765",
+        "bt-operasyon-runbook.pdf#6 0.5076",
+        "bt-operasyon-runbook.pdf#3 0.4278"
+      ],
+      "bestBody": 0.604,
+      "bestHeader": 0.3147,
+      "topBody": [
+        0.5308,
+        0.604,
+        0.5088,
+        0.5315,
+        0.4431
+      ],
+      "maxBody": 0.604
+    },
+    {
+      "id": "bt-16",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.4358,
+      "share": 0.0133,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "bt-operasyon-runbook.pdf#4 0.4358",
+        "bt-operasyon-runbook.pdf#1 0.3659",
+        "depo-yonetim-kilavuzu.pdf#6 0.3167",
+        "bt-operasyon-runbook.pdf#5 0.3584",
+        "bt-operasyon-runbook.pdf#4 0.3286"
+      ],
+      "bestBody": 0.4682,
+      "bestHeader": 0.2214,
+      "topBody": [
+        0.4682,
+        0.3712,
+        0.341,
+        0.3735,
+        0.3417
+      ],
+      "maxBody": 0.4682
+    },
+    {
+      "id": "bt-17",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5773,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bt-operasyon-runbook.pdf#3 0.5773",
+        "depo-yonetim-kilavuzu.pdf#6 0.5394",
+        "izin-yonetmeligi.pdf#3 0.5765",
+        "izin-yonetmeligi.pdf#2 0.5349",
+        "musteri-destek-sureci.pdf#4 0.5406"
+      ],
+      "bestBody": 0.6075,
+      "bestHeader": 0.3036,
+      "topBody": [
+        0.6075,
+        0.5201,
+        0.6032,
+        0.5277,
+        0.5696
+      ],
+      "maxBody": 0.6075
+    },
+    {
+      "id": "bt-18",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6295,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "bt-operasyon-runbook.pdf#5 0.6295",
+        "bt-operasyon-runbook.pdf#2 0.5462",
+        "bilgi-guvenligi.pdf#2 0.56",
+        "bt-operasyon-runbook.pdf#2 0.4753",
+        "bt-operasyon-runbook.pdf#3 0.5451"
+      ],
+      "bestBody": 0.6587,
+      "bestHeader": 0.4849,
+      "topBody": [
+        0.6587,
+        0.5832,
+        0.5543,
+        0.4789,
+        0.5231
+      ],
+      "maxBody": 0.6587
+    },
+    {
+      "id": "bt-19",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6786,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bt-operasyon-runbook.pdf#6 0.6786",
+        "bt-operasyon-runbook.pdf#2 0.5783",
+        "bt-operasyon-runbook.pdf#4 0.5193",
+        "bt-operasyon-runbook.pdf#3 0.5285",
+        "bt-operasyon-runbook.pdf#2 0.5495"
+      ],
+      "bestBody": 0.6776,
+      "bestHeader": 0.4271,
+      "topBody": [
+        0.6776,
+        0.5923,
+        0.5032,
+        0.5109,
+        0.5577
+      ],
+      "maxBody": 0.6776
+    },
+    {
+      "id": "bt-20",
+      "answerable": true,
+      "tags": [
+        "disambiguation"
+      ],
+      "best": 0.5916,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.5667",
+        "bt-operasyon-runbook.pdf#2 0.5916",
+        "bt-operasyon-runbook.pdf#6 0.5232",
+        "bt-operasyon-runbook.pdf#2 0.5171",
+        "musteri-destek-sureci.pdf#2 0.5041"
+      ],
+      "bestBody": 0.6037,
+      "bestHeader": 0.4467,
+      "topBody": [
+        0.5592,
+        0.6037,
+        0.5535,
+        0.4753,
+        0.5043
+      ],
+      "maxBody": 0.6037
+    },
+    {
+      "id": "bt-21",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.6,
+      "share": 0.0933,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "bt-operasyon-runbook.pdf#1 0.5689",
+        "bt-operasyon-runbook.pdf#1 0.5552",
+        "musteri-destek-sureci.pdf#3 0.6",
+        "bt-operasyon-runbook.pdf#2 0.5286",
+        "bt-operasyon-runbook.pdf#3 0.5589"
+      ],
+      "bestBody": 0.6042,
+      "bestHeader": 0.4474,
+      "topBody": [
+        0.5938,
+        0.5838,
+        0.6042,
+        0.561,
+        0.5479
+      ],
+      "maxBody": 0.6042
+    },
+    {
+      "id": "crm-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "abbreviation"
+      ],
+      "best": 0.7117,
+      "share": 0.08,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#2 0.7117",
+        "musteri-destek-sureci.pdf#3 0.6817",
+        "musteri-destek-sureci.pdf#3 0.6401",
+        "musteri-destek-sureci.pdf#1 0.5775",
+        "musteri-destek-sureci.pdf#1 0.5876"
+      ],
+      "bestBody": 0.6929,
+      "bestHeader": 0.4809,
+      "topBody": [
+        0.6929,
+        0.6758,
+        0.6003,
+        0.5788,
+        0.564
+      ],
+      "maxBody": 0.6929
+    },
+    {
+      "id": "crm-2",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6777,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#2 0.6373",
+        "musteri-destek-sureci.pdf#4 0.6485",
+        "musteri-destek-sureci.pdf#2 0.6777",
+        "musteri-destek-sureci.pdf#1 0.6099",
+        "musteri-destek-sureci.pdf#4 0.6649"
+      ],
+      "bestBody": 0.6584,
+      "bestHeader": 0.4456,
+      "topBody": [
+        0.6286,
+        0.6512,
+        0.6584,
+        0.6163,
+        0.6737
+      ],
+      "maxBody": 0.6737
+    },
+    {
+      "id": "crm-3",
+      "answerable": true,
+      "tags": [
+        "table",
+        "abbreviation",
+        "disambiguation"
+      ],
+      "best": 0.615,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#3 0.615",
+        "bt-operasyon-runbook.pdf#1 0.6047",
+        "musteri-destek-sureci.pdf#4 0.5619",
+        "bt-operasyon-runbook.pdf#2 0.5799",
+        "musteri-destek-sureci.pdf#5 0.5508"
+      ],
+      "bestBody": 0.667,
+      "bestHeader": 0.3524,
+      "topBody": [
+        0.667,
+        0.635,
+        0.5841,
+        0.5732,
+        0.5614
+      ],
+      "maxBody": 0.667
+    },
+    {
+      "id": "crm-4",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "best": 0.6039,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "musteri-destek-sureci.pdf#3 0.6039",
+        "bt-operasyon-runbook.pdf#1 0.5386",
+        "musteri-destek-sureci.pdf#1 0.494",
+        "musteri-destek-sureci.pdf#4 0.5178",
+        "musteri-destek-sureci.pdf#2 0.5215"
+      ],
+      "bestBody": 0.6316,
+      "bestHeader": 0.3949,
+      "topBody": [
+        0.6316,
+        0.5678,
+        0.488,
+        0.5194,
+        0.5114
+      ],
+      "maxBody": 0.6316
+    },
+    {
+      "id": "crm-5",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6108,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#5 0.6108",
+        "musteri-destek-sureci.pdf#3 0.5966",
+        "musteri-destek-sureci.pdf#4 0.5586",
+        "musteri-destek-sureci.pdf#2 0.5547",
+        "musteri-destek-sureci.pdf#5 0.5606"
+      ],
+      "bestBody": 0.6509,
+      "bestHeader": 0.3638,
+      "topBody": [
+        0.6509,
+        0.6364,
+        0.5795,
+        0.5395,
+        0.6305
+      ],
+      "maxBody": 0.6509
+    },
+    {
+      "id": "crm-6",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.5676,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.5676",
+        "musteri-destek-sureci.pdf#3 0.5504",
+        "musteri-destek-sureci.pdf#2 0.5525",
+        "musteri-destek-sureci.pdf#5 0.5436",
+        "musteri-destek-sureci.pdf#1 0.5085"
+      ],
+      "bestBody": 0.5724,
+      "bestHeader": 0.4177,
+      "topBody": [
+        0.5724,
+        0.5417,
+        0.5259,
+        0.5595,
+        0.5001
+      ],
+      "maxBody": 0.5724
+    },
+    {
+      "id": "crm-7",
+      "answerable": true,
+      "tags": [
+        "number",
+        "abbreviation"
+      ],
+      "best": 0.634,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.634",
+        "musteri-destek-sureci.pdf#3 0.5358",
+        "musteri-destek-sureci.pdf#2 0.533",
+        "musteri-destek-sureci.pdf#5 0.5038",
+        "musteri-destek-sureci.pdf#1 0.4834"
+      ],
+      "bestBody": 0.6678,
+      "bestHeader": 0.4525,
+      "topBody": [
+        0.6678,
+        0.5811,
+        0.5401,
+        0.5388,
+        0.4796
+      ],
+      "maxBody": 0.6678
+    },
+    {
+      "id": "crm-8",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.638,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.638",
+        "musteri-destek-sureci.pdf#2 0.5643",
+        "musteri-destek-sureci.pdf#1 0.5302",
+        "bt-operasyon-runbook.pdf#4 0.5228",
+        "musteri-destek-sureci.pdf#1 0.5167"
+      ],
+      "bestBody": 0.615,
+      "bestHeader": 0.5232,
+      "topBody": [
+        0.615,
+        0.5548,
+        0.5455,
+        0.5316,
+        0.517
+      ],
+      "maxBody": 0.615
+    },
+    {
+      "id": "crm-9",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6938,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.5799",
+        "musteri-destek-sureci.pdf#4 0.6938",
+        "erp-satin-alma-kilavuzu.pdf#4 0.575",
+        "depo-yonetim-kilavuzu.pdf#6 0.5119",
+        "musteri-destek-sureci.pdf#1 0.5149"
+      ],
+      "bestBody": 0.7136,
+      "bestHeader": 0.5288,
+      "topBody": [
+        0.6361,
+        0.7136,
+        0.5998,
+        0.5069,
+        0.5028
+      ],
+      "maxBody": 0.7136
+    },
+    {
+      "id": "crm-10",
+      "answerable": true,
+      "tags": [
+        "abbreviation"
+      ],
+      "best": 0.5355,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "musteri-destek-sureci.pdf#5 0.5355",
+        "musteri-destek-sureci.pdf#3 0.467",
+        "musteri-destek-sureci.pdf#1 0.4474",
+        "musteri-destek-sureci.pdf#4 0.4422",
+        "musteri-destek-sureci.pdf#2 0.4347"
+      ],
+      "bestBody": 0.5755,
+      "bestHeader": 0.3305,
+      "topBody": [
+        0.5755,
+        0.48,
+        0.4507,
+        0.4539,
+        0.4349
+      ],
+      "maxBody": 0.5755
+    },
+    {
+      "id": "crm-11",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.6055,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#5 0.6055",
+        "musteri-destek-sureci.pdf#2 0.5906",
+        "musteri-destek-sureci.pdf#4 0.5645",
+        "musteri-destek-sureci.pdf#1 0.578",
+        "musteri-destek-sureci.pdf#3 0.5196"
+      ],
+      "bestBody": 0.6284,
+      "bestHeader": 0.4779,
+      "topBody": [
+        0.6284,
+        0.5798,
+        0.5666,
+        0.5746,
+        0.5181
+      ],
+      "maxBody": 0.6284
+    },
+    {
+      "id": "crm-12",
+      "answerable": true,
+      "tags": [
+        "table",
+        "disambiguation"
+      ],
+      "best": 0.6584,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#2 0.6584",
+        "musteri-destek-sureci.pdf#1 0.5449",
+        "musteri-destek-sureci.pdf#3 0.5328",
+        "musteri-destek-sureci.pdf#2 0.6361",
+        "musteri-destek-sureci.pdf#5 0.5306"
+      ],
+      "bestBody": 0.6743,
+      "bestHeader": 0.4294,
+      "topBody": [
+        0.6743,
+        0.5442,
+        0.5375,
+        0.6577,
+        0.5474
+      ],
+      "maxBody": 0.6743
+    },
+    {
+      "id": "crm-13",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.4954,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#6 0.466",
+        "musteri-destek-sureci.pdf#1 0.4729",
+        "bt-operasyon-runbook.pdf#3 0.4834",
+        "bt-operasyon-runbook.pdf#6 0.4954",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4589"
+      ],
+      "bestBody": 0.5368,
+      "bestHeader": 0.2522,
+      "topBody": [
+        0.4605,
+        0.4872,
+        0.4893,
+        0.5368,
+        0.4868
+      ],
+      "maxBody": 0.5368
+    },
+    {
+      "id": "crm-14",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "best": 0.6846,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.6846",
+        "musteri-destek-sureci.pdf#4 0.5571",
+        "bt-operasyon-runbook.pdf#4 0.5191",
+        "isg-depo-proseduru.pdf#5 0.5198",
+        "isg-depo-proseduru.pdf#5 0.5299"
+      ],
+      "bestBody": 0.7281,
+      "bestHeader": 0.4813,
+      "topBody": [
+        0.7281,
+        0.6058,
+        0.5457,
+        0.5521,
+        0.535
+      ],
+      "maxBody": 0.7281
+    },
+    {
+      "id": "isg-1",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.605,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "isg-depo-proseduru.pdf#2 0.605",
+        "isg-depo-proseduru.pdf#3 0.4793",
+        "isg-depo-proseduru.pdf#3 0.5586",
+        "isg-depo-proseduru.pdf#1 0.4071",
+        "isg-depo-proseduru.pdf#4 0.4461"
+      ],
+      "bestBody": 0.6257,
+      "bestHeader": 0.4205,
+      "topBody": [
+        0.6257,
+        0.5062,
+        0.5467,
+        0.4748,
+        0.4811
+      ],
+      "maxBody": 0.6257
+    },
+    {
+      "id": "isg-2",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.6495,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "isg-depo-proseduru.pdf#3 0.6495",
+        "isg-depo-proseduru.pdf#4 0.5616",
+        "isg-depo-proseduru.pdf#3 0.5448",
+        "isg-depo-proseduru.pdf#2 0.4622",
+        "depo-yonetim-kilavuzu.pdf#2 0.4426"
+      ],
+      "bestBody": 0.6986,
+      "bestHeader": 0.4963,
+      "topBody": [
+        0.6986,
+        0.5756,
+        0.5279,
+        0.4602,
+        0.4755
+      ],
+      "maxBody": 0.6986
+    },
+    {
+      "id": "isg-3",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "table"
+      ],
+      "best": 0.6061,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#3 0.6061",
+        "isg-depo-proseduru.pdf#3 0.4965",
+        "isg-depo-proseduru.pdf#1 0.451",
+        "depo-yonetim-kilavuzu.pdf#4 0.4486",
+        "depo-yonetim-kilavuzu.pdf#2 0.4508"
+      ],
+      "bestBody": 0.6398,
+      "bestHeader": 0.4265,
+      "topBody": [
+        0.6398,
+        0.5243,
+        0.495,
+        0.4498,
+        0.4627
+      ],
+      "maxBody": 0.6398
+    },
+    {
+      "id": "isg-4",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.5609,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "isg-depo-proseduru.pdf#3 0.5609",
+        "isg-depo-proseduru.pdf#3 0.5118",
+        "depo-yonetim-kilavuzu.pdf#4 0.4653",
+        "bilgi-guvenligi.pdf#2 0.4171",
+        "depo-yonetim-kilavuzu.pdf#4 0.3653"
+      ],
+      "bestBody": 0.5527,
+      "bestHeader": 0.4311,
+      "topBody": [
+        0.5527,
+        0.5489,
+        0.4794,
+        0.4271,
+        0.3831
+      ],
+      "maxBody": 0.5527
+    },
+    {
+      "id": "isg-5",
+      "answerable": true,
+      "tags": [
+        "paraphrase",
+        "number"
+      ],
+      "best": 0.6051,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#3 0.4663",
+        "isg-depo-proseduru.pdf#4 0.6051",
+        "isg-depo-proseduru.pdf#2 0.421",
+        "isg-depo-proseduru.pdf#1 0.4053",
+        "masraf-politikasi.pdf#1 0.4041"
+      ],
+      "bestBody": 0.6183,
+      "bestHeader": 0.3699,
+      "topBody": [
+        0.5034,
+        0.6183,
+        0.4205,
+        0.4052,
+        0.4239
+      ],
+      "maxBody": 0.6183
+    },
+    {
+      "id": "isg-6",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.5224,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#4 0.5224",
+        "isg-depo-proseduru.pdf#1 0.4547",
+        "depo-yonetim-kilavuzu.pdf#5 0.4169",
+        "depo-yonetim-kilavuzu.pdf#2 0.4893",
+        "depo-yonetim-kilavuzu.pdf#3 0.3568"
+      ],
+      "bestBody": 0.5654,
+      "bestHeader": 0.3827,
+      "topBody": [
+        0.5654,
+        0.4778,
+        0.4037,
+        0.4934,
+        0.3725
+      ],
+      "maxBody": 0.5654
+    },
+    {
+      "id": "isg-7",
+      "answerable": true,
+      "tags": [
+        "number",
+        "disambiguation"
+      ],
+      "best": 0.5945,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "isg-depo-proseduru.pdf#4 0.5945",
+        "isg-depo-proseduru.pdf#4 0.5099",
+        "isg-depo-proseduru.pdf#5 0.4964",
+        "bilgi-guvenligi.pdf#3 0.4786",
+        "depo-yonetim-kilavuzu.pdf#4 0.4901"
+      ],
+      "bestBody": 0.617,
+      "bestHeader": 0.3391,
+      "topBody": [
+        0.617,
+        0.4768,
+        0.4777,
+        0.4748,
+        0.483
+      ],
+      "maxBody": 0.617
+    },
+    {
+      "id": "isg-8",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.5785,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "isg-depo-proseduru.pdf#4 0.5785",
+        "isg-depo-proseduru.pdf#1 0.5284",
+        "izin-yonetmeligi.pdf#1 0.4465",
+        "isg-depo-proseduru.pdf#2 0.4965",
+        "isg-depo-proseduru.pdf#2 0.4803"
+      ],
+      "bestBody": 0.6157,
+      "bestHeader": 0.341,
+      "topBody": [
+        0.6157,
+        0.5939,
+        0.4586,
+        0.5079,
+        0.5006
+      ],
+      "maxBody": 0.6157
+    },
+    {
+      "id": "isg-9",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "number"
+      ],
+      "best": 0.5429,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#5 0.5429",
+        "depo-yonetim-kilavuzu.pdf#6 0.4637",
+        "musteri-destek-sureci.pdf#4 0.4521",
+        "bt-operasyon-runbook.pdf#6 0.4507",
+        "bt-operasyon-runbook.pdf#2 0.4408"
+      ],
+      "bestBody": 0.5853,
+      "bestHeader": 0.2467,
+      "topBody": [
+        0.5853,
+        0.459,
+        0.4538,
+        0.4543,
+        0.4426
+      ],
+      "maxBody": 0.5853
+    },
+    {
+      "id": "isg-10",
+      "answerable": true,
+      "tags": [
+        "table",
+        "number"
+      ],
+      "best": 0.4611,
+      "share": 1,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.4396",
+        "musteri-destek-sureci.pdf#5 0.4578",
+        "depo-yonetim-kilavuzu.pdf#5 0.4304",
+        "bt-operasyon-runbook.pdf#1 0.4182",
+        "isg-depo-proseduru.pdf#5 0.4611"
+      ],
+      "bestBody": 0.471,
+      "bestHeader": 0.3633,
+      "topBody": [
+        0.4221,
+        0.4404,
+        0.4102,
+        0.4234,
+        0.471
+      ],
+      "maxBody": 0.471
+    },
+    {
+      "id": "isg-11",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.6311,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "isg-depo-proseduru.pdf#5 0.6311",
+        "musteri-destek-sureci.pdf#3 0.5052",
+        "musteri-destek-sureci.pdf#4 0.5284",
+        "musteri-destek-sureci.pdf#2 0.485",
+        "bt-operasyon-runbook.pdf#4 0.4965"
+      ],
+      "bestBody": 0.667,
+      "bestHeader": 0.4324,
+      "topBody": [
+        0.667,
+        0.5326,
+        0.527,
+        0.5097,
+        0.4847
+      ],
+      "maxBody": 0.667
+    },
+    {
+      "id": "isg-12",
+      "answerable": true,
+      "tags": [
+        "paraphrase"
+      ],
+      "best": 0.5856,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "isg-depo-proseduru.pdf#4 0.5856",
+        "isg-depo-proseduru.pdf#1 0.5469",
+        "isg-depo-proseduru.pdf#1 0.4642",
+        "depo-yonetim-kilavuzu.pdf#4 0.5135",
+        "isg-depo-proseduru.pdf#4 0.5545"
+      ],
+      "bestBody": 0.6022,
+      "bestHeader": 0.4052,
+      "topBody": [
+        0.6022,
+        0.5748,
+        0.4623,
+        0.5306,
+        0.5591
+      ],
+      "maxBody": 0.6022
+    },
+    {
+      "id": "isg-13",
+      "answerable": true,
+      "tags": [
+        "number"
+      ],
+      "best": 0.5811,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "isg-depo-proseduru.pdf#2 0.5811",
+        "bilgi-guvenligi.pdf#3 0.5044",
+        "isg-depo-proseduru.pdf#5 0.4875",
+        "bt-operasyon-runbook.pdf#4 0.4456",
+        "bt-operasyon-runbook.pdf#4 0.4476"
+      ],
+      "bestBody": 0.6029,
+      "bestHeader": 0.2739,
+      "topBody": [
+        0.6029,
+        0.4965,
+        0.5049,
+        0.4395,
+        0.434
+      ],
+      "maxBody": 0.6029
+    },
+    {
+      "id": "isg-14",
+      "answerable": true,
+      "tags": [
+        "abbreviation",
+        "table"
+      ],
+      "best": 0.6238,
+      "share": 0.04,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "isg-depo-proseduru.pdf#2 0.6238",
+        "isg-depo-proseduru.pdf#1 0.5515",
+        "isg-depo-proseduru.pdf#4 0.4539",
+        "isg-depo-proseduru.pdf#2 0.4402",
+        "isg-depo-proseduru.pdf#4 0.436"
+      ],
+      "bestBody": 0.6406,
+      "bestHeader": 0.4284,
+      "topBody": [
+        0.6406,
+        0.5431,
+        0.5131,
+        0.483,
+        0.4641
+      ],
+      "maxBody": 0.6406
+    },
+    {
+      "id": "depo-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.5001,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#5 0.5001",
+        "isg-depo-proseduru.pdf#1 0.4939",
+        "depo-yonetim-kilavuzu.pdf#5 0.4658",
+        "isg-depo-proseduru.pdf#4 0.4883",
+        "depo-yonetim-kilavuzu.pdf#1 0.4776"
+      ],
+      "bestBody": 0.4788,
+      "bestHeader": 0.4442,
+      "topBody": [
+        0.4788,
+        0.5016,
+        0.4579,
+        0.4434,
+        0.4812
+      ],
+      "maxBody": 0.5016
+    },
+    {
+      "id": "depo-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.4703,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#1 0.4703",
+        "isg-depo-proseduru.pdf#1 0.4198",
+        "bt-operasyon-runbook.pdf#4 0.4476",
+        "isg-depo-proseduru.pdf#1 0.4318",
+        "isg-depo-proseduru.pdf#4 0.4374"
+      ],
+      "bestBody": 0.496,
+      "bestHeader": 0.2293,
+      "topBody": [
+        0.496,
+        0.4463,
+        0.4924,
+        0.4605,
+        0.4663
+      ],
+      "maxBody": 0.496
+    },
+    {
+      "id": "depo-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.5438,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#5 0.5438",
+        "depo-yonetim-kilavuzu.pdf#3 0.4883",
+        "depo-yonetim-kilavuzu.pdf#5 0.4745",
+        "isg-depo-proseduru.pdf#3 0.4797",
+        "depo-yonetim-kilavuzu.pdf#3 0.459"
+      ],
+      "bestBody": 0.5462,
+      "bestHeader": 0.3489,
+      "topBody": [
+        0.5462,
+        0.5015,
+        0.4816,
+        0.4827,
+        0.4929
+      ],
+      "maxBody": 0.5462
+    },
+    {
+      "id": "depo-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation",
+        "number"
+      ],
+      "best": 0.6404,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "depo-yonetim-kilavuzu.pdf#5 0.6208",
+        "depo-yonetim-kilavuzu.pdf#5 0.6234",
+        "depo-yonetim-kilavuzu.pdf#3 0.5829",
+        "depo-yonetim-kilavuzu.pdf#1 0.6404",
+        "depo-yonetim-kilavuzu.pdf#1 0.5395"
+      ],
+      "bestBody": 0.7023,
+      "bestHeader": 0.4034,
+      "topBody": [
+        0.6259,
+        0.5826,
+        0.5449,
+        0.7023,
+        0.5293
+      ],
+      "maxBody": 0.7023
+    },
+    {
+      "id": "erp-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.6034,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#1 0.5857",
+        "erp-satin-alma-kilavuzu.pdf#6 0.5897",
+        "erp-satin-alma-kilavuzu.pdf#3 0.6034",
+        "erp-satin-alma-kilavuzu.pdf#2 0.5844",
+        "erp-satin-alma-kilavuzu.pdf#1 0.5702"
+      ],
+      "bestBody": 0.6071,
+      "bestHeader": 0.4762,
+      "topBody": [
+        0.5825,
+        0.586,
+        0.6071,
+        0.4928,
+        0.5911
+      ],
+      "maxBody": 0.6071
+    },
+    {
+      "id": "erp-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation"
+      ],
+      "best": 0.5739,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#5 0.5739",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5478",
+        "erp-satin-alma-kilavuzu.pdf#2 0.4242",
+        "erp-satin-alma-kilavuzu.pdf#1 0.4005",
+        "depo-yonetim-kilavuzu.pdf#5 0.4755"
+      ],
+      "bestBody": 0.5982,
+      "bestHeader": 0.3965,
+      "topBody": [
+        0.5982,
+        0.5455,
+        0.4117,
+        0.4078,
+        0.4689
+      ],
+      "maxBody": 0.5982
+    },
+    {
+      "id": "erp-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.5644,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 5,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.5644",
+        "erp-satin-alma-kilavuzu.pdf#4 0.544",
+        "erp-satin-alma-kilavuzu.pdf#5 0.5474",
+        "erp-satin-alma-kilavuzu.pdf#3 0.5592",
+        "erp-satin-alma-kilavuzu.pdf#1 0.5263"
+      ],
+      "bestBody": 0.5168,
+      "bestHeader": 0.4566,
+      "topBody": [
+        0.5168,
+        0.52,
+        0.5083,
+        0.55,
+        0.5434
+      ],
+      "maxBody": 0.55
+    },
+    {
+      "id": "erp-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.5425,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.5425",
+        "satin-alma-proseduru.pdf#2 0.5006",
+        "erp-satin-alma-kilavuzu.pdf#6 0.4793",
+        "erp-satin-alma-kilavuzu.pdf#6 0.5054",
+        "masraf-politikasi.pdf#3 0.4855"
+      ],
+      "bestBody": 0.567,
+      "bestHeader": 0.4361,
+      "topBody": [
+        0.567,
+        0.5083,
+        0.477,
+        0.5007,
+        0.4758
+      ],
+      "maxBody": 0.567
+    },
+    {
+      "id": "bt-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation",
+        "number"
+      ],
+      "best": 0.5737,
+      "share": 0.0533,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "bt-operasyon-runbook.pdf#2 0.5737",
+        "bt-operasyon-runbook.pdf#2 0.5269",
+        "isg-depo-proseduru.pdf#2 0.4153",
+        "bilgi-guvenligi.pdf#1 0.5101",
+        "bt-operasyon-runbook.pdf#1 0.4312"
+      ],
+      "bestBody": 0.6027,
+      "bestHeader": 0.2967,
+      "topBody": [
+        0.6027,
+        0.5529,
+        0.3931,
+        0.5326,
+        0.4487
+      ],
+      "maxBody": 0.6027
+    },
+    {
+      "id": "bt-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.4344,
+      "share": 1,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "bt-operasyon-runbook.pdf#1 0.4227",
+        "bt-operasyon-runbook.pdf#3 0.4344",
+        "bt-operasyon-runbook.pdf#3 0.4197",
+        "bt-operasyon-runbook.pdf#2 0.4049",
+        "depo-yonetim-kilavuzu.pdf#6 0.4181"
+      ],
+      "bestBody": 0.4171,
+      "bestHeader": 0.4133,
+      "topBody": [
+        0.4521,
+        0.4171,
+        0.429,
+        0.4363,
+        0.4547
+      ],
+      "maxBody": 0.4547
+    },
+    {
+      "id": "bt-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.4491,
+      "share": 0.0533,
+      "decision": "NONE",
+      "prompt": 0,
+      "top": [
+        "bt-operasyon-runbook.pdf#4 0.4491",
+        "musteri-destek-sureci.pdf#1 0.4126",
+        "kvkk-aydinlatma.pdf#1 0.399",
+        "erp-satin-alma-kilavuzu.pdf#5 0.3676",
+        "depo-yonetim-kilavuzu.pdf#1 0.3991"
+      ],
+      "bestBody": 0.4696,
+      "bestHeader": 0.3918,
+      "topBody": [
+        0.4696,
+        0.4126,
+        0.4031,
+        0.3492,
+        0.4209
+      ],
+      "maxBody": 0.4696
+    },
+    {
+      "id": "bt-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.6143,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "bt-operasyon-runbook.pdf#6 0.6143",
+        "bt-operasyon-runbook.pdf#2 0.4735",
+        "masraf-politikasi.pdf#1 0.4441",
+        "satin-alma-proseduru.pdf#2 0.4586",
+        "depo-yonetim-kilavuzu.pdf#4 0.4711"
+      ],
+      "bestBody": 0.6163,
+      "bestHeader": 0.4413,
+      "topBody": [
+        0.6163,
+        0.4845,
+        0.4419,
+        0.4257,
+        0.4456
+      ],
+      "maxBody": 0.6163
+    },
+    {
+      "id": "bt-yok-5",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation"
+      ],
+      "best": 0.6506,
+      "share": 0.0267,
+      "decision": "SIMILARITY",
+      "prompt": 4,
+      "top": [
+        "bt-operasyon-runbook.pdf#2 0.6506",
+        "bt-operasyon-runbook.pdf#2 0.546",
+        "bilgi-guvenligi.pdf#1 0.5302",
+        "erp-satin-alma-kilavuzu.pdf#1 0.487",
+        "musteri-destek-sureci.pdf#1 0.5013"
+      ],
+      "bestBody": 0.6391,
+      "bestHeader": 0.3993,
+      "topBody": [
+        0.6391,
+        0.5201,
+        0.5366,
+        0.4823,
+        0.4962
+      ],
+      "maxBody": 0.6391
+    },
+    {
+      "id": "crm-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.5369,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "musteri-destek-sureci.pdf#3 0.5369",
+        "musteri-destek-sureci.pdf#2 0.472",
+        "musteri-destek-sureci.pdf#5 0.4783",
+        "musteri-destek-sureci.pdf#3 0.4786",
+        "musteri-destek-sureci.pdf#4 0.4612"
+      ],
+      "bestBody": 0.5602,
+      "bestHeader": 0.3586,
+      "topBody": [
+        0.5602,
+        0.4648,
+        0.4948,
+        0.4942,
+        0.4707
+      ],
+      "maxBody": 0.5602
+    },
+    {
+      "id": "crm-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.5418,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 3,
+      "top": [
+        "musteri-destek-sureci.pdf#3 0.5418",
+        "musteri-destek-sureci.pdf#1 0.5053",
+        "bt-operasyon-runbook.pdf#1 0.4989",
+        "musteri-destek-sureci.pdf#5 0.5205",
+        "bt-operasyon-runbook.pdf#2 0.4566"
+      ],
+      "bestBody": 0.5581,
+      "bestHeader": 0.3613,
+      "topBody": [
+        0.5581,
+        0.5032,
+        0.5185,
+        0.5163,
+        0.4811
+      ],
+      "maxBody": 0.5581
+    },
+    {
+      "id": "crm-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "abbreviation"
+      ],
+      "best": 0.4689,
+      "share": 0.0133,
+      "decision": "SPECIFIC_TERM",
+      "prompt": 1,
+      "top": [
+        "erp-satin-alma-kilavuzu.pdf#3 0.4532",
+        "musteri-destek-sureci.pdf#5 0.4689",
+        "musteri-destek-sureci.pdf#1 0.4498",
+        "uzaktan-calisma.pdf#2 0.4152",
+        "erp-satin-alma-kilavuzu.pdf#5 0.4256"
+      ],
+      "bestBody": 0.4574,
+      "bestHeader": 0.31,
+      "topBody": [
+        0.4675,
+        0.4574,
+        0.4369,
+        0.404,
+        0.422
+      ],
+      "maxBody": 0.4675
+    },
+    {
+      "id": "crm-yok-4",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.5558,
+      "share": 0.0667,
+      "decision": "SIMILARITY",
+      "prompt": 2,
+      "top": [
+        "musteri-destek-sureci.pdf#4 0.5558",
+        "erp-satin-alma-kilavuzu.pdf#4 0.5104",
+        "musteri-destek-sureci.pdf#4 0.4641",
+        "depo-yonetim-kilavuzu.pdf#2 0.4583",
+        "depo-yonetim-kilavuzu.pdf#3 0.4579"
+      ],
+      "bestBody": 0.6066,
+      "bestHeader": 0.4309,
+      "topBody": [
+        0.6066,
+        0.5408,
+        0.5056,
+        0.5076,
+        0.4868
+      ],
+      "maxBody": 0.6066
+    },
+    {
+      "id": "isg-yok-1",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.5331,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#2 0.5331",
+        "isg-depo-proseduru.pdf#2 0.4773",
+        "bt-operasyon-runbook.pdf#4 0.4616",
+        "depo-yonetim-kilavuzu.pdf#4 0.4392",
+        "depo-yonetim-kilavuzu.pdf#3 0.4648"
+      ],
+      "bestBody": 0.5595,
+      "bestHeader": 0.2866,
+      "topBody": [
+        0.5595,
+        0.473,
+        0.4625,
+        0.4344,
+        0.4645
+      ],
+      "maxBody": 0.5595
+    },
+    {
+      "id": "isg-yok-2",
+      "answerable": false,
+      "tags": [
+        "on-topic",
+        "number"
+      ],
+      "best": 0.4795,
+      "share": 0.0133,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#3 0.4795",
+        "isg-depo-proseduru.pdf#4 0.474",
+        "depo-yonetim-kilavuzu.pdf#3 0.3978",
+        "depo-yonetim-kilavuzu.pdf#3 0.3863",
+        "isg-depo-proseduru.pdf#3 0.414"
+      ],
+      "bestBody": 0.5202,
+      "bestHeader": 0.3702,
+      "topBody": [
+        0.5202,
+        0.4988,
+        0.425,
+        0.3866,
+        0.4286
+      ],
+      "maxBody": 0.5202
+    },
+    {
+      "id": "isg-yok-3",
+      "answerable": false,
+      "tags": [
+        "on-topic"
+      ],
+      "best": 0.4982,
+      "share": 1,
+      "decision": "SIMILARITY",
+      "prompt": 1,
+      "top": [
+        "isg-depo-proseduru.pdf#5 0.4908",
+        "bilgi-guvenligi.pdf#2 0.4982",
+        "bt-operasyon-runbook.pdf#3 0.4561",
+        "bt-operasyon-runbook.pdf#3 0.4503",
+        "bt-operasyon-runbook.pdf#1 0.4613"
+      ],
+      "bestBody": 0.5239,
+      "bestHeader": 0.3309,
+      "topBody": [
+        0.5318,
+        0.5239,
+        0.4624,
+        0.458,
+        0.477
+      ],
+      "maxBody": 0.5318
+    }
+  ]
+}

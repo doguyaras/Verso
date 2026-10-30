@@ -55,6 +55,7 @@ jobs:
           node --test scripts/uyum-paketi.test.js
           node --test scripts/migration-contract.test.js
           node --test scripts/verify-release.test.js
+          node --test scripts/gate-probe.test.js
       - name: migration degismezligi (PR base'ine ya da develop'a karsi)
         # A pushed feature/fix branch is checked against develop, where it goes without a pull request.
         if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/fix/')
