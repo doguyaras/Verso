@@ -30,7 +30,7 @@ class ConfigProfilesTest {
             assertThat(env.getProperty("verso.qa.min-similarity", Double.class)).isEqualTo(0.47);
             assertThat(env.getProperty("verso.qa.lexical-min-similarity", Double.class)).isEqualTo(0.44);
             assertThat(env.getProperty("verso.qa.specific-term-max-share", Double.class)).isEqualTo(0.045);
-            assertThat(env.getProperty("verso.qa.passage-min-similarity", Double.class)).isEqualTo(0.50);
+            assertThat(env.getProperty("verso.qa.passage-min-similarity", Double.class)).isEqualTo(0.55);
             assertThat(env.getProperty("verso.document.retrieval.lexical-candidates", Integer.class)).isEqualTo(20);
             assertThat(env.getProperty("verso.qa.chat-concurrency", Integer.class)).isEqualTo(1);
         }
@@ -39,7 +39,7 @@ class ConfigProfilesTest {
         assertThat(defaults.minSimilarity()).isEqualTo(0.47);
         assertThat(defaults.lexicalMinSimilarity()).isEqualTo(0.44);
         assertThat(defaults.specificTermMaxShare()).isEqualTo(0.045);
-        assertThat(defaults.passageMinSimilarity()).isEqualTo(0.50);
+        assertThat(defaults.passageMinSimilarity()).isEqualTo(0.55);
         assertThat(defaults.chatConcurrency()).isEqualTo(1);
     }
 
