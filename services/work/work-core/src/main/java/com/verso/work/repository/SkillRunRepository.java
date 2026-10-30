@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -49,21 +48,21 @@ public class SkillRunRepository {
         this.db = db;
     }
 
-    /** False when the owner already has a RUNNING run (the partial unique index decides). */
+    /**
+     * False when the owner already has a RUNNING run: the partial unique index uq_skill_run_running decides inside the
+     * statement (ON CONFLICT DO NOTHING). Catching the unique violation instead would leave the caller's transaction
+     * aborted: PostgreSQL refuses every later statement of it, and its COMMIT is a rollback.
+     */
     public boolean insertRunning(UUID id, String owner, String skillId, String version, UUID customSkillId,
                                  String definitionJson, int stepCount, String inputsJson, Duration lease) {
-        try {
-            db.jdbc().sql("""
-                    INSERT INTO work.skill_run (id, owner_sub, skill_id, skill_version, custom_skill_id, definition,
-                        step_count, inputs, lease_until)
-                    VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?::jsonb, now() + make_interval(secs => ?))""")
-                    .params(id, owner, skillId, version, customSkillId, definitionJson, stepCount, inputsJson,
-                            lease.toSeconds())
-                    .update();
-            return true;
-        } catch (DuplicateKeyException e) {
-            return false;
-        }
+        return db.jdbc().sql("""
+                INSERT INTO work.skill_run (id, owner_sub, skill_id, skill_version, custom_skill_id, definition,
+                    step_count, inputs, lease_until)
+                VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?::jsonb, now() + make_interval(secs => ?))
+                ON CONFLICT (owner_sub) WHERE status = 'RUNNING' DO NOTHING""")
+                .params(id, owner, skillId, version, customSkillId, definitionJson, stepCount, inputsJson,
+                        lease.toSeconds())
+                .update() == 1;
     }
 
     /** Moves a RUNNING run to a stage and renews its lease; false when it is no longer RUNNING (deleted, swept). */

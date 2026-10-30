@@ -74,6 +74,8 @@ management:
       # Ready only while the database answers: with PostgreSQL down the container must not report healthy (phase 2
       # environment review E8). Liveness stays independent of the database, so a DB outage does not restart the app.
       # qaDb: the qa module's own pool (ADR-0023); a broken one would otherwise lose every turn behind a healthy probe.
+      # auditDb, workDb: the audit (ADR-0026) and work (ADR-0057) pools, for the same reason (bug hunt 2026-10-30).
+      # The connector pool (ADR-0038) has no contributor yet: its syncs are scheduled, not request-bound.
       group:
         readiness:
-          include: readinessState,db,qaDb
+          include: readinessState,db,qaDb,auditDb,workDb

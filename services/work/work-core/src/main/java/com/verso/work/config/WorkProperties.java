@@ -42,10 +42,20 @@ public record WorkProperties(
             throw new IllegalStateException("verso.work.call-timeout must be 1ms..10m");
         }
         if (failureThreshold < 1) throw new IllegalStateException("verso.work.failure-threshold must be >= 1");
+        // Negative would close the circuit before it opened; longer than 10 m refuses every run for too long.
+        if (openFor.isNegative() || openFor.compareTo(Duration.ofMinutes(10)) > 0) {
+            throw new IllegalStateException("verso.work.open-for must be 0..10m");
+        }
         if (retentionDays < 1 || retentionDays > 3650) throw new IllegalStateException("verso.work.retention-days must be 1..3650");
         if (retentionBatch < 1 || retentionBatch > 10_000) throw new IllegalStateException("verso.work.retention-batch must be 1..10000");
         if (searchTopK < 12 || searchTopK > 100) throw new IllegalStateException("verso.work.search-top-k must be 12..100");
-        if (!streamPoll.isPositive() || !maxStream.isPositive()) throw new IllegalStateException("verso.work stream durations must be positive");
+        // A poll under 100 ms times the open streams is a self-inflicted query storm; a stream over an hour is a leak.
+        if (streamPoll.compareTo(Duration.ofMillis(100)) < 0 || streamPoll.compareTo(Duration.ofSeconds(10)) > 0) {
+            throw new IllegalStateException("verso.work.stream-poll must be 100ms..10s");
+        }
+        if (maxStream.compareTo(Duration.ofSeconds(1)) < 0 || maxStream.compareTo(Duration.ofHours(1)) > 0) {
+            throw new IllegalStateException("verso.work.max-stream must be 1s..1h");
+        }
     }
 
     /**

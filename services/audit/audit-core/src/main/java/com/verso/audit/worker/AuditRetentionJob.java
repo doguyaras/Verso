@@ -3,9 +3,6 @@ package com.verso.audit.worker;
 import com.verso.audit.config.AuditProperties;
 import com.verso.audit.repository.AuditDatabase;
 import com.verso.audit.repository.AuditEventRepository;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -15,7 +12,8 @@ import org.springframework.stereotype.Component;
 /**
  * Audit retention (ADR-0026; KVKK storage limitation): rows older than {@code verso.audit.retention-days} (default 365)
  * are removed through {@code audit.purge_expired}, the only way the application role can delete anything. The function
- * refuses a cutoff younger than 30 days, so even a compromised application cannot wipe recent history.
+ * computes the cutoff on the database clock and refuses fewer than 30 days, so even a compromised application cannot
+ * wipe recent history, and the floor value works whatever the application clock says (V4).
  *
  * <p>Multi-instance (reference 11.1): every instance schedules it; each batch runs in its own short transaction under
  * {@code pg_try_advisory_xact_lock}, so only one instance deletes at a time and the others skip that round. A delete is
@@ -37,13 +35,11 @@ public class AuditRetentionJob {
     private final AuditDatabase db;
     private final AuditEventRepository repository;
     private final AuditProperties properties;
-    private final Clock clock;
 
-    public AuditRetentionJob(AuditDatabase db, AuditEventRepository repository, AuditProperties properties, Clock clock) {
+    public AuditRetentionJob(AuditDatabase db, AuditEventRepository repository, AuditProperties properties) {
         this.db = db;
         this.repository = repository;
         this.properties = properties;
-        this.clock = clock;
     }
 
     /** One failure must not stop the next run (reference 23.4); a run that deleted nothing is not logged. */
@@ -59,12 +55,12 @@ public class AuditRetentionJob {
     }
 
     public Result runOnce() {
-        Instant cutoff = clock.instant().minus(Duration.ofDays(properties.retentionDays()));
+        int days = properties.retentionDays();
         int batch = properties.purgeBatchSize();
         int total = 0;
         for (int i = 0; i < MAX_BATCHES; i++) {
             Integer deleted = db.inTransaction(status ->
-                    repository.tryLockRetention() ? repository.purgeExpired(cutoff, batch) : -1);
+                    repository.tryLockRetention() ? repository.purgeExpired(days, batch) : -1);
             if (deleted < 0) {
                 log.info("Audit retention: outcome=skipped reason=LOCKED_BY_ANOTHER_INSTANCE");
                 return new Result(total, total == 0);

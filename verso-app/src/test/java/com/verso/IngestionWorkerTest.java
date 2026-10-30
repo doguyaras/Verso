@@ -306,6 +306,26 @@ class IngestionWorkerTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM document.document_chunk", Integer.class)).isZero();
     }
 
+    /**
+     * Deleted between the READY commit and the system model extraction (a user delete or a KVKK erasure in that
+     * window): the extraction finds no row, writes nothing and raises nothing; before, it failed on the state row's
+     * foreign key and logged an ERROR for a normal race.
+     */
+    @Test
+    void indexSystemModel_whenTheDocumentWasDeletedAfterComplete_writesNothingAndLogsNoError() {
+        UUID id = upload(TestPdfs.pages("text"));
+        Claim claim = tx.claimNext(Instant.now(), Instant.now().plusSeconds(600)).orElseThrow();
+        tx.storePages(claim, List.of("text"), Instant.now());
+        tx.complete(claim, 1, List.of(chunk()), "test-embedding", Instant.now());
+        assertThat(documents.delete(account, id)).isTrue();
+
+        tx.indexSystemModel(id, Instant.now());
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM document.system_model_state WHERE document_id = ?",
+                Integer.class, id)).isZero();
+        assertThat(appender.list).noneMatch(event -> event.getLevel() == ch.qos.logback.classic.Level.ERROR);
+    }
+
     /** Parallel claims take different rows and never wait for each other (SKIP LOCKED, reference 11.1). */
     @Test
     void claimNext_whenCalledInParallel_handsOutEachDocumentOnce() throws Exception {

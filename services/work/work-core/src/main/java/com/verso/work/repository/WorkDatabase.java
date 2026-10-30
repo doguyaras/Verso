@@ -50,6 +50,11 @@ public final class WorkDatabase implements AutoCloseable {
         return TransactionSynchronizationManager.hasResource(lazy);
     }
 
+    /** The health check of the work pool (readiness): one trivial statement as svc_work. */
+    public void ping() {
+        jdbc.sql("SELECT 1").query(Integer.class).single();
+    }
+
     /** The module's outbox table on this pool; rows are written only inside {@link #transactionally}. */
     public OutboxStore outboxStore() {
         return new OutboxStore("work.outbox_event", jdbc, this::inTransactionNow);

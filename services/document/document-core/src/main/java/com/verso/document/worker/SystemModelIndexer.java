@@ -30,7 +30,7 @@ public class SystemModelIndexer {
     private static final Logger log = LoggerFactory.getLogger(SystemModelIndexer.class);
 
     /** What a run did. */
-    public enum Outcome { EXTRACTED, CURRENT }
+    public enum Outcome { EXTRACTED, CURRENT, GONE }
 
     private final SystemModelRepository repository;
     private final MeterRegistry meters;
@@ -46,8 +46,12 @@ public class SystemModelIndexer {
     @Transactional(propagation = Propagation.MANDATORY)
     public Outcome index(UUID documentId, Instant now) {
         long started = System.nanoTime();
-        // Serialise with any concurrent extraction of this document, then decide on what that one committed.
-        repository.lockDocument(documentId);
+        // Serialise with any concurrent extraction of this document, then decide on what that one committed. A document
+        // deleted meanwhile has nothing to extract and no row for the state: not an error, not a model.
+        if (!repository.lockDocument(documentId)) {
+            meters.counter("verso.document.system_model.runs", "outcome", "gone").increment();
+            return Outcome.GONE;
+        }
         List<ChunkRow> chunks = repository.chunks(documentId);
         String digest = SystemModelPlan.digest(chunks.stream().map(ChunkRow::sha256).toList());
         if (!SystemModelPlan.needsExtraction(repository.state(documentId).orElse(null), SystemModelExtractor.VERSION,
@@ -67,9 +71,13 @@ public class SystemModelIndexer {
         return Outcome.EXTRACTED;
     }
 
-    /** Records an empty model of the running version for a document the extractor failed on (not taken again). */
+    /**
+     * Records an empty model of the running version for a document the extractor failed on (not taken again); nothing
+     * for a document deleted meanwhile.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void markEmpty(UUID documentId, Instant now) {
+        if (!repository.lockDocument(documentId)) return;
         List<ChunkRow> chunks = repository.chunks(documentId);
         String digest = SystemModelPlan.digest(chunks.stream().map(ChunkRow::sha256).toList());
         repository.replace(documentId, new ExtractedModel(List.of(), List.of(), List.of(), true), chunks, digest,

@@ -27,6 +27,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,15 +53,28 @@ class ContextHeaderBackfillJobTest {
     private final TransactionTemplate transaction = mock(TransactionTemplate.class);
     private final UUID documentId = UUID.randomUUID();
     private final ChunkRow chunk = new ChunkRow(UUID.randomUUID(), 1, 0, "Stok sayimi her ay yapilir.");
+    /** Open TransactionTemplate callbacks on this thread: the embedding call must see zero (reference 4.3). */
+    private final AtomicInteger openTransactions = new AtomicInteger();
     private ContextHeaderBackfillJob job;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
-        when(transaction.execute(any())).thenAnswer(inv ->
-                ((TransactionCallback<Object>) inv.getArgument(0)).doInTransaction(mock(TransactionStatus.class)));
+        when(transaction.execute(any())).thenAnswer(inv -> {
+            openTransactions.incrementAndGet();
+            try {
+                return ((TransactionCallback<Object>) inv.getArgument(0)).doInTransaction(mock(TransactionStatus.class));
+            } finally {
+                openTransactions.decrementAndGet();
+            }
+        });
         org.mockito.Mockito.doAnswer(inv -> {
-            ((Consumer<TransactionStatus>) inv.getArgument(0)).accept(mock(TransactionStatus.class));
+            openTransactions.incrementAndGet();
+            try {
+                ((Consumer<TransactionStatus>) inv.getArgument(0)).accept(mock(TransactionStatus.class));
+            } finally {
+                openTransactions.decrementAndGet();
+            }
             return null;
         }).when(transaction).executeWithoutResult(any());
         when(ingestion.queueStats()).thenReturn(new QueueStats(0, 0, 0));
@@ -97,6 +111,25 @@ class ContextHeaderBackfillJobTest {
             assertThat(s.chunkIndex()).isZero();
         });
         verify(systemModel).index(eq(documentId), any());
+    }
+
+    /**
+     * The whole point of the job's shape (reference 4.3): the embedding model is called between the transactions, never
+     * inside one. TransactionBoundaryRulesTest cannot see TransactionTemplate callbacks, so this test does.
+     */
+    @Test
+    void reindex_callsTheEmbeddingModelOutsideEveryTransaction() {
+        when(embeddingModel.embed(anyList())).thenAnswer(inv -> {
+            assertThat(openTransactions.get()).as("a TransactionTemplate callback is open around the embedding call")
+                    .isZero();
+            return List.of(new float[1024]);
+        });
+        when(repository.replace(any(), anyInt(), anyString(), anyString(), anyList(), anyList())).thenReturn(true);
+
+        assertThat(job.runOnce()).isEqualTo(1);
+
+        verify(embeddingModel).embed(anyList());
+        assertThat(openTransactions.get()).as("every callback returned").isZero();
     }
 
     /** Deleted, re-ingested or finished by another instance meanwhile: not counted, the system model is not touched. */

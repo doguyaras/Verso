@@ -129,6 +129,7 @@
   - Backfill'in maliyeti alımla aynıdır: her parça yeniden embed edilir (CPU'da belge başına saniyeler–dakikalar). Yeni yüklemeler önce gelir, yani backfill yoğun bir kurulumda uzun sürebilir.
   - Yeniden indeksleme sistem modelini belge başına yeniden çıkarır (deterministik, milisaniyeler).
   - Bekleyen belgeleri seçen sorgu `document`'ı tarar (index yok). Bu, belge sayısıyla (binler) sınırlıdır ve sistem modeli backfill'iyle aynı ölçektedir.
+  - Bilinen sınır (hata avı 2026-10-30): `context_locked_until` kirası jetonsuzdur; `extendLease`/`releaseLease` yalnız belge kimliğiyle çalışır. Kira dolduktan sonra (JVM duraklaması, instance'lar arası saat sapması) iki instance aynı belgeyi gömebilir; sonuç yine doğrudur (`replace` satır kilidi altında sürümü ve chunk kimliklerini yeniden denetler), yalnız embedding işi boşa gider. Jeton (`claimNext`'in verdiği `until` değeri) eklenmesi bekleyen iştir.
 - **Etkilenen dosyalar ve yüzeyler:**
   - `document-core`:
     - yeni: `worker/{DocumentTitle, ChunkContext, ContextHeaderBackfillJob}`, `repository/ContextIndexRepository`, `config/ContextHeaderProperties`;

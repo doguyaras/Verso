@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -74,7 +75,10 @@ public class SystemModelBackfillJob {
                     });
                 });
             } catch (RuntimeException e) {
-                if (taken[0] == null) throw e;
+                // A database failure (connection lost, lock timeout, deadlock) is not the document's fault: recording
+                // an empty model would hide its entities from the system map until the next extractor version. The
+                // round ends; the next one takes the document again.
+                if (taken[0] == null || e instanceof DataAccessException) throw e;
                 // A document the extractor cannot handle must not block the queue: it gets an empty model of this
                 // version (taken again only after an extractor change) and an ERROR line to look at.
                 log.error("System model extraction failed: code=SYSTEM_MODEL_EXTRACTION_FAILED documentId={} "

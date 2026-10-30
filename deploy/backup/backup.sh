@@ -20,6 +20,8 @@ BACKUP_DIR="${BACKUP_DIR:-/backups}"
 INTERVAL="${BACKUP_INTERVAL_SECONDS:-86400}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
 RETRY_SECONDS="${BACKUP_RETRY_SECONDS:-300}"
+# How long one manifest/ACL query may take inside the snapshot session; the self-test shortens it.
+QUERY_TIMEOUT="${BACKUP_QUERY_TIMEOUT_SECONDS:-600}"
 SECRETS="${VERSO_SECRETS_DIR:-/run/secrets}"
 KEY_FILE="$SECRETS/SECRET_BACKUP_ENCRYPTION_KEY"
 
@@ -29,7 +31,8 @@ done
 export PGUSER=verso_backup
 PGPASSWORD="$(cat "$SECRETS/SECRET_DB_BACKUP_PASSWORD")"
 export PGPASSWORD
-export GNUPGHOME=/tmp/gnupg
+# The container has /tmp only; the self-test (selftest-abort.sh) points this at its own directory.
+export GNUPGHOME="${GNUPGHOME:-/tmp/gnupg}"
 mkdir -p -m 700 "$GNUPGHOME" "$BACKUP_DIR"
 
 # MANIFEST_SQL and ACL_SQL: one definition for backup and restore check.
@@ -43,12 +46,25 @@ read_until_end() {
   local line
   printf '%s\nSELECT %s;\n' "$1" "'__END__'" >&"${SNAP[1]}"
   : > "$2"
-  while IFS= read -r -t 600 line <&"${SNAP[0]}"; do
+  while IFS= read -r -t "$QUERY_TIMEOUT" line <&"${SNAP[0]}"; do
     [ "$line" = "__END__" ] && return 0
     printf '%s\n' "$line" >> "$2"
   done
-  log "FAILED: query output ended early"
   return 1
+}
+
+# abort_snapshot <base> <reason>: ends the snapshot session and removes this run's partial files, on every failure
+# path. A session left open would sit idle-in-transaction holding the snapshot (vacuum cannot reclaim behind it) until
+# the server kills it, and the next run's coproc would not replace it; the partial files would wait for a prune that
+# only a successful run performs.
+abort_snapshot() {
+  local base="$1"
+  if [ -n "${SNAP_PID:-}" ]; then
+    printf 'ROLLBACK;\n\\q\n' >&"${SNAP[1]}" 2>/dev/null || true
+    wait "$SNAP_PID" 2>/dev/null || true
+  fi
+  rm -f "$base.dump.gpg.partial" "$base.manifest.partial" "$base.acl.partial"
+  log "FAILED: $2"
 }
 
 backup_once() {
@@ -59,19 +75,17 @@ backup_once() {
   partial="$base.dump.gpg.partial"
 
   # One REPEATABLE READ transaction exports its snapshot; pg_dump, the row counts and the privilege fingerprint all
-  # read that snapshot.
+  # read that snapshot. Every failure below goes through abort_snapshot, which closes the session.
   coproc SNAP { psql -X -q -t -A -v ON_ERROR_STOP=1; }
   printf 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;\nSELECT pg_export_snapshot();\n' >&"${SNAP[1]}"
-  IFS= read -r -t 60 snapshot <&"${SNAP[0]}" || { log "FAILED: no snapshot"; return 1; }
-  read_until_end "$MANIFEST_SQL" "$base.manifest.partial" || return 1
-  read_until_end "$ACL_SQL" "$base.acl.partial" || return 1
+  IFS= read -r -t 60 snapshot <&"${SNAP[0]}" || { abort_snapshot "$base" "no snapshot"; return 1; }
+  read_until_end "$MANIFEST_SQL" "$base.manifest.partial" || { abort_snapshot "$base" "manifest query"; return 1; }
+  read_until_end "$ACL_SQL" "$base.acl.partial" || { abort_snapshot "$base" "acl query"; return 1; }
 
   if ! pg_dump --snapshot="$snapshot" --format=custom --no-password \
       | gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$KEY_FILE" \
             --symmetric --cipher-algo AES256 --compress-algo none --output "$partial"; then
-    printf 'ROLLBACK;\n\\q\n' >&"${SNAP[1]}"; wait "$SNAP_PID" || true
-    rm -f "$partial" "$base.manifest.partial" "$base.acl.partial"
-    log "FAILED: pg_dump or encryption"
+    abort_snapshot "$base" "pg_dump or encryption"
     return 1
   fi
   printf 'COMMIT;\n\\q\n' >&"${SNAP[1]}"; wait "$SNAP_PID" || true

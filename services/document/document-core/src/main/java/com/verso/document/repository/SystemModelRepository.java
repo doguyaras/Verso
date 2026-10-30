@@ -167,11 +167,13 @@ public class SystemModelRepository {
 
     /**
      * Takes the document row lock (waiting for a holder), so ingestion-triggered and backfill extraction of the same
-     * document serialise; the state read after it sees what the earlier holder committed (READ COMMITTED).
+     * document serialise; the state read after it sees what the earlier holder committed (READ COMMITTED). False when
+     * the document is gone: deleted between the ingestion's READY commit and this transaction (KVKK erasure, a user
+     * delete), so the caller writes nothing instead of failing on the state row's foreign key.
      */
-    public void lockDocument(UUID documentId) {
-        jdbc.sql("SELECT id FROM document.document WHERE id = :id FOR NO KEY UPDATE").param("id", documentId)
-                .query(UUID.class).optional();
+    public boolean lockDocument(UUID documentId) {
+        return jdbc.sql("SELECT id FROM document.document WHERE id = :id FOR NO KEY UPDATE").param("id", documentId)
+                .query(UUID.class).optional().isPresent();
     }
 
     /** READY documents waiting for a model of this version, over all accounts: a gauge, no id leaves. */

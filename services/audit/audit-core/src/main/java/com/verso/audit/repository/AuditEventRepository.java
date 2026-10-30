@@ -126,12 +126,14 @@ public class AuditEventRepository {
     }
 
     /**
-     * Deletes up to {@code limit} rows older than the cutoff through audit.purge_expired, the only way the application
-     * role can remove a row. The function itself refuses a cutoff younger than 30 days (V1__audit_event.sql).
+     * Deletes up to {@code limit} rows older than {@code retentionDays} through audit.purge_expired, the only way the
+     * application role can remove a row. The function computes the cutoff from the database clock and refuses fewer
+     * than 30 days (V4__purge_expired_retention_days.sql): the application clock plays no part, so the floor value
+     * deletes deterministically.
      */
-    public int purgeExpired(Instant cutoff, int limit) {
-        return db.jdbc().sql("SELECT audit.purge_expired(CAST(:cutoff AS timestamptz), :limit)")
-                .param("cutoff", ts(cutoff)).param("limit", limit).query(Integer.class).single();
+    public int purgeExpired(int retentionDays, int limit) {
+        return db.jdbc().sql("SELECT audit.purge_expired(:days, :limit)")
+                .param("days", retentionDays).param("limit", limit).query(Integer.class).single();
     }
 
     /** Rows naming {@code sub} as the actor (ADR-0034; index idx_event_actor_occurred, V2). */
