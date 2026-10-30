@@ -107,6 +107,16 @@
   - Belgeler: llm-rules 3.10, `repo-context.md`, `README.md`, `docs/decisions.md`, `docs/api-questions-integration-v1.md`, `eval/results/*-uygunluk-*`.
 - **Geri alma yolu:** `VERSO_QA_RELEVANCE_ENABLED=false`. Sonuç türü ADR-0047'deki gibi olur. Migration yok, imaj değişmez.
 
+## Hata avı 2026-10-30
+
+Kayıtlı setlerde görünmeyen, üç kalıp hatası düzeltildi (`QuestionSlotTest`, `RefusalDetectorTest`, `AnswerRelevanceTest`):
+
+- `QuestionSlot`: soru sözcükleri bütün sözcük olarak eşleşir. "kaç" artık "kaçak", "kaçış", "kaçınılmaz" içinde; "hangi ay/yıl/gün/saat/tarih" artık "hangi ayrıntılar", "hangi ayarlar", "hangi yıllık" içinde; "şu an" artık "şu anlaşma" içinde eşleşmez. Önceden bu sorular sayı ya da tarih isteyen soru sayılıyor, doğru atıflı cevap `slot_missing` ile "bulunamadı"ya dönüyordu.
+- `RefusalDetector`: bir cümlede olumsuz yüklemden önce yüklemle kapanan ve sayı ya da kod veren bir ifade varsa ("yıllık izin 14 gündür ve … hüküm bulunmamaktadır") o kısım içerik, yalnız sonraki yan cümle rettir. Önceden bütün cümle ret sayılıyor, tek cümlelik doğru cevap kayboluyordu.
+- `QuestionSlot.namesSomeone`: ad, sorunun sözcükleriyle karşılaştırılır, ham metinle değil ("Ali", "mali" içinde geçtiği için ad sayılmıyordu).
+
+Kayıtlı cevaplar yeniden oynatıldı: `RelevanceEvalTest` değişmeden geçer; dış set (`e2e-external-p55`, `e2e-external-uygunluk-on`) yeniden oynatma sonucu aynı günün hata avı raporundadır.
+
 ## Yeniden değerlendirme koşulu
 
 - Chat modeli değişirse (gemma4:e2b dışında) iki set yeniden ölçülür: ret dili modelindir.

@@ -1,6 +1,7 @@
 package com.verso.qa.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -67,13 +68,14 @@ class QuestionStreamTest {
     private final CallerGroups groups = mock(CallerGroups.class);
     private final CountingModel model = new CountingModel();
     private QuestionServiceImpl service;
+    private ModelCircuitBreaker circuit;
 
     @BeforeEach
     void setUp() {
         // One chat slot, 300 ms to wait for it, a 2 s chat bound (ADR-0008 values scaled down).
         QaProperties properties = new QaProperties(5, 0.47, 0.44, 0.045, 0.50, 1500, 1, Duration.ofMillis(300), 2,
                 Duration.ofSeconds(15), Duration.ofSeconds(2), Duration.ofSeconds(2));
-        ModelCircuitBreaker circuit = new ModelCircuitBreaker(properties);
+        circuit = new ModelCircuitBreaker(properties);
         service = new QuestionServiceImpl(retrieval, model, new PromptBuilder(properties), new CitationExtractor(properties),
                 properties, new VersoAiProperties(AiMode.LOCAL, "test-chat", "test-embed"), circuit,
                 new QaMetrics(new SimpleMeterRegistry(), circuit), history, new AnswerabilityGate(properties), groups,
@@ -200,6 +202,26 @@ class QuestionStreamTest {
         assertThat(out.failure.getErrorCode().getCode()).isEqualTo(11001);
         assertThat(out.failure.getSafeLogReason()).isEqualTo("IllegalStateException");
         assertThat(out.failure.getMessage()).doesNotContain("MarkerProviderEcho");
+    }
+
+    /** A 200 without text is this question's failure, not an outage: twice in a row still leaves the circuit closed. */
+    @Test
+    void stream_whenTheModelReturnsNoText_failsWithoutOpeningTheCircuit() throws Exception {
+        model.answer = "";
+        for (int attempt = 0; attempt < 2; attempt++) {
+            Recording out = new Recording(n -> true);
+
+            service.stream(ACCOUNT, "Yıllık izin?", null, out);
+
+            assertThat(out.await()).isEqualTo("failed");
+            assertThat(out.failure.getErrorCode().getCode()).isEqualTo(11001);
+            assertThat(out.failure.getSafeLogReason()).isEqualTo("EMPTY_ANSWER");
+        }
+        assertThatThrownBy(() -> service.ask(ACCOUNT, "Yıllık izin?", null))
+                .isInstanceOf(ServiceException.class)
+                .satisfies(e -> assertThat(((ServiceException) e).getSafeLogReason()).isEqualTo("EMPTY_ANSWER"));
+        assertThat(circuit.isOpen()).as("three empty answers are not two model failures").isFalse();
+        verify(history, never()).record(any(), any(), anyString(), any(), any());
     }
 
     /** One bulkhead for both endpoints: a JSON answer holding the only slot makes a stream end MODEL_BUSY. */

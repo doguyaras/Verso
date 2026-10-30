@@ -1,5 +1,6 @@
 package com.verso.mcp.web;
 
+import com.verso.mcp.McpProperties;
 import com.verso.platform.core.exception.CommonErrorCode;
 import com.verso.platform.core.exception.ServiceException;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -56,7 +57,9 @@ public final class McpRequestGuard extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // Only calls: a GET (the optional server-sent event stream) is answered 405 at once by the stateless transport.
-        return !"POST".equals(request.getMethod()) || !"/mcp".equals(request.getRequestURI());
+        // The chain already matches /mcp and the metadata only; the path is not compared as a string, since the
+        // transport also answers a spelling with matrix parameters ("/mcp;a=b") that would otherwise pass unbounded.
+        return !"POST".equals(request.getMethod()) || request.getRequestURI().contains(McpProperties.METADATA_PATH);
     }
 
     @Override

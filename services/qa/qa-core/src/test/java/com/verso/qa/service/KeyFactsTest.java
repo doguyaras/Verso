@@ -55,6 +55,14 @@ class KeyFactsTest {
         // A lone "bir" is the article even before a unit: "bir günlük", "biri yılda".
         assertThat(facts("bir günlük limit, biri yılda")).isEmpty();
         assertThat(facts("bir milyon TL")).containsExactly(new Fact(Kind.AMOUNT, "1000000", "TRY"));
+        // A lone scale word is one of it with a unit or a currency after it: "bin TL" and "on bin TL" differ.
+        assertThat(facts("bin TL üstü alım")).containsExactly(new Fact(Kind.AMOUNT, "1000", "TRY"),
+                new Fact(Kind.COMPARATOR, "above"));
+        assertThat(facts("yüz bin liralık alım")).containsExactly(new Fact(Kind.AMOUNT, "100000", "TRY"));
+        assertThat(facts("yüz puan")).containsExactly(new Fact(Kind.QUANTITY, "100", "puan"));
+        assertThat(facts("yüz yüze görüşme, binde bir ihtimal")).isEmpty();
+        assertThat(KeyFacts.of("Bin TL üstü alımlarda kim onaylar?")
+                .conflictWith(KeyFacts.of("On bin TL üstü alımlarda kim onaylar?"))).contains(Kind.AMOUNT);
         assertThat(facts("bir buçuk saat")).containsExactly(new Fact(Kind.QUANTITY, "1.5", "saat"));
         assertThat(facts("on gün")).containsExactly(new Fact(Kind.QUANTITY, "10", "gün"));
     }

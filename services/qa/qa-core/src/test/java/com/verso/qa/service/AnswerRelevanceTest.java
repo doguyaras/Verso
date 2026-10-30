@@ -112,6 +112,31 @@ class AnswerRelevanceTest {
                         + "alınmaz [1].").verdict()).isEqualTo(Verdict.SLOT_MISSING);
     }
 
+    /** Hata avı 2026-10-30: three ways a right, cited answer was lost to the slot check. */
+    @Test
+    void aQuestionWordInsideAnotherWordAsksNoSlot() {
+        assertThat(sourced("Gaz kaçağı durumunda ne yapılır?",
+                "Vanalar kapatılır, alan boşaltılır ve İSG birimine bildirilir [1].").verdict())
+                .isEqualTo(Verdict.ANSWERS);
+        assertThat(sourced("Sözleşmede hangi ayrıntılar yer alır?",
+                "Tarafların adları, ödeme koşulları ve teslim yeri yer alır [1].").verdict()).isEqualTo(Verdict.ANSWERS);
+    }
+
+    @Test
+    void aFactStatedBeforeANegatedClauseIsAnAnswer() {
+        Result result = CHECK.check("Yıllık izin kaç gün?", "Belgelerde belirtildiği üzere, yıllık izin 14 gündür ve "
+                + "bu sürenin uzatılabileceğine dair bir hüküm bulunmamaktadır [1].",
+                List.of("Yıllık izin süresi 14 gündür."), true, false);
+
+        assertThat(result.verdict()).isEqualTo(Verdict.ANSWERS);
+    }
+
+    @Test
+    void aShortNameInsideAQuestionWordIsStillAName() {
+        assertThat(sourced("Şu anki mali işler müdürü kimdir?", "Mali İşler Müdürü Ali Kaya'dır [1].").verdict())
+                .isEqualTo(Verdict.ANSWERS);
+    }
+
     @Test
     void anOpenQuestionHasNoSlotToMiss() {
         assertThat(sourced("Yıllık izin nasıl kullanılır?", "İzin amirin onayıyla kullanılır [1].").verdict())

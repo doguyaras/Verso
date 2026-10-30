@@ -460,7 +460,10 @@ public final class KeyFacts {
                 j++;
                 if (!bare(word)) break;
             }
-            if (parts == 0) return;
+            if (parts == 0) {
+                readLoneScale(at);
+                return;
+            }
             boolean article = parts == 1 && !half && "bir".equals(stemOf(tokens.get(at)));
             if (parts > 1 || half) ambiguous = false;
             total = total.add(BigDecimal.valueOf(current));
@@ -468,6 +471,25 @@ public final class KeyFacts {
             for (int k = at; k < j - 1; k++) used[k] = true;
             // The scale ("yüz", "bin") and what follows are read by readNumber from the last word of the run.
             readNumber(j - 1, total, ambiguous, article);
+        }
+
+        /**
+         * "bin TL", "yüz puan", "yüz bin TL": scale words with no number before them are one of the scale, and count
+         * only with a unit or a currency after them (ambiguous: "yüz yüze", "binde bir" stay words). "500.000 TL" and
+         * "50.000 TL" are told apart; "bin TL üstü" and "on bin TL üstü" must be too.
+         */
+        private void readLoneScale(int at) {
+            long value = 0;
+            int j = at;
+            while (j < tokens.size() && tokens.get(j).kind().equals("word") && !used[j]) {
+                long scale = scale(tokens.get(j));
+                if (scale == 0) break;
+                value = value == 0 ? scale : value * scale;
+                j++;
+            }
+            if (value == 0) return;
+            for (int k = at; k < j - 1; k++) used[k] = true;
+            readNumber(j - 1, BigDecimal.valueOf(value), true, false);
         }
 
         private int skipSuffix(int at) {

@@ -685,9 +685,18 @@ public class QuestionServiceImpl implements QuestionService {
             throw failure(e.reason);
         }
         String text = textOf(response);
-        if (text == null || text.isBlank()) throw failure("EMPTY_ANSWER");
+        if (text == null || text.isBlank()) throw emptyAnswer();
         circuit.recordSuccess();
         return text;
+    }
+
+    /**
+     * A 200 with no text (a provider's content filter, a reasoning-only output cut at max tokens) is this question's
+     * failure, not an outage: the circuit is left as it is, so two such answers do not refuse every other question.
+     */
+    private QaServiceException emptyAnswer() {
+        metrics.record(Outcome.MODEL_UNAVAILABLE);
+        return new QaServiceException(QaErrorCode.MODEL_UNAVAILABLE, "EMPTY_ANSWER");
     }
 
     /**
@@ -843,7 +852,7 @@ public class QuestionServiceImpl implements QuestionService {
             Thread.currentThread().interrupt();
             throw failure("INTERRUPTED");
         }
-        if (raw.toString().isBlank()) throw failure("EMPTY_ANSWER");
+        if (raw.toString().isBlank()) throw emptyAnswer();
         circuit.recordSuccess();
         return raw.toString();
     }

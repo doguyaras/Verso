@@ -45,9 +45,20 @@ final class RefusalDetector {
                     + "|metinde|metinlerde|kaynaklarda|kaynakta|belge\\s+\\d)");
     private static final Pattern LEADING_JOINERS = Pattern.compile(
             "^[\\s,;:.…-]*(?:(?:ancak|fakat|ama|yalnızca|sadece|bununla birlikte)(?!\\p{L})[\\s,;:]*)?");
+    // Where a clause may start before the predicate: punctuation, or a conjunction that opens the negated part.
+    private static final Pattern CLAUSE_BOUNDARY = Pattern.compile(
+            "[,;:]|(?<!\\p{L})(?:ve|ancak|fakat|ama)(?!\\p{L})");
+    // A clause that states something closes with a predicate: a copula ("gündür"), a passive or aorist verb
+    // ("verilir", "oluşur", "gerekir"), a past or progressive form. "14 güne kadar," or "2024 yılı için," is not one.
+    private static final Pattern PREDICATE_END = Pattern.compile(
+            "(?:[dt][ıiuü]r|[lnşkrç][ıiuü]r|m[ae]z|m[ıiuü]ş|yor|[dt][ıiuü])$");
 
     /** A part of the answer: a refusal clause, or the text around it (markers and fences removed). */
     record Segment(boolean refusal, String text) {
+    }
+
+    /** The refusal clause of one sentence: where it begins, and where its predicate ends. */
+    private record Refusal(int clauseStart, int end) {
     }
 
     private RefusalDetector() {
@@ -55,40 +66,68 @@ final class RefusalDetector {
 
     /**
      * The answer's sentences in order, each refusal clause on its own: "X bilgi bulunmamaktadır, ancak Y [1]." is a
-     * refusal segment and a content segment ("Y"). Empty segments are dropped.
+     * refusal segment and a content segment ("Y"). A fact stated before the negated clause of the same sentence
+     * ("yıllık izin 14 gündür ve … hüküm bulunmamaktadır") is a content segment too. Empty segments are dropped.
      */
     static List<Segment> segments(String answer) {
         String text = FENCE.matcher(Normalizer.normalize(answer, Normalizer.Form.NFC)).replaceAll(" ");
         List<Segment> out = new ArrayList<>();
         for (Span span : SentenceSplitter.split(text, true)) {
             String sentence = MARKER.matcher(text.substring(span.start(), span.end())).replaceAll(" ").strip();
-            int end = refusalEnd(sentence);
-            if (end < 0) {
+            Refusal refusal = refusal(sentence);
+            if (refusal == null) {
                 addContent(out, sentence);
                 continue;
             }
-            out.add(new Segment(true, sentence.substring(0, end).strip()));
-            addContent(out, LEADING_JOINERS.matcher(sentence.substring(end)).replaceFirst(""));
+            if (refusal.clauseStart() > 0) addContent(out, sentence.substring(0, refusal.clauseStart()));
+            out.add(new Segment(true, sentence.substring(refusal.clauseStart(), refusal.end()).strip()));
+            addContent(out, LEADING_JOINERS.matcher(sentence.substring(refusal.end())).replaceFirst(""));
         }
         return out;
     }
 
     /** True when the whole sentence or clause is a refusal (the test's view of one sentence). */
     static boolean isRefusal(String sentence) {
-        return refusalEnd(MARKER.matcher(sentence).replaceAll(" ").strip()) >= 0;
+        Refusal refusal = refusal(MARKER.matcher(sentence).replaceAll(" ").strip());
+        return refusal != null && refusal.clauseStart() == 0;
     }
 
-    /** Where the refusal clause of {@code sentence} ends, or -1. Lower-casing keeps the length (Turkish locale). */
-    private static int refusalEnd(String sentence) {
+    /** The refusal clause of {@code sentence}, or null. Lower-casing keeps the length (Turkish locale). */
+    private static Refusal refusal(String sentence) {
         String lower = sentence.toLowerCase(TURKISH);
         if (lower.length() != sentence.length()) lower = sentence.toLowerCase(Locale.ROOT);
         Matcher negation = NEGATION.matcher(lower);
-        if (!negation.find()) return -1;
+        if (!negation.find()) return null;
         // The information or the documents named before the predicate ("bilgi yok" names it itself).
         if (!negation.group().startsWith("bilgi") && !ABOUT.matcher(lower).region(0, negation.start()).find()) {
-            return -1;
+            return null;
         }
-        return negation.end();
+        return new Refusal(clauseStart(sentence, lower, negation.start(), negation.group().startsWith("bilgi")),
+                negation.end());
+    }
+
+    /**
+     * Where the refusal clause begins: the nearest boundary before the predicate whose clause still names the
+     * information or the documents, and only when what stands before it is a statement of its own (it closes with a
+     * predicate) that gives a number or a code (a fact the groundedness check can read, as in "yıllık izin 14 gündür
+     * ve … hüküm bulunmamaktadır"). Otherwise the sentence start: "Belgelerde, bu konuda bilgi bulunmamaktadır" and
+     * "Belgelerde 2024 yılı için, … bilgi bulunmamaktadır" have nothing to keep before their comma.
+     */
+    private static int clauseStart(String sentence, String lower, int negationStart, boolean selfNaming) {
+        List<Integer> boundaries = new ArrayList<>();
+        Matcher boundary = CLAUSE_BOUNDARY.matcher(lower).region(0, negationStart);
+        while (boundary.find()) boundaries.add(boundary.start());
+        for (int k = boundaries.size() - 1; k >= 0; k--) {
+            int start = boundaries.get(k);
+            if (!selfNaming && !ABOUT.matcher(lower).region(start, negationStart).find()) continue;
+            String before = lower.substring(0, start).strip();
+            if (!PREDICATE_END.matcher(before).find()) return 0;
+            for (AnchorCheck.Token token : AnchorCheck.tokens(sentence.substring(0, start), true)) {
+                if (token.anchor() != null) return start;
+            }
+            return 0;
+        }
+        return 0;
     }
 
     private static void addContent(List<Segment> out, String text) {

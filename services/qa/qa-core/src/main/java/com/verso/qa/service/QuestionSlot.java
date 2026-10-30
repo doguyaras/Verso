@@ -3,6 +3,7 @@ package com.verso.qa.service;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -30,11 +31,17 @@ final class QuestionSlot {
 
     // "kim", "kime", "kimin", "kimden", "kimler"; not "kimlik" (identity) or "kimya" (chemistry).
     private static final Pattern PERSON_Q = Pattern.compile(START + "kim(?:ler|lerdir|dir|e|i|in|den|ce)?" + END);
+    // Every question word is a whole word with its own endings: "hangi ay" is not "hangi ayrıntılar" or "hangi ayarlar",
+    // "hangi yıl" not "hangi yıllık", "kaç" not "kaçak", "kaçış" or "kaçınılmaz" (measured: such questions, typed as a
+    // date or a quantity, lost their correct answers to the slot check).
     private static final Pattern DATE_Q = Pattern.compile(
-            START + "ne\\s+zaman" + END + "|" + START + "hangi\\s+(?:tarih|gün|ay|yıl|saat)" + "|" + START + "kaçta" + END);
+            START + "ne\\s+zaman" + END + "|" + START + "hangi\\s+(?:tarih(?:te|ten|e|i)?|gün(?:de|den|ler|lerde|ü|e)?"
+                    + "|ay(?:da|dan|ın|lar|larda|a|ı)?|yıl(?:da|dan|ın|lar|larda|a|ı)?|saat(?:te|ten|ler|lerde|e|i)?)"
+                    + END + "|" + START + "kaçta" + END);
     private static final Pattern PLACE_Q = Pattern.compile(
             START + "nere(?:de|ye|den|si|sidir)" + END + "|" + START + "hangi\\s+(?:" + placeNouns() + ")");
-    private static final Pattern NUMBER_Q = Pattern.compile(START + "kaç|" + START + "ne\\s+kadar" + END);
+    private static final Pattern NUMBER_Q = Pattern.compile(
+            START + "kaç(?:ı|a|ta|tır|tir|ar|ıncı|ının|ına)?" + END + "|" + START + "ne\\s+kadar" + END);
     private static final Pattern ENTITY_Q = Pattern.compile(START + "hangi" + END);
     private static final Pattern COMPARISON_Q = Pattern.compile(
             START + "(?:karşılaştır|fark|arasındaki|hangisi|aynı\\s+m[ıi]|farklı\\s+m[ıi])");
@@ -47,7 +54,7 @@ final class QuestionSlot {
     // "şu anki müdür", "halen": the question asks who holds the office, not how it is filled. Not "mevcut" or
     // "güncel": "mevcut yönetmeliğe göre kim onaylar" asks for a role.
     private static final Pattern CURRENT = Pattern.compile(
-            START + "(?:şu\\s*an|şimdiki|halen|hâlen|günümüzde|bugünkü|bugün)");
+            START + "(?:şu\\s*an(?:da|ki|dan|a|dır)?|şimdiki|halen|hâlen|günümüzde|bugünkü|bugün(?:e|den)?)" + END);
     private static final Pattern TITLE = Pattern.compile(
             "(?<!\\p{L})(?:Prof|Doç|Dr|Av|Uzm|Öğr|Sn|Sayın)\\.?\\s+\\p{Lu}");
     private static final Pattern CAPITALISED = Pattern.compile("\\p{Lu}[\\p{L}\\p{M}'’]*");
@@ -208,7 +215,11 @@ final class QuestionSlot {
     /** A personal name: a title ("Prof. Dr. …") or two adjacent capitalised words that are neither offices nor asked. */
     private static boolean namesSomeone(String text, String question) {
         if (TITLE.matcher(text).find()) return true;
-        String asked = lower(question);
+        // Compared word by word: a short name inside a longer question word ("Ali" in "mali", "Can" in "canlı") is
+        // not the asked thing.
+        Set<String> asked = new HashSet<>();
+        Matcher askedWord = WORD.matcher(lower(question));
+        while (askedWord.find()) asked.add(stem(askedWord.group()));
         Matcher word = CAPITALISED.matcher(text);
         int previousEnd = -2;
         boolean previousName = false;
@@ -236,9 +247,16 @@ final class QuestionSlot {
     // A capitalised word after another word: a name or an institution, not just the first word of a sentence.
     private static final Pattern CAPITALISED_INSIDE = Pattern.compile("[\\p{L},;]\\s+\\p{Lu}");
 
+    // A lone scale word before a unit or a currency ("bin TL", "yüz puan"): the strict anchor reader drops it as an
+    // ordinary word (a face, a ride), but with the unit it is a quantity.
+    private static final Pattern LONE_SCALE = Pattern.compile(
+            "(?<!\\p{L})(?:yüz|bin|milyon)\\s+(?:" + UNITS.stream().flatMap(List::stream).map(Pattern::quote)
+                    .collect(java.util.stream.Collectors.joining("|")) + ")(?!\\p{L})");
+
     private static boolean hasNumber(String text) {
         // Regulations write compounds as one word ("oniki yarıyıl", "kırkbeş saat"); the anchor reader reads them apart.
         if (COMPOUND_NUMBER.matcher(lower(text)).find()) return true;
+        if (LONE_SCALE.matcher(lower(text)).find()) return true;
         for (AnchorCheck.Token token : AnchorCheck.tokens(text, false)) {
             if (token.anchor() != null && token.anchor().startsWith("N:")) return true;
         }

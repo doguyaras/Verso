@@ -21,7 +21,7 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 
 ## Kurallar
 - **Kritik:** Atıflar sunucuda üretilir. İstemci, cevap metnindeki `[n]` işaretini yalnız `citations` listesindeki `number` ile eşler; listede olmayan numara gösterilmez.
-- **Kritik (akış):** `delta` metni doğrulanmamıştır. İçindeki `[n]` atıf gibi gösterilmez (panel gizler); cevabın son hâli `citations` olayındaki `answer`'dır, taslak onunla değiştirilir.
+- **Kritik (akış):** `delta` metni doğrulanmamıştır. İçindeki `[n]` atıf gibi gösterilmez (panel gizler); cevabın son hâli `citations` olayındaki `answer`'dır, taslak onunla değiştirilir. Sunucu taslağı sonradan reddedebilir (ADR-0064: modelin kendi sözleriyle reddi ya da soruyu cevaplamayan metin): o zaman `citations` sabit "bulunamadı" metnini boş listeyle taşır ve `done` `NOT_FOUND` der; yalnız `delta`'ları gösterip `citations`'ı yok sayan bir istemci reddedilmiş bir cevabı gösterir.
 - Başarı yanıtı ham, hata yanıtı zarflıdır (ADR-0004). Soru ve cevap kişisel veri içerebilir: istemci log'una ve analitiğe yazılmaz.
 - Bilinmeyen alanlar yok sayılır; `mode` için bilinmeyen değer genel "AI" etiketi olarak gösterilir.
 

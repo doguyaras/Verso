@@ -104,9 +104,12 @@ class RoutedChatModelTest {
                            ModelRequestFilter.Filtered applied) {
             records.add(candidate.model() + ":" + outcome + (usage == null ? "" : ":" + usage.getPromptTokens() + "/"
                     + usage.getCompletionTokens()));
+            recordThreads.add(Thread.currentThread().getName());
             sent.add(categories);
             filters.add(applied);
         }
+
+        final List<String> recordThreads = new ArrayList<>();
     }
 
     static ModelConnection connection(ModelConnection.Locality locality) {
@@ -256,6 +259,63 @@ class RoutedChatModelTest {
         assertThatThrownBy(() -> route(hooks, "half", "local").stream(PROMPT).collectList().block())
                 .isInstanceOf(HttpServerErrorException.class);
         assertThat(hooks.records).containsExactly("half:FAILED");
+    }
+
+    /** A chunk whose text the privacy filter held back entirely is not a token the caller saw: the route may still fall back. */
+    @Test
+    void stream_fallsBackWhenTheOnlyChunkBeforeTheFailureCarriedNoText() {
+        FakeHooks hooks = new FakeHooks();
+        hooks.filter = new PiiMaskingFilter();
+        hooks.models.put("ext-half", new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                // "[" may still become a placeholder: the restorer holds it, so nothing reached the caller yet.
+                return Flux.concat(Flux.just(answer("[", 0, 0)),
+                        Flux.error(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE)));
+            }
+        });
+        hooks.models.put("local", answering("akış"));
+
+        List<String> tokens = route(hooks, "ext-half", "local").stream(PERSONAL)
+                .map(r -> r.getResult().getOutput().getText()).collectList().block();
+
+        assertThat(String.join("", tokens)).isEqualTo("akış");
+        assertThat(hooks.records).containsExactly("ext-half:FAILED", "local:OK:11/3");
+    }
+
+    /** The usage record is a database write: never on the thread the provider's chunks arrive on (its event loop). */
+    @Test
+    void stream_recordsTheUsageOffTheProvidersThread() throws Exception {
+        FakeHooks hooks = new FakeHooks();
+        reactor.core.scheduler.Scheduler loop = reactor.core.scheduler.Schedulers.newSingle("provider-io");
+        try {
+            hooks.models.put("local", new ChatModel() {
+                @Override
+                public ChatResponse call(Prompt prompt) {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public Flux<ChatResponse> stream(Prompt prompt) {
+                    return Flux.just(answer("ak", 0, 0), answer("ış", 11, 3)).publishOn(loop);
+                }
+            });
+
+            List<String> tokens = route(hooks, "local").stream(PROMPT)
+                    .map(r -> r.getResult().getOutput().getText()).collectList().block();
+
+            assertThat(String.join("", tokens)).isEqualTo("akış");
+            assertThat(hooks.records).containsExactly("local:OK:11/3");
+            assertThat(hooks.recordThreads).singleElement().satisfies(name -> assertThat(name)
+                    .doesNotStartWith("provider-io"));
+        } finally {
+            loop.dispose();
+        }
     }
 
     @Test

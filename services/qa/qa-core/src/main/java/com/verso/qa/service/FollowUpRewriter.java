@@ -111,7 +111,12 @@ public class FollowUpRewriter {
                         properties.maxAnswerChars());
                 if (!answer.isEmpty()) block.append("\nCevap: ").append(answer);
             }
-            if (block.length() > budget) break;
+            // The newest turn is what a follow-up points back to: when it alone is over the budget it is cut, not
+            // dropped, or the model would rewrite from an empty conversation.
+            if (block.length() > budget) {
+                if (i == turns.size() - 1) lines.addFirst(cap(block.toString(), budget));
+                break;
+            }
             budget -= block.length();
             lines.addFirst(block.toString());
         }

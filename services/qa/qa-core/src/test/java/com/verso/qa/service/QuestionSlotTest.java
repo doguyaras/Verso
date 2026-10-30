@@ -31,6 +31,15 @@ class QuestionSlotTest {
             "Personelin özel sağlık sigortası hangi şirketten alınıyor?|ENTITY",
             "Yıllık izin nasıl kullanılır?|OTHER",
             "Ara sınav nedir?|OTHER",
+            // Question words are whole words: "kaçağı", "kaçış", "ayrıntılar", "ayarlar" and "yıllık" ask nothing.
+            "Gaz kaçağı durumunda ne yapılır?|OTHER",
+            "Acil kaçış planı nedir?|OTHER",
+            "Kaçınılmaz durumlarda ne yapılır?|OTHER",
+            "Sözleşmede hangi ayrıntılar yer alır?|ENTITY",
+            "Hangi ayarlar değiştirilmeli?|ENTITY",
+            "Hangi yıllık izin türleri vardır?|ENTITY",
+            "Hangi aylarda sayım yapılır?|DATE",
+            "Kaçıncı maddede düzenlenir?|NUMBER",
     })
     void theQuestionWordGivesTheType(String question, Type type) {
         assertThat(QuestionSlot.typeOf(question)).as(question).isEqualTo(type);
@@ -57,6 +66,12 @@ class QuestionSlotTest {
                 "Rektör, Hacettepe Üniversitesi Rektörü'nü ifade eder.")).isFalse();
         assertThat(QuestionSlot.filledBy(Type.PERSON, question, "Merkez müdürü Prof. Dr. Ayşe Demir'dir.")).isTrue();
         assertThat(QuestionSlot.filledBy(Type.PERSON, question, "Merkezin müdürü Mehmet Kaya'dır.")).isTrue();
+        // A short name inside a longer question word ("Ali" in "mali") is still a name.
+        assertThat(QuestionSlot.filledBy(Type.PERSON, "Şu anki mali işler müdürü kimdir?",
+                "Mali İşler Müdürü Ali Kaya'dır.")).isTrue();
+        // "şu anlaşma" is not "şu an": the signer's role answers it.
+        assertThat(QuestionSlot.filledBy(Type.PERSON, "Şu anlaşmayı kim imzaladı?",
+                "Anlaşma Genel Müdür tarafından imzalanır.")).isTrue();
     }
 
     @Test
@@ -86,6 +101,12 @@ class QuestionSlotTest {
                 .isTrue();
         assertThat(QuestionSlot.filledBy(Type.NUMBER, "Sözleşme kaç aylık yapılır?", "Ayrıca bir sözleşme yapılır."))
                 .isFalse();
+        // A lone scale word with the unit is a quantity; without one it stays a word (a face).
+        assertThat(QuestionSlot.filledBy(Type.NUMBER, "Başvuru ücreti kaç TL?", "Başvuru ücreti bin TL'dir."))
+                .isTrue();
+        assertThat(QuestionSlot.filledBy(Type.NUMBER, "Geçme notu kaç puan?", "Geçme notu yüz puan üzerinden altmıştır."))
+                .isTrue();
+        assertThat(QuestionSlot.filledBy(Type.NUMBER, "Başvuru ücreti kaç TL?", "Başvuru yüz yüze yapılır.")).isFalse();
     }
 
     /** Measured on the live stack (external set, first run): right answers the check must keep. */

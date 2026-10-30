@@ -14,6 +14,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * One task's route as a {@link ChatModel} (ADR-0056): the models in order, each tried only when the one before failed
@@ -156,8 +157,13 @@ public final class RoutedChatModel implements ChatModel {
             }
             Flux<ChatResponse> answer = hooks.client(candidate).stream(outgoing);
             return (exchange == null ? answer : exchange.afterReceive(answer))
+                    // The provider's I/O thread only hands the chunk over: the usage record below is a database write
+                    // and must not run on an event loop that every other stream shares.
+                    .publishOn(Schedulers.boundedElastic())
                     .doOnNext(chunk -> {
-                        emitted.set(true);
+                        // A token the caller saw: the privacy filter may hold a chunk's text back entirely, and a
+                        // fallback is still allowed while nothing has reached the caller.
+                        if (hasText(chunk)) emitted.set(true);
                         Usage u = usageOf(chunk);
                         // Providers report usage on the last chunk (OpenAI with stream_options.include_usage).
                         if (u != null) usage.set(u);
@@ -210,6 +216,16 @@ public final class RoutedChatModel implements ChatModel {
 
     private static ModelRequestFilter.Filtered filtered(ModelRequestFilter.Exchange exchange) {
         return exchange == null ? ModelRequestFilter.Filtered.NONE : exchange.filtered();
+    }
+
+    private static boolean hasText(ChatResponse chunk) {
+        for (var generation : chunk.getResults()) {
+            if (generation.getOutput() != null && generation.getOutput().getText() != null
+                    && !generation.getOutput().getText().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static Usage usageOf(ChatResponse response) {

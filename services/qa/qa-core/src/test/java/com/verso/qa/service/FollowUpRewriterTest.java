@@ -89,6 +89,20 @@ class FollowUpRewriterTest {
         assertThat(prompt.user()).contains("MarkerNewest").doesNotContain("MarkerOldest");
     }
 
+    /** The newest turn alone over the budget is cut to it, never dropped: a rewrite from no history invents. */
+    @Test
+    void prompt_whenTheNewestTurnAloneIsOverBudget_keepsItCut() {
+        FollowUpRewriter small = new FollowUpRewriter(properties(100, 60, 100));
+        BuiltPrompt prompt = small.prompt("Peki?", List.of(
+                new PriorTurn("MarkerNewest " + "y ".repeat(40), "MarkerAnswer " + "z ".repeat(20), true)));
+
+        assertThat(prompt.user()).contains("Soru: MarkerNewest").contains("…");
+        assertThat(prompt.user()).doesNotContain("[[KONUŞMA]]\n[[/KONUŞMA]]");
+        for (String line : prompt.user().split("\n")) {
+            if (line.startsWith("Soru: ")) assertThat(line.length()).isLessThanOrEqualTo(100);
+        }
+    }
+
     /** No leakage: the prompt holds exactly the turns it is given (the caller's conversation) and nothing else. */
     @Test
     void prompt_whenGivenNoTurns_holdsOnlyTheQuestion() {

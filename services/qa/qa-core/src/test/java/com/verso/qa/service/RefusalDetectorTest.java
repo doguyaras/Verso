@@ -73,6 +73,35 @@ class RefusalDetectorTest {
         assertThat(segments.get(1).text()).startsWith("müdür Rektör tarafından görevlendirilir").doesNotContain("[1]");
     }
 
+    /** A fact stated before the negated clause of the same sentence is content; the clause after it is the refusal. */
+    @Test
+    void aStatedFactBeforeANegatedClauseStaysContent() {
+        for (String sentence : List.of(
+                "Belgelerde belirtildiği üzere, yıllık izin 14 gündür ve bu sürenin uzatılabileceğine dair bir hüküm "
+                        + "bulunmamaktadır [1].",
+                "Belgelere göre yıllık izin 14 gündür; ek izin için bir düzenleme bulunmamaktadır [1].")) {
+            List<Segment> segments = RefusalDetector.segments(sentence);
+
+            assertThat(segments).as(sentence).extracting(Segment::refusal).containsExactly(false, true);
+            assertThat(segments.getFirst().text()).contains("yıllık izin 14 gündür").doesNotContain("[1]");
+            assertThat(RefusalDetector.isRefusal(sentence)).as(sentence).isFalse();
+        }
+    }
+
+    /** Without a fact before the boundary the sentence is wholly a refusal: a document word is not an answer. */
+    @Test
+    void aRefusalWithOnlyFramingBeforeItsCommaIsWhollyARefusal() {
+        for (String sentence : List.of("Belgelerde, bu konuda bilgi bulunmamaktadır.",
+                "Belgelerde belirtildiği üzere, bu konuda bilgi bulunmamaktadır [2].",
+                "Müdür Rektör tarafından atanır ve belgelerde adı hakkında bilgi bulunmamaktadır [1].",
+                // A number before the comma, but no statement: the question's own figure repeated.
+                "Belgelerde 9 saat çalışan işçi için, öğle arası hakkında bilgi bulunmamaktadır [1].")) {
+            assertThat(RefusalDetector.segments(sentence)).as(sentence).extracting(Segment::refusal)
+                    .containsExactly(true);
+            assertThat(RefusalDetector.isRefusal(sentence)).as(sentence).isTrue();
+        }
+    }
+
     @Test
     void theModelsCopiedFencesAreNotWords() {
         List<Segment> segments = RefusalDetector.segments("Belgelerde kurulda kaç üye bulunduğu bilgisi "
