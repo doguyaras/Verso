@@ -50,7 +50,7 @@
     <pdfbox.version>3.0.8</pdfbox.version>
     <!-- Flyway library and CLI image move together (ADR-0009 #4). Boot 4.1.2 manages 12.4.0; 13.x is pinned here so the
          CLI used by the restore drill validates with the same major (docs/versions.md). -->
-    <flyway.version>13.11.1</flyway.version>
+    <flyway.version>13.12.0</flyway.version>
     <!-- Confluence storage format parser (ADR-0044): MIT; 1.23.2 fixes GHSA-65r4-943x-97jj (XmlTreeBuilder, HIGH). -->
     <jsoup.version>1.23.2</jsoup.version>
     <!-- SMB2/3 client of the file-share connector (ADR-0038): Apache-2.0, maintained; jcifs-ng is LGPL (docs/versions.md). -->

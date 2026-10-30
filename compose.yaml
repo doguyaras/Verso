@@ -541,7 +541,7 @@ services:
   grafana:
     <<: *hardening
     profiles: ["obs"]
-    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    image: grafana/grafana:13.2.5@sha256:9f7aa1e1e3246aade5792d35a738049f7f32f89cd51d1956cf426a4e86268a84
     restart: always
     mem_limit: 256m
     pids_limit: 256
@@ -671,7 +671,7 @@ services:
   restore-flyway:
     profiles: ["drill"]
     <<: *hardening
-    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
     # The password goes through FLYWAY_PASSWORD, never the argument list.
     entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_DOCUMENT_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_document_migrate -schemas=document -defaultSchema=document -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
@@ -691,7 +691,7 @@ services:
   restore-flyway-qa:
     profiles: ["drill"]
     <<: *hardening
-    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
     entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_QA_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_qa_migrate -schemas=qa -defaultSchema=qa -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"
@@ -710,7 +710,7 @@ services:
   restore-flyway-audit:
     profiles: ["drill"]
     <<: *hardening
-    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
     entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_AUDIT_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_audit_migrate -schemas=audit -defaultSchema=audit -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"
@@ -729,7 +729,7 @@ services:
   restore-flyway-connector:
     profiles: ["drill"]
     <<: *hardening
-    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
     entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$(cat /run/secrets/SECRET_DB_CONNECTOR_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_connector_migrate -schemas=connector -defaultSchema=connector -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"
@@ -748,7 +748,7 @@ services:
   restore-flyway-work:
     profiles: ["drill"]
     <<: *hardening
-    image: flyway/flyway:13.11.1@sha256:fd082457bd0a470f567e236e16ec886c5fd1bd579b1bd1431e65d0e05fde88e2
+    image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
     entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$(cat /run/secrets/SECRET_DB_WORK_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_work_migrate -schemas=work -defaultSchema=work -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"

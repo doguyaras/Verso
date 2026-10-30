@@ -5,7 +5,7 @@
 #
 # Tests do not run here: CI runs them before it builds the image. The build stage only compiles and packages.
 
-FROM eclipse-temurin:25.0.4.1_1-jdk-noble@sha256:0d623ea18d7b0fe1e12a2c0a920f7e950cad433387e5a49d3611e1507fa07602 AS build
+FROM eclipse-temurin:25.0.5_8-jdk-noble@sha256:0939ed943f8107b943b6a6ac2e21d24568c24e4443d496e4d8b8e8da1ccdde1c AS build
 WORKDIR /src
 # unzip: without it mvnw silently downloads the .tar.gz distribution instead of the .zip, whose SHA-256 is the one
 # pinned in maven-wrapper.properties, and the checksum validation fails. Build stage only; not in the final image.
@@ -22,12 +22,12 @@ RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -ntp -q -pl verso-app -am package -DskipTests \
  && cp verso-app/target/verso-app-*.jar /src/app.jar
 
-FROM eclipse-temurin:25.0.4.1_1-jre-noble@sha256:398f810215757dc1926390014272579fb0e57c41ef1c8aa4f64ae761613a168b AS extract
+FROM eclipse-temurin:25.0.5_8-jre-noble@sha256:39d8a64f84d4c0aab4639757e1502264da350be831df4bb25d182d6a514113c2 AS extract
 WORKDIR /app
 COPY --from=build /src/app.jar app.jar
 RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
-FROM eclipse-temurin:25.0.4.1_1-jre-noble@sha256:398f810215757dc1926390014272579fb0e57c41ef1c8aa4f64ae761613a168b
+FROM eclipse-temurin:25.0.5_8-jre-noble@sha256:39d8a64f84d4c0aab4639757e1502264da350be831df4bb25d182d6a514113c2
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 # Layers from least to most frequently changing: a code change rebuilds only the last one.

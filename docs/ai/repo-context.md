@@ -95,7 +95,7 @@ Yok. Şekil A'da servisler arası çağrı ve `/internal/**` uç yoktur (ADR-000
 | Java / Spring Boot / Spring Modulith | 25 / 4.1.2 / 2.1.1 | `docs/versions.md`; event publication registry kullanılmıyor (ADR-0026) |
 | Spring AI | 2.0.1 (`spring-ai-bom`) | Boot 4 hattı; 1.x yalnız Boot 3; Ollama, Anthropic ve OpenAI starter'ları (ADR-0012, ADR-0013); MCP sunucu starter'ı `spring-ai-starter-mcp-server-webmvc` → MCP Java SDK 2.0.0, spesifikasyon 2025-11-25 (ADR-0031) |
 | PostgreSQL + pgvector | 18.6 + 0.8.7 (digest ile pinli) | tek instance; şema + iki rol/modül; `extensions` şeması; ADR-0009 |
-| Flyway | 13.11.1 | migration rolüyle; `baseline-on-migrate` kapalı |
+| Flyway | 13.12.0 | migration rolüyle; `baseline-on-migrate` kapalı |
 | Ollama | 0.40.10 (digest ile pinli; ADR-0033, canlı doğrulandı) | bge-m3 (embedding, `ollama`), gemma4:e2b (chat, `ollama-chat`; ADR-0062: iki süreç, iki bellek sınırı); local modda internete kapalı ağda; modeller tek seferlik pull container'ıyla (`manifests-v2` orada yazılır), çalışan Ollama volume'ü salt okunur bağlar |
 | Keycloak (demo IdP) | 26.8.1 (digest ile pinli) | prod modu, kendi `keycloak` veritabanı ve rolü; realm `verso` ES256; yalnız 127.0.0.1:8180 (ADR-0005, ADR-0010) |
 | docling-serve (isteğe bağlı, ADR-0032) | 1.38.1 CPU (docling 2.142.1, digest ile pinli) + Tesseract `tur` | `deploy/compose.docling.yaml`, `deploy/docling/Dockerfile`; yalnız iç `parsers` ağında, portsuz, internetsiz; 4 GB / 2 CPU (ölçülen tepe 2,2 GB) |

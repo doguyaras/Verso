@@ -10,7 +10,7 @@
 # checks its SHA-256 again before the server starts. Nothing is downloaded at run time.
 services:
   llama:
-    image: ghcr.io/ggml-org/llama.cpp:server-cuda-b11561@sha256:20c6e722e2fcc5ca9c15401d3fd8e35408aaf8f9c54a12f32920f637c57959bb
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda-b12004@sha256:f25bfa096802cdf35ceb7d124816387a1e3ed5cbfc869eb242246cd29ab29352
     restart: always
     read_only: true
     security_opt: ["no-new-privileges:true"]

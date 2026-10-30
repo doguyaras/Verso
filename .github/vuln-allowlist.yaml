@@ -471,11 +471,6 @@ entries:
     package: zlib
     reason: "Component (zlib) of the upstream Grafana 13.2.4 build; no newer release exists. Reachable only through obs-edge on 127.0.0.1 behind the Grafana login; the edge proxy and the internal-only network are the compensating controls."
     expires: 2027-01-31
-  - id: CVE-2026-111497
-    scope: grafana-grafana
-    package: brotli-libs
-    reason: "brotli-libs in the Alpine base of the upstream Grafana 13.2.4 image; the fix (1.2.1-r0) was first observed in Alpine on 2026-10-24 and 13.2.4 is still the newest 13.2 build (digest unchanged, Docker Hub). The Grafana binary is Go and does not link the library; the image is reachable only through obs-edge on 127.0.0.1 behind the Grafana login on the internal-only obs network. The next upstream rebuild picks up the fix."
-    expires: 2026-12-15
 
   # --- Flyway CLI 13.11.1 (restore drill only; newest release at 2026-10-24) ---
   - id: GHSA-hf6x-8p5f-cgmf
@@ -519,86 +514,76 @@ entries:
     reason: "Bundled Java library (lz4-java) of the Flyway CLI image. It runs only under the drill profile as a one-shot validate against the restored database, has no listening port and reads only this repository's SQL."
     expires: 2027-01-31
 
-  # --- Scan of 2026-10-26: llama.cpp server-cuda b11561 (ADR-0051) and curl in the Grafana and nginx Alpine bases ---
+  # --- Scan of 2026-10-26: llama.cpp server-cuda (b11561, since 2026-10-30 b12004; ADR-0051) and curl in the nginx Alpine base ---
   - id: CVE-2026-45447
     scope: ggml-org-llama.cpp-server-cuda
     package: libssl3t64
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "OpenSSL 3.0.13-0ubuntu3.5 in the Ubuntu base of the llama.cpp server-cuda image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-45447
     scope: ggml-org-llama.cpp-server-cuda
     package: openssl
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "OpenSSL 3.0.13-0ubuntu3.5 in the Ubuntu base of the llama.cpp server-cuda image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-84782
     scope: ggml-org-llama.cpp-server-cuda
     package: libssl3t64
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "OpenSSL 3.0.13-0ubuntu3.5 in the Ubuntu base of the llama.cpp server-cuda image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-84782
     scope: ggml-org-llama.cpp-server-cuda
     package: openssl
-    reason: "OpenSSL in the Ubuntu base of the llama.cpp server-cuda b11561 image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay). llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "OpenSSL 3.0.13-0ubuntu3.5 in the Ubuntu base of the llama.cpp server-cuda image (deploy/compose.llamacpp.yaml, ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. llama-server sits only on the internal models network with no egress, makes no outbound TLS connection and serves plain HTTP inside that network, so the TLS code paths are not reached. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: dirmngr
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gnupg
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gnupg-utils
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gnupg2
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpg
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpg-agent
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpgconf
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpgsm
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: gpgv
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2025-68973
     scope: ggml-org-llama.cpp-server-cuda
     package: keyboxd
-    reason: "GnuPG tools in the Ubuntu base of the llama.cpp server-cuda b11561 image (ADR-0051, opt-in overlay). They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. b11889 re-scanned 2026-10-28 (Syft 1.55.0, Grype 0.121.0): still present, so the pin stays; re-scan the next build."
-    expires: 2026-12-15
-  - id: CVE-2026-92392
-    scope: grafana-grafana
-    package: curl
-    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of the Grafana 13.2.4 image. Not invoked by Verso: the compose healthcheck uses wget, and Grafana is a Go binary that uses the Go HTTP client, not libcurl. Internal obs network only, reachable through obs-edge on 127.0.0.1. The next digest refresh picks up the Alpine fix."
-    expires: 2026-12-15
-  - id: CVE-2026-92392
-    scope: grafana-grafana
-    package: libcurl
-    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of the Grafana 13.2.4 image. Not invoked by Verso: the compose healthcheck uses wget, and Grafana is a Go binary that uses the Go HTTP client, not libcurl. Internal obs network only, reachable through obs-edge on 127.0.0.1. The next digest refresh picks up the Alpine fix."
+    reason: "GnuPG 2.4.4-2ubuntu17 tools in the Ubuntu base of the llama.cpp server-cuda image (ADR-0051, opt-in overlay); still the same version in b12004, the pin since 2026-10-30. They are not executed at runtime: the entrypoint is deploy/llamacpp/serve.sh, which runs only sha256sum and llama-server; the container is read-only, non-root and on the internal models network. Re-scan the next build."
     expires: 2026-12-15
   - id: CVE-2026-92392
     scope: nginxinc-nginx
@@ -631,4 +616,76 @@ entries:
     scope: grafana-alloy
     package: github.com/go-jose/go-jose/v4
     reason: "go-jose compiled into the Alloy log shipper, which only reads container logs on the internal obs network and validates no externally supplied JWTs. Re-check on the next Alloy release."
+    expires: 2026-12-15
+
+  # --- 2026-10-30 scan: curl 8.22.0-r0 in nginx-unprivileged 1.30.6-alpine (no newer build; Grafana moved to 13.2.5) ---
+  - id: CVE-2026-86409
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86409
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86410
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86410
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86411
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86411
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86412
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-86412
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-87866
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-87866
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-92386
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-92386
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-92387
+    scope: nginxinc-nginx
+    package: curl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
+    expires: 2026-12-15
+  - id: CVE-2026-92387
+    scope: nginxinc-nginx
+    package: libcurl
+    reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
     expires: 2026-12-15
