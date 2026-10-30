@@ -706,6 +706,12 @@ IDE'den `local` profille çalıştırmak için PostgreSQL'i `127.0.0.1:5432`'ye 
 docker compose -f compose.yaml -f deploy/compose.local.yaml up -d postgres
 ```
 
+Windows'ta Docker Desktop açılışta "initializing Inference manager … dockerInference" ya da "Secrets Engine … engine.sock" hatasıyla kapanıyorsa sebep, bir çöküşten ya da zorla kapatmadan kalan Unix soket dosyasıdır. Bazı Windows sürümlerinde bu dosya silinemez ve her çöküş yenisini bırakır. Betik soket klasörlerini kenara alıp Docker Desktop'ı başlatır ve motor hazır olana kadar bekler. Docker'ın yapay zekâ özellikleri (Docker AI, Model Runner) Verso'da kullanılmaz; kapalı tutmak bu soketlerden birini hiç açtırmaz.
+
+```powershell
+powershell -File scripts/docker-desktop-start.ps1
+```
+
 Klon başına bir kez: commit öncesinde CI ile aynı kontroller (immutability, config-lint, gitleaks) çalışır.
 
 ```bash
