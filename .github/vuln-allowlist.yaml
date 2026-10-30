@@ -689,3 +689,53 @@ entries:
     package: libcurl
     reason: "curl and libcurl 8.22.0-r0 in the Alpine base of nginx-unprivileged 1.30.6 (edge and obs-edge); Alpine fixed them in 8.23.0-r0 but no 1.30.6-alpine rebuild exists yet (Docker Hub digest unchanged since 2026-10-19, no 1.30.7). Not reachable in our use: nginx does not link libcurl, the edge services define no curl healthcheck and no Verso code path runs the curl binary; the proxies only forward to verso-app and Grafana. The next digest refresh drops these."
     expires: 2026-12-15
+
+  # --- text-embeddings-inference 89-1.9 (reranker overlay, ADR-0043): Ubuntu 24.04 base; the pinned digest is the newest
+  # build of 1.9 (same digest as 89-1.9.4, 2026-09-15), the fixed Ubuntu packages are not in it yet. The server runs
+  # read-only on the internal rerankers network with no published port and no route out, serves plain HTTP to verso-app
+  # only and reads its model from a volume filled by reranker-pull; it starts no TLS connection and runs no gpg.
+  - id: CVE-2026-111497
+    scope: text-embeddings-inference
+    package: libbrotli1
+    reason: "brotli in the Ubuntu base of the TEI reranker image; TEI does not compress responses with brotli and verso-app's reranker client asks for none. Fixed package exists in Ubuntu (1.1.0-2ubuntu0.1); waits for the next TEI build."
+    expires: 2026-12-15
+  - id: CVE-2026-45447
+    scope: text-embeddings-inference
+    package: libssl*
+    reason: "OpenSSL in the Ubuntu base of the TEI reranker image. The reranker serves plain HTTP on the internal rerankers network and opens no TLS connection (model from a local volume, offline); fixed package 3.0.13-0ubuntu3.11 waits for the next TEI build."
+    expires: 2026-12-15
+  - id: CVE-2026-45447
+    scope: text-embeddings-inference
+    package: openssl
+    reason: "The openssl command-line package of the same Ubuntu base; nothing in the reranker container runs it. Same mitigation as libssl: internal network, plain HTTP, no outbound TLS."
+    expires: 2026-12-15
+  - id: CVE-2026-84782
+    scope: text-embeddings-inference
+    package: libssl*
+    reason: "OpenSSL in the Ubuntu base of the TEI reranker image. The reranker serves plain HTTP on the internal rerankers network and opens no TLS connection (model from a local volume, offline); fixed package 3.0.13-0ubuntu3.16 waits for the next TEI build."
+    expires: 2026-12-15
+  - id: CVE-2026-84782
+    scope: text-embeddings-inference
+    package: openssl
+    reason: "The openssl command-line package of the same Ubuntu base; nothing in the reranker container runs it. Same mitigation as libssl: internal network, plain HTTP, no outbound TLS."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: text-embeddings-inference
+    package: gnupg*
+    reason: "GnuPG packages of the Ubuntu base (apt keyring tooling); the reranker process never invokes gpg and the container has no route out to fetch anything signed. Fixed package 2.4.4-2ubuntu17.4 waits for the next TEI build."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: text-embeddings-inference
+    package: gpg*
+    reason: "GnuPG front-end packages (gpg, gpg-agent, gpgconf, gpgsm, gpgv) of the Ubuntu base; never invoked by the reranker process, no route out. Fixed package waits for the next TEI build."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: text-embeddings-inference
+    package: dirmngr
+    reason: "GnuPG's network helper in the Ubuntu base; never started in the reranker container, which has no route out. Fixed package waits for the next TEI build."
+    expires: 2026-12-15
+  - id: CVE-2025-68973
+    scope: text-embeddings-inference
+    package: keyboxd
+    reason: "GnuPG's keybox daemon in the Ubuntu base; never started in the reranker container. Fixed package waits for the next TEI build."
+    expires: 2026-12-15
