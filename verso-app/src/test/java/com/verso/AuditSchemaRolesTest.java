@@ -102,7 +102,7 @@ class AuditSchemaRolesTest {
             try (Connection app = connect(other[0], other[1]); Statement st = app.createStatement()) {
                 assertThatThrownBy(() -> st.executeQuery("select count(*) from audit.event"))
                         .as(other[0] + " into audit").satisfies(e -> assertThat(sqlState(e)).isEqualTo(PERMISSION_DENIED));
-                assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(now() - interval '400 days', 10)"))
+                assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(400, 10)"))
                         .as(other[0] + " calling the retention function")
                         .satisfies(e -> assertThat(sqlState(e)).isEqualTo(PERMISSION_DENIED));
             }
@@ -141,31 +141,31 @@ class AuditSchemaRolesTest {
         AuditTables.insertAt("now", "actor-recent", "DOCUMENT_UPLOADED");
         AuditTables.insertAt("2020-01-01T00:00:00Z", "actor-old", "DOCUMENT_UPLOADED");
         try (Connection app = connect("svc_audit", "SECRET_DB_AUDIT_PASSWORD"); Statement st = app.createStatement()) {
-            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(now(), 100)"))
-                    .as("cutoff now").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
-            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(now() - interval '29 days', 100)"))
-                    .as("cutoff 29 days").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
+            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(0, 100)"))
+                    .as("retention 0 days").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
+            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(29, 100)"))
+                    .as("retention 29 days").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
             assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(null, 100)"))
-                    .as("no cutoff").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
-            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(now() - interval '400 days', 5001)"))
+                    .as("no retention").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
+            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(400, 5001)"))
                     .as("batch too large").satisfies(e -> assertThat(sqlState(e)).isEqualTo(INVALID_PARAMETER));
         }
         assertThat(AuditTables.count("select count(*) from audit.event")).as("nothing was deleted").isEqualTo(2);
 
         // Another login that can reach the schema (verso_backup reads every schema) is refused by the function.
         try (Connection backup = connect("verso_backup", "SECRET_DB_BACKUP_PASSWORD"); Statement st = backup.createStatement()) {
-            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(now() - interval '400 days', 100)"))
+            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(400, 100)"))
                     .as("verso_backup").satisfies(e -> assertThat(sqlState(e)).isEqualTo(PERMISSION_DENIED));
         }
         try (Connection migrate = connect("svc_audit_migrate", "SECRET_DB_AUDIT_MIGRATE_PASSWORD");
              Statement st = migrate.createStatement()) {
-            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(now() - interval '400 days', 100)"))
+            assertThatThrownBy(() -> st.executeQuery("select audit.purge_expired(400, 100)"))
                     .as("the owner's login").satisfies(e -> assertThat(sqlState(e)).isEqualTo(PERMISSION_DENIED));
         }
         assertThat(AuditTables.count("select count(*) from audit.event")).isEqualTo(2);
 
         try (Connection app = connect("svc_audit", "SECRET_DB_AUDIT_PASSWORD"); Statement st = app.createStatement()) {
-            assertThat(single(st, "select audit.purge_expired(now() - interval '31 days', 100)")).isEqualTo("1");
+            assertThat(single(st, "select audit.purge_expired(31, 100)")).isEqualTo("1");
         }
         assertThat(AuditTables.strings("select actor_sub from audit.event")).containsExactly("actor-recent");
     }
