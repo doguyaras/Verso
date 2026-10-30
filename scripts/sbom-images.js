@@ -16,16 +16,18 @@ const path = require('node:path');
 const COMPOSE_IMAGE = /^\s*(?:image:|x-[a-z0-9-]+-image: &[a-z0-9-]+)\s*([^\s#]+)/gm;
 const DOCKERFILE_FROM = /^FROM\s+(\S+)/gm;
 const DIGEST = /@sha256:[0-9a-f]{64}$/;
+/** An image an operator may replace through .env: `${VERSO_X_IMAGE:-<pinned default>}`; the default is what is scanned. */
+const ENV_DEFAULT = /^\$\{[A-Z0-9_]+:-(.+)\}$/;
 
 function matchAll(re, text) {
-  return [...text.matchAll(re)].map((m) => m[1]);
+  return [...text.matchAll(re)].map((m) => m[1]).map((image) => ENV_DEFAULT.exec(image)?.[1] ?? image);
 }
 
 /**
- * Opt-in overlays whose images are scanned too (security review, ADR-0051). Only this one so far; the other overlays
- * (rerank: an 8.2 GB image) are an open item, not a decision.
+ * Opt-in overlays whose images are scanned too (security review, ADR-0051; the reranker since the panel bug hunt:
+ * a GPU install runs it, and its image was outside the monthly gate). The docling overlay builds its image locally.
  */
-const OVERLAYS = ['deploy/compose.llamacpp.yaml'];
+const OVERLAYS = ['deploy/compose.llamacpp.yaml', 'deploy/compose.reranker.yaml'];
 
 function collect(root) {
   const compose = [fs.readFileSync(path.join(root, 'compose.yaml'), 'utf8'),

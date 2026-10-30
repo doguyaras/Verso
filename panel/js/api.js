@@ -5,7 +5,7 @@
 import { CONFIG } from './config.js';
 import { accessToken } from './auth.js';
 import { askBody, HISTORY_PAGE_SIZE } from './conversations.js';
-import { noStream, readEvents, resultOf, StreamUnavailable } from './stream.js';
+import { noStream, readEvents, resultOf, StreamCut, streamErrorStatus, StreamUnavailable } from './stream.js';
 import { entitiesPath, entityPath, lookupPath, suggestionsPath } from './systemmap.js';
 
 export const MESSAGES = Object.freeze({
@@ -159,7 +159,8 @@ async function request(path, init = {}) {
  * POST /v1/questions/stream (ADR-0035) with fetch and a ReadableStream, so the Authorization header goes along (an
  * EventSource cannot send it). live.stage(event) and live.delta(text) see the stream as it comes; the result is the
  * same answer as POST /v1/questions. An HTTP error or an "error" event is an ApiError, an abort an AbortError (the
- * server then cancels the model call and stores nothing), and a response that is no stream a StreamUnavailable.
+ * server then cancels the model call and stores nothing), a response that is no stream a StreamUnavailable, and a
+ * connection cut after events a StreamCut.
  */
 async function streamQuestion(question, signal, conversationId, live) {
   const token = await accessToken();
@@ -190,11 +191,11 @@ async function streamQuestion(question, signal, conversationId, live) {
     else if (event === 'done') done = value;
     else if (event === 'error') failure = value;
   });
-  if (failure) throw new ApiError(failure.retryAfter ? 503 : 500, failure.code, failure.retryAfter || undefined);
+  if (failure) throw new ApiError(streamErrorStatus(failure), failure.code, failure.retryAfter || undefined);
   if (citations && done) return resultOf(citations, done);
   // Nothing came through at all: something on the way does not pass the stream. After events it is a cut connection.
   if (count === 0) throw new StreamUnavailable('empty');
-  throw new TypeError('stream ended early');
+  throw new StreamCut();
 }
 
 /**

@@ -41,3 +41,10 @@ test('the check prints names only, never a value', () => {
   const src = read('scripts/secrets-check.js');
   assert.doesNotMatch(src, /readFileSync\(file/);
 });
+
+test('compose.yaml: every secret read in an entrypoint is written $$(cat …), the escape compose needs for a literal $', () => {
+  const lines = read('compose.yaml').split(/\r?\n/).filter((line) => /cat \/run\/secrets\//.test(line));
+  assert.ok(lines.length >= 5, 'the restore-flyway services');
+  for (const line of lines) assert.match(line, /\$\$\(cat \/run\/secrets\//, line.trim().slice(0, 60));
+  assert.doesNotMatch(read('compose.yaml'), /[^$]\$\(cat /, 'a bare $( is not interpolation and older compose refuses it');
+});

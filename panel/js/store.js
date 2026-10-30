@@ -17,8 +17,29 @@ export const conversation = [];
  */
 export const thread = { conversationId: null, title: null, generation: 0 };
 
+/**
+ * The question still being answered, kept outside the screen: a visit that leaves "Asistan" and comes back while the
+ * answer is written still shows the question, can stop it, and cannot send a second one meanwhile.
+ * { question, controller, started } or null; cleared when the answer (or its failure) is in.
+ */
+export const pending = { current: null };
+
+export function setPending(value) {
+  pending.current = value;
+}
+
+/** The name of the document event the ask screen redraws on: an answer arrived for a visit that has been replaced. */
+export const CONVERSATION_EVENT = 'verso:conversation';
+
+/** An answer still on its way belongs to the conversation being left: it is dropped with the conversation. */
+function dropPending() {
+  pending.current?.controller?.abort();
+  pending.current = null;
+}
+
 /** "Yeni konuşma": the next question starts a new conversation on the server. */
 export function startNewConversation() {
+  dropPending();
   conversation.length = 0;
   thread.conversationId = null;
   thread.title = null;
@@ -27,6 +48,7 @@ export function startNewConversation() {
 
 /** Puts a conversation opened from the history in place; the next question continues it. */
 export function restoreConversation(id, title, entries) {
+  dropPending();
   conversation.splice(0, conversation.length, ...entries);
   thread.conversationId = id;
   thread.title = title;
@@ -40,7 +62,8 @@ const KEYS = Object.freeze({
   lang: 'verso.panel.lang', // 'en' | absent = Turkish; the intro screen and the IdP's sign-in page follow it
 });
 
-function read(key) {
+/** sessionStorage read that never throws (a browser with site data blocked throws on access): null instead. */
+export function readStorage(key) {
   try {
     return sessionStorage.getItem(key);
   } catch {
@@ -48,7 +71,8 @@ function read(key) {
   }
 }
 
-function write(key, value) {
+/** sessionStorage write that never throws; null removes the key. */
+export function writeStorage(key, value) {
   try {
     if (value === null) sessionStorage.removeItem(key);
     else sessionStorage.setItem(key, value);
@@ -56,6 +80,9 @@ function write(key, value) {
     // the choice then lasts for this page only
   }
 }
+
+const read = readStorage;
+const write = writeStorage;
 
 /**
  * Whether the dark theme applies. The ivory light theme is the default whatever the system says; the dark theme comes

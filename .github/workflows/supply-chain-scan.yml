@@ -3,7 +3,7 @@
 # allowlist, the gate itself).
 #
 # What it does: a CycloneDX SBOM of the Java build (CycloneDX Maven plugin) and a CycloneDX SBOM of every image in
-# compose.yaml (and deploy/compose.llamacpp.yaml, ADR-0051) plus the Dockerfile runtime base (Syft, from the pinned digests); Grype scans each SBOM; scripts/vuln-gate.js
+# compose.yaml (and the llamacpp and reranker overlays, ADR-0051) plus the Dockerfile runtime base (Syft, from the pinned digests); Grype scans each SBOM; scripts/vuln-gate.js
 # fails on CRITICAL and on HIGH with a fix available, minus the live entries of .github/vuln-allowlist.yaml.
 #
 # This workflow is deliberately separate from ci.yml: it needs the network for the vulnerability database and image layers,
@@ -23,6 +23,7 @@ on:
       - '**/pom.xml'
       - 'compose.yaml'
       - 'deploy/compose.llamacpp.yaml'
+      - 'deploy/compose.reranker.yaml'
       - 'Dockerfile'
       - 'docs/versions.md'
       - '.github/vuln-allowlist.yaml'
@@ -37,6 +38,7 @@ on:
       - '**/pom.xml'
       - 'compose.yaml'
       - 'deploy/compose.llamacpp.yaml'
+      - 'deploy/compose.reranker.yaml'
       - 'Dockerfile'
       - 'docs/versions.md'
       - '.github/vuln-allowlist.yaml'

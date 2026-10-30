@@ -117,6 +117,40 @@ export function resultOf(citations, done) {
     reasoning: done.reasoning ?? null };
 }
 
+/**
+ * Thrown when the connection was cut after events had arrived: the server cancels the model call at its next
+ * keep-alive and stores nothing, so the question can be asked again. Not a StreamUnavailable: the stream works, and a
+ * JSON fallback would ask the same question a second time.
+ */
+export class StreamCut extends Error {
+  constructor() {
+    super('stream ended early');
+    this.name = 'StreamCut';
+  }
+}
+
+/** Codes an "error" event may carry for a service that is down or busy; everything else of a module is a refusal. */
+const SERVICE_CODES = new Set([10030, 10031, 11001, 11002, 90103, 99997, 99998]);
+
+/**
+ * The HTTP status an "error" event stands for. The event carries only the API code (no status), so the code family
+ * decides until the server sends the status itself: a `status` in the event wins; a Retry-After means 503; the
+ * security block 90100-90103 keeps its own statuses; the common validation block 90000-90099 and a module's refusals
+ * are 400; the service codes above and the system block are 5xx. The screen (answer.js errorState) decides by code
+ * first, so the status only separates "down, try again" from "refused".
+ */
+export function streamErrorStatus(failure) {
+  if (Number.isInteger(failure?.status)) return failure.status;
+  if (failure?.retryAfter) return 503;
+  const code = Number(failure?.code);
+  if (code === 90100) return 401;
+  if (code === 90101) return 403;
+  if (code === 90102) return 429;
+  if (SERVICE_CODES.has(code) || code >= 99997) return code === 99999 ? 500 : 503;
+  if (code >= 10000 && code < 99997) return 400;
+  return 500;
+}
+
 /** Thrown when the stream cannot be used at all (an old proxy or server): the JSON endpoint is asked instead. */
 export class StreamUnavailable extends Error {
   constructor(reason) {

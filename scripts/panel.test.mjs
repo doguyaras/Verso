@@ -8,9 +8,9 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { ICON_NAMES } from '../panel/js/icons.js';
 import { ROLES, SCREENS, canOpen, rolesOf, screensFor, withServerRoles } from '../panel/js/roles.js';
-import { HUB_ID, hubModel, hubScreens, inHub, NAV, navModel, reachableScreens, REDIRECTS, resolveRoute, sectionTabs, shortcutTarget, slotId,
-  TAB_LIMIT, tabModel } from '../panel/js/nav.js';
-import { MORE_LABEL } from '../panel/js/ui.js';
+import { HUB_ID, hubModel, hubScreens, inHub, isRouteHash, NAV, navModel, reachableScreens, REDIRECTS, resolveRoute, sectionTabs, shortcutTarget,
+  slotId, TAB_LIMIT, tabModel } from '../panel/js/nav.js';
+import { MORE_LABEL, trapTab } from '../panel/js/ui.js';
 import { askBody, continueWith, DELETE_ALL_WORD, deleteAllConfirmed, DELETED_DOCUMENT, filterConversations, hasMore, historyCitation,
   restoreEntries, startOverNote, startsOver, TITLE_MAX, titleProblem, turnCountLabel } from '../panel/js/conversations.js';
 import { initialFeedback, rate, reasonLabel, REASONS, reasonsFor, thanks } from '../panel/js/feedback.js';
@@ -20,13 +20,13 @@ import { areaPath, axisDays, isolatedPoints, linePath, nearestIndex, niceScale, 
 import { conversation as openConversation, restoreConversation, startNewConversation, thread } from '../panel/js/store.js';
 import { api } from '../panel/js/api.js';
 import { accessToken, base64Url, challengeOf, claimsOf, completeSignIn, currentClaims, currentIdentity, endpointsOf,
-  randomString, signIn, signOut } from '../panel/js/auth.js';
+  randomString, signIn, signOut, StorageBlocked } from '../panel/js/auth.js';
 import { answerParts, answerSegments, answerWithSources, FAILURES, fill, foldTr, formatLabel, formatSeconds, fuzzyScore, greeting, groupSources, plainName,
   sourceLabel, UPLOAD_TYPES } from '../panel/js/render.js';
 import { MESSAGES, messageOf, PAGE_SIZE } from '../panel/js/api.js';
 import { SIGN_MS, SIGNATURE, timeline } from '../panel/js/signature-data.js';
 import { CONNECTORS, PHASES, setupSteps } from '../panel/js/screens/setup.js';
-import { isDark, prefs } from '../panel/js/store.js';
+import { CONVERSATION_EVENT, isDark, pending, prefs, readStorage, setPending, writeStorage } from '../panel/js/store.js';
 import { disclosureLine, disclosureNotice, generatedFooter } from '../panel/js/disclosure.js';
 import { ACCENT_TOKENS, applyAccent, contrast, LIMITS, loadBranding, LOGO_PATTERN, MAX_BYTES, MAX_SUGGESTIONS, THEME_COLOURS,
   validateBranding } from '../panel/js/branding.js';
@@ -38,7 +38,7 @@ import { ApiError } from '../panel/js/api.js';
 // ask.js touches no DOM at module load (only inside its functions), so node can import it for its constants.
 import { FLASH_MS } from '../panel/js/screens/ask.js';
 import { CITED as CITED_HIGHLIGHT, MATCH, prune, tintSentences, writeMarked } from '../panel/js/highlight.js';
-import { createSseParser, noStream, provisionalText, readEvents, resultOf, stageText } from '../panel/js/stream.js';
+import { createSseParser, noStream, provisionalText, readEvents, resultOf, stageText, StreamCut, streamErrorStatus } from '../panel/js/stream.js';
 import { collapse, excerptRange, pageHeading, pageNav } from '../panel/js/pageview.js';
 
 test('roles: a user without Verso roles is a verso-user and sees Ana sayfa, Çalış and Bilgi only (ADR-0058)', () => {
@@ -200,13 +200,65 @@ test('refresh: concurrent callers near expiry share one refresh (the realm revok
   assert.equal(claimsOf(tokens[0]).n, 2);
 });
 
-test('refresh: a failed refresh signs out instead of sending an expired token', async () => {
-  const { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
+test('refresh: a failed refresh keeps serving the token while it is valid and signs out once it has expired', async () => {
+  // Inside the 30 s refresh window but still valid: the IdP is briefly unreachable, the call still goes with this token.
+  let { calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } });
   tokenEndpoint(calls, { expiresIn: 10 });
+  await completeSignIn();
+  tokenEndpoint(calls, { status: 503 });
+  const kept = await accessToken();
+  assert.ok(kept, 'the valid token is served');
+  assert.equal(claimsOf(kept).n, 1);
+  assert.ok(currentClaims(), 'the session stays; the next call tries the refresh again');
+  assert.equal(calls.tokenForms.filter((f) => f.grant_type === 'refresh_token').length, 1);
+  await accessToken();
+  assert.equal(calls.tokenForms.filter((f) => f.grant_type === 'refresh_token').length, 2, 'tried again by the next call');
+  // Expired: no token is sent; the session ends and the 401 path signs in again.
+  ({ calls } = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's' } }));
+  tokenEndpoint(calls, { expiresIn: 0 });
   await completeSignIn();
   tokenEndpoint(calls, { status: 400 });
   assert.equal(await accessToken(), null);
   assert.equal(currentClaims(), null);
+});
+
+test('sign-in: a blocked sessionStorage is a named error, not a redirect that would lose the verifier', async () => {
+  const { calls } = browser();
+  globalThis.sessionStorage.setItem = () => { throw new DOMException('blocked', 'SecurityError'); };
+  await assert.rejects(signIn(), (e) => e instanceof StorageBlocked);
+  assert.equal(calls.assigned.length, 0, 'the browser is not sent to the IdP');
+  // Coming back with a code while storage cannot be read: no session, no token request, the URL still cleaned.
+  const back = browser({ search: '?code=c&state=s' });
+  globalThis.sessionStorage.getItem = () => { throw new DOMException('blocked', 'SecurityError'); };
+  tokenEndpoint(back.calls);
+  assert.equal(await completeSignIn(), false);
+  assert.equal(back.calls.tokenForms.length, 0);
+  assert.deepEqual(back.calls.replaced, ['http://localhost:8080/panel/']);
+  // The flag writes of app.js go through store.js, which never throws.
+  globalThis.sessionStorage.removeItem = () => { throw new DOMException('blocked', 'SecurityError'); };
+  assert.doesNotThrow(() => writeStorage('verso.panel.auto', null));
+  assert.doesNotThrow(() => writeStorage('verso.panel.auto', '1'));
+  assert.equal(readStorage('verso.panel.auto'), null);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.doesNotMatch(app, /sessionStorage\./, 'app.js touches sessionStorage only through store.js');
+  assert.match(app, /signIn\(\{ prompt: 'login' \}\)\.catch\(/, 'the intro button shows the reason instead of staying busy');
+  assert.match(app, /signIn\(\)\.catch\(\(error\) => \{\s*redirecting = false;/, 'the 401 path too');
+});
+
+test('sign-in: the screen the sign-in started from comes back with the redirect; only a screen route is restored', async () => {
+  const { store, calls } = browser();
+  globalThis.location.hash = '#/documents';
+  await signIn();
+  assert.equal(JSON.parse(store.get('verso.panel.pkce')).returnTo, '#/documents');
+  for (const [returnTo, expected] of [['#/documents', 'http://localhost:8080/panel/#/documents'], ['#/', 'http://localhost:8080/panel/#/'],
+    ['#main', 'http://localhost:8080/panel/'], ['#/ask?q=x', 'http://localhost:8080/panel/'], ['javascript:1', 'http://localhost:8080/panel/'],
+    [undefined, 'http://localhost:8080/panel/']]) {
+    const back = browser({ search: '?code=c&state=s', pending: { verifier: 'v', state: 's', returnTo } });
+    tokenEndpoint(back.calls);
+    assert.equal(await completeSignIn(), true);
+    assert.deepEqual(back.calls.replaced, [expected], String(returnTo));
+  }
+  signOut();
 });
 
 test('sign-out: the IdP logout gets the client, the panel as the way back and the ID token as the hint', async () => {
@@ -1067,7 +1119,7 @@ test('conversation ids: a follow-up carries the id, the answer\'s own id wins, a
     'an answer for a conversation that was left is not appended to the new one');
   // The answer log element of renderAsk is called "thread": the store's thread is imported under another name, or
   // its ids would be written onto the DOM node (seen in the fixture: the conversation bar read "null").
-  assert.match(ask, /import \{ conversation, prefs, startNewConversation, thread as current \} from '\.\.\/store\.js';/);
+  assert.match(ask, /import \{ conversation, CONVERSATION_EVENT, pending, prefs, setPending, startNewConversation, thread as current \} from '\.\.\/store\.js';/);
   assert.doesNotMatch(ask, /\bthread\.(conversationId|title|generation)\b/);
 });
 
@@ -1653,12 +1705,38 @@ test('api: an error event, an API error and an abort end the question; no stream
     assert.equal(result.outcome, 'UNCITED');
     assert.ok(fellBack);
   }
-  // Events and then a cut connection: a failure, not a second question.
+  // Events and then a cut connection: a failure that says so (not "may not have been sent"), not a second question.
   urls.length = 0;
   reply = () => sseResponse('event:stage\ndata:{"stage":"WRITING"}\n\nevent:delta\ndata:{"text":"Yar"}\n\n');
-  await assert.rejects(api.askLive('Soru?', undefined), TypeError);
+  await assert.rejects(api.askLive('Soru?', undefined), (e) => e instanceof StreamCut);
   assert.deepEqual(urls, ['/v1/questions/stream']);
+  const cut = errorState(new StreamCut());
+  assert.equal(cut.kind, 'cut');
+  assert.equal(cut.retry, true);
+  assert.match(cut.text, /kaydedilmedi/);
+  assert.doesNotMatch(cut.text, /gönderilmemiş/);
+  // An "error" event without Retry-After: the status comes from the code family, so a refusal is not "service down".
+  reply = () => sseResponse('event:stage\ndata:{"stage":"RETRIEVING"}\n\nevent:error\ndata:{"code":90101,"message":"denied"}\n\n');
+  await assert.rejects(api.askLive('Soru?', undefined), (e) => e instanceof ApiError && e.code === 90101 && e.status === 403
+    && errorState(e).kind === 'auth' && errorState(e).retry === false);
   signOut();
+});
+
+test('stream: the status of an "error" event follows the code family until the server sends one', () => {
+  assert.equal(streamErrorStatus({ code: 11002, retryAfter: 5 }), 503, 'Retry-After: busy');
+  assert.equal(streamErrorStatus({ code: 11001 }), 503, 'the model is down');
+  assert.equal(streamErrorStatus({ code: 10030 }), 503);
+  assert.equal(streamErrorStatus({ code: 99997 }), 503);
+  assert.equal(streamErrorStatus({ code: 99999 }), 500);
+  assert.equal(streamErrorStatus({ code: 90100 }), 401);
+  assert.equal(streamErrorStatus({ code: 90101 }), 403);
+  assert.equal(streamErrorStatus({ code: 90102 }), 429);
+  assert.equal(streamErrorStatus({ code: 90000 }), 400, 'validation');
+  assert.equal(streamErrorStatus({ code: 11022 }), 400, 'a module refusal (the conversation is full)');
+  assert.equal(streamErrorStatus({ code: 11022, status: 409 }), 409, 'a status in the event wins');
+  assert.equal(streamErrorStatus({}), 500);
+  assert.equal(errorState(new ApiError(400, 11022)).kind, 'other');
+  assert.equal(errorState(new ApiError(503, 11001)).kind, 'down');
 });
 
 test('ask screen: stages and the end are announced, the draft is not; "Durdur" aborts; no reveal after a stream', () => {
@@ -1705,9 +1783,9 @@ test('page viewer: a modal drawer that traps the focus, closes on Esc, gives the
   const drawer = readFileSync('panel/js/drawer.js', 'utf8');
   assert.match(drawer, /role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId/);
   assert.match(drawer, /event\.key === 'Escape'/);
-  assert.match(drawer, /event\.key !== 'Tab'/);
-  assert.match(drawer, /last\.focus\(\)/);
-  assert.match(drawer, /first\.focus\(\)/);
+  assert.match(drawer, /trapTab\(panel, event\);/, 'the Tab wrap is ui.js trapTab, shared with the other drawers');
+  const ui = readFileSync('panel/js/ui.js', 'utf8');
+  assert.match(ui, /export function trapTab\(panel, event, doc = document\)[\s\S]*?\(event\.shiftKey \? last : first\)\.focus\(\);/);
   assert.match(drawer, /opener\.focus\(\)/, 'the focus goes back to the opener');
   assert.match(drawer, /writeMarked\(text, page\.text, range \? \[range\] : \[\]\)/, 'CSS highlight or <mark>, text nodes only');
   assert.match(drawer, /prune\(\)/, 'the highlight ranges go with the drawer');
@@ -3588,4 +3666,93 @@ test('Sadeleştirme, Beceriler: category filter chips, compact cards, history an
 test('panel.css: before the first question the ask box is not pushed aside for a source column that is not there yet', () => {
   const css = readFileSync(new URL('../panel/css/panel.css', import.meta.url), 'utf8');
   assert.match(css, /\.chat:has\(> \.thread > \.welcome\) \.composer, \.chat:has\(> \.thread > \.welcome\) \.chat-bar \{ margin-left: 0; margin-right: 0; \}/);
+});
+
+// ---------- panel bug hunt (2026-10-30): skip link, drawers, the gate, the answer of a replaced visit, wide layout ----------
+test('router: an in-page anchor (#main, the skip link) is not a route; only screen hashes reach resolveRoute', () => {
+  assert.equal(isRouteHash('#main'), false);
+  assert.equal(isRouteHash('#intro-title'), false);
+  assert.equal(isRouteHash('#/ask'), true);
+  assert.equal(isRouteHash('#/ask?x=1'), true);
+  assert.equal(isRouteHash('#/'), true);
+  assert.equal(isRouteHash(''), true, 'no hash: the first screen');
+  assert.equal(isRouteHash(undefined), true);
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /function route\(\) \{\s*if \(gated\) return;\s*[\s\S]*?if \(!isRouteHash\(location\.hash\)\) \{\s*if \(!routed\) location\.replace\('#\/'\);\s*return;\s*\}/,
+    'route() leaves an anchor to the browser (the focus moves to #main) and only sends a page opened on one to the first screen');
+  assert.match(readFileSync('panel/index.html', 'utf8'), /<a class="sr-only" href="#main">/);
+  assert.match(readFileSync('panel/css/panel.css', 'utf8'), /a\.sr-only:focus-visible \{[^}]*position: fixed;/, 'the skip link shows while focused');
+});
+
+test('drawers: Tab and Shift+Tab stay inside a modal drawer (ui.js trapTab), as the page viewer already did', () => {
+  const node = (name, extra = {}) => ({ name, focused: 0, focus() { this.focused += 1; }, closest: () => null, ...extra });
+  const first = node('first');
+  const middle = node('middle');
+  const last = node('last');
+  const hiddenOne = node('hidden', { hidden: true });
+  const disabledOne = node('disabled', { disabled: true });
+  const panel = { querySelectorAll: () => [first, hiddenOne, middle, disabledOne, last], contains: (n) => [first, middle, last].includes(n) };
+  const key = (shiftKey, active) => {
+    const event = { key: 'Tab', shiftKey, prevented: false, preventDefault() { this.prevented = true; } };
+    return [trapTab(panel, event, { activeElement: active }), event.prevented];
+  };
+  assert.deepEqual(key(false, last), [true, true], 'Tab on the last wraps');
+  assert.equal(first.focused, 1);
+  assert.deepEqual(key(true, first), [true, true], 'Shift+Tab on the first wraps');
+  assert.equal(last.focused, 1);
+  assert.deepEqual(key(false, middle), [false, false], 'in between the browser moves the focus');
+  assert.deepEqual(key(false, { name: 'outside' }), [true, true], 'a focus outside is brought back in');
+  assert.equal(first.focused, 2);
+  const other = { key: 'Enter', preventDefault: () => assert.fail('not a Tab') };
+  assert.equal(trapTab(panel, other, { activeElement: last }), false);
+  assert.equal(trapTab({ querySelectorAll: () => [], contains: () => true }, { key: 'Tab', preventDefault: () => assert.fail('nothing to trap') }, { activeElement: null }), false);
+  assert.match(readFileSync('panel/js/ui.js', 'utf8'), /drawer\.addEventListener\('keydown', \(event\) => trapTab\(drawer, event\)\);/, 'openDrawer traps');
+  assert.match(readFileSync('panel/js/drawer.js', 'utf8'), /trapTab\(panel, event\);/, 'the page viewer uses the same trap');
+});
+
+test('gate: the sign-in screen stops the bell and the router, so a refused token does not redraw it every few minutes', () => {
+  const app = readFileSync('panel/js/app.js', 'utf8');
+  assert.match(app, /function showSignIn\([\s\S]*?gated = true;\s*bell\?\.stop\(\);[^\n]*\n\s*bell = null;/);
+  assert.match(app, /function route\(\) \{\s*if \(gated\) return;/);
+  assert.match(app, /addEventListener\('keydown', \(event\) => \{\s*if \(gated\) return;/, 'the "g" shortcuts stand still too');
+});
+
+test('store: the question in flight lives in the store; a new or restored conversation drops it with its request', () => {
+  let aborted = 0;
+  setPending({ question: 'Soru?', controller: { abort: () => { aborted += 1; } }, started: 1 });
+  assert.equal(pending.current.question, 'Soru?');
+  startNewConversation();
+  assert.equal(aborted, 1, 'the answer on its way belonged to the conversation that was left');
+  assert.equal(pending.current, null);
+  setPending({ question: 'Soru?', controller: { abort: () => { aborted += 1; } }, started: 1 });
+  restoreConversation('c1', 'Başlık', []);
+  assert.equal(aborted, 2);
+  assert.equal(pending.current, null);
+  setPending(null);
+  startNewConversation();
+  assert.equal(CONVERSATION_EVENT, 'verso:conversation');
+  const ask = readFileSync('panel/js/screens/ask.js', 'utf8');
+  assert.match(ask, /setPending\(\{ question, controller, started \}\);/, 'ask() registers the question');
+  assert.match(ask, /if \(pending\.current\?\.controller === controller\) setPending\(null\);/, 'and clears only its own');
+  assert.match(ask, /if \(!ctx\.isCurrent\(\)\) \{\s*document\.dispatchEvent\(new CustomEvent\(CONVERSATION_EVENT\)\);[^\n]*\n\s*return;\s*\}/,
+    'an answer for a replaced visit is announced on the document');
+  assert.match(ask, /document\.addEventListener\(CONVERSATION_EVENT, onConversation\);/, 'the visit on screen redraws');
+  assert.match(ask, /document\.removeEventListener\(CONVERSATION_EVENT, onConversation\);/, 'and stops listening when it leaves');
+  assert.match(ask, /\.\.\.\(pending\.current \? \[pendingTurn\(pending\.current\)\] : \[\]\)/, 'the thread shows the pending question');
+  assert.match(ask, /if \(pending\.current\) setBusy\(pending\.current\.controller\);/, 'its stop button stops it; no second question goes');
+});
+
+test('panel.css: on wide screens the answer parts take one row each in DOM order; only the source column is placed explicitly', () => {
+  const css = readFileSync('panel/css/panel.css', 'utf8');
+  assert.doesNotMatch(css, /\.answer\.has-sources > \.notice:not\(\.start-over\) \{ grid-row:/, 'two notices never share a cell');
+  assert.doesNotMatch(css, /grid-template-rows: repeat\(7, auto\) 1fr/);
+  assert.doesNotMatch(css, /\.answer\.has-sources > \.sources \{/, 'the old selector for a wrapper the DOM no longer has');
+  assert.match(css, /\.answer\.has-sources \{ grid-template-columns: minmax\(0, 1fr\) var\(--sources-w\); grid-template-rows: repeat\(14, auto\) 1fr;/);
+  assert.match(css, /\.answer\.has-sources > \* \{ grid-column: 1; margin-top: 12px; \}/);
+  assert.match(css, /\.answer\.has-sources > \.answer-sources \{\s*grid-column: 2; grid-row: 1 \/ -1; position: sticky;/);
+  // The answer view has at most 12 parts in column 1 (ask.js answerView), fewer than the 14 explicit rows before the 1fr.
+  const parts = (readFileSync('panel/js/screens/ask.js', 'utf8').match(/const view = el\('div', \{ class: `answer[\s\S]*?\n  link\.attach\(view\);/) ?? [''])[0];
+  assert.ok(parts.length > 0);
+  const children = (parts.match(/^    (?!\/\/)\S/gm) ?? []).length;
+  assert.ok(children >= 10 && children <= 14, `every top-level child of the answer view (${children}) has its own explicit row`);
 });

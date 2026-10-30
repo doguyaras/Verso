@@ -99,8 +99,31 @@ export function openMenu(anchor, items, { placement = 'above' } = {}) {
 }
 
 /**
+ * Keeps Tab and Shift+Tab inside a modal panel (WAI-ARIA dialog pattern): from the last focusable element Tab wraps
+ * to the first and Shift+Tab from the first to the last; a focus that is already outside is brought back in. Returns
+ * true when the key was handled. `doc` is the document (a test passes a stub).
+ */
+export function trapTab(panel, event, doc = document) {
+  if (event.key !== 'Tab') return false;
+  const items = [...panel.querySelectorAll('button, [href], input, select, textarea, [tabindex="0"]')]
+    .filter((node) => !node.disabled && !node.hidden && !node.closest?.('[hidden]'));
+  if (!items.length) return false;
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = doc.activeElement;
+  const outside = !panel.contains(active);
+  if (event.shiftKey ? (active === first || outside) : (active === last || outside)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+    return true;
+  }
+  return false;
+}
+
+/**
  * A panel sliding in from the right; returns a function that closes it. The opener gets the focus back. Escape closes
- * it, except while a confirmation dialog on top of it is open: that Escape belongs to the dialog.
+ * it, except while a confirmation dialog on top of it is open: that Escape belongs to the dialog. Tab stays inside
+ * (trapTab): the drawer says aria-modal, so the keyboard must not reach the page behind the scrim.
  */
 export function openDrawer({ title, subtitle, body, actions = [], className = '' }) {
   const opener = document.activeElement;
@@ -121,6 +144,7 @@ export function openDrawer({ title, subtitle, body, actions = [], className = ''
     el('div', { class: 'drawer-body' }, body),
     actions.length ? el('div', { class: 'drawer-foot' }, actions) : null);
   scrim.addEventListener('click', close);
+  drawer.addEventListener('keydown', (event) => trapTab(drawer, event));
   addEventListener('keydown', onKey);
   document.body.append(scrim, drawer);
   drawer.querySelector('button').focus();

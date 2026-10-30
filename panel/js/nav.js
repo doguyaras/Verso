@@ -193,6 +193,14 @@ export function inHub(screen, roles, available, screens = SCREENS) {
 }
 
 /**
+ * Whether a hash names a screen (#/ask, #/, or none) rather than an in-page anchor (#main: the skip link). Only
+ * screen hashes go through the router; an anchor is left to the browser, which moves the focus to the element.
+ */
+export function isRouteHash(hash) {
+  return /^(#\/.*)?$/.test(String(hash ?? ''));
+}
+
+/**
  * The screen a hash opens: a redirect first (with its params), then the screen when this user may open it, else the
  * home. `redirected` tells app.js to replace the hash, so "back" does not loop.
  */

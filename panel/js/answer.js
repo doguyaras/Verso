@@ -6,6 +6,7 @@
 import { ApiError, messageOf } from './api.js';
 import { generatedFooter } from './disclosure.js';
 import { plainName, sourceLabel } from './render.js';
+import { StreamCut } from './stream.js';
 
 /** The API's limit for a question (docs/api-questions-integration-v1.md); prefills and follow-ups stay under it. */
 export const MAX_QUESTION = 1000;
@@ -197,6 +198,11 @@ export function selectionQuestion(selected) {
  */
 export function errorState(error) {
   const retryAfter = error instanceof ApiError ? error.retryAfter : undefined;
+  // The connection broke while the answer was written: the question did reach the server, which cancelled the model
+  // call and stored nothing (stream.js StreamCut), so "may not have been sent" would be wrong.
+  if (error instanceof StreamCut) {
+    return { kind: 'cut', title: 'Bağlantı koptu', text: 'Cevap yazılırken bağlantı koptu; bu cevap kaydedilmedi. Aynı soruyu yeniden sorabilirsiniz.', retry: true };
+  }
   if (!(error instanceof ApiError)) {
     return { kind: 'offline', title: 'Sunucuya ulaşılamadı', text: 'Bağlantınızı kontrol edip tekrar deneyin. Sorunuz gönderilmemiş olabilir.', retry: true };
   }
@@ -204,6 +210,8 @@ export function errorState(error) {
   // The message without its Retry-After note: the retry button counts the wait down itself.
   const text = messageOf(status, code);
   if (status === 401) return { kind: 'auth', title: 'Oturumunuz sona erdi', text: 'Yeniden giriş yaptıktan sonra soruyu tekrar sorabilirsiniz.', retry: false };
+  // A refusal of this account (403): asking again gets the same answer.
+  if (status === 403 || code === 90101) return { kind: 'auth', title: 'Bu işlem için yetkiniz yok', text, retry: false };
   if (code === 11002 || code === 90102) {
     return { kind: 'busy', title: 'Asistan şu an yoğun', text, retry: true, retryAfter };
   }

@@ -173,3 +173,13 @@ test('release workflow: images are signed keyless before the version tag moves, 
   assert.ok(tag > verify, 'the version tag points at the digest only after the signature verified');
   assert.doesNotMatch(release, /cosign sign[^\n]*--key/, 'keyless only: no long-lived signing key');
 });
+
+test('sbom-images: the reranker overlay is scanned too, with its .env-replaceable image read from the pinned default', () => {
+  const { collect } = require('./sbom-images.js');
+  const images = collect(path.join(__dirname, '..'));
+  assert.ok(images.some((image) => /^ghcr\.io\/huggingface\/text-embeddings-inference:.*@sha256:[0-9a-f]{64}$/.test(image)),
+    'the ${VERSO_RERANKER_IMAGE:-…} default, without the placeholder');
+  assert.ok(images.every((image) => !image.startsWith('${')));
+  const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'supply-chain-scan.yml'), 'utf8');
+  assert.equal((workflow.match(/'deploy\/compose\.reranker\.yaml'/g) ?? []).length, 2, 'a bump of the overlay triggers the scan (pull_request and push)');
+});

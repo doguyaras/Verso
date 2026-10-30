@@ -54,6 +54,17 @@ export function endpointsOf(config) {
 
 const endpoint = (name) => endpointsOf(CONFIG)[name];
 
+/** Thrown by signIn when the browser refuses sessionStorage: the verifier could not survive the redirect. */
+export class StorageBlocked extends Error {
+  constructor() {
+    super('sessionStorage is blocked');
+    this.name = 'StorageBlocked';
+  }
+}
+
+/** The hashes a sign-in may come back to: a screen route only (nav.js), never params and never a foreign URL. */
+const RETURN_TO = /^#\/[a-z-]*$/;
+
 /**
  * Sends the browser to the IdP. With `prompt: 'login'` the IdP shows its sign-in form even when it still has a session
  * (the intro's button: the user expects the sign-in step); without it an existing IdP session signs in silently (the
@@ -62,7 +73,13 @@ const endpoint = (name) => endpointsOf(CONFIG)[name];
 export async function signIn({ prompt } = {}) {
   const verifier = randomString(48);
   const state = randomString(16);
-  sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state }));
+  // returnTo: the screen the user was on, so the automatic sign-in after a 401 brings them back to it.
+  const returnTo = globalThis.location?.hash ?? '';
+  try {
+    sessionStorage.setItem(PENDING, JSON.stringify({ verifier, state, returnTo }));
+  } catch {
+    throw new StorageBlocked();
+  }
   const params = new URLSearchParams({
     client_id: CONFIG.clientId, response_type: 'code', scope: CONFIG.scope, redirect_uri: CONFIG.redirectUri, state,
     code_challenge: await challengeOf(verifier), code_challenge_method: 'S256',
@@ -77,9 +94,16 @@ export async function signIn({ prompt } = {}) {
 export async function completeSignIn() {
   const query = new URLSearchParams(location.search);
   if (!query.has('code') && !query.has('error')) return false;
-  const pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null');
-  sessionStorage.removeItem(PENDING);
-  history.replaceState(null, '', CONFIG.redirectUri);
+  let pending = null;
+  try {
+    pending = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null');
+    sessionStorage.removeItem(PENDING);
+  } catch {
+    pending = null; // storage blocked or unreadable: no verifier, so no session (the intro says why on the next click)
+  }
+  // The code leaves the URL before anything else; the screen the sign-in started from comes back with it.
+  const returnTo = RETURN_TO.test(pending?.returnTo ?? '') ? pending.returnTo : '';
+  history.replaceState(null, '', CONFIG.redirectUri + returnTo);
   if (query.has('error') || !pending || query.get('state') !== pending.state) return false;
   await tokenRequest({ grant_type: 'authorization_code', code: query.get('code'), redirect_uri: CONFIG.redirectUri,
     code_verifier: pending.verifier });
@@ -98,12 +122,18 @@ async function tokenRequest(form) {
     identity: json.id_token ? claimsOf(json.id_token) : (session?.identity ?? {}) };
 }
 
-/** A valid access token, refreshed 30 s before it expires; null when signed out. Concurrent callers share a refresh. */
+/**
+ * A valid access token, refreshed 30 s before it expires; null when signed out. Concurrent callers share a refresh.
+ * A refresh that fails while the token is still valid (the IdP briefly unreachable) keeps serving that token and is
+ * tried again by the next call; only an expired token ends the session, so a blip does not lose the open conversation.
+ */
 export async function accessToken() {
   if (!session) return null;
   if (Date.now() > session.expiresAt - 30_000) {
     refreshing ??= tokenRequest({ grant_type: 'refresh_token', refresh_token: session.refreshToken })
-      .catch(() => { session = null; })
+      .catch(() => {
+        if (session && Date.now() >= session.expiresAt) session = null;
+      })
       .finally(() => { refreshing = null; });
     await refreshing;
   }

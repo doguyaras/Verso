@@ -23,7 +23,7 @@ import { ROLES } from '../roles.js';
 import { answerSegments, el, formatSeconds, groupSources, plainName, sourceLabel } from '../render.js';
 import { ratingControls } from '../rating.js';
 // The store's thread (which conversation is open) is "current" here: "thread" is the answer log element below.
-import { conversation, prefs, startNewConversation, thread as current } from '../store.js';
+import { conversation, CONVERSATION_EVENT, pending, prefs, setPending, startNewConversation, thread as current } from '../store.js';
 import { pulse, reducedMotion, wordSpans } from '../motion.js';
 import { closePageDrawer, openPageDrawer } from '../drawer.js';
 import { provisionalText, stageText } from '../stream.js';
@@ -273,8 +273,8 @@ function download(entry) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const TONES = Object.freeze({ down: ['bad', 'alert'], offline: ['bad', 'alert'], other: ['bad', 'alert'], busy: ['wait', 'clock'],
-  invalid: ['wait', 'alert'], reindex: ['info', 'info'], auth: ['neutral', 'lock'] });
+const TONES = Object.freeze({ down: ['bad', 'alert'], offline: ['bad', 'alert'], cut: ['bad', 'alert'], other: ['bad', 'alert'],
+  busy: ['wait', 'clock'], invalid: ['wait', 'alert'], reindex: ['info', 'info'], auth: ['neutral', 'lock'] });
 
 /** A failed question: what happened in plain words, and the one thing to do next. */
 function failureView(entry, actions) {
@@ -505,6 +505,12 @@ function userTurn(question, id) {
 
 function botTurn(content) {
   return el('div', { class: 'turn-bot' }, logo(30), content);
+}
+
+/** The question still being answered (store.js pending) as a visit that came back sees it: the question, a wait. */
+function pendingTurn(entry) {
+  return turn(entry.question, el('div', { class: 'waiting' },
+    el('div', { class: 'status' }, el('span', { class: 'spinner' }), el('span', { class: 'thinking' }, 'Cevap hazırlanıyor'))));
 }
 
 /** One question and its answer; focusable (not tabbable) so the turn keys can move to it. */
@@ -739,7 +745,7 @@ export function renderAsk(ctx) {
   function updateBar() {
     barTitle.textContent = current.title ? plainName(current.title) : '';
     barTitle.title = barTitle.textContent;
-    fresh.hidden = !conversation.length && !current.conversationId;
+    fresh.hidden = !conversation.length && !current.conversationId && !pending.current;
   }
 
   // Turns: PageUp/PageDown (outside a multi-line question) and Alt+↑/↓ move between them; Esc closes what is open.
@@ -841,12 +847,23 @@ export function renderAsk(ctx) {
   function drawThread() {
     prune();
     const notice = aiNotice();
-    if (!conversation.length) {
+    if (!conversation.length && !pending.current) {
       thread.replaceChildren(...(notice ? [notice] : []), welcome());
       return;
     }
-    thread.replaceChildren(...(notice ? [notice] : []), ...conversation.map((entry) => turn(entry.question, answerView(entry, actions))));
+    thread.replaceChildren(...(notice ? [notice] : []), ...conversation.map((entry) => turn(entry.question, answerView(entry, actions))),
+      ...(pending.current ? [pendingTurn(pending.current)] : []));
   }
+
+  // An answer arrived for a visit of this screen that has since been replaced (the user left and came back): the
+  // visit that asked cannot draw into this one, so it says so on the document and this one redraws the thread.
+  const onConversation = () => {
+    drawThread();
+    updateBar();
+    setBusy(pending.current?.controller ?? null);
+    announcer.textContent = 'Konuşma güncellendi.';
+  };
+  document.addEventListener(CONVERSATION_EVENT, onConversation);
 
   function setBusy(controller) {
     busy = controller;
@@ -867,6 +884,7 @@ export function renderAsk(ctx) {
     hidePick();
     if (!conversation.length) thread.replaceChildren();
     const started = Date.now();
+    setPending({ question, controller, started });
     const elapsed = el('span', { class: 'tabular' });
     const expect = el('div', { class: 'expect' });
     // ADR-0035: the stage the server reports, and the model text as it arrives. The draft is plain text without its
@@ -943,6 +961,7 @@ export function renderAsk(ctx) {
         : { question, error: errorState(error), ms: Date.now() - started, at: new Date().toISOString() };
     } finally {
       clearInterval(ticker);
+      if (pending.current?.controller === controller) setPending(null);
       setBusy(null);
       ctx.showMode();
     }
@@ -950,7 +969,10 @@ export function renderAsk(ctx) {
     // conversation on the server and is not appended to the one now open.
     if (current.generation !== generation) return;
     conversation.push(entry);
-    if (!ctx.isCurrent()) return;
+    if (!ctx.isCurrent()) {
+      document.dispatchEvent(new CustomEvent(CONVERSATION_EVENT)); // the visit now on screen draws it (onConversation)
+      return;
+    }
     updateBar();
     announcer.textContent = entry.cancelled ? (entry.streamed ? 'Cevap durduruldu.' : 'Bekleme durduruldu.') : entry.error ? `Cevap alınamadı: ${entry.error.title}.`
       : isNotFound(entry.result) ? 'Belgelerde bulunamadı.' : entry.result.outcome === 'UNCITED' ? 'Cevap hazır, kaynak gösterilemedi.' : 'Cevap hazır.';
@@ -961,6 +983,8 @@ export function renderAsk(ctx) {
   main.replaceChildren(chat);
   drawThread();
   updateBar();
+  // A question still being answered from an earlier visit: the stop button is its stop button, and no second one goes.
+  if (pending.current) setBusy(pending.current.controller);
   thread.lastElementChild?.scrollIntoView({ block: 'end' });
   if (ctx.params?.question) ask(ctx.params.question);
   else field.focus();
@@ -968,6 +992,7 @@ export function renderAsk(ctx) {
   return () => {
     clearInterval(ticker);
     closePageDrawer();
+    document.removeEventListener(CONVERSATION_EVENT, onConversation);
     document.removeEventListener('selectionchange', onSelection);
     removeEventListener('scroll', onScroll);
     viewport?.removeEventListener('resize', onViewport);

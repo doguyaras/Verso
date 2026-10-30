@@ -2,18 +2,18 @@
 // (Ana sayfa, Asistan, Beceriler, Bilgi, Geçmiş) and, for admins and operators, "Yönetim" (nav.js). No framework and no
 // build step; ES modules served by the edge proxy. Screens are hash routes
 // (#/ask, …); renamed routes redirect (nav.js REDIRECTS).
-import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut } from './auth.js';
+import { completeSignIn, currentClaims, currentIdentity, expiresAt, signIn, signOut, StorageBlocked } from './auth.js';
 import { api, ApiError, lastMode } from './api.js';
 import { applyAccent, loadBranding } from './branding.js';
 import { CONFIG } from './config.js';
 import { icon, logo } from './icons.js';
-import { HUB_ID, inHub, navModel, NAV, reachableScreens, resolveRoute, sectionTabs, shortcutTarget, slotId, tabModel } from './nav.js';
+import { HUB_ID, inHub, isRouteHash, navModel, NAV, reachableScreens, resolveRoute, sectionTabs, shortcutTarget, slotId, tabModel } from './nav.js';
 import { openPalette } from './palette.js';
 import { sign, signature } from './signature.js';
 import { langSwitch, themeSwitch } from './toggles.js';
 import { adminScreens, canOpen, ROLES, rolesOf, SCREENS, withServerRoles } from './roles.js';
 import { el, plainName } from './render.js';
-import { isDark, prefs, startNewConversation } from './store.js';
+import { isDark, prefs, readStorage, startNewConversation, writeStorage } from './store.js';
 import { cardSpotlight, navIndicator, transition } from './motion.js';
 import { initials, openMenu, toast } from './ui.js';
 import { renderActivity } from './screens/activity.js';
@@ -64,6 +64,10 @@ const counts = {};
 let moveIndicator = () => {};
 let routed = false; // the first screen appears without a transition
 let bell = null; // the admins' notification bell (ADR-0052)
+// The sign-in screen is up: the router and the "g" shortcuts stand still, so nothing renders behind the gate.
+let gated = false;
+// The browser refuses sessionStorage (site data blocked): the PKCE verifier cannot survive the redirect, so say so.
+const STORAGE_BLOCKED = 'Tarayıcı bu site için verileri engelliyor; giriş için site verilerine izin verin.';
 
 // ---------- theme: the ivory light theme unless the user picks dark or "follow the system" (ADR-0018) ----------
 function applyTheme() {
@@ -95,20 +99,23 @@ let redirecting = false; // parallel calls that all get 401 start one sign-in
 
 function handleUnauthorized() {
   if (redirecting) return;
-  if (sessionStorage.getItem(AUTO_SIGN_IN)) {
+  if (readStorage(AUTO_SIGN_IN)) {
     showSignIn('Oturum açılamadı: servis girişinizi kabul etmedi. Yöneticinize bildirin.');
     return;
   }
-  sessionStorage.setItem(AUTO_SIGN_IN, '1');
+  writeStorage(AUTO_SIGN_IN, '1');
   redirecting = true;
-  signIn();
+  signIn().catch((error) => {
+    redirecting = false;
+    showSignIn(error instanceof StorageBlocked ? STORAGE_BLOCKED : 'Giriş başlatılamadı; sayfayı yenileyin.');
+  });
 }
 
 /** Runs an API call; a 401 starts the sign-in, any other error is thrown to the caller. */
 async function withAuth(action) {
   try {
     const result = await action();
-    sessionStorage.removeItem(AUTO_SIGN_IN);
+    writeStorage(AUTO_SIGN_IN, null); // a blocked storage must not turn a successful call into an error
     return result;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) handleUnauthorized();
@@ -157,6 +164,13 @@ function setCount(screen, value) {
 }
 
 function route() {
+  if (gated) return;
+  // An in-page anchor (#main, the skip link) is not a route: the browser moves the focus there and nothing is
+  // re-rendered. Only a page opened on such a hash is sent to the first screen.
+  if (!isRouteHash(location.hash)) {
+    if (!routed) location.replace('#/');
+    return;
+  }
   const { screen, params: redirectParams, redirected } = resolveRoute(location.hash, roles, AVAILABLE);
   // A renamed route (#/overview, #/insights) or one this user cannot open is replaced, not pushed: "back" never loops.
   if (redirected && location.hash !== `#/${screen}`) {
@@ -288,6 +302,7 @@ function paletteSources() {
 function shortcuts() {
   let pendingG = 0;
   addEventListener('keydown', (event) => {
+    if (gated) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase('en') === 'k') {
       event.preventDefault();
       openPalette(paletteSources());
@@ -398,6 +413,9 @@ function showSignIn(problem, { quiet = false } = {}) {
   view += 1;
   if (typeof cleanup === 'function') cleanup();
   cleanup = null;
+  gated = true;
+  bell?.stop(); // the bell's timer would otherwise meet the same 401 every few minutes and redraw this screen
+  bell = null;
   $('#shell').hidden = true;
   const gate = $('#gate');
   gate.hidden = false;
@@ -427,8 +445,11 @@ function showSignIn(problem, { quiet = false } = {}) {
       problem ? el('div', { class: 'notice bad', role: 'alert' }, icon('alert', 'sm'), problem) : null,
       el('button', { class: 'button lg sheen', type: 'button', onclick: (event) => {
         event.currentTarget.setAttribute('aria-busy', 'true');
-        sessionStorage.removeItem(AUTO_SIGN_IN);
-        signIn({ prompt: 'login' }); // the sign-in form every time, even with an IdP session
+        writeStorage(AUTO_SIGN_IN, null);
+        // The sign-in form every time, even with an IdP session. A refused storage shows the reason instead of a
+        // button that stays busy for good.
+        signIn({ prompt: 'login' }).catch((error) => showSignIn(error instanceof StorageBlocked ? STORAGE_BLOCKED
+          : 'Giriş başlatılamadı; sayfayı yenileyin.', { quiet: true }));
       } }, text.button, icon('arrowRight')),
       el('div', { class: 'assure' }, ...text.assure.map((t) => el('span', {}, t))))));
   if (!quiet) sign(mark, { delay: 250 });

@@ -732,7 +732,7 @@ services:
     profiles: ["drill"]
     <<: *hardening
     image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
-    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$(cat /run/secrets/SECRET_DB_CONNECTOR_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_connector_migrate -schemas=connector -defaultSchema=connector -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_CONNECTOR_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_connector_migrate -schemas=connector -defaultSchema=connector -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"
     secrets:
@@ -751,7 +751,7 @@ services:
     profiles: ["drill"]
     <<: *hardening
     image: flyway/flyway:13.12.0@sha256:3704e17c99e22adb8385552cdf8dd7fbc05ae6c420cb78215d9ac6cf1261a15c
-    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$(cat /run/secrets/SECRET_DB_WORK_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_work_migrate -schemas=work -defaultSchema=work -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
+    entrypoint: ["bash", "-c", "FLYWAY_PASSWORD=\"$$(cat /run/secrets/SECRET_DB_WORK_MIGRATE_PASSWORD)\" exec flyway -url=jdbc:postgresql://restore-db:5432/verso -user=svc_work_migrate -schemas=work -defaultSchema=work -createSchemas=false -locations=filesystem:/flyway/migrations -validateMigrationNaming=true -ignoreMigrationPatterns= validate"]
     environment:
       REDGATE_DISABLE_TELEMETRY: "true"
     secrets:

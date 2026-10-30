@@ -8,6 +8,7 @@ import { prune, writeMarked } from './highlight.js';
 import { excerptRange, pageHeading, pageNav } from './pageview.js';
 import { el, plainName } from './render.js';
 import { reducedMotion } from './motion.js';
+import { trapTab } from './ui.js';
 
 let current = null;
 
@@ -44,11 +45,7 @@ export function openPageDrawer(citation, { withAuth = (call) => call(), opener =
     el('div', { class: 'drawer-body' }, status, cut, text));
   const backdrop = el('div', { class: 'drawer-scrim', onclick: () => close() });
 
-  function focusables() {
-    return [...panel.querySelectorAll('button, [tabindex="0"]')].filter((node) => !node.disabled && !node.hidden);
-  }
-
-  // Esc closes; Tab and Shift+Tab wrap around inside the drawer (WAI-ARIA dialog pattern).
+  // Esc closes; Tab and Shift+Tab wrap around inside the drawer (ui.js trapTab, shared with the other drawers).
   panel.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -56,18 +53,7 @@ export function openPageDrawer(citation, { withAuth = (call) => call(), opener =
       close();
       return;
     }
-    if (event.key !== 'Tab') return;
-    const items = focusables();
-    if (!items.length) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapTab(panel, event);
   });
 
   function close() {
