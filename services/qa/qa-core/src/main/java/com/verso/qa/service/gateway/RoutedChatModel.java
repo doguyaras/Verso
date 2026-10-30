@@ -4,6 +4,7 @@ import com.verso.qa.service.ModelBudgetExceededException;
 
 import com.verso.qa.api.dto.ModelTask;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
@@ -28,10 +29,17 @@ public final class RoutedChatModel implements ChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(RoutedChatModel.class);
 
-    /** One model of the route; {@code connection} null is the built-in model. */
-    public record Candidate(ModelConnection connection, String model) {
-        public boolean external() {
-            return connection != null && connection.external();
+    /**
+     * One model of the route; {@code connection} null is the built-in model.
+     *
+     * @param external whether the prompt leaves the installation: an external connection, or the built-in model in
+     *                 {@code verso.ai.mode=cloud} (then it is Anthropic or OpenAI). An external candidate always passes
+     *                 the privacy filter and records its egress categories (ADR-0059, ADR-0065).
+     */
+    public record Candidate(ModelConnection connection, String model, boolean external) {
+        /** A connection's candidate: external exactly when the connection is. */
+        public Candidate(ModelConnection connection, String model) {
+            this(connection, model, connection != null && connection.external());
         }
     }
 
@@ -196,7 +204,8 @@ public final class RoutedChatModel implements ChatModel {
     /** The privacy filter of one attempt; null for a local candidate (nothing leaves, nothing is filtered). */
     private ModelRequestFilter.Exchange open(Candidate candidate, List<ModelRequestFilter.EgressCategory> sent) {
         if (!candidate.external()) return null;
-        return hooks.filter().open(new ModelRequestFilter.Call(task, candidate.connection().id(), sent));
+        UUID connectionId = candidate.connection() == null ? null : candidate.connection().id();
+        return hooks.filter().open(new ModelRequestFilter.Call(task, connectionId, sent));
     }
 
     private static ModelRequestFilter.Filtered filtered(ModelRequestFilter.Exchange exchange) {

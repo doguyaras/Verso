@@ -27,9 +27,9 @@ class PseudonymiserTest {
 
         String masked = p.mask(TEXT);
 
-        assertThat(masked).isEqualTo("Ayşe Hanım (TC [TCKN_1]) IBAN [IBAN_1] hesabına, TC [TCKN_2] ise [PHONE_1] "
+        assertThat(masked).isEqualTo("[AD_1] Hanım (TC [TCKN_1]) IBAN [IBAN_1] hesabına, TC [TCKN_2] ise [PHONE_1] "
                 + "numarasından aradı. Tekrar: [TCKN_1] ve [IBAN_1].");
-        assertThat(p.counts()).containsExactlyInAnyOrderEntriesOf(Map.of("TCKN", 2, "IBAN", 1, "PHONE", 1));
+        assertThat(p.counts()).containsExactlyInAnyOrderEntriesOf(Map.of("TCKN", 2, "IBAN", 1, "PHONE", 1, "AD", 1));
         assertThat(p.counts().toString()).doesNotContain("10000000146");
     }
 
@@ -125,6 +125,85 @@ class PseudonymiserTest {
         assertThat(Pseudonymiser.couldBecomePlaceholder("NOTE")).isFalse();
     }
 
+    @Test
+    void placeholderShapedTextAtTheTopOfTheRange_neverPushesTheNumbersPastSixDigits() {
+        Pseudonymiser p = new Pseudonymiser();
+        String quoted = "Şablon [TCKN_999999] ve [TCKN_1] alanları.";
+        p.reserve(quoted);
+        p.reserve("TC 10000000146");
+
+        assertThat(p.mask("TC 10000000146")).isEqualTo("TC [TCKN_2]");
+        assertThat(p.restore("[TCKN_2], [TCKN_1], [TCKN_999999]")).isEqualTo("10000000146, [TCKN_1], [TCKN_999999]");
+    }
+
+    // ------------------------------------------------------------------------------------------------ names (ADR-0065)
+
+    private static final String HR = "Sn. Ayşe Yılmaz izin talebini iletti. Ayşe Yılmaz'ın yöneticisi Mehmet Öztürk, "
+            + "AYŞE YILMAZ adına onay verdi. Adres: Kızılay Mah. Atatürk Cad. No:12 D:5 Çankaya/Ankara'dır.";
+
+    @Test
+    void names_andAddresses_sameValueSamePlaceholder_acrossSuffixesAndCase() {
+        Pseudonymiser p = new Pseudonymiser();
+
+        String masked = p.mask(HR);
+
+        assertThat(masked).isEqualTo("Sn. [AD_1] izin talebini iletti. [AD_1]'ın yöneticisi [AD_2], [AD_1] adına onay "
+                + "verdi. Adres: [ADRES_1]'dır.");
+        assertThat(masked).doesNotContain("Ayşe", "Yılmaz", "YILMAZ", "Öztürk", "Kızılay", "Atatürk", "Çankaya");
+        assertThat(p.counts()).containsExactlyInAnyOrderEntriesOf(Map.of("AD", 2, "ADRES", 1));
+        assertThat(p.restore(masked)).as("round trip: the first spelling comes back")
+                .isEqualTo(HR.replace("AYŞE YILMAZ", "Ayşe Yılmaz"));
+    }
+
+    @Test
+    void restore_fitsTheSuffixTheModelWrote_toTheValue() {
+        Pseudonymiser p = new Pseudonymiser();
+        p.mask("Ayşe Yılmaz ve Ahmet Kaya; Ayşe; Atatürk Cad. No:12 Çankaya/Ankara");
+
+        assertThat(p.restore("[AD_1]'in dosyası [AD_2]'e iletildi; [AD_3]'a da bilgi verildi, [ADRES_1]'de."))
+                .isEqualTo("Ayşe Yılmaz'ın dosyası Ahmet Kaya'ya iletildi; Ayşe'ye da bilgi verildi, "
+                        + "Atatürk Cad. No:12 Çankaya/Ankara'da.");
+        assertThat(p.restore("[AD_1]’nin")).as("typographic apostrophe").isEqualTo("Ayşe Yılmaz’ın");
+        assertThat(p.restore("[AD_1]'ın")).as("a correct suffix stays").isEqualTo("Ayşe Yılmaz'ın");
+    }
+
+    @Test
+    void stream_restoresAndFitsANameSuffix_splitAtEveryPossiblePosition() {
+        Pseudonymiser p = new Pseudonymiser();
+        p.mask(HR);
+        String answer = "[AD_1]'in talebi [AD_2]'e gitti; adres [ADRES_1]'de [1]. [AD_1]";
+        String expected = p.restore(answer);
+        assertThat(expected).isEqualTo("Ayşe Yılmaz'ın talebi Mehmet Öztürk'e gitti; adres Kızılay Mah. Atatürk Cad. "
+                + "No:12 D:5 Çankaya/Ankara'da [1]. Ayşe Yılmaz");
+
+        for (int i = 0; i <= answer.length(); i++) {
+            for (int j = i; j <= answer.length(); j++) {
+                Pseudonymiser.Restorer r = p.restorer();
+                String out = r.push(answer.substring(0, i)) + r.push(answer.substring(i, j))
+                        + r.push(answer.substring(j)) + r.flush();
+                assertThat(out).as("split at %d and %d", i, j).isEqualTo(expected);
+            }
+        }
+    }
+
+    @Test
+    void stream_tokenByToken_neverEmitsAPartialNamePlaceholderOrAnUnfittedSuffix() {
+        Pseudonymiser p = new Pseudonymiser();
+        p.mask("Ayşe Yılmaz");
+        Pseudonymiser.Restorer r = p.restorer();
+        List<String> emitted = new ArrayList<>();
+        for (char c : "Dosya [AD_1]'in.".toCharArray()) emitted.add(r.push(String.valueOf(c)));
+        emitted.add(r.flush());
+
+        assertThat(String.join("", emitted)).isEqualTo("Dosya Ayşe Yılmaz'ın.");
+        assertThat(emitted).noneMatch(s -> s.contains("[A") || s.contains("D_") || s.endsWith("'i"));
+        assertThat(Pseudonymiser.couldBecomePlaceholder("ADR")).isTrue();
+        assertThat(Pseudonymiser.couldBecomePlaceholder("ADRES_12")).isTrue();
+        assertThat(Pseudonymiser.holdFrom("x [AD_1]'in")).isEqualTo(2);
+        assertThat(Pseudonymiser.holdFrom("x [AD_1]'in ")).isEqualTo(12);
+        assertThat(Pseudonymiser.holdFrom("x [TCKN_1]")).as("only names and addresses wait for a suffix").isEqualTo(10);
+    }
+
     // ------------------------------------------------------------------------------------------------ filter
 
     @Test
@@ -141,11 +220,12 @@ class PseudonymiserTest {
 
         assertThat(sent.getInstructions()).hasSize(4);
         assertThat(sent.getContents()).doesNotContain("ayse.yilmaz", "0532 123 45 67")
-                .contains("[EMAIL_1] adresi", "göre [EMAIL_1] Ayşe", "Peki [PHONE_1] kimin");
+                .contains("[EMAIL_1] adresi", "göre [EMAIL_1] [AD_1] Hanım'ındır", "Peki [PHONE_1] kimin");
         assertThat(sent.getInstructions().get(2)).isInstanceOf(AssistantMessage.class);
         assertThat(back.getResult().getOutput().getText())
                 .isEqualTo("0532 123 45 67 numarası da ayse.yilmaz@ornek.com.tr sahibinindir [1].");
-        assertThat(exchange.filtered().masked()).containsExactlyInAnyOrderEntriesOf(Map.of("EMAIL", 1, "PHONE", 1));
+        assertThat(exchange.filtered().masked()).containsExactlyInAnyOrderEntriesOf(Map.of("EMAIL", 1, "PHONE", 1,
+                "AD", 1));
     }
 
     @Test

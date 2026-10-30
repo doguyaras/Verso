@@ -4,14 +4,19 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Finds Turkish personal data in free text (ADR-0059): TCKN, VKN, TR IBAN, payment card numbers, e-mail addresses,
- * Turkish phone numbers and licence plates. Pure and stateless; {@link Pseudonymiser} turns the matches into
- * placeholders.
+ * Turkish phone numbers and licence plates; and (ADR-0065) person names ({@link TurkishNames}) and postal addresses
+ * ({@link TurkishAddresses}). Pure and stateless; {@link Pseudonymiser} turns the matches into placeholders.
+ *
+ * <p>Detection reads a normalised copy of the text ({@link TextShadow}: no format characters, ASCII digits, NFKC) and
+ * the matches point back into the original: a value written with zero-width spaces, fullwidth or Arabic-Indic digits
+ * or no-break spaces is found all the same.
  *
  * <p>Every number type is checked by its own algorithm (TCKN check digits, VKN check digit, IBAN mod-97, Luhn), not by
  * length alone, so order numbers, dates and amounts stay readable for the model. The VKN check digit passes one random
@@ -22,7 +27,7 @@ final class TurkishPii {
 
     /** The kinds found; the order is the priority when two matches cover the same text with the same length. */
     enum Type {
-        IBAN, CARD, EMAIL, TCKN, PHONE, VKN, PLATE
+        IBAN, CARD, EMAIL, TCKN, PHONE, VKN, PLATE, ADRES, AD
     }
 
     /**
@@ -37,16 +42,21 @@ final class TurkishPii {
         }
     }
 
-    private static final Pattern TCKN = Pattern.compile("(?<![\\d])[1-9]\\d{10}(?!\\d)");
+    /** Eleven digits together, or grouped 3-3-3-2 with one kind of separator ("100 000 001 46", "100.000.001.46"). */
+    private static final Pattern TCKN = Pattern.compile("(?<![\\d])[1-9]\\d{10}(?!\\d)"
+            + "|(?<!\\d[ .,\\-]?)[1-9]\\d{2}([ .\\-])\\d{3}\\1\\d{3}\\1\\d{2}(?![ .,\\-]?\\d)");
     private static final Pattern VKN = Pattern.compile("(?<![\\d])\\d{10}(?!\\d)");
     /** "vergi no", "Vergi Kimlik No", "VKN", "V.K.N." within this many characters before the number. */
     private static final int VKN_CONTEXT = 40;
     private static final Pattern VKN_WORD = Pattern.compile("(?iu)vergi|v\\.?\\s?k\\.?\\s?n\\b|tax\\s?id");
-    private static final Pattern IBAN = Pattern.compile(
-            "(?<![\\p{L}\\p{N}])(?i:tr)\\d{2}(?:[ ]?\\d{4}){5}[ ]?\\d{2}(?!\\d)");
+    /**
+     * TR and 24 digits with up to three separators (space, line break, dot, dash) between any two: grouped, glued to a
+     * word ("hesapTR33…") or wrapped over lines in a PDF passage. Mod-97 keeps the look-alikes out.
+     */
+    private static final Pattern IBAN = Pattern.compile("(?<!\\p{N})(?i:tr)(?:[\\s.\\-]{0,3}\\d){24}(?!\\d)");
     private static final Pattern CARD = Pattern.compile("(?<![\\d])(?:"
-            + "\\d{4}([ -]?)\\d{4}\\1\\d{4}\\1\\d{4}(?:\\1\\d{1,3})?"   // 16 to 19 digits in fours
-            + "|\\d{4}([ -]?)\\d{6}\\2\\d{4,5}"                         // 14 and 15 digits (Amex, Diners)
+            + "\\d{4}([ .-]?)\\d{4}\\1\\d{4}\\1\\d{4}(?:\\1\\d{1,3})?"  // 16 to 19 digits in fours
+            + "|\\d{4}([ .-]?)\\d{6}\\2\\d{4,5}"                        // 14 and 15 digits (Amex, Diners)
             + "|\\d{13,19})(?!\\d)");
     private static final Pattern EMAIL = Pattern.compile(
             "(?<![\\p{L}\\p{N}._%+-])[\\p{L}\\p{N}._%+-]{1,64}@[\\p{L}\\p{N}-]{1,63}(?:\\.[\\p{L}\\p{N}-]{1,63}){1,8}");
@@ -71,21 +81,30 @@ final class TurkishPii {
     /** The findings in order of position, without overlaps (the longer match wins, then {@link Type} order). */
     static List<Match> find(String text) {
         if (text == null || text.isEmpty()) return List.of();
+        TextShadow shadow = TextShadow.of(text);
+        String normal = shadow.text;
         List<Match> all = new ArrayList<>();
-        iban(text, all);
-        card(text, all);
-        email(text, all);
-        tckn(text, all);
-        phone(text, all);
-        vkn(text, all);
-        plate(text, all);
+        iban(normal, all);
+        card(normal, all);
+        email(normal, all);
+        tckn(normal, all);
+        phone(normal, all);
+        vkn(normal, all);
+        plate(normal, all);
+        TurkishAddresses.find(normal, all);
+        TurkishNames.find(normal, all);
         all.sort(Comparator.comparingInt(Match::length).reversed().thenComparing(Match::type));
-        List<Match> kept = new ArrayList<>();
+        // Kept matches never overlap, so the one starting closest before a candidate's end is the only one to check.
+        java.util.TreeMap<Integer, Match> kept = new java.util.TreeMap<>();
         for (Match m : all) {
-            if (kept.stream().noneMatch(k -> m.start() < k.end() && k.start() < m.end())) kept.add(m);
+            Map.Entry<Integer, Match> before = kept.lowerEntry(m.end());
+            if (before == null || before.getValue().end() <= m.start()) kept.put(m.start(), m);
         }
-        kept.sort(Comparator.comparingInt(Match::start));
-        return kept;
+        List<Match> original = new ArrayList<>(kept.size());
+        for (Match m : kept.values()) {
+            original.add(new Match(shadow.originalStart(m.start()), shadow.originalEnd(m.end()), m.type(), m.key()));
+        }
+        return original;
     }
 
     // ------------------------------------------------------------------------------------------------ detectors
@@ -93,7 +112,8 @@ final class TurkishPii {
     private static void tckn(String text, List<Match> out) {
         Matcher m = TCKN.matcher(text);
         while (m.find()) {
-            if (validTckn(m.group())) out.add(new Match(m.start(), m.end(), Type.TCKN, m.group()));
+            String digits = digits(m.group());
+            if (validTckn(digits)) out.add(new Match(m.start(), m.end(), Type.TCKN, digits));
         }
     }
 
@@ -109,7 +129,7 @@ final class TurkishPii {
     private static void iban(String text, List<Match> out) {
         Matcher m = IBAN.matcher(text);
         while (m.find()) {
-            String compact = m.group().replace(" ", "").toUpperCase(Locale.ROOT);
+            String compact = "TR" + digits(m.group());
             if (validIban(compact)) out.add(new Match(m.start(), m.end(), Type.IBAN, compact));
         }
     }

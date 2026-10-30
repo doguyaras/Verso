@@ -8,7 +8,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
 /**
- * The privacy gateway hook (ADR-0056): every call to an EXTERNAL connection opens one {@link Exchange}; the request
+ * The privacy gateway hook (ADR-0056): every call that leaves the installation (an EXTERNAL connection, or the built-in
+ * model in cloud mode, ADR-0065) opens one {@link Exchange}; the request
  * passes through {@link Exchange#beforeSend}, the response (or the stream) through {@code afterReceive}. An exchange
  * holds the state of exactly one call (ADR-0059: the placeholder mapping) and is dropped with it. Local calls never
  * open one.

@@ -13,7 +13,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
 /**
- * Turkish personal data pseudonymisation of external model calls (ADR-0059): before a prompt leaves the installation
+ * Turkish personal data pseudonymisation of model calls that leave the installation (ADR-0059; names and addresses,
+ * ADR-0065): external connections, and the built-in model in cloud mode. Before a prompt leaves the installation
  * every system, user and assistant message is masked by one {@link Pseudonymiser}; the answer (whole or streamed) gets
  * the values back. The mapping is the exchange's, so it lives exactly as long as one call and one attempt of a route
  * (a fallback model opens its own).

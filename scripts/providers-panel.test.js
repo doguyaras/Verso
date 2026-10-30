@@ -103,6 +103,12 @@ test('providers: the masking line (ADR-0059) gives counts by type, never values;
   const screen = readFileSync(path.join(ROOT, 'panel/js/screens/providers.js'), 'utf8');
   assert.match(screen, /api\.setModelMasking\(event\.target\.checked\)/);
   assert.match(screen, /routes\.piiMasking !== false/, 'shown as on unless the server says off');
+  // A failed save puts the box back: it never shows masking on while the server still has it off (or the reverse).
+  assert.match(screen, /api\.setModelMasking\(event\.target\.checked\)\);\s*if \(!done\) \{ event\.target\.checked = !event\.target\.checked; return; \}/);
+  assert.match(screen, /api\.setModelSettings\(event\.target\.checked\)\);\s*\/\/[^\n]*\n\s*if \(!done\) \{ event\.target\.checked = !event\.target\.checked; return; \}/);
+  assert.match(screen, /plaka, isim, adres\)/);
+  assert.equal(maskedNote({ maskedValues: 3, masked: { AD: 2, ADRES: 1 } }),
+    'Bu ay bulut çağrılarında 3 değer maskelendi (isim 2, adres 1).');
   const api = readFileSync(path.join(ROOT, 'panel/js/api.js'), 'utf8');
   assert.match(api, /setModelMasking: \(on\) => request\('\/v1\/admin\/model-gateway\/settings', json\('PUT', \{ piiMasking: on === true \}\)\)/);
 });

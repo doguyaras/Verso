@@ -167,14 +167,23 @@ public class ModelGateway implements ModelRouter, RoutedChatModel.Hooks {
         List<RoutedChatModel.Candidate> list = new ArrayList<>();
         for (ModelRouteEntry entry : s.routes().getOrDefault(task, List.of())) {
             if (entry.connectionId() == null) {
-                list.add(new RoutedChatModel.Candidate(null, ai.chatModel()));
+                list.add(builtIn());
                 continue;
             }
             ModelConnection c = s.connections().get(entry.connectionId());
             if (c != null && c.enabled() && allowedInMode(c)) list.add(new RoutedChatModel.Candidate(c, entry.model()));
         }
-        if (list.isEmpty()) list.add(new RoutedChatModel.Candidate(null, ai.chatModel()));
+        if (list.isEmpty()) list.add(builtIn());
         return list;
+    }
+
+    /**
+     * The built-in model. In cloud mode it is Anthropic or OpenAI (VERSO_CHAT_PROVIDER, ADR-0013): its prompt leaves the
+     * installation like an external connection's, so it is masked and its egress recorded (ADR-0065, fixing ADR-0059).
+     * This covers the default route and the fallback when no route is set or the database cannot be read.
+     */
+    private RoutedChatModel.Candidate builtIn() {
+        return new RoutedChatModel.Candidate(null, ai.chatModel(), ai.mode() == AiMode.CLOUD);
     }
 
     /** The model a task would try first now (for a run record's model id); the built-in model when nothing is routed. */

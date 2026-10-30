@@ -49,7 +49,7 @@ Yedeğe yalnız 5xx, 429 ve ağ hatasında geçilir; akışta yalnız ilk token'
 | `DELETE …/budgets/{scope}?key=` | – | `204` |
 | `GET …/usage?month=YYYY-MM` | ay (varsayılan bu ay) | `{month, requests, promptTokens, completionTokens, cost, rows[], teams[], hiddenTeams, minTeamUsers, budgets[], maskedValues, masked}`; geçersiz ay `400 11099` |
 
-`maskedValues` ve `masked` (ADR-0059, sonradan eklendi): ayın bulut çağrılarında kişisel veri süzgecinin yer tutucuyla değiştirdiği değer sayısı, toplam ve türe göre (`{"TCKN": 3, "IBAN": 1}`; türler `TCKN`, `VKN`, `IBAN`, `CARD`, `EMAIL`, `PHONE`, `PLATE`). Çağrı başına farklı değer sayısıdır, çağrılar boyunca toplanır; değerlerin kendisi hiçbir yerde yoktur.
+`maskedValues` ve `masked` (ADR-0059, sonradan eklendi): ayın bulut çağrılarında kişisel veri süzgecinin yer tutucuyla değiştirdiği değer sayısı, toplam ve türe göre (`{"TCKN": 3, "IBAN": 1}`; türler `TCKN`, `VKN`, `IBAN`, `CARD`, `EMAIL`, `PHONE`, `PLATE`; ADR-0065 ile `AD` (kişi adı) ve `ADRES` (posta adresi) eklendi, alan biçimi aynı, istemci bilinmeyen türü adıyla göstermelidir). Çağrı başına farklı değer sayısıdır, çağrılar boyunca toplanır; değerlerin kendisi hiçbir yerde yoktur.
 
 `rows[]`: `{connectionId, connectionName, model, task, requests, promptTokens, completionTokens, cost, failures}` (bağlantı silinmişse `connectionName` `null`). `teams[]`: yalnız o ay en az `minTeamUsers` farklı kullanıcısı olan ekipler; kişi bazında satır **yoktur**. `budgets[].state` ∈ `OK`, `SOFT`, `HARD`.
 

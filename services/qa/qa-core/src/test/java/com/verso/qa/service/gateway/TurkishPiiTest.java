@@ -186,11 +186,63 @@ class TurkishPiiTest {
                 + "e-posta ayse.yilmaz@ornek.com.tr; araç 34 ABC 123; kart 4111 1111 1111 1111.";
         List<TurkishPii.Match> matches = TurkishPii.find(text);
 
-        assertThat(matches).extracting(TurkishPii.Match::type).containsExactly(Type.TCKN, Type.PHONE, Type.IBAN,
-                Type.EMAIL, Type.PLATE, Type.CARD);
+        assertThat(matches).extracting(TurkishPii.Match::type).containsExactly(Type.AD, Type.TCKN, Type.PHONE,
+                Type.IBAN, Type.EMAIL, Type.PLATE, Type.CARD);
         for (int i = 1; i < matches.size(); i++) {
             assertThat(matches.get(i).start()).isGreaterThanOrEqualTo(matches.get(i - 1).end());
         }
+    }
+
+    /** The ASCII digits of {@code ascii} written in the script whose zero is {@code zero}. */
+    private static String digitsFrom(char zero, String ascii) {
+        StringBuilder b = new StringBuilder();
+        for (char c : ascii.toCharArray()) b.append((char) (zero + (c - '0')));
+        return b.toString();
+    }
+
+    // ------------------------------------------------------------------------------------------------ spelling
+    // ADR-0059 review: look-alike characters and separators must not let a value through.
+
+    @Test
+    void tckn_withInvisibleCharactersOtherDigitsOrGroups_isStillFound_andMapsBackToTheOriginalSpan() {
+        String zeroWidth = "TC 100​000‌00146 kayıtlı";
+        assertThat(found(zeroWidth, Type.TCKN)).containsExactly("100​000‌00146");
+        assertThat(TurkishPii.find(zeroWidth)).singleElement().extracting(TurkishPii.Match::key).isEqualTo("10000000146");
+        assertThat(found("TC " + digitsFrom('０', "10000000146"), Type.TCKN)).as("fullwidth digits").hasSize(1);
+        assertThat(found("TC " + digitsFrom('٠', "10000000146"), Type.TCKN)).as("Arabic-Indic digits").hasSize(1);
+        assertThat(found("TC " + digitsFrom('۰', "10000000146"), Type.TCKN)).as("Persian digits").hasSize(1);
+        assertThat(found("IBAN TR" + digitsFrom('０', "330006100519786457841326"), Type.IBAN)).hasSize(1);
+        assertThat(found("TC 100 000 001 46 numaralı", Type.TCKN)).containsExactly("100 000 001 46");
+        assertThat(found("TC 100.000.001.46 numaralı", Type.TCKN)).containsExactly("100.000.001.46");
+        assertThat(found("TC 100-000-001-46", Type.TCKN)).containsExactly("100-000-001-46");
+        assertThat(found("Tutar 1.100.000.001.46", Type.TCKN)).as("part of a longer grouping").isEmpty();
+        assertThat(found("Seri 100 000 001 47", Type.TCKN)).as("check digits still apply").isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TR33 0006 1005 1978 6457 8413 26",
+            "TR33-0006-1005-1978-6457-8413-26", "TR33  0006  1005  1978  6457  8413  26",
+            "TR33 0006 1005\n1978 6457 8413 26", "TR33 0006 10\n05 1978 6457 8413 26", "TR33.0006.1005.1978.6457.8413.26",
+            "TR33 0006 1005 1978 6457 8413 26"})
+    void iban_withOtherSeparatorsOrWrapped_isStillFound(String iban) {
+        assertThat(found("IBAN " + iban + " hesabına", Type.IBAN)).containsExactly(iban);
+        assertThat(TurkishPii.find("IBAN " + iban)).singleElement().extracting(TurkishPii.Match::key)
+                .isEqualTo("TR330006100519786457841326");
+    }
+
+    @Test
+    void iban_gluedToAWord_isStillFound() {
+        assertThat(found("hesapTR330006100519786457841326'ya", Type.IBAN)).containsExactly("TR330006100519786457841326");
+        assertThat(found("No:5TR330006100519786457841326", Type.IBAN)).as("a digit before is another number").isEmpty();
+    }
+
+    @Test
+    void phoneEmailAndCard_withNoBreakSpacesFullwidthSignsOrDots_areStillFound() {
+        assertThat(found("Tel 0532 123 45 67", Type.PHONE)).containsExactly("0532 123 45 67");
+        assertThat(found("Tel 0532 123 45 67", Type.PHONE)).as("narrow no-break space").hasSize(1);
+        assertThat(found("e-posta ayse.yilmaz＠ornek.com.tr", Type.EMAIL)).containsExactly("ayse.yilmaz＠ornek.com.tr");
+        assertThat(found("Kart 4111.1111.1111.1111", Type.CARD)).containsExactly("4111.1111.1111.1111");
+        assertThat(found("Kart 4111­1111­1111­1111", Type.CARD)).as("soft hyphens").hasSize(1);
     }
 
     @Test

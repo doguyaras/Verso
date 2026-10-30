@@ -318,6 +318,32 @@ class RoutedChatModelTest {
         });
     }
 
+    /**
+     * ADR-0065 and the ADR-0059 review: the built-in model of a cloud install (no connection, external) streams through
+     * the filter too; a name placeholder and its suffix split over chunks come back as the name with a fitted suffix.
+     */
+    @Test
+    void stream_onTheCloudBuiltInModel_masksNamesAndAddresses_andRestoresASplitSuffix() {
+        FakeHooks hooks = new FakeHooks();
+        hooks.filter = new PiiMaskingFilter();
+        EchoModel builtIn = new EchoModel("Talep [AD", "_1]", "'i", "n; adres [ADRES_1]'d", "e.");
+        hooks.models.put("builtin-chat", builtIn);
+        RoutedChatModel route = new RoutedChatModel(hooks, ModelTask.ANSWER, null,
+                List.of(new RoutedChatModel.Candidate(null, "builtin-chat", true)), "team-a", "acct");
+
+        String answer = String.join("", route.stream(new Prompt(new UserMessage(
+                        "Sn. Ayşe Yılmaz'ın adresi Kızılay Mah. Atatürk Bulvarı No:45 Çankaya/Ankara.")))
+                .map(r -> r.getResult().getOutput().getText()).collectList().block());
+
+        assertThat(builtIn.sent).singleElement().satisfies(sent -> assertThat(sent)
+                .doesNotContain("Ayşe", "Yılmaz", "Kızılay", "Çankaya").contains("Sn. [AD_1]'ın adresi [ADRES_1]."));
+        assertThat(answer).isEqualTo("Talep Ayşe Yılmaz'ın; adres Kızılay Mah. Atatürk Bulvarı No:45 "
+                + "Çankaya/Ankara'da.");
+        assertThat(hooks.sent.getFirst()).as("egress categories recorded").isNotEmpty();
+        assertThat(hooks.filters).singleElement().satisfies(f -> assertThat(f.masked())
+                .containsExactlyInAnyOrderEntriesOf(Map.of("AD", 1, "ADRES", 1)));
+    }
+
     @Test
     void call_withMasking_onALocalModel_sendsThePromptUnchanged_andRecordsNoFilter() {
         FakeHooks hooks = new FakeHooks();

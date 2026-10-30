@@ -1,0 +1,31 @@
+# Name-shaped phrases that are never masked (ADR-0065): historical and public figures whose names stand for
+# places, institutions, laws or awards in corporate text, and fixed terms that look like a name. One per line.
+# Licence: the project's own (Verso). Matched token by token, case-insensitively, before any name rule.
+Mustafa Kemal Atatürk
+Mustafa Kemal
+Kemal Atatürk
+Gazi Mustafa Kemal
+Atatürk
+İsmet İnönü
+Fatih Sultan Mehmet
+Yavuz Sultan Selim
+Kanuni Sultan Süleyman
+Mimar Sinan
+Yunus Emre
+Hacı Bektaş Veli
+Mehmet Akif Ersoy
+Ahmet Yesevi
+Kadir Has
+Celal Bayar
+Adnan Menderes
+Turgut Özal
+Süleyman Demirel
+Bülent Ecevit
+Necmettin Erbakan
+Nazım Hikmet
+Aziz Sancar
+Cahit Arf
+Barış Manço
+Demir Çelik
+Can Sağlığı
+Deniz Kuvvetleri

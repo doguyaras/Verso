@@ -153,6 +153,56 @@ class ModelGatewayTest {
         assertThat(usage.getValue().maskedCounts()).isEmpty();
     }
 
+    private static final String NAMED_PROMPT = "Başvuru sahibi Sn. Ayşe Yılmaz, adres: Kızılay Mah. Atatürk Bulvarı "
+            + "No:45 D:7 Çankaya/Ankara. Ayşe Yılmaz'ın yöneticisi Mehmet Öztürk, TC 10000000146. Hacettepe "
+            + "Üniversitesi ve 4857 sayılı İş Kanunu kapsamında, Ankara ofisinde.";
+
+    /**
+     * ADR-0065 and the ADR-0059 review: in cloud mode the built-in model is Anthropic or OpenAI, and it is the route
+     * when nothing is routed (or the database cannot be read). Its prompt is masked like an external connection's:
+     * no raw name, address or TCKN; the answer gets them back; the usage row says so.
+     */
+    @Test
+    void cloudMode_builtInModel_isMasked_namesAndAddressesToo_andRecordedAsExternal() {
+        when(repository.piiMasking()).thenReturn(true);
+        RoutedChatModelTest.EchoModel builtInClient = new RoutedChatModelTest.EchoModel(
+                "[AD_1]'in talebi [AD_2]'e iletildi; adres [ADRES_1]'de.");
+        ModelGateway gateway = gatewayWith(Map.of("builtin-chat", builtInClient));
+        org.mockito.ArgumentCaptor<ModelGatewayRepository.Usage> usage =
+                org.mockito.ArgumentCaptor.forClass(ModelGatewayRepository.Usage.class);
+
+        RoutedChatModel route = (RoutedChatModel) gateway.route(ModelTask.ANSWER, null);
+        assertThat(route.candidates()).singleElement().satisfies(c -> {
+            assertThat(c.connection()).isNull();
+            assertThat(c.external()).isTrue();
+        });
+        String answer = route.call(new org.springframework.ai.chat.prompt.Prompt(
+                new org.springframework.ai.chat.messages.UserMessage(NAMED_PROMPT))).getResult().getOutput().getText();
+
+        String sent = builtInClient.sent.getFirst();
+        assertThat(sent).doesNotContain("Ayşe", "Yılmaz", "Öztürk", "Kızılay", "Atatürk Bulvarı", "Çankaya",
+                "10000000146");
+        assertThat(sent).contains("Sn. [AD_1], adres: [ADRES_1]. [AD_1]'ın yöneticisi [AD_2], TC [TCKN_1]",
+                "Hacettepe Üniversitesi ve 4857 sayılı İş Kanunu kapsamında, Ankara ofisinde.");
+        assertThat(answer).isEqualTo("Ayşe Yılmaz'ın talebi Mehmet Öztürk'e iletildi; adres Kızılay Mah. Atatürk "
+                + "Bulvarı No:45 D:7 Çankaya/Ankara'da.");
+        verify(repository).insertUsage(usage.capture());
+        assertThat(usage.getValue().external()).isTrue();
+        assertThat(usage.getValue().connectionId()).isNull();
+        assertThat(usage.getValue().filterPolicy()).isEqualTo("PII_PSEUDONYMISE");
+        assertThat(usage.getValue().sentCategories()).containsExactly("SYSTEM_INSTRUCTIONS", "QUESTION", "PASSAGES");
+        assertThat(usage.getValue().maskedCounts()).containsExactlyInAnyOrderEntriesOf(Map.of("AD", 2, "ADRES", 1,
+                "TCKN", 1));
+        assertThat(usage.getValue().toString()).doesNotContain("Ayşe", "Kızılay");
+    }
+
+    @Test
+    void localMode_builtInModel_isNotExternal_andNeverFiltered() {
+        RoutedChatModel route = (RoutedChatModel) gateway(AiMode.LOCAL).route(ModelTask.ANSWER, null);
+
+        assertThat(route.candidates()).singleElement().satisfies(c -> assertThat(c.external()).isFalse());
+    }
+
     private void routes(ModelRouteEntry... entries) {
         when(repository.routes()).thenReturn(Map.of(ModelTask.ANSWER, List.of(entries)));
     }

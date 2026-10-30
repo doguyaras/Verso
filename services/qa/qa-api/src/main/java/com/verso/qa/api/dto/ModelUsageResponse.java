@@ -12,7 +12,8 @@ import java.util.UUID;
  *
  * <p>{@code maskedValues} and {@code masked} (ADR-0059, added later): how many values the personal data filter replaced
  * in the month's cloud calls, in total and by type ({@code TCKN}, {@code VKN}, {@code IBAN}, {@code CARD},
- * {@code EMAIL}, {@code PHONE}, {@code PLATE}); distinct values per call, summed over calls. Counts only.
+ * {@code EMAIL}, {@code PHONE}, {@code PLATE}, and since ADR-0065 {@code AD} for person names and {@code ADRES} for
+ * postal addresses); distinct values per call, summed over calls. Counts only.
  */
 public record ModelUsageResponse(String month, long requests, long promptTokens, long completionTokens,
                                  BigDecimal cost, List<Row> rows, List<Team> teams, int hiddenTeams, int minTeamUsers,

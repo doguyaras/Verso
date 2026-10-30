@@ -1,0 +1,209 @@
+# ADR-0065 labelled set: Turkish corporate sentences (HR, procurement, IT) with person names and postal addresses.
+# All people and addresses are synthetic. One sentence per line; '#' starts a comment.
+# {AD:...} marks a person name, {ADRES:...} a postal address. Honorifics, Bey/Hanım and an apostrophe suffix stay
+# outside the mark. Everything unmarked must stay readable: institutions, laws, products, places used as places,
+# sentence-initial capitals and given names that are ordinary words.
+#
+# --- HR: names
+{AD:Ayşe Yılmaz} yıllık izin talebini 3 Kasım için sisteme girdi.
+{AD:Ayşe Yılmaz}'ın izin bakiyesi 14 gündür.
+Bordro düzeltmesi {AD:Mehmet Öztürk} tarafından onaylandı.
+Sn. {AD:Mehmet Öztürk}, performans değerlendirme formunuz ektedir.
+Av. {AD:Zeynep Kaya} kıdem tazminatı hesabını inceledi.
+İşe alım mülakatına {AD:Emre Demir} ve {AD:Selin Arslan} katılacak.
+{AD:Fatma Çelik} doğum izninden 1 Aralık'ta dönüyor.
+Yeni başlayan {AD:Burak Şahin} için oryantasyon programı hazırlandı.
+{AD:Hatice Koç}'un fazla mesai ücreti bu ay ödenecek.
+Dr. {AD:Kemal Aydın} işyeri hekimi olarak periyodik muayeneleri yapacak.
+{AD:Elif} Hanım'dan izin formunu imzalamasını rica ettim.
+{AD:Hakan} Bey toplantıya geç katılacağını bildirdi.
+Ekip lideri {AD:Murat Kılıç}'a göre vardiya planı değişmeyecek.
+Prof. Dr. {AD:Ali Rıza Tekin} eğitim semineri verecek.
+{AD:Zeynep}'in eğitim talebi bütçeye uygun bulundu.
+Lütfen {AD:Mustafa Yıldız}'ı CC'ye ekleyin.
+{AD:AYŞE YILMAZ} imzalı sözleşme arşive kaldırıldı.
+İnsan kaynakları sorumlusu {AD:Gamze Polat} işten ayrılma mülakatını yaptı.
+{AD:Hüseyin Kara} ile {AD:Merve Aksoy} aynı projede görevlendirildi.
+Sayın {AD:Osman Erdoğan}, işe giriş evraklarınız eksiktir.
+{AD:Büşra Güler}'e ait özlük dosyası güncellendi.
+Uzm. {AD:Derya Kurt} psikolojik danışmanlık seanslarını yürütüyor.
+{AD:Kerem Avcı} bu çeyrekte satış hedefini aştı.
+Toplantı notlarını {AD:Tuğba Sarı} hazırlayacak.
+{AD:Can Yücel}'in yerine vekâleten {AD:Cem Uçar} bakacak.
+{AD:Deniz Aslan} şirketimize Ocak ayında katıldı.
+{AD:Ahmet} ve {AD:Mehmet} vardiya değişimi talep etti.
+İzin onayı için {AD:Esra Taş} Hanım'a başvurun.
+{AD:Yılmaz} Bey'in talebi değerlendirmeye alındı.
+Müdür {AD:Serkan Bulut} yeni organizasyon şemasını paylaştı.
+{AD:Hande Ünal}'ın maaş artışı Mart bordrosuna yansıyacak.
+Stajyer {AD:Berkay Keskin} için bilgisayar tahsis edildi.
+{AD:Mehmet Ali Özkan} emeklilik başvurusunu yaptı.
+{AD:Kübra Doğan}'ın raporu ekte gönderilmiştir.
+{AD:ayşe yılmaz} için izin hakkı hesabı yapılabilir mi?
+{AD:ahmet kaya} adına açılan talep kapatıldı.
+{AD:Neslihan Bozkurt} ile {AD:Okan Turan} performans görüşmesi planlandı.
+# --- HR: hard negatives
+Yıllık izin süresi 4857 sayılı İş Kanunu'na göre belirlenir.
+Kişisel Verilerin Korunması Kanunu kapsamında açık rıza alınmalıdır.
+Sosyal Güvenlik Kurumu bildirgesi ayın 26'sına kadar verilir.
+Hacettepe Üniversitesi ile staj protokolü imzalandı.
+Mehmet Akif Ersoy Üniversitesi mezunları için kontenjan ayrıldı.
+Kadir Has Üniversitesi kariyer fuarına katılacağız.
+Bahar Dönemi eğitim takvimi yayımlandı.
+Umut Vakfı ile kurumsal bağış anlaşması yapıldı.
+Deniz Kuvvetleri Komutanlığı ihalesine teklif verilmeyecek.
+Metin alanına en fazla 500 karakter girilebilir.
+Emin değilseniz İK birimine danışın.
+Güven ekranında açık bağlantılar listelenir.
+Kurban Bayramı tatili dört buçuk gündür.
+Ramazan Bayramı öncesi ikramiye ödenir.
+Veli izni gerektiren staj başvuruları ayrıca değerlendirilir.
+Türk Borçlar Kanunu madde 420 uyarınca rekabet yasağı uygulanır.
+Ankara ofisindeki çalışanlar Cuma günü uzaktan çalışabilir.
+İzmir şubesi için yeni personel alımı planlanıyor.
+Mustafa Kemal Atatürk anma töreni 10 Kasım'da yapılacak.
+Fatih Sultan Mehmet Köprüsü trafiği nedeniyle mesai esnek başlayacak.
+Atatürk Caddesi'ndeki yol çalışması servis güzergâhını etkiliyor.
+Genel Müdür Yardımcısı onay vermeden ilan yayımlanmaz.
+Sağlık Bakanlığı genelgesi tüm şubelere iletildi.
+Yönetim Kurulu kararı ile prim sistemi değişti.
+Barış Pınarı ödeneği bu yıl kaldırıldı.
+Yıldız Teknik Üniversitesi ile ortak sertifika programı başlıyor.
+Kariyer Günleri etkinliği Mayıs ayında yapılacak.
+İnsan Kaynakları Yönetmeliği güncellendi.
+Mesai Çizelgesi her Pazartesi yayımlanır.
+Asgari Ücret Tespit Komisyonu kararı açıklandı.
+Dr. Sadi Konuk Eğitim ve Araştırma Hastanesi ile anlaşma yenilendi.
+Ahmet Yesevi Üniversitesi mezunu adaylar başvurabilir.
+# --- HR: addresses
+Çalışanın ikamet adresi {ADRES:Kızılay Mah. Atatürk Bulvarı No:45 D:7 Çankaya/Ankara} olarak güncellendi.
+Tebligat {ADRES:Bağdat Cad. No:112 Kat:3 Kadıköy/İstanbul} adresine gönderilecek.
+Yeni adres: {ADRES:Cumhuriyet Mahallesi 1453. Sokak No:8 Daire 4 Bornova/İzmir}.
+{ADRES:Gazi Mustafa Kemal Bulvarı No:10/3 Çankaya/Ankara}'daki ofise taşınıyoruz.
+Personel servisi {ADRES:Yenişehir Mah. Lale Sok. No:3 Pendik İstanbul} önünden geçecek.
+Kargo {ADRES:Esentepe Mah. Büyükdere Cad. No:199 Şişli/İstanbul 34394} adresine teslim edildi.
+Adres değişikliği: {ADRES:Atakent Mah. 221. Sokak No:5 K:2 D:6 Küçükçekmece/İstanbul}.
+{ADRES:Kültür Mah. Cumhuriyet Bulvarı No:28 Konak/İzmir} adresli şubemiz kapanıyor.
+{ADRES:Yeşilyurt Mah. Gül Sokak No:14 Daire:2 Melikgazi/Kayseri}'deki eve taşındı.
+Çalışanın adresi {ADRES:Barbaros Mah. Akasya Sitesi B Blok No:9 Ataşehir/İstanbul} olarak görünüyor.
+# --- procurement: names
+Satın alma sorumlusu {AD:Gökhan Aktaş} üç teklif topladı.
+Teklif değerlendirmesi {AD:Sevim Kaplan} ve {AD:Tolga Coşkun} tarafından yapıldı.
+Tedarikçi temsilcisi {AD:Volkan Şimşek} Bey ile toplantı yarın.
+{AD:Leyla Yavuz}'un hazırladığı şartname onaya gönderildi.
+Sipariş onayı için {AD:Erkan Özdemir}'in imzası gerekiyor.
+{AD:Sibel Çakır} ihale komisyonu başkanı olarak atandı.
+Sn. {AD:Kaya} sözleşme taslağını inceledi.
+{AD:Cengiz Yalçın} fiyat farkı talebini reddetti.
+Lojistik firmasından {AD:Engin Ateş} teslimat tarihini teyit etti.
+{AD:Nur Bayrak} ile {AD:Ozan Karaca} numune kontrolünü yaptı.
+Muhasebeden {AD:Pınar Ekinci} ödeme planını paylaştı.
+{AD:Serdar Uysal}'dan gelen e-postada yeni fiyat listesi var.
+Tedarikçi denetimine {AD:Ümit Çiftçi} ve {AD:İlker Duman} katıldı.
+Alım talebi {AD:Melike Aydoğan} tarafından oluşturuldu.
+{AD:Rabia Sönmez} kalite kontrol raporunu yükledi.
+Bu siparişi {AD:Halil Karakaya} takip ediyor.
+{AD:Orhan Tunç}'un onayladığı bütçe aşıldı.
+Fiyat teklifini {AD:Nihat} Bey'e iletin.
+{AD:Selim Gündüz} yeni tedarikçi kaydını açtı.
+# --- procurement: hard negatives
+Ahmet Yılmaz İnşaat Ltd. Şti. ile çerçeve sözleşme imzalandı.
+Koç Holding iştiraki ile tedarik görüşmesi yapıldı.
+Sabancı Holding grubundan teklif alınmadı.
+Kamu İhale Kanunu'nun 22. maddesi doğrudan temini düzenler.
+Türk Ticaret Kanunu uyarınca ticari defterler saklanır.
+Arçelik ve Vestel beyaz eşya tekliflerini sundu.
+Türk Telekom faturası için ödeme talimatı verildi.
+Demir Çelik sektöründeki fiyat artışı maliyeti etkiledi.
+Altın fiyatlarındaki dalgalanma kur riskini artırdı.
+Güneş Enerjisi panelleri için keşif yapıldı.
+Kocaeli deposundan sevkiyat yarın başlayacak.
+Ankara ve Konya bayilerine yeni fiyat listesi gönderildi.
+Mersin Limanı'nda gümrük işlemleri sürüyor.
+Antalya Havalimanı kargo terminali kapasitesi yetersiz.
+Yeni tedarikçi Doğan Lojistik A.Ş. ile anlaşıldı.
+Satın Alma Prosedürü madde 7'ye göre üç teklif zorunludur.
+Bu ürünün garanti süresi iki yıldır.
+Umut Kaplan Lojistik firmasıyla nakliye sözleşmesi yapıldı.
+Ziraat Bankası teminat mektubu düzenledi.
+Hilal Gıda San. ve Tic. A.Ş. numune gönderdi.
+Ege Bölgesi bayileri toplantısı İzmir'de yapılacak.
+Kartal deposunda stok sayımı yapılacak.
+Levent ofisine yeni yazıcılar alındı.
+Selçuk Üniversitesi laboratuvarı için cihaz alımı planlandı.
+# --- procurement: addresses
+Teslimat adresi: {ADRES:İkitelli OSB Mah. Atatürk Bulvarı No:30 Başakşehir/İstanbul}.
+Malzemeler {ADRES:Organize Sanayi Bölgesi 3. Cadde No:14 Nilüfer/Bursa}'ya sevk edilecek.
+Tedarikçinin adresi {ADRES:Ostim Mah. 1203. Sokak No:7 Yenimahalle/Ankara 06374} olarak kayıtlı.
+Fatura adresi {ADRES:Merkez Mah. Fevzi Çakmak Cad. No:21 Kat:4 Bağcılar/İstanbul}.
+Numuneler {ADRES:Alsancak Mah. Kıbrıs Şehitleri Cad. No:56 Konak/İzmir} adresine bırakıldı.
+Depo {ADRES:Gebze OSB Mah. 600. Sokak No:602 Gebze/Kocaeli} adresine taşındı.
+Ürünler {ADRES:Akdeniz Mah. Gazi Bulvarı No:17 D:3 Konak/İzmir}'den teslim alınacak.
+İade adresi {ADRES:Hürriyet Mah. Okul Sok. No:2 Muratpaşa/Antalya}.
+# --- IT: names
+Parola sıfırlama talebi {AD:Onur Erol} için açıldı.
+{AD:Sinan Demirci}'nin VPN erişimi kaldırıldı.
+Sunucu bakımını {AD:Yusuf Turgut} gece yapacak.
+{AD:İrem Bilgin} Jira'da yeni bir hata kaydı açtı.
+Yetki talebi {AD:Furkan Yazıcı} tarafından onaylandı.
+{AD:Tuba Oral}'ın dizüstü bilgisayarı değiştirildi.
+Ağ kesintisini {AD:Barış Yiğit} raporladı.
+{AD:Ali Kurtuluş} Active Directory hesabının kilidini açtı.
+Yazılım lisansı {AD:Gizem Aktürk} adına kaydedildi.
+{AD:Hasan Bayram} yedekleme işini yeniden başlattı.
+Destek çağrısı {AD:Melek Uslu}'ya atandı.
+Uzm. {AD:Tayfun Er} güvenlik denetimini tamamladı.
+{AD:Mert Sezer} ve {AD:Ece Akın} veri tabanı geçişini yürütüyor.
+Sistem yöneticisi {AD:Kenan Güven} şifre politikasını güncelledi.
+{AD:Batuhan Kılınç}'ın erişim kartı iptal edildi.
+Helpdesk kaydı {AD:Özge Tekin} tarafından kapatıldı.
+{AD:Levent Kocaman} sunucu odasına giriş izni istedi.
+Microsoft Teams toplantısını {AD:Seda Ayhan} düzenledi.
+{AD:Hakan Çetin} SAP modülündeki hatayı çözdü.
+Güvenlik ihlali {AD:Caner Bilir} tarafından tespit edildi.
+{AD:Elif Su Kara} yeni çalışan hesabını açtı.
+# --- IT: hard negatives
+Windows Server 2022 güncellemesi hafta sonu kurulacak.
+Microsoft Teams ve Outlook entegrasyonu tamamlandı.
+SAP Ariba üzerinden satın alma talebi açılır.
+Oracle Database lisansları yenilendi.
+Active Directory grup politikası değiştirildi.
+Jira Service Management kurulumu bitti.
+Logo Tiger ERP sürüm yükseltmesi planlandı.
+Metin Madenciliği modülü pilot olarak açıldı.
+Can Sağlığı Prosedürü acil durum ekiplerine dağıtıldı.
+Bilgi Güvenliği Politikası her yıl gözden geçirilir.
+ISO 27001 denetimi Ekim ayında yapılacak.
+Veri Sızıntısı Önleme sistemi devreye alındı.
+Bulut Yedekleme Hizmeti sözleşmesi uzatıldı.
+Umut verici sonuçlar alındı, test ortamı stabil.
+Deniz feneri ikonlu uygulama kaldırıldı.
+Fatih ilçesindeki veri merkezi bakıma alınacak.
+Ankara veri merkezinde elektrik kesintisi yaşandı.
+İstanbul bölgesindeki kullanıcılar gecikme yaşıyor.
+Kartal sunucu odasında klima arızası var.
+Turkcell hat aboneliği kurumsal pakete taşındı.
+Türkiye Cumhuriyet Merkez Bankası kur verisi API'si değişti.
+Yeni Sürüm Notları portalda yayımlandı.
+Şifre Değiştirme Kılavuzu intranete eklendi.
+Erdem ve dürüstlük ilkeleri davranış kurallarında yer alır.
+Aydın şubesinin internet hattı yenilendi.
+# --- IT: addresses
+Veri merkezi adresi {ADRES:Maslak Mah. Eski Büyükdere Cad. No:9 Sarıyer/İstanbul}.
+Donanım {ADRES:Teknopark Cad. No:4 K:2 Pendik/İstanbul} adresinden toplanacak.
+Yedek ofis {ADRES:Üniversiteler Mah. 1606. Cadde No:4 Çankaya/Ankara} adresindedir.
+Arızalı cihaz {ADRES:Fatih Mah. Gül Sok. No:3 Fatih/İstanbul}'a gönderildi.
+Kurulum ekibi {ADRES:Cumhuriyet Mah. Talatpaşa Bulvarı No:18 Merkez/Kahramanmaraş}'a gidecek.
+# --- mixed: names and addresses together
+{AD:Ayşe Yılmaz}'ın yeni adresi {ADRES:Kızılay Mah. Atatürk Bulvarı No:45 D:7 Çankaya/Ankara}'dır.
+Sn. {AD:Mehmet Öztürk}, {ADRES:Bağdat Cad. No:112 Kat:3 Kadıköy/İstanbul} adresindeki teslimat tamamlandı.
+{AD:Zeynep Kaya} ve {AD:Ahmet Kaya} aynı adreste oturuyor: {ADRES:Gül Sok. No:3 Muratpaşa/Antalya}.
+{AD:Emre Demir} için kargo {ADRES:Ostim Mah. 1203. Sokak No:7 Yenimahalle/Ankara} adresine gönderildi.
+Kurye {AD:Kader Doğan} paketi {ADRES:Alsancak Mah. Kıbrıs Şehitleri Cad. No:56 Konak/İzmir}'e bıraktı.
+# --- known recall limits (labelled as names, expected to be missed or partly found)
+{AD:Deniz} bugün izinli.
+{AD:Umut} toplantıya katılamayacak.
+Bu dosyayı {AD:Bahar}'a gönderin.
+{AD:Ayşe Karabıyıklı} işe başladı.
+{AD:Tekin Ersoylu} sözleşmeyi imzaladı.
+{ADRES:No:12 D:5 Çankaya/Ankara} adresine gönderin.

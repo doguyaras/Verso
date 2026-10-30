@@ -132,8 +132,8 @@ export function routeEntries(values, builtInModel) {
 }
 
 /** The value dashboard's model card: totals, the top rows and the budgets; teams only as the server sends them. */
-// ADR-0059: the masked-value types the server reports, in the words the admin reads.
-const MASKED_LABELS = { TCKN: 'TCKN', VKN: 'VKN', IBAN: 'IBAN', CARD: 'kart', EMAIL: 'e-posta', PHONE: 'telefon', PLATE: 'plaka' };
+// ADR-0059, ADR-0065: the masked-value types the server reports, in the words the admin reads.
+const MASKED_LABELS = { TCKN: 'TCKN', VKN: 'VKN', IBAN: 'IBAN', CARD: 'kart', EMAIL: 'e-posta', PHONE: 'telefon', PLATE: 'plaka', AD: 'isim', ADRES: 'adres' };
 
 /** "Bu ay N değer maskelendi (TCKN 3, IBAN 1)": counts only; null when the server sent none (older server). */
 export function maskedNote(usage) {

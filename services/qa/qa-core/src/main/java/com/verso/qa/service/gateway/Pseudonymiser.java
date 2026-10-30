@@ -20,25 +20,40 @@ import java.util.regex.Pattern;
 final class Pseudonymiser {
 
     /** A complete placeholder. Six digits are far more than one prompt can need. */
-    static final Pattern PLACEHOLDER = Pattern.compile("\\[(IBAN|CARD|EMAIL|TCKN|PHONE|VKN|PLATE)_(\\d{1,6})]");
-    /** The longest placeholder, "[EMAIL_999999]": a held-back tail is never longer. */
+    static final Pattern PLACEHOLDER = Pattern.compile("\\[(IBAN|CARD|EMAIL|TCKN|PHONE|VKN|PLATE|ADRES|AD)_(\\d{1,6})]");
+    /** The longest placeholder, "[EMAIL_999999]" or "[ADRES_999999]". */
     private static final int MAX_PLACEHOLDER = 14;
+    /** The longest suffix held after a name or address placeholder in a stream ("[AD_1]'ndakilerden"). */
+    private static final int MAX_SUFFIX = 16;
+    /** A name or address placeholder at the end of a stream chunk, maybe with the start of its suffix. */
+    private static final Pattern OPEN_SUFFIX = Pattern.compile("(?:AD|ADRES)_\\d{1,6}](?:['’]\\p{L}{0,16})?");
+    /** The suffix after a restored name or address: an apostrophe and letters. */
+    private static final Pattern SUFFIX = Pattern.compile("(['’])(\\p{L}{1,16})(?!\\p{L})");
 
     private final Map<String, String> placeholderOfValue = new HashMap<>();
     private final Map<String, String> valueOfPlaceholder = new HashMap<>();
     private final EnumMap<TurkishPii.Type, Integer> next = new EnumMap<>(TurkishPii.Type.class);
+    /** Placeholder-shaped text already in the prompt: never handed out, never restored. */
+    private final java.util.Set<String> reserved = new java.util.HashSet<>();
 
     /**
      * Placeholder-shaped text already in the prompt (a document quoting "[TCKN_1]") must not be turned into a value on
-     * the way back: numbering starts after the highest such number. Call it for every text before masking any.
+     * the way back: those exact placeholders are never handed out. Numbering skips them instead of starting after the
+     * highest one, so a prompt quoting "[TCKN_999999]" cannot push the numbers past what {@link #PLACEHOLDER} and the
+     * stream hold know (ADR-0059 review). Call it for every text before masking any.
      */
     void reserve(String text) {
         if (text == null) return;
         Matcher m = PLACEHOLDER.matcher(text);
-        while (m.find()) {
-            TurkishPii.Type type = TurkishPii.Type.valueOf(m.group(1));
-            int used = Integer.parseInt(m.group(2));
-            next.merge(type, used, Math::max);
+        while (m.find()) reserved.add(m.group());
+    }
+
+    private String nextPlaceholder(TurkishPii.Type type) {
+        while (true) {
+            int number = next.merge(type, 1, Integer::sum);
+            // At most one skipped number per reserved placeholder: the numbers stay below the prompt's length.
+            String p = "[" + type + "_" + number + "]";
+            if (!reserved.contains(p)) return p;
         }
     }
 
@@ -52,8 +67,7 @@ final class Pseudonymiser {
             out.append(text, at, m.start());
             String original = text.substring(m.start(), m.end());
             String placeholder = placeholderOfValue.computeIfAbsent(m.type() + ":" + m.key(), key -> {
-                int number = next.merge(m.type(), 1, Integer::sum);
-                String p = "[" + m.type() + "_" + number + "]";
+                String p = nextPlaceholder(m.type());
                 // The first spelling seen is the one the answer gets back.
                 valueOfPlaceholder.put(p, original);
                 return p;
@@ -65,16 +79,32 @@ final class Pseudonymiser {
         return out.toString();
     }
 
-    /** Placeholders of this call become their values again; any other bracketed text stays as it is. */
+    /**
+     * Placeholders of this call become their values again; any other bracketed text stays as it is. A case suffix
+     * after a name or address ("[AD_1]'in") is fitted to the value ("Yılmaz'ın", {@link TurkishSuffix}).
+     */
     String restore(String text) {
         if (text == null || text.isEmpty() || valueOfPlaceholder.isEmpty() || text.indexOf('[') < 0) return text;
         Matcher m = PLACEHOLDER.matcher(text);
         StringBuilder out = new StringBuilder(text.length());
-        while (m.find()) {
+        int at = 0;
+        while (m.find(at)) {
+            out.append(text, at, m.start());
             String value = valueOfPlaceholder.get(m.group());
-            m.appendReplacement(out, Matcher.quoteReplacement(value == null ? m.group() : value));
+            at = m.end();
+            if (value == null) {
+                out.append(m.group());
+                continue;
+            }
+            out.append(value);
+            boolean nameOrAddress = m.group(1).equals("AD") || m.group(1).equals("ADRES");
+            Matcher suffix = SUFFIX.matcher(text).region(at, text.length());
+            if (nameOrAddress && suffix.lookingAt()) {
+                out.append(suffix.group(1)).append(TurkishSuffix.fit(value, suffix.group(2)));
+                at = suffix.end();
+            }
         }
-        m.appendTail(out);
+        out.append(text, at, text.length());
         return out.toString();
     }
 
@@ -121,17 +151,23 @@ final class Pseudonymiser {
         }
     }
 
-    /** Where the tail that might still grow into a placeholder starts; the length when there is none. */
+    /**
+     * Where the tail that might still grow into a placeholder starts; the length when there is none. A complete name
+     * or address placeholder at the very end is held too, with the letters of its suffix so far: the next chunk may
+     * carry the rest of the suffix ("[AD_1]" + "'in"), which is fitted only when seen whole.
+     */
     static int holdFrom(CharSequence text) {
         int open = -1;
-        for (int i = text.length() - 1; i >= 0 && i >= text.length() - MAX_PLACEHOLDER; i--) {
+        for (int i = text.length() - 1; i >= 0 && i >= text.length() - MAX_PLACEHOLDER - 1 - MAX_SUFFIX; i--) {
             if (text.charAt(i) == '[') {
                 open = i;
                 break;
             }
         }
         if (open < 0) return text.length();
-        return couldBecomePlaceholder(text.subSequence(open + 1, text.length()).toString()) ? open : text.length();
+        String tail = text.subSequence(open + 1, text.length()).toString();
+        if (tail.length() < MAX_PLACEHOLDER && couldBecomePlaceholder(tail)) return open;
+        return OPEN_SUFFIX.matcher(tail).matches() ? open : text.length();
     }
 
     /** Whether "[" + {@code tail} is the beginning of a placeholder (without its closing bracket). */
