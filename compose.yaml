@@ -53,6 +53,8 @@ x-db-env: &db-env
   OIDC_ENTRA_MCP_AUDIENCES: ${OIDC_ENTRA_MCP_AUDIENCES:-}
   # Embeddings from the local Ollama (ADR-0006, ADR-0011); the model name is the one ollama-pull fetched.
   OLLAMA_BASE_URL: http://ollama:11434
+  # The local chat model has an Ollama of its own (ADR-0062): a stuck generation cannot stop the embeddings.
+  OLLAMA_CHAT_BASE_URL: http://ollama-chat:11434
   OLLAMA_EMBEDDING_MODEL: &embedding-model bge-m3:567m
   # The local chat model (ADR-0006). VERSO_CHAT_MODEL and its digest can name another one (CI uses a small model).
   OLLAMA_CHAT_MODEL: ${VERSO_CHAT_MODEL:-gemma4:e2b}
@@ -290,30 +292,33 @@ services:
   # Local embedding model server (ADR-0006, ADR-0011). Only on the internal "models" network: no route to the internet
   # (llm-rules 8.2) and nobody but the application can reach it. It never pulls (ollama-pull did) and reads the models
   # read-only: the verified blobs and manifests cannot be changed from here. Ollama 0.40 starts on a read-only volume
-  # only when the store is complete (manifests-v2 populated by ollama-pull; ADR-0033).
+  # only when the store is complete (manifests-v2 populated by ollama-pull; ADR-0033). The embedding model only
+  # (ADR-0062): the chat model runs in "ollama-chat", so a stuck chat generation, its memory growth or its OOM kill
+  # (2026-10-29: 4 minutes without one embedding) stays in that container.
   ollama:
     <<: *hardening
     image: *ollama-image
     restart: always
-    mem_limit: ${OLLAMA_MEM_LIMIT:-6g}
+    # bge-m3 (1,16 GB) with its context and page cache; the chat model is no longer counted here.
+    mem_limit: ${OLLAMA_MEM_LIMIT:-2g}
     cpus: ${OLLAMA_CPUS:-2}
     pids_limit: 512
     networks: [models]
-    # Warms both models after every start (deploy/ollama/serve.sh): the first question must not pay the model load.
+    # Warms the model after every start (deploy/ollama/serve.sh): the first question must not pay the model load.
     entrypoint: ["bash", "/opt/verso/serve.sh"]
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       # No ollama.com cloud models or remotes (llm-rules 1.1, 8.2).
       OLLAMA_NO_CLOUD: "true"
-      # Both models stay loaded for good: after 30 min idle the first question paid a 2-60 s reload and the 10 s
-      # question-embedding budget failed (docs/capacity.md). The memory limit already counts both models loaded.
+      # The model stays loaded for good: after 30 min idle the first question paid a 2-60 s reload and the 10 s
+      # question-embedding budget failed (docs/capacity.md).
       OLLAMA_KEEP_ALIVE: "-1"
-      OLLAMA_MAX_LOADED_MODELS: "2"
-      # Requests one model answers at once (ADR-0051): 1 by default, one answer at a time; a GPU host can raise it with
-      # VERSO_QA_CHAT_CONCURRENCY. Every extra slot reserves KV cache (VRAM or RAM) for the chat model's context.
+      # One model: a request for any other (a chat model by mistake) cannot evict the embedding model.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      # Requests the model answers at once (ADR-0051): the same setting as the chat server, as before the split.
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
       OLLAMA_WARM_EMBEDDING: bge-m3:567m
-      OLLAMA_WARM_CHAT: ${VERSO_CHAT_MODEL:-gemma4:e2b}
+      OLLAMA_WARM_CHAT: none
     volumes:
       - ollama-models:/root/.ollama:ro
       - ./deploy/ollama/serve.sh:/opt/verso/serve.sh:ro
@@ -323,8 +328,52 @@ services:
       ollama-pull:
         condition: service_completed_successfully
     healthcheck:
-      # Healthy means warm: both models are in memory, not only on disk.
-      test: ["CMD-SHELL", "ollama ps | grep -q '^bge-m3:567m ' && ollama ps | grep -q '^${VERSO_CHAT_MODEL:-gemma4:e2b} '"]
+      # Healthy means warm: the model is in memory, not only on disk.
+      test: ["CMD-SHELL", "ollama ps | grep -q '^bge-m3:567m '"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+  # Local chat model server (ADR-0006, ADR-0062): the same image, network, read-only model volume and hardening as
+  # "ollama", a process and a memory limit of its own. Nothing it does (a stuck generation, KV and prompt-cache growth,
+  # an OOM kill of its runner) reaches the embedding server. deploy/compose.llamacpp.yaml replaces it with llama-server.
+  ollama-chat:
+    <<: *hardening
+    image: *ollama-image
+    restart: always
+    # gemma4:e2b (3,5 GB) with its KV cache and runtime; the runner's prompt cache is off below, so this bound holds.
+    mem_limit: ${OLLAMA_CHAT_MEM_LIMIT:-5g}
+    cpus: ${OLLAMA_CPUS:-2}
+    pids_limit: 512
+    networks: [models]
+    entrypoint: ["bash", "/opt/verso/serve.sh"]
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NO_CLOUD: "true"
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      # Requests one model answers at once (ADR-0051): 1 by default, one answer at a time; a GPU host can raise it with
+      # VERSO_QA_CHAT_CONCURRENCY. Every extra slot reserves KV cache (VRAM or RAM) for the chat model's context.
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
+      OLLAMA_WARM_EMBEDDING: none
+      OLLAMA_WARM_CHAT: ${VERSO_CHAT_MODEL:-gemma4:e2b}
+      # ADR-0062: Ollama starts llama.cpp's llama-server with this environment and passes neither setting, so the
+      # runner kept up to 8 GiB of prompt cache and 32 context checkpoints per slot in host RAM (gemma's sliding-window
+      # attention), above this container's limit; llama.cpp issues 21690, 22629, 24265. Every Verso prompt carries
+      # other passages, so the cache saves little; off, the memory stays bounded.
+      LLAMA_ARG_CACHE_RAM: "0"
+      LLAMA_ARG_CTX_CHECKPOINTS: "0"
+    volumes:
+      - ollama-models:/root/.ollama:ro
+      - ./deploy/ollama/serve.sh:/opt/verso/serve.sh:ro
+    tmpfs:
+      - /tmp:size=256m
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "ollama ps | grep -q '^${VERSO_CHAT_MODEL:-gemma4:e2b} '"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -757,7 +806,7 @@ secrets:
     file: ./secrets/SECRET_MODEL_GATEWAY_KEK
 
 networks:
-  # Application ↔ ollama only; internal: no gateway to the outside (llm-rules 1.1, 8.2; ADR-0011).
+  # Application ↔ the model servers (ollama, ollama-chat) only; internal: no gateway to the outside (llm-rules 1.1, 8.2; ADR-0011).
   models:
     internal: true
   # Application, database, IdP, backup and the edge proxy; internal as well (ADR-0013). "default" (with a gateway)

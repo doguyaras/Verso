@@ -20,6 +20,32 @@ tests:
           - exp_labels: {severity: page}
             exp_annotations: {summary: "A model (embedding or chat) fails and nothing succeeds.", runbook: docs/runbooks/model-unavailable.md}
 
+  # ADR-0062: the chat runner is stuck; one answer call cut every 90 s, nothing answered.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_chat_stalls_total{job="verso", phase="timeout"}'
+        values: '0+0.1667x80'
+      - series: 'verso_qa_questions_total{job="verso", outcome="answered"}'
+        values: '7x80'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ChatStalled
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations: {summary: "The local chat model stops answering; its calls are cut at the time bound.", runbook: docs/runbooks/model-unavailable.md}
+
+  # ADR-0062, normal: one slow question cut at the bound among answered ones does not page.
+  - interval: 15s
+    input_series:
+      - series: 'verso_qa_chat_stalls_total{job="verso", phase="first_token"}'
+        values: '0x20 1x60'
+      - series: 'verso_qa_questions_total{job="verso", outcome="answered"}'
+        values: '0+0.5x80'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ChatStalled
+        exp_alerts: []
+
   # Low traffic, model refuses at once: one question every 2 minutes, all failing.
   - interval: 15s
     input_series:

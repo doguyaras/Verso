@@ -78,6 +78,8 @@ class ConfigDriftTest {
             "verso.work.flyway.url",
             "verso.work.flyway.user",
             "spring.ai.ollama.base-url",
+            // The chat model's own Ollama (ADR-0062).
+            "verso.ai.ollama-chat-base-url",
             // The docling sidecar's switch and address (ADR-0032).
             "verso.document.docling.enabled",
             "verso.document.docling.base-url",

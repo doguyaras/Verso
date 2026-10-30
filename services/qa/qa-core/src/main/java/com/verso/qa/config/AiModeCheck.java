@@ -77,6 +77,11 @@ public final class AiModeCheck {
         // Documents and questions are embedded by Ollama in both modes: its address is checked in both (review F4).
         requireInternalIfLiteral(OLLAMA_BASE_URL, environment.getProperty(OLLAMA_BASE_URL, ""));
         String chat = environment.getProperty(CHAT_PROVIDER, "");
+        // ADR-0062: the Ollama chat model's own server is held to the same rule; empty means the embedding server.
+        String ollamaChat = environment.getProperty(OllamaChatIsolation.CHAT_BASE_URL, "");
+        if (chat.equals("ollama") && !ollamaChat.isBlank()) {
+            requireInternalIfLiteral(OllamaChatIsolation.CHAT_BASE_URL, ollamaChat.strip());
+        }
         switch (mode) {
             case LOCAL -> {
                 if (!LOCAL_CHAT_PROVIDERS.contains(chat)) {

@@ -181,6 +181,9 @@ verso:
     # The model setting of the active chat provider (spring.ai.ollama.chat.model, spring.ai.anthropic.chat.model, ...).
     chat-model: ${spring.ai.${spring.ai.model.chat}.chat.model}
     embedding-model: ${spring.ai.ollama.embedding.model}
+    # The Ollama chat model's own model server (ADR-0062): never the one that embeds (spring.ai.ollama.base-url), so a
+    # stuck chat generation cannot stop the question and document embeddings. Internal addresses only (AiModeCheck).
+    ollama-chat-base-url: ${OLLAMA_CHAT_BASE_URL}
   # Question answering (ADR-0008, llm-rules 3.4/3.5). Starting values; the eval set (phase 8) measures them.
   qa:
     top-k: 5
@@ -207,6 +210,10 @@ verso:
     # One chat call at most (ADR-0008), enforced by the service for every provider.
     local-chat-timeout: 90s
     cloud-chat-timeout: 30s
+    # A streamed answer with no token yet after this is given up (ADR-0062): a stuck local runner is cut and its slot
+    # freed before the 90 s bound. Above the slowest first token expected on a CPU host (docs/capacity.md: 67 s for a
+    # whole answer, most of it generation); the shorter of this and the chat timeout applies.
+    first-token-timeout: 60s
     chat-wait: 5s
     # Follow-up questions (ADR-0046): in a conversation, a question the heuristic finds dependent ("Peki P2 için?",
     # "Bunun süresi?", at most 3 words) is rewritten by the chat model from the last turns into one standalone search

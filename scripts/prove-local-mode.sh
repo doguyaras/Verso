@@ -55,9 +55,12 @@ container() { docker compose ps -q "$1" | head -n 1; }
 app="$(container verso-app)"; ollama="$(container ollama)"
 [ -n "$app" ] && [ -n "$ollama" ] || { echo "prove-local-mode: the stack is not running" >&2; exit 3; }
 probe_image="$(docker inspect -f '{{.Config.Image}}' "$ollama")"
+# The chat model's own Ollama (ADR-0062); absent when deploy/compose.llamacpp.yaml replaces it with llama-server.
+chat="$(container ollama-chat)"
+models="verso-app ollama postgres"; [ -n "$chat" ] && models="$models ollama-chat"
 
 # 1. Networks: every network of the container is internal (the database holds every document's text).
-for name in verso-app ollama postgres; do
+for name in $models; do
   id="$(container "$name")"
   networks="$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$id")"
   for network in $networks; do
@@ -75,7 +78,8 @@ probe() {
     --entrypoint bash "$probe_image" -c "$2" >/dev/null 2>&1
 }
 tcp() { echo "timeout 5 bash -c 'exec 3<>/dev/tcp/$1/$2'"; }
-for target in "verso-app:$app" "ollama:$ollama"; do
+targets="verso-app:$app ollama:$ollama"; [ -n "$chat" ] && targets="$targets ollama-chat:$chat"
+for target in $targets; do
   name="${target%%:*}"; id="${target#*:}"
   if probe "$id" "$(tcp 1.1.1.1 443)"; then fail "$name: 1.1.1.1:443 answered"; else pass "$name: 1.1.1.1:443 unreachable"; fi
   if probe "$id" "timeout 5 getent hosts example.com"; then fail "$name: example.com resolved"; else pass "$name: example.com does not resolve"; fi

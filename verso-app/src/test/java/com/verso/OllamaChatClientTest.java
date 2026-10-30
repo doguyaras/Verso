@@ -58,7 +58,10 @@ class OllamaChatClientTest {
 
     @DynamicPropertySource
     static void ollama(DynamicPropertyRegistry registry) {
-        registry.add("spring.ai.ollama.base-url", () -> "http://127.0.0.1:" + OLLAMA.getAddress().getPort());
+        // ADR-0062: the chat model has its own server; the embedding server's address leads nowhere here, so every
+        // chat request below reaching the fake proves the two are apart.
+        registry.add("spring.ai.ollama.base-url", () -> "http://127.0.0.1:1");
+        registry.add("verso.ai.ollama-chat-base-url", () -> "http://127.0.0.1:" + OLLAMA.getAddress().getPort());
     }
 
     @Autowired

@@ -15,6 +15,7 @@ docker compose --profile obs up -d --wait
 | `VersoHighErrorRate` | page | [high-error-rate.md](high-error-rate.md) |
 | `VersoDatabaseUnavailable` | page | [database-unavailable.md](database-unavailable.md) |
 | `ModelUnavailable` | page | [model-unavailable.md](model-unavailable.md) |
+| `ChatStalled` | page | [model-unavailable.md](model-unavailable.md) (ADR-0062) |
 | `IngestionBacklog` | ticket | [ingestion-backlog.md](ingestion-backlog.md) |
 | `DoclingFallback` (yalnız `deploy/compose.docling.yaml` ile, ADR-0032) | ticket | [docling-fallback.md](docling-fallback.md) |
 | `RerankerFallback` (yalnız `deploy/compose.reranker.yaml` ile, ADR-0043) | ticket | [reranker-fallback.md](reranker-fallback.md) |

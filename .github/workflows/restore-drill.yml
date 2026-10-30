@@ -70,7 +70,7 @@ jobs:
         if: failure()
         run: |
           docker compose --profile obs ps
-          docker compose --profile obs logs --no-color --tail 200 verso-app backup postgres keycloak ollama-pull ollama edge prometheus loki alloy grafana
+          docker compose --profile obs logs --no-color --tail 200 verso-app backup postgres keycloak ollama-pull ollama ollama-chat edge prometheus loki alloy grafana
       - name: teardown
         if: always()
         run: docker compose --profile drill --profile obs down --volumes --remove-orphans

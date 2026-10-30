@@ -62,6 +62,9 @@ test('--report: a passing run writes result pass, a timestamp and every check', 
   assert.ok(r.json.checks.length >= 12);
   assert.ok(r.json.checks.every((c) => c.status === 'pass' && c.name.length > 0));
   assert.ok(r.json.checks.some((c) => /1\.1\.1\.1:443 unreachable/.test(c.name)));
+  // ADR-0062: the chat model's own Ollama is held to the same rules as the embedding server.
+  assert.ok(r.json.checks.some((c) => /^ollama-chat: 1\.1\.1\.1:443 unreachable/.test(c.name)));
+  assert.ok(r.json.checks.some((c) => /^ollama-chat: network .* is internal/.test(c.name)));
 });
 
 test('--report: a reachable public address is a FAIL in the file and a non-zero exit', () => {

@@ -135,6 +135,19 @@ class AiModeCheckTest {
         assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, logging)).hasMessageContaining("OPENAI_LOG is set");
     }
 
+    /** ADR-0062: the chat model's own Ollama is held to the embedding server's rule; empty keeps the shared one. */
+    @Test
+    void local_whenTheOllamaChatServerIsPublic_refusesToStartWithoutTheAddress() {
+        for (String url : List.of("http://ollama-chat:11434", "http://127.0.0.1:11435", "", " ")) {
+            assertThatCode(() -> AiModeCheck.verify(AiMode.LOCAL, local("http://ollama:11434")
+                    .withProperty(OllamaChatIsolation.CHAT_BASE_URL, url))).as(url).doesNotThrowAnyException();
+        }
+        assertThatThrownBy(() -> AiModeCheck.verify(AiMode.LOCAL, local("http://ollama:11434")
+                .withProperty(OllamaChatIsolation.CHAT_BASE_URL, "http://203.0.113.9:11434")))
+                .hasMessageContaining("verso.ai.ollama-chat-base-url points outside the internal network")
+                .hasMessageNotContaining("203.0.113.9");
+    }
+
     private static MockEnvironment localOpenAi(String url, String key) {
         return local("http://ollama:11434").withProperty("spring.ai.model.chat", "openai")
                 .withProperty("spring.ai.openai.base-url", url).withProperty("spring.ai.openai.api-key", key);

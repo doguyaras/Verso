@@ -29,6 +29,8 @@ spring:
 verso:
   ai:
     mode: ${VERSO_AI_MODE:local}
+    # The chat model's own Ollama (ADR-0062), published on 127.0.0.1 by deploy/compose.local.yaml.
+    ollama-chat-base-url: http://localhost:${VERSO_OLLAMA_CHAT_LOCAL_PORT:11435}
   # The qa schema's own roles (ADR-0023), on the same local database; passwords from secrets/ like the others.
   qa:
     datasource:

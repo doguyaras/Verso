@@ -58,6 +58,7 @@ public @interface VersoTestEnvironment {
             });
             TestPropertyValues.of(
                     "OLLAMA_BASE_URL=http://127.0.0.1:1",
+                    "OLLAMA_CHAT_BASE_URL=http://127.0.0.1:1",
                     "OLLAMA_EMBEDDING_MODEL=test-embedding",
                     "OLLAMA_CHAT_MODEL=test-chat",
                     "verso.document.ingestion.enabled=false",

@@ -708,6 +708,9 @@ public class QuestionServiceImpl implements QuestionService {
             // virtual thread, so a local llama-server stops too (OpenAiCompatibleCancellationTest, ADR-0051); that a
             // cloud provider stops is not verified.
             cancel(call, started);
+            // ADR-0062: only the answer call's bound is the model's chat timeout; the shorter task bounds (follow-up,
+            // decomposition) cut a slow model, not necessarily a stuck one.
+            if (task == ModelTask.ANSWER) metrics.chatStalled(QaMetrics.STALL_TIMEOUT);
             throw new CallFailed("TIMEOUT");
         } catch (ExecutionException e) {
             if (e.getCause() instanceof ModelBudgetExceededException) throw new CallFailed(BUDGET_EXCEEDED);
@@ -768,12 +771,26 @@ public class QuestionServiceImpl implements QuestionService {
     /** Writes the queued tokens until the end, the time bound (ADR-0008) or the client leaving. */
     private String collect(BlockingQueue<Object> items, AnswerStream out) {
         StringBuilder raw = new StringBuilder();
-        long deadline = System.nanoTime() + chatTimeout().toNanos();
+        long begun = System.nanoTime();
+        long deadline = begun + chatTimeout().toNanos();
+        // ADR-0062: a runner that has not sent its first token by then is treated as stuck, not slow; the stream is
+        // cancelled (the finally of streamChat), which closes the connection and frees the slot before the chat bound.
+        long firstTokenDeadline = begun + Math.min(properties.firstTokenTimeout().toNanos(), chatTimeout().toNanos());
+        boolean anyToken = false;
         try {
             while (true) {
-                long left = deadline - System.nanoTime();
-                if (left <= 0) throw failure("TIMEOUT");
-                Object item = items.poll(Math.min(left, STREAM_POLL_NANOS), TimeUnit.NANOSECONDS);
+                long now = System.nanoTime();
+                if (!anyToken && now - firstTokenDeadline >= 0) {
+                    metrics.chatStalled(QaMetrics.STALL_FIRST_TOKEN);
+                    throw failure("FIRST_TOKEN_TIMEOUT");
+                }
+                long left = deadline - now;
+                if (left <= 0) {
+                    metrics.chatStalled(QaMetrics.STALL_TIMEOUT);
+                    throw failure("TIMEOUT");
+                }
+                long wait = anyToken ? left : Math.min(left, firstTokenDeadline - now);
+                Object item = items.poll(Math.min(wait, STREAM_POLL_NANOS), TimeUnit.NANOSECONDS);
                 if (item == null) {
                     // A silent model (a CPU host before its first token): a comment keeps proxies from timing out and
                     // shows whether the client is still there.
@@ -786,6 +803,7 @@ public class QuestionServiceImpl implements QuestionService {
                     throw failure(failed.error().getClass().getSimpleName());
                 } else {
                     String text = (String) item;
+                    anyToken = true;
                     raw.append(text);
                     if (!out.delta(text)) throw new Cancelled();
                 }

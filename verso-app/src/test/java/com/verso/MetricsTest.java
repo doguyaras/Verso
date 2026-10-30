@@ -99,7 +99,9 @@ class MetricsTest {
         assertThat(value(scrape, "verso_ingestion_documents_total\\{outcome=\"ready\"\\}")).isEqualTo(readyBefore + 1);
         assertThat(value(scrape, "verso_qa_questions_total\\{outcome=\"answered\"\\}")).isGreaterThanOrEqualTo(1);
         assertThat(value(scrape, "verso_qa_questions_total\\{outcome=\"not_found\"\\}")).isGreaterThanOrEqualTo(1);
-        assertThat(scrape).contains("verso_qa_chat_duration_seconds_bucket", "verso_qa_circuit_open", "verso_ingestion_paused");
+        assertThat(scrape).contains("verso_qa_chat_duration_seconds_bucket", "verso_qa_circuit_open", "verso_ingestion_paused",
+                // ADR-0062: registered at 0, so the ChatStalled alert has an increase() from the first stall.
+                "verso_qa_chat_stalls_total{phase=\"first_token\"}", "verso_qa_chat_stalls_total{phase=\"timeout\"}");
         assertThat(scrape).doesNotContain(account, pending.id().toString(), "Marker");
     }
 

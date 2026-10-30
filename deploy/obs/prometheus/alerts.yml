@@ -111,6 +111,19 @@ groups:
           summary: A model (embedding or chat) fails and nothing succeeds.
           runbook: docs/runbooks/model-unavailable.md
 
+      # ADR-0062: answer calls are cut at a time bound (no first token, or the chat timeout) and none is answered: the
+      # chat runner is stuck, not slow. One stall among answers is a slow question and does not fire.
+      - alert: ChatStalled
+        expr: |
+          sum(increase(verso_qa_chat_stalls_total{job="verso"}[10m])) >= 2
+          unless sum(increase(verso_qa_questions_total{job="verso", outcome=~"answered|uncited"}[10m])) > 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: The local chat model stops answering; its calls are cut at the time bound.
+          runbook: docs/runbooks/model-unavailable.md
+
       # p95 of one successful chat call above the local CPU budget (ADR-0008: 60 s). Failed calls: ModelUnavailable.
       - alert: QaSlow
         expr: histogram_quantile(0.95, sum by (le) (rate(verso_qa_chat_duration_seconds_bucket{job="verso"}[15m]))) > 60

@@ -142,6 +142,24 @@ test('ollama-serve: OLLAMA_WARM_CHAT=none warms the embedding model only (ADR-00
   }
 });
 
+test('ollama-serve: OLLAMA_WARM_EMBEDDING=none warms the chat model only (ADR-0062 ollama-chat)', async () => {
+  const env = setup();
+  const { server, requests, port } = await api();
+  const run = start(env, port, { OLLAMA_WARM_EMBEDDING: 'none' });
+  try {
+    await until(() => /gemma4:e2b loaded in \d+ ms/.test(run.stderr()));
+    await new Promise((r) => setTimeout(r, 300));
+    assert.deepEqual(requests.map((r) => r.path), ['/api/generate']);
+    assert.equal(requests[0].body.keep_alive, -1);
+    assert.equal(run.child.exitCode, null, 'the server keeps running');
+  } finally {
+    run.child.kill('SIGTERM');
+    await run.exited;
+    run.release();
+    server.close();
+  }
+});
+
 test('ollama-serve: the models to warm are required', async () => {
   const env = setup();
   const run = start(env, 1, { OLLAMA_WARM_CHAT: '' });

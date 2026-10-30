@@ -198,7 +198,7 @@ RTX 4070 Ti SUPER'lı makinede ingestion sürerken bile 4 eşzamanlı istemci p9
 | Seçenek | Ne değişir | Bedeli |
 |---|---|---|
 | GPU'lu host (`deploy/compose.gpu.yaml`) | Ölçüldü: chat p50 1,3 sn, p95 5,4 sn; kalite aynı (yukarıdaki GPU bölümü). Eşzamanlılık: `OLLAMA_NUM_PARALLEL=4` + `VERSO_QA_CHAT_CONCURRENCY=4` ile 4 istemcide 1,6 cevap/sn, 503 yok ("Paylaşımlı kademe", ADR-0051); llama-server overlay'i 8 yuvada 4 istemcide 1,45, 8 istemcide 1,93 cevap/sn, p99 ≤ 9 sn, `503 11002` yok (kalite eval'i bekliyor) | Donanım; NVIDIA sürücüsü ve Docker GPU desteği |
-| Embedding için ayrı Ollama | Soru embedding'leri chat üretimiyle CPU paylaşmaz; 10030'lar kalkar | Bir container daha, bellek |
+| Embedding için ayrı Ollama (**ADR-0062 ile varsayılan**: `ollama` + `ollama-chat`) | Soru embedding'leri chat üretimiyle süreç ve bellek paylaşmaz; takılan bir chat üretimi embedding'i durdurmaz (2026-10-29 olayı). CPU'da 10030'ların kalktığı henüz ölçülmedi | Bir container daha; toplam bellek sınırı 6 → 7 GiB |
 | Ollama'ya daha çok CPU (`OLLAMA_CPUS`) | Tek cevabın süresi kısalır; eşzamanlılık değişmez | Uygulama ve veritabanıyla CPU paylaşımı |
 | Daha küçük chat modeli (`VERSO_CHAT_MODEL`) | Süre kısalır | Türkçe kalite düşer; eval setiyle yeniden ölçülmeli |
 | Cloud modu (ADR-0013) | Saniyeler, yüksek eşzamanlılık | Pasajlar sağlayıcıya gider (KVKK md. 9) |

@@ -37,6 +37,11 @@ public class QaMetrics {
     private final Map<String, Counter> followUps = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> notStored = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> grounding = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Where a stalled answer call was given up: before its first token (streams) or at the chat timeout. */
+    public static final String STALL_FIRST_TOKEN = "first_token";
+    public static final String STALL_TIMEOUT = "timeout";
+    private static final java.util.List<String> STALL_PHASES = java.util.List.of(STALL_FIRST_TOKEN, STALL_TIMEOUT);
+    private final Map<String, Counter> stalls = new java.util.HashMap<>();
 
     public QaMetrics(MeterRegistry registry, ModelCircuitBreaker circuit) {
         this.registry = registry;
@@ -58,6 +63,17 @@ public class QaMetrics {
                 .publishPercentileHistogram().maximumExpectedValue(Duration.ofSeconds(30)).register(registry);
         Gauge.builder("verso.qa.circuit.open", circuit, c -> c.isOpen() ? 1 : 0)
                 .description("1 while the chat model circuit is open").register(registry);
+        // Registered at 0 up front, like the history counter: the ChatStalled alert reads increase().
+        for (String phase : STALL_PHASES) stalls.put(phase, Counter.builder("verso.qa.chat.stalls").tag("phase", phase)
+                .description("Answer chat calls given up at a time bound (ADR-0062)").register(registry));
+    }
+
+    /**
+     * An answer chat call cut at a time bound (ADR-0062): "first_token" (a stream silent past the first-token timeout)
+     * or "timeout" (the chat timeout). A rising count with no answers means a stuck model runner, not a slow one.
+     */
+    public void chatStalled(String phase) {
+        stalls.get(phase).increment();
     }
 
     public void record(Outcome outcome) {

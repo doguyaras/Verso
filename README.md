@@ -439,7 +439,8 @@ Set 2026-10-24'te 140 soruya ve 11 sentetik belgeye (44 sayfa) çıktı: ilk 6 b
                                                               │  qa modülü: eşik, prompt, chat, atıf, geçmiş, geri bildirim, metrikler
                           keycloak (OIDC, 127.0.0.1:8180) ◄────┤  platform: hata zarfı, güvenlik, log temizleyici
                                                               ├──► postgres 18 + pgvector (iç ağ)
-                                                              └──► ollama: bge-m3 + gemma4:e2b (iç ağ, internetsiz)
+                                                              ├──► ollama: bge-m3 embedding (iç ağ, internetsiz)
+                                                              └──► ollama-chat: gemma4:e2b (iç ağ, internetsiz; ADR-0062)
  isteğe bağlı: prometheus · alertmanager · loki ◄ alloy · grafana (obs profili) · yedek ve restore provası
 ```
 
@@ -638,11 +639,18 @@ Grup üyeliği değişikliği kullanıcının bir sonraki oturum anahtarında (e
 2. Paketteki realm'i kullanıyorsan `verso-mcp` scope'u ve `verso-mcp-inspector` istemcisi için `bash scripts/keycloak-reimport.sh` (demo oturumları gider). Kurumun IdP'sinde `verso-mcp` audience'ı veren bir scope ve her istemci için kayıt aç ([`docs/api-mcp-integration-v1.md`](docs/api-mcp-integration-v1.md)).
 3. `.env`'de `VERSO_MCP_ENABLED=true` ve `VERSO_MCP_RESOURCE=https://<dış adres>/mcp`, sonra `docker compose up -d --wait` (uygulama ve kenar proxy birlikte açılır).
 
+**Model sunucuları: embedding ve sohbet ayrı container'da (ADR-0062).** `ollama` yalnız bge-m3'ü, `ollama-chat` yalnız sohbet modelini tutar. Takılan bir sohbet üretimi, büyüyen önbelleği ya da OOM ile ölen runner'ı artık embedding'i durdurmaz: arama ve belge işleme sürer, yalnız cevaplar 503 alır. Yeni secret yok; aynı imaj ve aynı model volume'ü kullanılır, model indirilmez. Var olan bir yığını geçirmek için:
+
+1. `.env` içinde `OLLAMA_MEM_LIMIT=6g` yazıyorsa `2g` yap (artık yalnız embedding için) ve `OLLAMA_CHAT_MEM_LIMIT=5g` ekle; ikisi de yoksa varsayılanlar geçerlidir.
+2. `docker compose up -d --build --wait` (GPU'da `-f compose.yaml -f deploy/compose.gpu.yaml`, llama-server kademesinde `-f deploy/compose.llamacpp.yaml` de eklenir). `ollama-chat` açılır, `ollama` yalnız embedding'le yeniden oluşturulur, uygulama `OLLAMA_CHAT_BASE_URL` ile yeniden başlar.
+3. Kontrol: `docker compose exec ollama ollama ps` yalnız `bge-m3:567m`, `docker compose exec ollama-chat ollama ps` yalnız sohbet modelini gösterir. Takılma `ChatStalled` alarmıyla görünür (`docs/runbooks/model-unavailable.md`).
+4. Geri dönmek için: önceki sürümün compose dosyasıyla `docker compose up -d --build --wait`, ardından `docker compose rm -sf ollama-chat`.
+
 **Ollama 0.40'lı bir sürüme yükseltme (ADR-0033).** Yeni secret ya da ortam değişkeni yok; var olan model volume'ü korunur, modeller yeniden indirilmez (yalnız küçük manifestler gelir). Çalışan Ollama volume'ü salt okunur bağlamaya devam eder, bu yüzden 0.35'ten kalma depo (`manifests-v2` yok) önce `ollama-pull` ile tamamlanmalıdır. Adımlar:
 
 1. Yedek: `docker compose run --rm backup once`.
 2. Depoyu tamamla (internet gerekir, tek seferlik): `docker compose up ollama-pull`. Log'da her model için `ollama-pull: … ready` ve çıkış kodu 0 beklenir; `does not match the pinned digest` görürsen dur, digest'i kontrol et.
-3. `docker compose up -d --wait ollama` (GPU'da `-f compose.yaml -f deploy/compose.gpu.yaml` ekle). `docker compose exec ollama ollama ps` iki modeli göstermeli.
+3. `docker compose up -d --wait ollama ollama-chat` (GPU'da `-f compose.yaml -f deploy/compose.gpu.yaml` ekle). `docker compose exec ollama ollama ps` embedding modelini, `docker compose exec ollama-chat ollama ps` sohbet modelini göstermeli (ADR-0062).
 4. Geri dönmek için: eski imaj etiketiyle `ollama-pull` ve `ollama` yeniden oluşturulur; 0.35 `manifests-v2/`'yi okumaz, v1 manifestleri yerinde durur (0.35.1'in 0.40 tarafından yazılan v1 manifestini okuyup okumadığı ölçülmedi: gerekirse `ollama-pull` modelleri yeniden çeker).
 
 **Denetim kaydının saklama süresi.** Satırlar `VERSO_AUDIT_RETENTION_DAYS` gün (varsayılan 365, 30–3650) tutulur, sonra 6 saatte bir çalışan iş yalnız veritabanındaki `audit.purge_expired` fonksiyonuyla siler; fonksiyon 30 günden yeni bir sınırı reddeder, yani ele geçirilen bir uygulama yakın geçmişi silemez. Süreyi veri sorumlusu kurum belirler (KVKK md. 4/2-d, md. 12); gerekçe ADR-0026'dadır. Kayıt yazılamazsa istek yine başarılı olur, `AuditEventNotStored` alarmı çalar (`docs/runbooks/audit-write-failed.md`).
@@ -651,9 +659,9 @@ Grup üyeliği değişikliği kullanıcının bir sonraki oturum anahtarında (e
 
 **Kaynaklar.**
 
-- **Bellek:** container sınırlarının toplamı yaklaşık 10,6 GB'dır (uygulama 1,5 GB, kenar proxy 64 MB, Ollama 6 GB (embedding ve chat modeli açılışta yüklenir ve bellekte kalır; ilk soru model yüklemesini beklemez, `docs/capacity.md`), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
+- **Bellek:** container sınırlarının toplamı yaklaşık 11,6 GB'dır (uygulama 1,5 GB, kenar proxy 64 MB, embedding Ollama'sı 2 GB ve sohbet Ollama'sı 5 GB (ADR-0062; iki model de açılışta yüklenir ve bellekte kalır; ilk soru model yüklemesini beklemez, `docs/capacity.md`), PostgreSQL 1 GB, Keycloak 1 GB, yedek 512 MB, tek seferlik migrate ve model indirme 512'şer MB). Host'ta en az 12 GB boş RAM önerilir.
 - **Disk ve ağ:** ilk açılış yaklaşık 8,5 GB indirir (Ollama imajı ~3,8 GB, bge-m3 modeli 1,2 GB, gemma4:e2b modeli 3,5 GB, nginx imajı 23 MB); buna Keycloak, PostgreSQL, Flyway ve Temurin imajları ile `--build` sırasında Maven bağımlılıkları eklenir. Sonraki açılışlar internetsiz çalışır; model volume'de kalır ve çalışan Ollama'nın internete çıkışı yoktur.
-- **Embedding:** varsayılan olarak CPU'da yapılır; Ollama 2 CPU ile sınırlıdır (`OLLAMA_CPUS`). `deploy/compose.gpu.yaml` ile embedding ve chat NVIDIA GPU'da çalışır (`docs/capacity.md`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
+- **Embedding:** varsayılan olarak CPU'da yapılır; iki Ollama da 2'şer CPU ile sınırlıdır (`OLLAMA_CPUS`). `deploy/compose.gpu.yaml` ile embedding ve chat NVIDIA GPU'da çalışır (`docs/capacity.md`). Portları `.env` ile değiştirdiysen (`VERSO_HTTP_PORT`, `VERSO_KEYCLOAK_PORT`) betikler için de `export` et: `scripts/*.sh` `.env`'i okumaz.
 
 **Yedek ve geri yükleme.** `backup` servisi şifreli `pg_dump` alır: varsayılan günde bir, 7 gün saklanır ve en yeni yedek hiç silinmez. Prova, en yeni yedeği geçici bir veritabanına geri yükler; satır sayılarını, yetkileri ve Flyway `validate`'i doğrular. CI bunu haftalık çalıştırır.
 

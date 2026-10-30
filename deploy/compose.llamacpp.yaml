@@ -1,5 +1,5 @@
 # Shared-tier chat server (ADR-0051): llama.cpp's llama-server (MIT) answers the chat through its OpenAI-compatible API
-# with parallel slots and continuous batching; Ollama keeps the embedding model only. Still local mode: the model server
+# with parallel slots and continuous batching; "ollama-chat" does not start (ADR-0062), Ollama serves the embeddings. Still local mode: the model server
 # sits on the internal "models" network, the application reaches it with the OpenAI client and the same egress rules
 # (AiModeCheck, LocalModelEgress). GPU installs only; add it after deploy/compose.gpu.yaml:
 #
@@ -26,6 +26,10 @@ services:
       LLAMA_ALIAS: ${VERSO_CHAT_MODEL:-gemma4:e2b}
       LLAMA_PARALLEL: ${LLAMA_PARALLEL:-4}
       LLAMA_CTX_PER_SLOT: ${LLAMA_CTX_PER_SLOT:-4096}
+      # ADR-0062: llama-server reads these at start; no host-RAM prompt cache and no context checkpoints, so the
+      # memory stays under LLAMA_MEM_LIMIT (llama.cpp issues 21690, 22629, 24265; Verso prompts rarely repeat).
+      LLAMA_ARG_CACHE_RAM: "0"
+      LLAMA_ARG_CTX_CHECKPOINTS: "0"
     secrets: [SECRET_LOCAL_MODEL_API_KEY]
     volumes:
       - ollama-models:/models:ro
@@ -50,12 +54,10 @@ services:
               count: all
               capabilities: [gpu]
 
-  # Ollama serves the embeddings only: the chat model is not loaded twice (VRAM).
-  ollama:
-    environment:
-      OLLAMA_WARM_CHAT: none
-    healthcheck:
-      test: ["CMD-SHELL", "ollama ps | grep -q '^bge-m3:567m '"]
+  # llama-server answers the chat: the chat model is not loaded twice (VRAM). A profile nobody enables keeps the
+  # service from starting; "ollama" already serves the embedding model only (ADR-0062).
+  ollama-chat:
+    profiles: ["replaced-by-llama"]
 
   verso-app:
     # No depends_on, as with ollama (review E1): uploads and retrieval work while the chat server loads; questions get

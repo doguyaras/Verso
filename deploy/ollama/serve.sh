@@ -4,7 +4,8 @@
 # measured 2-9 s for the embedding model and 14-60 s for the chat model, depending on whether the model files are
 # still in the page cache. The question embedding has a 10 s budget (ADR-0008), so a cold load could fail the first
 # question. OLLAMA_KEEP_ALIVE=-1 (compose) keeps them loaded afterwards; the healthcheck reports healthy only when both
-# are in memory. A failed warm-up does not stop the server: models then load on first use, as before.
+# are in memory. A failed warm-up does not stop the server: models then load on first use, as before. Since ADR-0062
+# each server holds one model ("ollama": embedding, "ollama-chat": chat): the other one is "none".
 # bash, not sh: the image has no curl or wget, and /dev/tcp is how this script talks to the local server.
 set -u
 : "${OLLAMA_WARM_EMBEDDING:?}" "${OLLAMA_WARM_CHAT:?}"
@@ -51,10 +52,13 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-# keep_alive -1 on the request as well: the model stays loaded even if the server default changes.
-warm "$OLLAMA_WARM_EMBEDDING" /api/embed "{\"model\":\"$OLLAMA_WARM_EMBEDDING\",\"input\":\"warm\",\"keep_alive\":-1}"
+# keep_alive -1 on the request as well: the model stays loaded even if the server default changes. "none": this server
+# holds the chat model only (ollama-chat, ADR-0062).
+if [ "$OLLAMA_WARM_EMBEDDING" != none ]; then
+  warm "$OLLAMA_WARM_EMBEDDING" /api/embed "{\"model\":\"$OLLAMA_WARM_EMBEDDING\",\"input\":\"warm\",\"keep_alive\":-1}"
+fi
 # An empty prompt loads the chat model without generating anything (Ollama API: /api/generate). "none": another model
-# server answers the chat (deploy/compose.llamacpp.yaml, ADR-0051); Ollama keeps the embedding model only.
+# server answers the chat (ollama-chat, ADR-0062; or llama-server, ADR-0051); this one keeps the embedding model only.
 if [ "$OLLAMA_WARM_CHAT" != none ]; then
   warm "$OLLAMA_WARM_CHAT" /api/generate "{\"model\":\"$OLLAMA_WARM_CHAT\",\"prompt\":\"\",\"keep_alive\":-1}"
 fi

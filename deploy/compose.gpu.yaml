@@ -1,4 +1,4 @@
-# GPU overlay: Ollama runs the embedding and chat models on an NVIDIA GPU (ADR-0008 local-GPU budget, docs/capacity.md).
+# GPU overlay: both Ollama servers (embedding: ollama, chat: ollama-chat; ADR-0062) run their model on an NVIDIA GPU (ADR-0008 local-GPU budget, docs/capacity.md).
 # Opt-in: the default stack targets CPU hosts. Needs the NVIDIA driver and Docker GPU support (Docker Desktop with
 # WSL 2, or the NVIDIA Container Toolkit on Linux); without them the container does not start. AMD GPUs need the
 # ollama/ollama:rocm image and are not covered here.
@@ -10,6 +10,14 @@
 # by adding this file after them.
 services:
   ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  ollama-chat:
     deploy:
       resources:
         reservations:

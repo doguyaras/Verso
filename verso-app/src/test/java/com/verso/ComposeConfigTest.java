@@ -129,7 +129,7 @@ class ComposeConfigTest {
     @Test
     void hardening_whenServicesStart_isReadOnlyWithoutCapabilities() {
         for (String name : List.of("verso-app", "migrate", "backup", "restore-runner", "restore-flyway", "ollama",
-                "ollama-pull", "edge", "prometheus", "alertmanager", "loki", "alloy", "grafana", "obs-edge")) {
+                "ollama-chat", "ollama-pull", "edge", "prometheus", "alertmanager", "loki", "alloy", "grafana", "obs-edge")) {
             Map<String, Object> s = service(name);
             assertThat(s.get("read_only")).as(name).isEqualTo(Boolean.TRUE);
             assertThat(s.get("cap_drop")).as(name).isEqualTo(List.of("ALL"));
@@ -204,15 +204,36 @@ class ComposeConfigTest {
                 .matches(".+@(sha256:[0-9a-f]{64}|\\$\\{[A-Z_]+:-sha256:[0-9a-f]{64}})"));
         String embedding = pulled.get(0).substring(0, pulled.get(0).indexOf('@'));
         String chat = pulled.get(1).substring(0, pulled.get(1).lastIndexOf("}@") + 1);
+        // ADR-0062: one model per server. "ollama" embeds, "ollama-chat" answers; each is healthy with its own model.
         String healthcheck = String.valueOf(((Map<String, Object>) ollama.get("healthcheck")).get("test"));
-        assertThat(healthcheck).contains("ollama ps").contains(embedding).contains(chat);
+        assertThat(healthcheck).contains("ollama ps").contains(embedding).doesNotContain(chat);
         assertThat(environment("ollama")).containsEntry("OLLAMA_WARM_EMBEDDING", embedding)
-                .containsEntry("OLLAMA_WARM_CHAT", chat);
+                .containsEntry("OLLAMA_WARM_CHAT", "none").containsEntry("OLLAMA_MAX_LOADED_MODELS", "1");
         assertThat(environment("verso-app")).containsEntry("OLLAMA_EMBEDDING_MODEL", embedding)
-                .containsEntry("OLLAMA_CHAT_MODEL", chat);
+                .containsEntry("OLLAMA_CHAT_MODEL", chat)
+                .containsEntry("OLLAMA_BASE_URL", "http://ollama:11434")
+                .containsEntry("OLLAMA_CHAT_BASE_URL", "http://ollama-chat:11434");
+
+        Map<String, Object> chatServer = service("ollama-chat");
+        assertThat(chatServer.get("image")).isEqualTo(ollama.get("image"));
+        assertThat(chatServer.get("networks")).isEqualTo(List.of("models"));
+        assertThat(chatServer).doesNotContainKey("ports").containsKeys("mem_limit", "cpus", "pids_limit");
+        assertThat(chatServer.get("mem_limit")).as("a limit of its own").isNotEqualTo(ollama.get("mem_limit"));
+        assertThat((List<String>) chatServer.get("volumes")).containsExactly("ollama-models:/root/.ollama:ro",
+                "./deploy/ollama/serve.sh:/opt/verso/serve.sh:ro");
+        assertThat((Map<String, Object>) chatServer.get("depends_on")).containsKey("ollama-pull");
+        assertThat((List<String>) chatServer.get("entrypoint")).containsExactly("bash", "/opt/verso/serve.sh");
+        assertThat(String.valueOf(((Map<String, Object>) chatServer.get("healthcheck")).get("test")))
+                .contains("ollama ps").contains(chat).doesNotContain(embedding);
+        assertThat(environment("ollama-chat")).containsEntry("OLLAMA_NO_CLOUD", "true")
+                .containsEntry("OLLAMA_KEEP_ALIVE", "-1").containsEntry("OLLAMA_MAX_LOADED_MODELS", "1")
+                .containsEntry("OLLAMA_WARM_EMBEDDING", "none").containsEntry("OLLAMA_WARM_CHAT", chat)
+                // The runner's host-RAM prompt cache and context checkpoints stay off (ADR-0062).
+                .containsEntry("LLAMA_ARG_CACHE_RAM", "0").containsEntry("LLAMA_ARG_CTX_CHECKPOINTS", "0");
 
         assertThat((List<String>) service("verso-app").get("networks")).contains("models");
-        assertThat((Map<String, Object>) service("verso-app").get("depends_on")).doesNotContainKey("ollama");
+        assertThat((Map<String, Object>) service("verso-app").get("depends_on")).doesNotContainKey("ollama")
+                .doesNotContainKey("ollama-chat");
         assertThat((List<String>) service("migrate").get("command"))
                 .contains("--spring.ai.model.embedding=none", "--spring.ai.model.chat=none");
     }
@@ -235,6 +256,7 @@ class ComposeConfigTest {
             assertThat(service(name).get("networks")).as(name).isEqualTo(List.of("backend"));
         }
         assertThat(service("ollama").get("networks")).isEqualTo(List.of("models"));
+        assertThat(service("ollama-chat").get("networks")).isEqualTo(List.of("models"));
         assertThat(service("edge").get("networks")).isEqualTo(List.of("default", "backend"));
         assertThat(service("keycloak").get("networks")).isEqualTo(List.of("default", "backend"));
         assertThat(environment("verso-app")).containsEntry("VERSO_AI_MODE", "local").containsEntry("VERSO_CHAT_PROVIDER", "ollama");
@@ -270,17 +292,20 @@ class ComposeConfigTest {
         Map<String, Object> gpu = new Yaml().load(read("deploy/compose.gpu.yaml"));
         assertThat(gpu.keySet()).containsExactly("services");
         Map<String, Object> services = (Map<String, Object>) gpu.get("services");
-        assertThat(services.keySet()).containsExactly("ollama");
-        Map<String, Object> ollama = (Map<String, Object>) services.get("ollama");
-        assertThat(ollama.keySet()).containsExactly("deploy");
-        Map<String, Object> resources = (Map<String, Object>) ((Map<String, Object>) ollama.get("deploy")).get("resources");
-        assertThat(resources.keySet()).containsExactly("reservations");
-        List<Map<String, Object>> devices = (List<Map<String, Object>>)
-                ((Map<String, Object>) resources.get("reservations")).get("devices");
-        assertThat(devices).singleElement().satisfies(d -> {
-            assertThat(d).containsEntry("driver", "nvidia");
-            assertThat((List<String>) d.get("capabilities")).containsExactly("gpu");
-        });
+        // ADR-0062: both Ollama servers, the embedding one and the chat one, get the GPU and nothing else.
+        assertThat(services.keySet()).containsExactlyInAnyOrder("ollama", "ollama-chat");
+        for (String name : List.of("ollama", "ollama-chat")) {
+            Map<String, Object> ollama = (Map<String, Object>) services.get(name);
+            assertThat(ollama.keySet()).as(name).containsExactly("deploy");
+            Map<String, Object> resources = (Map<String, Object>) ((Map<String, Object>) ollama.get("deploy")).get("resources");
+            assertThat(resources.keySet()).as(name).containsExactly("reservations");
+            List<Map<String, Object>> devices = (List<Map<String, Object>>)
+                    ((Map<String, Object>) resources.get("reservations")).get("devices");
+            assertThat(devices).as(name).singleElement().satisfies(d -> {
+                assertThat(d).containsEntry("driver", "nvidia");
+                assertThat((List<String>) d.get("capabilities")).containsExactly("gpu");
+            });
+        }
     }
 
     /**
@@ -337,11 +362,12 @@ class ComposeConfigTest {
         assertThat((Map<String, Object>) base.get("x-db-env")).containsEntry("VERSO_QA_CHAT_CONCURRENCY",
                 "${VERSO_QA_CHAT_CONCURRENCY:-1}").containsEntry("OPENAI_CHAT_TIMEOUT", "30s");
         assertThat(environment("ollama")).containsEntry("OLLAMA_NUM_PARALLEL", "${OLLAMA_NUM_PARALLEL:-1}");
+        assertThat(environment("ollama-chat")).containsEntry("OLLAMA_NUM_PARALLEL", "${OLLAMA_NUM_PARALLEL:-1}");
 
         Map<String, Object> overlay = new Yaml().load(read("deploy/compose.llamacpp.yaml"));
         assertThat(overlay.keySet()).containsExactlyInAnyOrder("services", "secrets");
         Map<String, Object> services = (Map<String, Object>) overlay.get("services");
-        assertThat(services.keySet()).containsExactlyInAnyOrder("llama", "ollama", "verso-app");
+        assertThat(services.keySet()).containsExactlyInAnyOrder("llama", "ollama-chat", "verso-app");
 
         Map<String, Object> llama = (Map<String, Object>) services.get("llama");
         assertThat(String.valueOf(llama.get("image"))).matches("ghcr\\.io/ggml-org/llama\\.cpp:server-cuda-b\\d+@sha256:[0-9a-f]{64}");
@@ -356,12 +382,14 @@ class ComposeConfigTest {
         // The same pin ollama-pull verified (ADR-0033); serve.sh checks the file's SHA-256 against it.
         assertThat(String.valueOf(environment("ollama-pull").get("OLLAMA_PULL")))
                 .contains(String.valueOf(env.get("LLAMA_MODEL_DIGEST")));
-        assertThat(env).containsEntry("LLAMA_PARALLEL", "${LLAMA_PARALLEL:-4}");
+        assertThat(env).containsEntry("LLAMA_PARALLEL", "${LLAMA_PARALLEL:-4}")
+                // ADR-0062: no host-RAM prompt cache and no context checkpoints, as in ollama-chat.
+                .containsEntry("LLAMA_ARG_CACHE_RAM", "0").containsEntry("LLAMA_ARG_CTX_CHECKPOINTS", "0");
         assertThat((List<String>) llama.get("secrets")).containsExactly("SECRET_LOCAL_MODEL_API_KEY");
 
-        Map<String, Object> ollama = (Map<String, Object>) services.get("ollama");
-        assertThat(ollama.keySet()).containsExactlyInAnyOrder("environment", "healthcheck");
-        assertThat((Map<String, Object>) ollama.get("environment")).containsExactly(Map.entry("OLLAMA_WARM_CHAT", "none"));
+        // ADR-0062: llama-server replaces the chat Ollama (not loaded twice); "ollama" embeds as in the base stack.
+        Map<String, Object> chatOllama = (Map<String, Object>) services.get("ollama-chat");
+        assertThat(chatOllama).containsExactly(Map.entry("profiles", List.of("replaced-by-llama")));
 
         Map<String, Object> app = (Map<String, Object>) services.get("verso-app");
         assertThat(app.keySet()).as("no new network: the application already reaches 'models'")
@@ -531,7 +559,7 @@ class ComposeConfigTest {
         Map<String, Object> rules = new Yaml().load(read("deploy/obs/prometheus/alerts.yml"));
         List<Map<String, Object>> alerts = ((List<Map<String, Object>>) rules.get("groups")).stream()
                 .flatMap(g -> ((List<Map<String, Object>>) g.get("rules")).stream()).toList();
-        assertThat(alerts).hasSize(15);
+        assertThat(alerts).hasSize(16);
         assertThat(ROOT.resolve("deploy/obs/prometheus/alerts.test.yml")).as("promtool unit tests").exists();
         for (Map<String, Object> alert : alerts) {
             String name = String.valueOf(alert.get("alert"));
