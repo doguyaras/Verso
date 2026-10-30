@@ -64,9 +64,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class SkillApiTest {
 
     private static final String QUESTION = "topic-leave MarkerSkillQ yıllık izin kaç gündür?";
-    /** No number or code: the groundedness check has nothing to compare, the step is grounded. */
-    private static final String ANSWER = "MarkerSkillA yıllık izin süresi bu belgelerde tanımlıdır [1][2].";
-    private static final String STEP = "MarkerSkillA yıllık izin süresi bu belgelerde tanımlıdır.";
+    /**
+     * The asked quantity (ADR-0064: "kaç gün" needs a number of days), as both sources state it ("on dort gundur"): the
+     * groundedness check verifies it, the step is grounded.
+     */
+    private static final String ANSWER = "MarkerSkillA yıllık izin on dört gündür [1][2].";
+    private static final String STEP = "MarkerSkillA yıllık izin on dört gündür.";
 
     @Value("${local.server.port}")
     int port;

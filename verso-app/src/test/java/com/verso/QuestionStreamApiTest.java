@@ -115,6 +115,28 @@ class QuestionStreamApiTest {
         assertThat(events.getLast().data()).contains("\"outcome\":\"ANSWERED\"");
     }
 
+    /**
+     * ADR-0064: the deltas carried the model's own refusal and its marker; the citations event is the validated
+     * answer, here the fixed not-found sentence without citations, and done says NOT_FOUND, as the JSON endpoint does.
+     */
+    @Test
+    void stream_whenTheModelRefusesWithACitation_endsNotFoundWithNoCitation() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        TestChatModel.INSTANCE.answer("Belgelerde bu konuda bilgi yer almamaktadır [1].");
+
+        List<Event> events = parse(stream("topic-leave Yaz okulunda bir kredilik ders kaç TL?", null).body());
+
+        Event citations = events.get(events.size() - 2);
+        assertThat(citations.name()).isEqualTo("citations");
+        assertThat((String) JsonPath.read(citations.data(), "$.answer")).isEqualTo("Belgelerde bu sorunun cevabı bulunamadı.");
+        assertThat((List<String>) JsonPath.read(citations.data(), "$.citations")).isEmpty();
+        assertThat(events.getLast().data()).contains("\"outcome\":\"NOT_FOUND\"", "\"found\":false");
+        String turnId = JsonPath.read(events.getLast().data(), "$.turnId");
+        assertThat(QaTables.count("select count(*) from qa.turn where id = ?::uuid and outcome = 'NOT_FOUND'", turnId))
+                .isOne();
+        assertNoContentLogged();
+    }
+
     /** The order of the contract: real stages, the text as it came, validated citations, then done with the ids. */
     @Test
     void stream_whenAPassageMatches_sendsStagesDeltasValidatedCitationsAndDone() throws Exception {

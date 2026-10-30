@@ -110,7 +110,8 @@ class FollowUpQuestionTest {
                 new GroundingCheck(new QaGroundingProperties(true), properties),
                 org.mockito.Mockito.mock(com.verso.qa.service.AnswerMemory.class),
                 org.mockito.Mockito.mock(com.verso.qa.service.SkillMatcher.class),
-                org.mockito.Mockito.mock(com.verso.qa.service.MultiStepReasoning.class));
+                org.mockito.Mockito.mock(com.verso.qa.service.MultiStepReasoning.class),
+                new com.verso.qa.service.AnswerRelevance(new com.verso.qa.config.QaRelevanceProperties(true)));
     }
 
     @Test

@@ -54,11 +54,12 @@ class KnowledgeCardApiTest {
 
     private static final String QUESTION = "topic-leave MarkerKnowledgeQ yıllık izin kaç gündür?";
     /**
-     * The stub model's answer. No number, number word or code, so the groundedness check (ADR-0047) has nothing to
-     * compare and the turn is ANSWERED whatever the test PDF says; an UNCITED turn could not be verified (11042).
+     * The stub model's answer. It gives the asked quantity (ADR-0064: "kaç gün" needs a number of days) that every
+     * document the cards cite states ("on dort gundur"), so the groundedness check (ADR-0047) verifies it and the turn
+     * is ANSWERED; an UNCITED or not-found turn could not be verified (11042).
      */
-    private static final String ANSWER = "MarkerKnowledgeA yıllık izin süresi bu belgelerde tanımlıdır [1][2].";
-    private static final String ANSWER_ONE = "MarkerKnowledgeA yıllık izin süresi bu belgede tanımlıdır [1].";
+    private static final String ANSWER = "MarkerKnowledgeA yıllık izin on dört gündür [1][2].";
+    private static final String ANSWER_ONE = "MarkerKnowledgeA yıllık izin on dört gündür [1].";
 
     @Value("${local.server.port}")
     int port;

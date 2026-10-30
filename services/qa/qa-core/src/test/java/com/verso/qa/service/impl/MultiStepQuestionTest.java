@@ -144,7 +144,8 @@ class MultiStepQuestionTest {
                 new GroundingCheck(new QaGroundingProperties(true), properties),
                 mock(com.verso.qa.service.AnswerMemory.class), mock(com.verso.qa.service.SkillMatcher.class),
                 new MultiStepReasoning(reasoning, properties, new QuestionDecomposer(reasoning), retrieval,
-                        systemModel, gate, contradictions));
+                        systemModel, gate, contradictions),
+                new com.verso.qa.service.AnswerRelevance(new com.verso.qa.config.QaRelevanceProperties(true)));
     }
 
     @Test

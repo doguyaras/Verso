@@ -393,7 +393,8 @@ class KnowledgeHealthApiTest {
     // ---------------------------------------------------------------- helpers
 
     private UUID verifiedCard(UUID document) throws Exception {
-        TestChatModel.INSTANCE.answer("MarkerHealthCardA yıllık izin süresi bu belgede tanımlıdır [1].");
+        // ADR-0064: "kaç gün" is answered with a number of days, the one the cited document states.
+        TestChatModel.INSTANCE.answer("MarkerHealthCardA yıllık izin on dört gündür [1].");
         HttpResponse<String> asked = ask(admin, LEAVE);
         assertThat((String) JsonPath.read(asked.body(), "$.outcome")).as(asked.body()).isEqualTo("ANSWERED");
         assertThat((List<String>) JsonPath.read(asked.body(), "$.citations[*].documentId"))

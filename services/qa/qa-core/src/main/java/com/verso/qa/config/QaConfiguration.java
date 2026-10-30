@@ -30,7 +30,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @EnableConfigurationProperties({QaProperties.class, QaFollowUpProperties.class, QaGroundingProperties.class,
         QaKnowledgeProperties.class, QaDiagnosticsProperties.class, QaSkillProperties.class,
         QaSystemModelProperties.class, QaReasoningProperties.class, VersoAiProperties.class,
-        QaGatewayProperties.class})
+        QaGatewayProperties.class, QaRelevanceProperties.class})
 public class QaConfiguration {
 
     public static final String MODE_HEADER = "X-Rag-Mode";

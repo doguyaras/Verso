@@ -18,7 +18,10 @@ import com.verso.qa.config.QaProperties;
 import com.verso.qa.config.VersoAiProperties;
 import com.verso.qa.exception.QaErrorCode;
 import com.verso.qa.exception.QaServiceException;
+import com.verso.qa.api.dto.Citation;
+import com.verso.qa.api.dto.UnverifiedSentence;
 import com.verso.qa.service.AnswerMemory;
+import com.verso.qa.service.AnswerRelevance;
 import com.verso.qa.service.SkillMatcher;
 import com.verso.qa.service.AnswerMemory.Served;
 import com.verso.qa.service.AnswerStream;
@@ -93,7 +96,9 @@ import reactor.core.scheduler.Schedulers;
  *       found" answer (llm-rules 3.4, ADR-0022).</li>
  *   <li>Otherwise one chat call, bounded per instance (bulkhead) and by the HTTP client timeout; while the model is
  *       down a circuit breaker answers 503 at once.</li>
- *   <li>Citations are mapped on the server to the passages that were retrieved (3.3).</li>
+ *   <li>Citations are mapped on the server to the passages that were retrieved (3.3); a model answer that refuses in
+ *       its own words or does not give what the question asks for becomes the fixed "not found" answer, without
+ *       citations ({@link AnswerRelevance}, ADR-0064).</li>
  *   <li>The answer is stored in the caller's history after the model call (ADR-0023): a database write, not a remote
  *       call; a failed write loses the turn, not the answer.</li>
  * </ol>
@@ -154,6 +159,7 @@ public class QuestionServiceImpl implements QuestionService {
     private final AnswerMemory memory;
     private final SkillMatcher procedures;
     private final MultiStepReasoning reasoning;
+    private final AnswerRelevance relevance;
 
     /** One model for every task (the unit tests; no gateway). */
     public QuestionServiceImpl(DocumentRetrieval retrieval, ChatModel chatModel, PromptBuilder promptBuilder,
@@ -161,9 +167,9 @@ public class QuestionServiceImpl implements QuestionService {
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
                                QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory,
-                               SkillMatcher procedures, MultiStepReasoning reasoning) {
+                               SkillMatcher procedures, MultiStepReasoning reasoning, AnswerRelevance relevance) {
         this(retrieval, ModelRouter.fixed(chatModel), promptBuilder, citations, properties, ai, circuit, metrics,
-                history, gate, groups, rewriter, followUp, grounding, memory, procedures, reasoning);
+                history, gate, groups, rewriter, followUp, grounding, memory, procedures, reasoning, relevance);
     }
 
     /** Every chat call goes through the model gateway's routes (ADR-0056). */
@@ -173,7 +179,8 @@ public class QuestionServiceImpl implements QuestionService {
                                ModelCircuitBreaker circuit, QaMetrics metrics, ConversationHistory history,
                                AnswerabilityGate gate, CallerGroups groups, FollowUpRewriter rewriter,
                                QaFollowUpProperties followUp, GroundingCheck grounding, AnswerMemory memory,
-                               SkillMatcher procedures, MultiStepReasoning reasoning) {
+                               SkillMatcher procedures, MultiStepReasoning reasoning, AnswerRelevance relevance) {
+        this.relevance = relevance;
         this.reasoning = reasoning;
         this.memory = memory;
         this.procedures = procedures;
@@ -574,32 +581,56 @@ public class QuestionServiceImpl implements QuestionService {
         if (grounding.unverified() != null) {
             metrics.grounding(grounding.cited(), grounding.checked(), grounding.unverified().size());
         }
-        String answer = extracted.answer();
+        // ADR-0064: a refusal in the model's own words, a refusal padded with a loosely related rule, or an answer that
+        // does not give what the question asks for is the fixed "not found" answer: no citations, nothing to verify.
+        AnswerRelevance.Result relevance = this.relevance.check(question, extracted.answer(),
+                citedPassages(extracted.citations(), retrieved.relevant()), outcome == AnswerOutcome.ANSWERED,
+                plan != null);
+        boolean abstained = outcome != AnswerOutcome.NOT_FOUND && !relevance.answered();
+        if (abstained) {
+            outcome = AnswerOutcome.NOT_FOUND;
+            metrics.relevance(relevance.verdict().tag(), relevance.questionType());
+        }
+        String answer = abstained ? PromptBuilder.NOT_FOUND : extracted.answer();
+        List<Citation> cited = abstained ? List.of() : extracted.citations();
+        List<UnverifiedSentence> unverified = abstained ? null : grounding.unverified();
         ReasoningTrace trace = null;
         if (plan != null) {
             String missing = MultiStepReasoning.notFoundSentences(plan.merged());
             if (!missing.isEmpty() && outcome != AnswerOutcome.NOT_FOUND) answer = answer + "\n\n" + missing;
-            List<ContradictionNote> notes = reasoning.contradictions(reader, search.query(), plan.trigger(),
-                    extracted.citations(), retrieved.relevant());
-            trace = MultiStepReasoning.trace(plan.merged(), extracted.citations(), notes);
+            List<ContradictionNote> notes = abstained ? List.of() : reasoning.contradictions(reader, search.query(),
+                    plan.trigger(), cited, retrieved.relevant());
+            trace = MultiStepReasoning.trace(plan.merged(), cited, notes);
         }
         log.info("{}: passages={} relevant={} answerability={} citations={} promptChars={} answerChars={} "
                         + "followUp={} rewriteMs={} retrievalMs={} chatMs={} totalMs={} unverified={} reasoning={} "
-                        + "steps={} notFoundSteps={} decomposeMs={} contradictions={} outcome={}",
+                        + "steps={} notFoundSteps={} decomposeMs={} contradictions={} relevance={} questionType={} "
+                        + "outcome={}",
                 event, retrieved.passages().size(), retrieved.relevant().size(),
-                retrieved.decision().name().toLowerCase(Locale.ROOT), extracted.citations().size(),
+                retrieved.decision().name().toLowerCase(Locale.ROOT), cited.size(),
                 prompt.system().length() + prompt.user().length(), answer.length(), search.result(),
                 search.rewriteMs(), retrieved.retrievalMs(), chatMs, elapsedMs(started),
                 grounding.unverified() == null ? "off" : grounding.unverified().size(),
                 plan != null ? "multi_step" : reasoning.enabled() ? "single" : "off",
                 plan == null ? 0 : plan.merged().questions().size(), plan == null ? 0 : plan.merged().notFound(),
                 plan == null ? 0 : plan.decomposeMs(), trace == null ? 0 : trace.contradictions().size(),
-                outcome.name().toLowerCase(Locale.ROOT));
+                relevance.verdict().tag(), relevance.questionType(), outcome.name().toLowerCase(Locale.ROOT));
         metrics.record(Outcome.valueOf(outcome.name()));
         AnswerResponse response = new AnswerResponse(answer, outcome == AnswerOutcome.ANSWERED, outcome,
-                extracted.citations(), ai.mode().header(), ai.chatModel(), null, null, search.contextQuery(),
-                grounding.unverified());
+                cited, ai.mode().header(), ai.chatModel(), null, null, search.contextQuery(), unverified);
         return new Answered(trace == null ? response : response.withReasoning(trace), retrieved.retrievalMs(), chatMs);
+    }
+
+    /** The part of every cited passage the prompt carried (PromptBuilder cuts at the same limit), in citation order. */
+    private List<String> citedPassages(List<Citation> cited, List<RetrievedPassage> passages) {
+        List<String> parts = new ArrayList<>(cited.size());
+        for (Citation citation : cited) {
+            String content = passages.get(citation.number() - 1).content();
+            if (content == null) continue;
+            parts.add(content.length() <= properties.maxPassageChars() ? content
+                    : content.substring(0, properties.maxPassageChars()));
+        }
+        return parts;
     }
 
     /** After the answer, outside any model call: one short transaction in the qa schema (llm-rules 5.1). */

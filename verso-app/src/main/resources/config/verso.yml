@@ -255,6 +255,13 @@ verso:
     # sentences, docs/evidence/dayanaklilik-olcumu.md. Off (VERSO_QA_GROUNDING_ENABLED=false): no check.
     grounding:
       enabled: ${VERSO_QA_GROUNDING_ENABLED:true}
+    # Answer relevance and abstention (ADR-0064): after the groundedness check, a model answer that refuses in its own
+    # words ("… bilgi bulunmamaktadır [4]"), opens with a refusal and adds only loosely related text, or does not give
+    # what the question asks for (a person for "kim", a number in the asked unit for "kaç", a place for "nerede") is
+    # the fixed "not found" answer: no citations, found=false. In-process and lexical, no model call. Measured in
+    # docs/evidence/cevap-uygunlugu-olcumu.md. Off (VERSO_QA_RELEVANCE_ENABLED=false): the outcome is as before.
+    relevance:
+      enabled: ${VERSO_QA_RELEVANCE_ENABLED:true}
     # Answer memory (ADR-0048 phase 1, ADR-0049): expert-verified answer cards, made by verso-admin from their own
     # sourced answers. Before retrieval, a question whose vector is at least match-threshold similar to a VERIFIED,
     # unexpired card's question is answered with the card ("uzman onaylı"), but only when the caller can read every

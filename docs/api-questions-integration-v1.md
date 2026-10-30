@@ -47,6 +47,13 @@ Bu doküman **3 Ekim 2026** tarihli `feature/doguyaras-faz-5-soru-cevap` branch'
 #### Senaryo: belgelerde yok
 `HTTP 200`: `{"answer":"Belgelerde bu sorunun cevabı bulunamadı.","found":false,"outcome":"NOT_FOUND","citations":[],"mode":"local","model":"gemma4:e2b"}`. Model pasajları okuyup aynı cümleyi yazdığında da `outcome` `NOT_FOUND` olur.
 
+ADR-0064'ten beri (kurulumda `VERSO_QA_RELEVANCE_ENABLED=true`, varsayılan) şu model cevapları da aynı biçimde döner: sabit cümle, `found: false`, `outcome: "NOT_FOUND"`, `citations: []`, `unverified: null`.
+- Model kendi sözleriyle reddetti ("Belgelerde … bilgi bulunmamaktadır"), atıf yazmış olsa bile.
+- Model reddederek başladı, ardından yalnız gevşekçe ilgili bir kural ekledi ("Ancak, …").
+- Cevap sorunun istediğini vermiyor: "şu anki müdür kim" sorusuna kişi adı yerine atama kuralı, "kaç kuruş" sorusuna tutar yerine başka bir hüküm, "hangi binada" sorusuna bina adı yok.
+
+Akışta `delta` olayları modelin ham metnini taşımış olabilir; geçerli olan `citations` ve `done` olaylarıdır (ADR-0035). Alan, tür ya da değer eklenmedi: `NOT_FOUND`'u zaten işleyen istemci değişmeden çalışır.
+
 #### Senaryo: model atıf yazmadı
 `HTTP 200`, `found: false`, `outcome: "UNCITED"`, `citations: []`, ama `answer` modelin metnidir (sabit "bulunamadı" cümlesi değil). "Kaynak gösterilemedi" uyarısıyla gösterilir.
 

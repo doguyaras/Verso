@@ -37,6 +37,7 @@ public class QaMetrics {
     private final Map<String, Counter> followUps = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> notStored = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Counter> grounding = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Counter> relevance = new java.util.concurrent.ConcurrentHashMap<>();
     /** Where a stalled answer call was given up: before its first token (streams) or at the chat timeout. */
     public static final String STALL_FIRST_TOKEN = "first_token";
     public static final String STALL_TIMEOUT = "timeout";
@@ -117,6 +118,19 @@ public class QaMetrics {
     private Counter groundingCounter(String result) {
         return grounding.computeIfAbsent(result, r -> Counter.builder("verso.qa.grounding.sentences").tag("result", r)
                 .description("Cited answer sentences by groundedness check result").register(registry));
+    }
+
+    /**
+     * ADR-0064: a model answer the relevance check turned into "not found", by verdict ("refusal",
+     * "refusal_with_filler", "slot_missing") and question type ("person", "date", "place", "number", "entity",
+     * "other"). A rising slot_missing share means the model answers questions the documents do not answer. Fixed
+     * words, no content.
+     */
+    public void relevance(String verdict, String questionType) {
+        relevance.computeIfAbsent(verdict + "|" + questionType, k -> Counter.builder("verso.qa.relevance.abstained")
+                .tag("verdict", verdict).tag("type", questionType)
+                .description("Model answers turned into not found by the relevance check (ADR-0064)")
+                .register(registry)).increment();
     }
 
     /** One rewrite call, whatever its result (it holds the chat slot for that long). */

@@ -48,6 +48,9 @@ verso:
     # Groundedness check switch (ADR-0047), the same variable as the deploy.
     grounding:
       enabled: ${VERSO_QA_GROUNDING_ENABLED:true}
+    # Answer relevance switch (ADR-0064), the same variable as the deploy.
+    relevance:
+      enabled: ${VERSO_QA_RELEVANCE_ENABLED:true}
     # Answer memory switches (ADR-0049), the same variables as the deploy; the rest of verso.qa.knowledge is shared.
     knowledge:
       enabled: ${VERSO_QA_KNOWLEDGE_ENABLED:true}

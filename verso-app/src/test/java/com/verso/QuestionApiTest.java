@@ -11,7 +11,9 @@ import com.verso.document.repository.DocumentRow;
 import com.verso.document.testing.TestDocx;
 import com.verso.document.testing.TestPdfs;
 import com.verso.document.worker.IngestionWorker;
+import com.jayway.jsonpath.JsonPath;
 import com.verso.qa.service.ModelCircuitBreaker;
+import com.verso.support.QaTables;
 import com.verso.support.TestChatModel;
 import com.verso.support.TestEmbeddingModel;
 import com.verso.support.TestIdp;
@@ -250,6 +252,58 @@ class QuestionApiTest {
         TestChatModel.INSTANCE.answer("Bence yirmi gündür.");
         assertThat(ask("topic-leave izin?").body()).contains("\"found\":false", "\"outcome\":\"UNCITED\"",
                 "Bence yirmi gündür.");
+    }
+
+    /**
+     * ADR-0064: the model's own refusal with a citation ("… bilgi bulunmamaktadır [1]") is the fixed not-found answer
+     * of llm-rules 3.4: no citations, nothing to verify, the same shape as when the model is not asked.
+     */
+    @Test
+    void ask_whenTheModelRefusesInItsOwnWordsWithACitation_answersNotFoundWithoutCitations() throws Exception {
+        ready("topic-leave Annual leave rules.");
+        TestChatModel.INSTANCE.answer("Belgelerde yaz okulu ücreti hakkında bilgi bulunmamaktadır [1].");
+
+        HttpResponse<String> response = ask("topic-leave Yaz okulunda bir kredilik ders kaç TL?");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"found\":false", "\"outcome\":\"NOT_FOUND\"", "\"citations\":[]",
+                        "\"answer\":\"Belgelerde bu sorunun cevabı bulunamadı.\"")
+                .doesNotContain("yaz okulu ücreti", "\"unverified\":[");
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("relevance=refusal")
+                && e.getFormattedMessage().contains("outcome=not_found"));
+    }
+
+    /**
+     * ADR-0064: a "kim" question about the current office holder answered with the appointment rule gives no person;
+     * the documents do not answer it. The stored turn is NOT_FOUND too.
+     */
+    @Test
+    void ask_whenTheAnswerDoesNotGiveWhatTheQuestionAsksFor_answersNotFound() throws Exception {
+        ready("topic-leave Mudur Rektor tarafindan gorevlendirilir.");
+        TestChatModel.INSTANCE.answer("Müdür, Rektör tarafından görevlendirilir [1].");
+
+        HttpResponse<String> response = ask("topic-leave Merkezin şu anki müdürü kimdir?");
+
+        assertThat(response.body()).contains("\"found\":false", "\"outcome\":\"NOT_FOUND\"", "\"citations\":[]",
+                "Belgelerde bu sorunun cevabı bulunamadı.");
+        String turnId = JsonPath.read(response.body(), "$.turnId");
+        assertThat(QaTables.count("select count(*) from qa.turn where id = ?::uuid and outcome = 'NOT_FOUND'", turnId))
+                .isOne();
+        assertThat(QaTables.count("select count(*) from qa.turn_citation where turn_id = ?::uuid", turnId)).isZero();
+        assertThat(appender.list).anyMatch(e -> e.getFormattedMessage().contains("relevance=slot_missing")
+                && e.getFormattedMessage().contains("questionType=person"));
+        assertThat(appender.list).noneMatch(e -> e.getFormattedMessage().contains("şu anki")
+                || e.getFormattedMessage().contains("görevlendirilir"));
+    }
+
+    /** ADR-0064: the same "kim" question answered with a role (not about the current holder) stays a sourced answer. */
+    @Test
+    void ask_whenTheAnswerGivesTheAskedRole_staysAnswered() throws Exception {
+        ready("topic-leave Mudur Rektor tarafindan gorevlendirilir.");
+        TestChatModel.INSTANCE.answer("Müdürü Rektör görevlendirir [1].");
+
+        assertThat(ask("topic-leave Merkez müdürünü kim görevlendirir?").body())
+                .contains("\"found\":true", "\"outcome\":\"ANSWERED\"");
     }
 
     /** llm-rules 2.3 / ADR-0008: a failing model is a 503 with a fixed code; provider text never leaves. */

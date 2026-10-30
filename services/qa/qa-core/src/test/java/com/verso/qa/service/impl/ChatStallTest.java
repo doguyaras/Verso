@@ -105,7 +105,8 @@ class ChatStallTest {
                 new QaMetrics(registry, circuit), history, new AnswerabilityGate(properties), groups,
                 new FollowUpRewriter(FollowUpQuestionTest.FOLLOW_UP), FollowUpQuestionTest.FOLLOW_UP,
                 new GroundingCheck(new QaGroundingProperties(true), properties), mock(AnswerMemory.class),
-                mock(SkillMatcher.class), mock(MultiStepReasoning.class));
+                mock(SkillMatcher.class), mock(MultiStepReasoning.class),
+                new com.verso.qa.service.AnswerRelevance(new com.verso.qa.config.QaRelevanceProperties(true)));
         when(groups.current()).thenReturn(List.of());
         when(retrieval.search(any(Reader.class), anyString(), anyInt())).thenReturn(List.of(
                 new RetrievedPassage(UUID.randomUUID(), "izin.pdf", 3, SourceUnit.PAGE, "Yıllık izin yirmi gündür.", 0.9, 0)));
