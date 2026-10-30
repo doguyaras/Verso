@@ -77,8 +77,11 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
      */
     private float[] embedQuestion(String question) {
         Duration timeout = properties.retrieval().embeddingTimeout();
+        // One code for the client (503, Retry-After), but the log says which it was: all slots taken (overload, the
+        // model is fine), the model not answering in time, or the call failing. Otherwise an operator cannot tell a
+        // busy minute from an outage (bug hunt 2026-10-30).
         if (!embeddingSlots.tryAcquire()) {
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE, "EMBEDDING_BUSY");
         }
         Future<float[]> call;
         // Whoever claims "started" owns the release: the task when it runs, the caller when it cancels a task that
@@ -95,19 +98,19 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
             });
         } catch (RuntimeException e) {
             embeddingSlots.release();
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE, "EMBEDDING_REJECTED");
         }
         try {
             return call.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             cancel(call, started);
             Thread.currentThread().interrupt();
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE, "EMBEDDING_INTERRUPTED");
         } catch (TimeoutException e) {
             cancel(call, started);
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE, "EMBEDDING_TIMEOUT");
         } catch (ExecutionException e) {
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE, "EMBEDDING_FAILED");
         }
     }
 
@@ -127,7 +130,7 @@ public class DocumentRetrievalServiceImpl implements DocumentRetrieval {
     public QuestionEmbedding embed(String question) {
         float[] vector = embedQuestion(question);
         if (vector.length != properties.embeddingDimensions()) {
-            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE);
+            throw new DocumentServiceException(DocumentErrorCode.EMBEDDING_MODEL_UNAVAILABLE, "EMBEDDING_WRONG_DIMENSIONS");
         }
         return new QuestionEmbedding(properties.embeddingModel(), vector);
     }

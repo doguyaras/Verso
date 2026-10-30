@@ -172,6 +172,8 @@ for (let round = 0, page; round < 10 && (page = (await (await api('/v1/documents
   round++;
   for (const doc of page) await api(`/v1/documents/${doc.id}`, { method: 'DELETE' });
 }
+// Every question of a run opens a conversation on this account; without this, thousands pile up over the runs.
+await api('/v1/conversations', { method: 'DELETE' });
 const ids = [];
 for (const f of files) ids.push(await upload(f));
 console.log(`eval: uploaded ${ids.length} samples, waiting for READY`);

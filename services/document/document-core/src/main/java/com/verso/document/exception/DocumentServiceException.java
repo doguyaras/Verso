@@ -8,4 +8,9 @@ public class DocumentServiceException extends ServiceException {
     public DocumentServiceException(DocumentErrorCode errorCode) {
         super(errorCode, errorCode.name());
     }
+
+    /** The same code with a more specific fixed word for the log (one code, several operational causes). */
+    public DocumentServiceException(DocumentErrorCode errorCode, String safeLogReason) {
+        super(errorCode, safeLogReason);
+    }
 }
