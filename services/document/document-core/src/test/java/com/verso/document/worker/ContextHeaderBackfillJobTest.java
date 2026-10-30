@@ -70,7 +70,7 @@ class ContextHeaderBackfillJobTest {
                 List.of(chunk))));
         job = new ContextHeaderBackfillJob(repository, ingestion, worker, systemModel, embeddingModel,
                 TestPdfs.properties(), new ContextHeaderProperties(true, true, Duration.ofSeconds(30), 5,
-                Duration.ofMinutes(10)),
+                Duration.ofMinutes(10), Duration.ZERO),
                 transaction, Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneOffset.UTC),
                 new SimpleMeterRegistry());
         job.start();

@@ -61,7 +61,7 @@ Sözcük kuralları:
 - Kart daha özelse (soru "alım onayı kimde?", kart "500.000 TL üstü alım onayı kimde?"), istenen kural gereği eşleşir. Kosinüs eşiği bu durumu çoğunlukla zaten ayırır.
 
 **Neden kodu ve kayıt:** reddedilen her aday kart için bir kayıt düşer:
-- Metrik: `verso.qa.knowledge.rejections{reason}`. Nedenler: `key_fact_number`, `key_fact_amount`, `key_fact_percent`, `key_fact_quantity`, `key_fact_date`, `key_fact_code`, `key_fact_quote`, `key_fact_negation`, `rerank_low`, `rerank_unavailable`.
+- Metrik: `verso.qa.knowledge.rejections{reason}`. Nedenler: `key_fact_number`, `key_fact_amount`, `key_fact_percent`, `key_fact_quantity`, `key_fact_date`, `key_fact_code`, `key_fact_quote`, `key_fact_negation`, `key_fact_comparator` (iki soru da karşılaştırıyor ve yönler farklı: "5 yıldan az" / "5 yıldan fazla"; inceleme bulgusu, 2026-10-30), `rerank_low`, `rerank_unavailable`.
 - Log: `Answer memory card rejected: cardId=… reason=…`, INFO.
 - `verso.qa.knowledge.lookups{outcome}` metriğine yeni bir sonuç eklendi: `rejected`. En az bir aday süzgeçten döndü ve hiçbiri sunulmadı demektir.
 - Soru metni ve olgu değerleri hiçbir yere yazılmaz. Neden kodları sabit değerlerdir.

@@ -22,9 +22,11 @@ class KeyFactsTest {
         assertThat(KeyFacts.parse("1.5")).isEqualByComparingTo(BigDecimal.valueOf(1.5));
         assertThat(KeyFacts.parse("1.2.3")).isNull();
 
-        assertThat(facts("500.000 TL üstü alım")).containsExactly(new Fact(Kind.AMOUNT, "500000", "TRY"));
+        assertThat(facts("500.000 TL üstü alım")).containsExactly(new Fact(Kind.AMOUNT, "500000", "TRY"),
+                new Fact(Kind.COMPARATOR, "above"));
         assertThat(facts("500 bin liralık alım")).containsExactly(new Fact(Kind.AMOUNT, "500000", "TRY"));
-        assertThat(facts("1,5 milyon TL'den büyük")).containsExactly(new Fact(Kind.AMOUNT, "1500000", "TRY"));
+        assertThat(facts("1,5 milyon TL'den büyük")).containsExactly(new Fact(Kind.AMOUNT, "1500000", "TRY"),
+                new Fact(Kind.COMPARATOR, "above"));
         assertThat(facts("₺500 ve 20 USD")).containsExactly(new Fact(Kind.AMOUNT, "500", "TRY"),
                 new Fact(Kind.AMOUNT, "20", "USD"));
         assertThat(facts("30TL ve 8GB")).containsExactly(new Fact(Kind.AMOUNT, "30", "TRY"),
@@ -94,6 +96,25 @@ class KeyFactsTest {
         assertThat(conflict("madde 8 neyi düzenler?", "madde 7 neyi düzenler?")).contains(Kind.CODE);
         assertThat(conflict("KDV %8 mi?", "KDV %18 mi?")).contains(Kind.PERCENT);
         assertThat(conflict("\"acil alım\" kim onaylar?", "Alımı kim onaylar?")).contains(Kind.QUOTE);
+    }
+
+    @Test
+    void conflict_whenBothCompareInDifferentDirections() {
+        // ADR-0060's own motivating pair: one word apart, cosine above the threshold (review finding, 2026-10-30)
+        assertThat(conflict("5 yıldan az çalışan için izin kaç gün?", "5 yıldan fazla çalışan için izin kaç gün?"))
+                .contains(Kind.COMPARATOR);
+        assertThat(conflict("En az kaç gün izin kullanılır?", "En fazla kaç gün izin kullanılır?"))
+                .contains(Kind.COMPARATOR);
+        assertThat(conflict("500.000 TL'yi aşan alım", "500.000 TL'den düşük alım")).contains(Kind.COMPARATOR);
+        assertThat(facts("en çok 3 gün")).contains(new Fact(Kind.COMPARATOR, "max"));
+        assertThat(facts("en az 3 gün")).contains(new Fact(Kind.COMPARATOR, "min"));
+    }
+
+    @Test
+    void noConflict_whenOnlyOneSideCompares_orBothTheSameWay() {
+        assertThat(conflict("500.000 TL'yi aşan alım kimde?", "500.000 TL üzeri alım kimde?")).isEmpty();
+        assertThat(conflict("500.000 TL'lik alımı kim onaylar?", "500.000 TL üstü alımı kim onaylar?")).isEmpty();
+        assertThat(conflict("5 yıldan fazla çalışanın izni", "5 yıldan fazla hizmeti olanın izni")).isEmpty();
     }
 
     @Test

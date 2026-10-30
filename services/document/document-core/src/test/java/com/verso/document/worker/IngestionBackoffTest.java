@@ -12,7 +12,7 @@ class IngestionBackoffTest {
     private final IngestionWorker worker = new IngestionWorker(null, null, null, null, TestPdfs.properties(), null,
             new IngestionMetrics(null, new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), java.time.Clock.systemUTC()),
             new com.verso.document.config.ContextHeaderProperties(true, true, java.time.Duration.ofSeconds(30), 5,
-                    java.time.Duration.ofMinutes(10)));
+                    java.time.Duration.ofMinutes(10), java.time.Duration.ZERO));
 
     @Test
     void backoff_whenAttemptsGrow_doublesAndCaps() {

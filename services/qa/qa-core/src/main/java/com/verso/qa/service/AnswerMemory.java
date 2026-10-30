@@ -98,6 +98,8 @@ public class AnswerMemory {
         KEY_FACT_QUOTE,
         /** One question is negated or excludes something ("değil", "olmayan", "hariç") and the other is not. */
         KEY_FACT_NEGATION,
+        /** The question and the card compare in different directions ("5 yıldan az" / "5 yıldan fazla"). */
+        KEY_FACT_COMPARATOR,
         /** The reranker scored the pair below {@code rerank-check.min-score}. */
         RERANK_LOW,
         /** The reranker check is on but gave no score (off, skipped, failed): not confirmed, not served. */

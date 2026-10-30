@@ -617,6 +617,8 @@ verso:
       backfill-interval: 30s
       backfill-batch: 5
       backfill-lease: 10m
+      # Pause between two embedding batches, so question embeddings (10 s bound) do not queue behind re-indexing.
+      backfill-pause: 250ms
     # Optional cross-encoder reranker (ADR-0043): a HF TEI sidecar with bge-reranker-v2-m3 reorders the fused top-N
     # before the top-k are kept. Off unless deploy/compose.reranker.yaml runs it (VERSO_RERANKER_ENABLED). Every
     # failure keeps the fused order; the answerability gate reads the same passage either way.

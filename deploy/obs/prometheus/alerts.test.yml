@@ -32,7 +32,7 @@ tests:
         alertname: ChatStalled
         exp_alerts:
           - exp_labels: {severity: page}
-            exp_annotations: {summary: "The local chat model stops answering; its calls are cut at the time bound.", runbook: docs/runbooks/model-unavailable.md}
+            exp_annotations: {summary: "The chat model (the local one, or the cloud provider in cloud mode) stops answering; its calls are cut at the time bound.", runbook: docs/runbooks/model-unavailable.md}
 
   # ADR-0062, normal: one slow question cut at the bound among answered ones does not page.
   - interval: 15s

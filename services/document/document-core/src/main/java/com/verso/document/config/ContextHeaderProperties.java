@@ -15,6 +15,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param backfillInterval pause between runs
  * @param backfillBatch    documents per run; each is embedded outside any transaction and written in one short one
  * @param backfillLease    how long a document is held by one instance before another may take it
+ * @param backfillPause    pause between two embedding batches of the backfill: the embedding server serves questions
+ *                         from the same slots, and a question's embedding (10 s bound) must not queue behind an
+ *                         hour of re-indexing after an upgrade (review finding, 2026-10-30); zero turns it off
  */
 @ConfigurationProperties("verso.document.context-header")
 public record ContextHeaderProperties(
@@ -22,7 +25,8 @@ public record ContextHeaderProperties(
         @DefaultValue("true") boolean backfillEnabled,
         @DefaultValue("30s") Duration backfillInterval,
         @DefaultValue("5") int backfillBatch,
-        @DefaultValue("10m") Duration backfillLease) {
+        @DefaultValue("10m") Duration backfillLease,
+        @DefaultValue("250ms") Duration backfillPause) {
 
     public ContextHeaderProperties {
         if (!backfillInterval.isPositive()) {
@@ -30,6 +34,9 @@ public record ContextHeaderProperties(
         }
         if (backfillBatch < 1 || backfillBatch > 100) {
             throw new IllegalStateException("verso.document.context-header.backfill-batch must be 1..100");
+        }
+        if (backfillPause.isNegative() || backfillPause.compareTo(Duration.ofSeconds(10)) > 0) {
+            throw new IllegalStateException("verso.document.context-header.backfill-pause must be 0..10s");
         }
         if (backfillLease.compareTo(Duration.ofMinutes(1)) < 0) {
             throw new IllegalStateException("verso.document.context-header.backfill-lease must be at least 1m");

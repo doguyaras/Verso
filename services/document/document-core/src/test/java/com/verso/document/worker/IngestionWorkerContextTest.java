@@ -103,7 +103,8 @@ class IngestionWorkerContextTest {
                 embeddingModel, TestPdfs.properties(), Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"),
                 ZoneOffset.UTC), new IngestionMetrics(mock(IngestionRepository.class), new SimpleMeterRegistry(),
                 Clock.systemUTC()),
-                new ContextHeaderProperties(embedHeader, true, Duration.ofSeconds(30), 5, Duration.ofMinutes(10)));
+                new ContextHeaderProperties(embedHeader, true, Duration.ofSeconds(30), 5, Duration.ofMinutes(10),
+                        Duration.ZERO));
         worker.start();
         return worker;
     }

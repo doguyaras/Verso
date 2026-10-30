@@ -56,6 +56,14 @@ Kural (referans 18.4): yeni sürümün şeması, **önceki uygulama sürümüyle
 | `document/V5__outbox_event.sql`, `qa/V3__outbox_event.sql` | Yeni boş tablo; eski imaj dokunmaz | Geri alma güvenli; yukarıdaki teslim notu geçerli |
 | `document/V3__chunk_search_vector.sql` | `ADD COLUMN ... GENERATED ... STORED` + GIN indeks; eski imaj sütunu yok sayar | Geri alma güvenli; eski imaj hibrit arama yapmaz (ADR-0022) |
 | `document/V1`, `qa/V1`, `qa/V2`, `audit/V1`, `audit/V2` | Ekleme (tablo, indeks, fonksiyon) | Geri alma güvenli |
+| `document/V7__chunk_context_header.sql` (ADR-0061) | Yeni nullable kolonlar, iki `CHECK` ve bir GIN indeks; eski imaj yok sayar | Geri alma güvenli. **Migrate süresi:** iki `CHECK` (`NOT VALID` değil) `document_chunk`'ı `ACCESS EXCLUSIVE` kilitle, indeks `SHARE` kilitle birer kez tarar. Bütün satırlar NULL olduğu için hesap yoktur, ama büyük bir külliyatta tarama dakikalar sürebilir. Bu yüzden uygulama 3. adımda durdurulmuş olmalıdır (durmuş uygulamada istek beklemez) |
+| `document/V8__drop_header_vector_check.sql` | Yalnız bir `CHECK` kaldırılır (`-- contract:` gerekçeli); tarama yok, kısa kilit | Geri alma güvenli. Kaldırılan kısıt `to_tsvector` çıktısını karşılaştırıyordu; sözlüğü değişen bir PostgreSQL sürümüne geri yüklemeyi kırardı |
+
+**ADR-0061 yeniden indekslemesinden sonra** (`ContextHeaderBackfillJob` bütün belgeleri yeni başlıkla yeniden gömer): iş, her parçayı aynı kimlikle silip yeniden yazar. Bu, HNSW indeksinde ölü kayıtlar bırakır ve vacuum'a kadar süzgeçli aramalar k'dan az sonuç dönebilir. İşin bittiği, `document.document` içinde `context_version` değeri güncel olmayan READY belge kalmamasından anlaşılır. Bittiğinde bir kez çalıştırın:
+
+```bash
+$DC exec postgres psql -U postgres -d verso -c "VACUUM (ANALYZE) document.document_chunk"
+```
 
 Sürüm notunda bir sonraki sürümün migration'ı için bu tablo güncellenir.
 

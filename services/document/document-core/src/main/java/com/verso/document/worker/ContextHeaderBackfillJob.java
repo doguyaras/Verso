@@ -157,12 +157,25 @@ public class ContextHeaderBackfillJob implements SmartLifecycle {
         return Outcome.REINDEXED;
     }
 
+    /** Gives the embedding server's slots back to questions between two batches; shutdown ends the wait at once. */
+    private void pause() {
+        long millis = properties.backfillPause().toMillis();
+        if (millis == 0) return;
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ModelFailure(false, SHUTDOWN);
+        }
+    }
+
     /** Each chunk's embedding input as the ingestion worker builds it; the text itself is stored unchanged. */
     private List<StoredChunk> embed(UUID documentId, List<ChunkRow> chunks, List<String> headers) {
         int batch = documentProperties.ingestion().embeddingBatch();
         List<StoredChunk> stored = new ArrayList<>(chunks.size());
         for (int from = 0; from < chunks.size(); from += batch) {
             if (!running) throw new ModelFailure(false, SHUTDOWN);
+            if (from > 0) pause();
             int to = Math.min(chunks.size(), from + batch);
             List<String> inputs = new ArrayList<>(to - from);
             for (int i = from; i < to; i++) {

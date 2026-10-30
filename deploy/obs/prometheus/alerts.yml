@@ -121,7 +121,7 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: The local chat model stops answering; its calls are cut at the time bound.
+          summary: The chat model (the local one, or the cloud provider in cloud mode) stops answering; its calls are cut at the time bound.
           runbook: docs/runbooks/model-unavailable.md
 
       # p95 of one successful chat call above the local CPU budget (ADR-0008: 60 s). Failed calls: ModelUnavailable.

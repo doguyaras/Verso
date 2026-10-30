@@ -22,8 +22,10 @@ import java.util.regex.Pattern;
  * <p>Read: numbers in Turkish notation ("500.000", "1,5", "500 bin", number words "on beş"), percentages ("%18",
  * "yüzde 18"), amounts with a currency ("50.000 TL", "₺500", "2 milyon lira"), quantities with a measuring unit
  * ("30 gün", "10 iş günü", "8 GB"), dates, months, years and times, codes and references ("PRC-12", "P1", "madde 7",
- * "7. madde", "7/2"), double-quoted terms, and explicit negation ("değil", "olmayan", "hariç"; the verb suffix
- * "-me/-ma" is deliberately not read: it is everywhere in ordinary questions).
+ * "7. madde", "7/2"), double-quoted terms, explicit negation ("değil", "olmayan", "hariç"; the verb suffix
+ * "-me/-ma" is deliberately not read: it is everywhere in ordinary questions), and the direction of a comparison
+ * ("fazla", "üzeri", "aşan"; "az", "düşük"; "en az", "en çok"): "5 yıldan az" and "5 yıldan fazla" differ in that
+ * word alone. "altı" (also "six"), "altında" (also "under") and "çok" alone are not read.
  *
  * <p>Deterministic, pure and allocation-light: it runs on the question's hot path, once per question and once per
  * candidate card, without any model or I/O. Neither the text nor a fact is ever logged; only the {@link Kind} of a
@@ -32,7 +34,7 @@ import java.util.regex.Pattern;
 public final class KeyFacts {
 
     /** What a key fact is; the kind of a conflict is the rejection reason of a card (a fixed value, logged). */
-    public enum Kind { NUMBER, AMOUNT, PERCENT, QUANTITY, DATE, CODE, QUOTE, NEGATION }
+    public enum Kind { NUMBER, AMOUNT, PERCENT, QUANTITY, DATE, CODE, QUOTE, NEGATION, COMPARATOR }
 
     /**
      * One fact. Numeric kinds carry the normalised value ("500000", "1.5") and a qualifier: the currency of an amount,
@@ -103,6 +105,10 @@ public final class KeyFacts {
     // Explicit negation and exclusion with the endings each takes ("değildir", "olmayanlar", "hariçtir"), folded;
     // "harici" (external) is not one.
     private static final Pattern NEGATION = Pattern.compile("degil[a-z]{0,5}|olmayan[a-z]{0,5}|haric(?:tir|tur)?");
+    // The direction of a comparison, folded: above, below; "en az" / "en çok" / "en fazla" are read as a pair.
+    private static final Pattern ABOVE = Pattern.compile("fazla(?:si|sini|siyla)?|ustu(?:nde|ndeki)?|uzeri(?:nde|ndeki)?"
+            + "|asan(?:lar|larda)?|askin|buyuk");
+    private static final Pattern BELOW = Pattern.compile("az|asagisi|dusuk");
     private static final Pattern MONTH_NAMED = Pattern.compile("ay(?:i|in|inda|indan|ina|inin|da|dan|a)?");
     // References also read backwards ("7. madde", "3'üncü fıkra"), but only where that is the usual order: "3 aşama"
     // is three stages, not stage 3.
@@ -144,16 +150,30 @@ public final class KeyFacts {
     /**
      * Why a card whose question has the key facts {@code card} cannot answer a question with these: empty when every
      * fact of this question is a fact of the card's question (a subset, or equal). Negation must agree both ways: a
-     * card about what is not covered never answers what is, and the other way round.
+     * card about what is not covered never answers what is, and the other way round. A comparison conflicts only when
+     * both questions state one and the directions differ ("5 yıldan az" / "5 yıldan fazla"): a card that adds "üstü"
+     * to the same amount, or a paraphrase that says "itibaren" instead, still matches.
      */
     public Optional<Kind> conflictWith(KeyFacts card) {
         boolean negated = facts.stream().anyMatch(f -> f.kind() == Kind.NEGATION);
         boolean cardNegated = card.facts.stream().anyMatch(f -> f.kind() == Kind.NEGATION);
         if (negated != cardNegated) return Optional.of(Kind.NEGATION);
+        Set<String> compared = comparators();
+        Set<String> cardCompared = card.comparators();
+        if (!compared.isEmpty() && !cardCompared.isEmpty() && !compared.equals(cardCompared)) {
+            return Optional.of(Kind.COMPARATOR);
+        }
         for (Fact fact : facts) {
-            if (fact.kind() != Kind.NEGATION && !card.covers(fact)) return Optional.of(fact.kind());
+            if (fact.kind() != Kind.NEGATION && fact.kind() != Kind.COMPARATOR && !card.covers(fact)) {
+                return Optional.of(fact.kind());
+            }
         }
         return Optional.empty();
+    }
+
+    private Set<String> comparators() {
+        return facts.stream().filter(f -> f.kind() == Kind.COMPARATOR).map(Fact::value)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     private boolean covers(Fact fact) {
@@ -169,7 +189,7 @@ public final class KeyFacts {
             // Written without quotes or in lower case on the card: the same words are enough.
             case QUOTE -> folded.contains(" " + fact.value() + " ");
             case CODE -> folded.contains(" " + TurkishText.fold(fact.value()).replace('-', ' ') + " ");
-            case DATE, NEGATION -> false;
+            case DATE, NEGATION, COMPARATOR -> false;
         };
     }
 
@@ -238,6 +258,8 @@ public final class KeyFacts {
                     case "word" -> {
                         if (negation(token)) {
                             facts.add(new Fact(Kind.NEGATION, ""));
+                            used[i] = true;
+                        } else if (comparator(i)) {
                             used[i] = true;
                         } else {
                             readNumberWords(i);
@@ -388,6 +410,29 @@ public final class KeyFacts {
             } else {
                 facts.add(new Fact(Kind.NUMBER, plain));
             }
+        }
+
+        /** The direction of a comparison at {@code at}: "en az" (min), "en çok"/"en fazla" (max), above, below. */
+        private boolean comparator(int at) {
+            String word = tokens.get(at).folded();
+            int next = at + 1;
+            if (word.equals("en") && next < tokens.size() && tokens.get(next).kind().equals("word")) {
+                String bound = tokens.get(next).folded();
+                if (bound.equals("az") || bound.equals("cok") || bound.equals("fazla")) {
+                    facts.add(new Fact(Kind.COMPARATOR, bound.equals("az") ? "min" : "max"));
+                    used[next] = true;
+                    return true;
+                }
+            }
+            if (ABOVE.matcher(word).matches()) {
+                facts.add(new Fact(Kind.COMPARATOR, "above"));
+                return true;
+            }
+            if (BELOW.matcher(word).matches()) {
+                facts.add(new Fact(Kind.COMPARATOR, "below"));
+                return true;
+            }
+            return false;
         }
 
         /** "on beş", "beş yüz", "iki buçuk": a run of number words is one value. */
